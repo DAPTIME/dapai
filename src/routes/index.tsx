@@ -36,6 +36,18 @@ const GREETINGS = (name: string) => [
 function Home() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [busy, setBusy] = useState(false);
+  const [name, setName] = useState("friend");
+
+  useEffect(() => {
+    const n = typeof window !== "undefined" ? localStorage.getItem("ascend.name") : null;
+    if (n) setName(n);
+  }, []);
+
+  const greeting = useMemo(() => {
+    const list = GREETINGS(name);
+    return list[Math.floor(Math.random() * list.length)];
+  }, [name, messages.length === 0]);
+
 
   const handleSend = async (text: string) => {
     const cfg = loadConfig();
