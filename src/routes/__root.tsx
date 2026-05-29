@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
-
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -76,6 +76,7 @@ function RootComponent() {
             </main>
           </div>
         </div>
+        <Toaster />
       </SidebarProvider>
     </QueryClientProvider>
   );

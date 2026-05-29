@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { MessageSquarePlus, Compass, Sparkles, History, Settings, HelpCircle } from "lucide-react";
+import { MessageSquarePlus, Compass, Sparkles, History, Settings, HelpCircle, Cpu } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -78,6 +78,14 @@ export function AppSidebar() {
 
       <SidebarFooter className="pb-4">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === "/admin"}>
+              <Link to="/admin">
+                <Cpu />
+                <span>Admin</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={pathname === "/settings"}>
               <Link to="/settings">
