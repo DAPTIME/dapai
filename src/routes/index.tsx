@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { ChatComposer, SuggestionChips } from "@/components/chat-composer";
 import { loadConfig } from "@/lib/ai-config";
 import { toast } from "sonner";
@@ -7,8 +7,8 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Lumen — Your AI workspace" },
-      { name: "description", content: "Start a conversation with Lumen." },
+      { title: "Ascend — Your AI workspace" },
+      { name: "description", content: "Your personal AI assistant." },
     ],
   }),
   component: Home,
@@ -20,9 +20,34 @@ interface Msg {
   text: string;
 }
 
+const GREETINGS = (name: string) => [
+  `Hey ${name}, I'm here to help.`,
+  `What's on your mind, ${name}?`,
+  `Ready when you are, ${name}.`,
+  `Let's get into it, ${name}.`,
+  `How can I assist, ${name}?`,
+  `Ask me anything, ${name}.`,
+  `At your service, ${name}.`,
+  `What are we building today, ${name}?`,
+  `Hi ${name}, fire away.`,
+  `Good to see you, ${name}.`,
+];
+
 function Home() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [busy, setBusy] = useState(false);
+  const [name, setName] = useState("friend");
+
+  useEffect(() => {
+    const n = typeof window !== "undefined" ? localStorage.getItem("ascend.name") : null;
+    if (n) setName(n);
+  }, []);
+
+  const greeting = useMemo(() => {
+    const list = GREETINGS(name);
+    return list[Math.floor(Math.random() * list.length)];
+  }, [name, messages.length === 0]);
+
 
   const handleSend = async (text: string) => {
     const cfg = loadConfig();
@@ -35,7 +60,7 @@ function Home() {
         {
           id: Date.now() + 1,
           role: "assistant",
-          text: "No AI connected yet. Open Admin to point Lumen at your own GPU (Ollama / LM Studio).",
+          text: "No AI connected yet. Open Admin to point Ascend at your own GPU (Ollama / LM Studio).",
         },
       ]);
       return;
@@ -71,20 +96,21 @@ function Home() {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="mx-auto flex h-full max-w-3xl flex-col justify-center px-4 py-10">
-            <h1
-              className="bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl"
-              style={{ backgroundImage: "var(--gradient-brand)" }}
-            >
-              Hello there.
+          <div className="relative mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-4 py-10 text-center">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                background:
+                  "radial-gradient(ellipse 60% 40% at 50% 50%, oklch(0.35 0.18 260 / 0.55), transparent 70%)",
+              }}
+            />
+            <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+              {greeting}
             </h1>
-            <p className="mt-2 text-2xl text-muted-foreground sm:text-3xl">
-              How can I help you today?
-            </p>
-            <div className="mt-10">
+            <div className="mt-10 w-full">
               <SuggestionChips onPick={handleSend} />
             </div>
           </div>
@@ -101,19 +127,20 @@ function Home() {
                 />
                 <div className="flex-1">
                   <div className="text-xs font-medium text-muted-foreground">
-                    {m.role === "user" ? "You" : "Lumen"}
+                    {m.role === "user" ? "You" : "Ascend"}
                   </div>
                   <div className="mt-1 whitespace-pre-wrap text-foreground">{m.text}</div>
                 </div>
               </div>
             ))}
+            {busy && <div className="text-sm text-muted-foreground">Thinking…</div>}
           </div>
         )}
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
         <ChatComposer onSend={handleSend} />
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-          Lumen may produce inaccurate info. This is a UI preview — AI is not connected yet.
+          Ascend may produce inaccurate info.
         </p>
       </div>
     </div>

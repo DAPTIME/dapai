@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { MessageSquarePlus, Compass, Sparkles, History, Settings, HelpCircle, Cpu } from "lucide-react";
+import logo from "@/assets/logo.png";
 import {
   Sidebar,
   SidebarContent,
@@ -33,9 +34,9 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-4">
         <Link to="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-xl" style={{ background: "var(--gradient-brand)" }} />
+          <img src={logo} alt="Ascend AI" className="h-9 w-9 rounded-xl object-cover" />
           <span className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-            Lumen
+            Ascend
           </span>
         </Link>
       </SidebarHeader>
