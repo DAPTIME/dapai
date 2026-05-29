@@ -1,12 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ChatComposer, SuggestionChips } from "@/components/chat-composer";
+import { loadConfig } from "@/lib/ai-config";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Lumen — Your AI workspace" },
-      { name: "description", content: "Start a conversation with Lumen, your friendly AI assistant." },
+      { name: "description", content: "Start a conversation with Lumen." },
     ],
   }),
   component: Home,
@@ -20,20 +22,53 @@ interface Msg {
 
 function Home() {
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [busy, setBusy] = useState(false);
 
-  const handleSend = (text: string) => {
-    setMessages((m) => [
-      ...m,
-      { id: m.length, role: "user", text },
-      {
-        id: m.length + 1,
-        role: "assistant",
-        text: "AI isn't wired up yet — your message has been received. Once connected, Lumen will reply here.",
-      },
-    ]);
+  const handleSend = async (text: string) => {
+    const cfg = loadConfig();
+    const userMsg: Msg = { id: Date.now(), role: "user", text };
+    setMessages((m) => [...m, userMsg]);
+
+    if (!cfg.enabled) {
+      setMessages((m) => [
+        ...m,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          text: "No AI connected yet. Open Admin to point Lumen at your own GPU (Ollama / LM Studio).",
+        },
+      ]);
+      return;
+    }
+
+    setBusy(true);
+    const history = [...messages, userMsg].map((m) => ({
+      role: m.role,
+      content: m.text,
+    }));
+    try {
+      const res = await fetch(cfg.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
+        },
+        body: JSON.stringify({ model: cfg.model, messages: history, stream: false }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      const reply =
+        data?.choices?.[0]?.message?.content ??
+        data?.message?.content ??
+        "(empty response)";
+      setMessages((m) => [...m, { id: Date.now() + 2, role: "assistant", text: reply }]);
+    } catch (e) {
+      toast.error("Couldn't reach your AI endpoint. Check Admin settings.");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
