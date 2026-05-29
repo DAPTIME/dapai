@@ -94,6 +94,7 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <Link to="/help">
                 <HelpCircle />
