@@ -69,7 +69,9 @@ function Home() {
     }
   };
 
+  return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
+
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
           <div className="mx-auto flex h-full max-w-3xl flex-col justify-center px-4 py-10">
