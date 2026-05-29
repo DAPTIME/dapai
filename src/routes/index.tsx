@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+
 import { ChatComposer, SuggestionChips } from "@/components/chat-composer";
 import { loadConfig } from "@/lib/ai-config";
 import { toast } from "sonner";
