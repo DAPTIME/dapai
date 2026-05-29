@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { ChatComposer, SuggestionChips } from "@/components/chat-composer";
 import { loadConfig } from "@/lib/ai-config";
 import { toast } from "sonner";
@@ -7,8 +7,8 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Lumen — Your AI workspace" },
-      { name: "description", content: "Start a conversation with Lumen." },
+      { title: "Ascend — Your AI workspace" },
+      { name: "description", content: "Your personal AI assistant." },
     ],
   }),
   component: Home,
@@ -19,6 +19,19 @@ interface Msg {
   role: "user" | "assistant";
   text: string;
 }
+
+const GREETINGS = (name: string) => [
+  `Hey ${name}, I'm here to help.`,
+  `What's on your mind, ${name}?`,
+  `Ready when you are, ${name}.`,
+  `Let's get into it, ${name}.`,
+  `How can I assist, ${name}?`,
+  `Ask me anything, ${name}.`,
+  `At your service, ${name}.`,
+  `What are we building today, ${name}?`,
+  `Hi ${name}, fire away.`,
+  `Good to see you, ${name}.`,
+];
 
 function Home() {
   const [messages, setMessages] = useState<Msg[]>([]);
