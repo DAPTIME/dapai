@@ -96,7 +96,7 @@ function Home() {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-
+      <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
           <div className="relative mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-4 py-10 text-center">
             <div
@@ -115,8 +115,6 @@ function Home() {
             </div>
           </div>
         ) : (
-          </div>
-        ) : (
           <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
             {messages.map((m) => (
               <div key={m.id} className="flex gap-3">
@@ -129,21 +127,25 @@ function Home() {
                 />
                 <div className="flex-1">
                   <div className="text-xs font-medium text-muted-foreground">
-                    {m.role === "user" ? "You" : "Lumen"}
+                    {m.role === "user" ? "You" : "Ascend"}
                   </div>
                   <div className="mt-1 whitespace-pre-wrap text-foreground">{m.text}</div>
                 </div>
               </div>
             ))}
+            {busy && <div className="text-sm text-muted-foreground">Thinking…</div>}
           </div>
         )}
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
         <ChatComposer onSend={handleSend} />
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-          Lumen may produce inaccurate info. This is a UI preview — AI is not connected yet.
+          Ascend may produce inaccurate info.
         </p>
       </div>
+    </div>
+  );
+}
     </div>
   );
 }
