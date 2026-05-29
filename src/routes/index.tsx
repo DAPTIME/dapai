@@ -97,21 +97,24 @@ function Home() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
 
-      <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="mx-auto flex h-full max-w-3xl flex-col justify-center px-4 py-10">
-            <h1
-              className="bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl"
-              style={{ backgroundImage: "var(--gradient-brand)" }}
-            >
-              Hello there.
+          <div className="relative mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-4 py-10 text-center">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                background:
+                  "radial-gradient(ellipse 60% 40% at 50% 50%, oklch(0.35 0.18 260 / 0.55), transparent 70%)",
+              }}
+            />
+            <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+              {greeting}
             </h1>
-            <p className="mt-2 text-2xl text-muted-foreground sm:text-3xl">
-              How can I help you today?
-            </p>
-            <div className="mt-10">
+            <div className="mt-10 w-full">
               <SuggestionChips onPick={handleSend} />
             </div>
+          </div>
+        ) : (
           </div>
         ) : (
           <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
