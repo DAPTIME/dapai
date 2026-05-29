@@ -146,6 +146,3 @@ function Home() {
     </div>
   );
 }
-    </div>
-  );
-}
