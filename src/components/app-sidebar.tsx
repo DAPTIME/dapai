@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { MessageSquarePlus, Compass, Sparkles, History, Settings, HelpCircle, Cpu } from "lucide-react";
+import logo from "@/assets/logo.png";
 import {
   Sidebar,
   SidebarContent,
