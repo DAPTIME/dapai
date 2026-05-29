@@ -59,6 +59,7 @@ function Home() {
         ...m,
         {
           id: Date.now() + 1,
+          role: "assistant",
           text: "No AI connected yet. Open Admin to point Ascend at your own GPU (Ollama / LM Studio).",
         },
       ]);
