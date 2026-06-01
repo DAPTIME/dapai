@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { Send, Paperclip, Mic, Image as ImageIcon, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -6,8 +6,19 @@ interface Props {
   onSend?: (text: string) => void;
 }
 
+const MODELS = [
+  { id: "dap-ai-1.0", label: "DAP AI 1.0" },
+  { id: "dap-ai-lite", label: "DAP AI Lite" },
+];
+
 export function ChatComposer({ onSend }: Props) {
   const [text, setText] = useState("");
+  const [model, setModel] = useState<string>(MODELS[0].id);
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
+    if (saved && MODELS.some((m) => m.id === saved)) setModel(saved);
+  }, []);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
