@@ -1,135 +1,279 @@
-# DAP AI — Self-hosted backend
+# DAP AI — Run It On Your Own PC
 
-This folder contains everything you need to run the DAP AI backend on **your
-own hardware** (a desktop with a GPU, a Mac, a homelab box, anything) and
-point the website at it. The frontend in this repo already proxies all chat
-requests through `/api/chat`, which forwards them to whatever URL is in the
-`AI_BACKEND_URL` environment variable.
+This is the full, step-by-step guide for hosting **DAP AI** on your own
+hardware (your gaming PC, a Mac, a homelab box, anything with a GPU) and
+pointing the live website at it. Multiple users can chat at the same time —
+each request opens its own connection to your AI server.
 
-You don't need to touch the frontend code. You just need:
+Nothing in the frontend needs to change. Everything you control is:
+1. A local AI server on your PC (LM Studio is easiest).
+2. A tunnel that gives that local server a public URL.
+3. One secret on the website: `AI_BACKEND_URL` (and optionally `AI_BACKEND_KEY`).
 
-1. A local OpenAI-compatible AI server (LM Studio, Ollama, vLLM, llama.cpp…)
-2. A way to make that server reachable from the internet (a tunnel)
-3. The `AI_BACKEND_URL` secret set to that tunnel URL
+Once that's set, every chat goes:
 
-That's it. Multiple people can chat at the same time — the relay is fully
-stateless and every request opens its own connection to your AI server.
+```
+browser → dapaibackend.lovable.app → /api/chat (relay) → your tunnel → your PC
+```
 
 ---
 
-## Option A — LM Studio (easiest, has a GUI)
+## Part 1 — Pick an AI server (on your PC)
 
-1. Install **LM Studio** → <https://lmstudio.ai>
-2. In LM Studio, download a model (e.g. `llama-3.1-8b-instruct`, `qwen2.5-7b`,
-   anything that fits your VRAM).
-3. Go to the **Developer / Local Server** tab and click **Start Server**.
-   - Default URL: `http://localhost:1234/v1`
-   - Endpoint used by this app: `http://localhost:1234/v1/chat/completions`
-4. Make sure **"Serve on local network"** is on if you want other devices on
-   your LAN to reach it directly. For the public website, you still need a
-   tunnel (next step).
+You need an OpenAI-compatible server. All four below work — just pick one.
 
-LM Studio's server is OpenAI-compatible, so the request body the relay
-forwards (`{ model, messages, stream }`) works without modification.
+### Option A — LM Studio (recommended, has a UI)
 
-## Option B — Ollama (terminal, lightweight)
+1. Download from <https://lmstudio.ai> and install.
+2. Open LM Studio → **Discover** tab → download a model.
+   Good starting picks (use a Q4 or Q5 quant that fits your VRAM):
+   - `meta-llama-3.1-8b-instruct`
+   - `qwen2.5-7b-instruct`
+   - `mistral-nemo-12b-instruct`
+3. Go to the **Developer** tab (the `>_` icon on the left).
+4. At the top, load the model you downloaded.
+5. Click **Start Server**. Defaults are fine:
+   - Port: `1234`
+   - Endpoint: `http://localhost:1234/v1/chat/completions`
+6. Verify it works locally — open a terminal and run:
+   ```bash
+   curl http://localhost:1234/v1/chat/completions \
+     -H "Content-Type: application/json" \
+     -d '{"model":"local-model","messages":[{"role":"user","content":"hi"}]}'
+   ```
+   You should get a JSON response with a reply.
+
+**About the system prompt** — LM Studio's OpenAI-compatible server fully
+respects the `system` message that this site sends as the first message in
+every request. Whatever you put in **Admin → System prompt** in the website
+is forwarded to LM Studio on every call. Do **not** also set a system prompt
+inside LM Studio's chat UI — that one is only used by LM Studio's own chat
+panel and is ignored when external apps (like this site) hit the API.
+
+### Option B — Ollama (terminal, lightweight)
 
 ```bash
-# Install: https://ollama.com
-ollama pull llama3
+# Install from https://ollama.com, then:
+ollama pull llama3.1:8b
 ollama serve
-# Endpoint: http://localhost:11434/v1/chat/completions
+```
+Endpoint: `http://localhost:11434/v1/chat/completions`
+
+To allow multiple concurrent users:
+```bash
+OLLAMA_NUM_PARALLEL=4 OLLAMA_MAX_LOADED_MODELS=1 ollama serve
 ```
 
-## Option C — Any OpenAI-compatible server
+### Option C — vLLM (best for many users, Linux + NVIDIA)
 
-vLLM, llama.cpp's `server`, text-generation-webui's OpenAI extension, Jan,
-Msty, etc. all work. You just need a URL that accepts
-`POST /v1/chat/completions` with the OpenAI message format.
+```bash
+pip install vllm
+vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct --port 8000
+```
+Endpoint: `http://localhost:8000/v1/chat/completions`
+
+### Option D — llama.cpp, Jan, Msty, text-generation-webui…
+
+Anything that speaks OpenAI's `POST /v1/chat/completions` works. You only
+need the URL.
 
 ---
 
-## Exposing it to the internet
+## Part 2 — Expose your PC to the internet (tunnel)
 
-Your AI server is on `localhost`. The deployed website can't see that, so
-you need a tunnel. Pick one:
+Your AI server is on `localhost`. The website on the public internet can't
+reach `localhost`. You need a tunnel.
 
-**ngrok** (easiest)
+### Option A — ngrok (easiest)
+
+1. Sign up free at <https://ngrok.com>.
+2. Install: <https://ngrok.com/download>.
+3. Run the auth command they show you once (`ngrok config add-authtoken …`).
+4. Start the tunnel for whichever port your AI server uses:
+   ```bash
+   ngrok http 1234      # LM Studio
+   ngrok http 11434     # Ollama
+   ngrok http 8000      # vLLM
+   ```
+5. ngrok prints a line like:
+   ```
+   Forwarding   https://abcd-12-34-56-78.ngrok-free.app -> http://localhost:1234
+   ```
+   Copy that `https://…ngrok-free.app` URL. **Leave this terminal open** —
+   when you close it, the tunnel dies.
+
+### Option B — Cloudflare Tunnel (no signup for quick tunnels)
+
 ```bash
-# Sign up free at ngrok.com, then:
-ngrok http 1234        # for LM Studio
-ngrok http 11434       # for Ollama
-```
-Copy the `https://xxxx.ngrok-free.app` URL it prints.
-
-**Cloudflare Tunnel** (free, no signup for quick tunnels)
-```bash
+# Install: https://github.com/cloudflare/cloudflared
 cloudflared tunnel --url http://localhost:1234
 ```
+Copy the `https://…trycloudflare.com` URL it prints.
 
-**Tailscale Funnel** (if you already use Tailscale)
+### Option C — Tailscale Funnel (if you already use Tailscale)
+
 ```bash
 tailscale funnel 1234
 ```
 
----
+### Option D — Static URL (for always-on use)
 
-## Wiring it up
-
-In the Lovable project (or wherever the site is deployed), set this secret:
-
-```
-AI_BACKEND_URL = https://xxxx.ngrok-free.app/v1/chat/completions
-```
-
-Optional, if your server requires a bearer token:
-
-```
-AI_BACKEND_KEY = sk-your-token
-```
-
-Reload the site → every chat goes through `/api/chat` → your hardware.
-
-You can change the model and the system prompt from **Admin** in the app.
-The system prompt is sent as the first `system` message on every request.
+Quick tunnels rotate URLs every restart. If you want a stable URL, either:
+- Pay for an ngrok static domain ($/mo), or
+- Use a `cloudflared` named tunnel pointed at a domain you own, or
+- Buy a $5/mo VPS and run `server/relay.mjs` there (see Part 5).
 
 ---
 
-## Connecting GitHub later
+## Part 3 — Tell the website where your PC is
 
-When you connect this repo to GitHub, this `server/` folder comes with it,
-and so does the relay at `src/routes/api/chat.ts`. If you ever want to host
-the relay yourself instead of using Lovable's, the reference Node script
-below does exactly the same thing.
+The website needs ONE secret: `AI_BACKEND_URL`. This is the **full**
+chat-completions URL, including `/v1/chat/completions`.
 
-### Reference standalone relay (`relay.mjs`)
+Examples:
+- LM Studio via ngrok → `https://abcd-12-34-56-78.ngrok-free.app/v1/chat/completions`
+- Ollama via cloudflared → `https://random.trycloudflare.com/v1/chat/completions`
+- vLLM via Tailscale Funnel → `https://yourpc.tailnet.ts.net/v1/chat/completions`
 
-Run this on any always-on machine (a $5 VPS, a Raspberry Pi, your homelab).
-It accepts requests from the website and forwards them to your local AI
-server. Useful if you don't want to use Lovable's built-in relay.
+### How to set it
+
+1. Open the project in Lovable.
+2. Open the chat with the AI agent (the one you're reading this from).
+3. Say: **"Add a secret AI_BACKEND_URL with value `<paste your full URL>`"**.
+4. Confirm in the popup.
+
+If your AI server requires a token (LM Studio doesn't by default, vLLM can,
+some hosted servers do), also add:
+- `AI_BACKEND_KEY` = `sk-your-token`
+
+The site automatically attaches it as `Authorization: Bearer …`.
+
+### Verify it's working
+
+1. Open the live site: <https://dapaibackend.lovable.app>
+2. Sign up (the **first** account becomes admin automatically — see Part 4).
+3. Send a chat message. You should get a reply from your local model.
+4. If you get *"No AI backend configured yet"* → the secret isn't set.
+5. If you get *"Couldn't reach AI backend: …"* → tunnel is down or URL is wrong.
+
+---
+
+## Part 4 — Admin access and switching user plans
+
+### Becoming admin
+
+The first person who signs up on the site **automatically becomes admin**.
+Sign up first, before sharing the site with anyone else.
+
+### Promote / demote users (from the website)
+
+1. Sign in with your admin account.
+2. Click your avatar → **Admin Console**, or go to `/admin`.
+3. Scroll to **User tiers** — you'll see every account.
+4. Click **Promote to Pro** or **Move to Free** next to each user.
+
+What the tiers mean:
+- **Free**: 5 messages on DAP AI 3.2, then auto-falls back to DAP AI Lite forever.
+- **Pro**: Unlimited DAP AI 3.2.
+
+Promoting to Pro also resets the user's `pro_messages_used` counter to 0.
+
+### Switching plans directly in the database
+
+If you ever want to bulk-edit or do it outside the UI, you can also run SQL
+through the project's backend. Tables that matter:
+
+- `public.profiles` — has a `tier` column (`free` or `pro`) and
+  `pro_messages_used` counter.
+- `public.user_roles` — gives someone admin powers.
+- `public.chats` + `public.chat_messages` — every conversation, scoped per user.
+
+Example SQL:
+```sql
+-- Move user to Pro and reset their counter
+UPDATE public.profiles
+SET tier = 'pro', pro_messages_used = 0
+WHERE email = 'someone@example.com';
+
+-- Move user back to Free
+UPDATE public.profiles SET tier = 'free' WHERE email = 'someone@example.com';
+
+-- Make someone else an admin
+INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'admin' FROM public.profiles WHERE email = 'you@example.com';
+```
+
+### Setting the system prompt
+
+1. Go to **Admin Console** (`/admin`).
+2. Edit the **System prompt** box. This is what every conversation starts with.
+3. Click **Save**. It's stored per-browser, so update it on whichever machine
+   you administer from. It is automatically sent to LM Studio / Ollama / vLLM
+   as the first `system` message on every chat.
+
+---
+
+## Part 5 — Optional: run your own relay instead of Lovable's
+
+By default the site uses the built-in relay at `/api/chat`. If you'd rather
+run the relay yourself (e.g. on a $5 VPS so you don't depend on Lovable's
+servers), the file `server/relay.mjs` is a 50-line drop-in:
 
 ```bash
-node server/relay.mjs
-# Listens on :8787 by default
-# Set AI_BACKEND_URL to your LM Studio / Ollama endpoint
+# On any always-on Linux machine:
+AI_BACKEND_URL=http://localhost:1234/v1/chat/completions \
+AI_BACKEND_KEY=optional-token \
+PORT=8787 \
+ALLOWED_ORIGIN=https://dapaibackend.lovable.app \
+  node server/relay.mjs
 ```
 
-Then point the site at `https://your-relay.example.com` instead of running
-through `/api/chat`.
+Then point the site at it instead of the built-in relay. (Ask the agent:
+"swap `/api/chat` to forward to `https://my-relay.example.com`" — small
+change in `src/routes/api/chat.ts`.)
 
 ---
 
-## Concurrency / multiple users
+## Part 6 — Limits and behaviour you should know
 
-The relay is stateless. Each incoming HTTP request opens its own `fetch` to
-your AI backend, so N users chatting = N concurrent requests to LM Studio /
-Ollama. The bottleneck is your GPU's batching limit, not the relay.
+- **Rate limit**: each user is capped at **5 words per second** (with a
+  small burst). This is to stop one person from melting the GPU. The cap
+  lives in `src/routes/api/chat.ts` — change `RATE_WORDS_PER_SEC` if you
+  want different.
+- **Concurrent users**: the relay is stateless. N users chatting = N
+  parallel requests to LM Studio. Throughput is GPU-bound, not relay-bound.
+  - LM Studio: handles concurrency, slower per-request when batched.
+  - Ollama: set `OLLAMA_NUM_PARALLEL=4` or higher.
+  - vLLM: batches automatically — best choice for many users.
+- **Chat history**: stored in Supabase, scoped to each user via RLS.
+- **Accounts**: stored in `auth.users` + `public.profiles`. Free vs Pro
+  lives on `profiles.tier`.
 
-- **LM Studio**: handles concurrent requests; throughput depends on the
-  model + context length.
-- **Ollama**: set `OLLAMA_NUM_PARALLEL=4` (or higher) to allow parallel
-  requests, and `OLLAMA_MAX_LOADED_MODELS=1` if you only have one model.
-- **vLLM**: batches automatically and is the best choice for many users.
+---
 
-Chat history is stored **per-browser** in `localStorage`, so different
-users naturally have separate conversations without any backend state.
+## Part 7 — Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `No AI backend configured yet` | `AI_BACKEND_URL` secret isn't set | Set it via the agent (Part 3). |
+| `Couldn't reach AI backend: fetch failed` | Tunnel died / PC asleep / wrong URL | Restart your tunnel, double-check the URL ends in `/v1/chat/completions`. |
+| `Rate limit: max 5 words/sec…` | You typed a very long message | Wait the seconds shown, or raise the cap in `src/routes/api/chat.ts`. |
+| Replies are slow | GPU is the bottleneck | Use a smaller model / lower quant, or switch to vLLM. |
+| Model ignores the system prompt | System prompt is empty | Open `/admin` and set it. |
+| First user isn't admin | Someone else signed up first | Promote yourself by running the SQL in Part 4. |
+| ngrok URL changed after restart | Quick tunnels rotate | Use a static domain (ngrok paid, cloudflared named tunnel, or Tailscale). |
+
+---
+
+## Part 8 — Quick start checklist
+
+- [ ] Install LM Studio, load a model, click **Start Server**.
+- [ ] Run `ngrok http 1234`. Copy the HTTPS URL.
+- [ ] Tell the agent: *"Add secret `AI_BACKEND_URL` =
+      `https://…ngrok-free.app/v1/chat/completions`"*.
+- [ ] Open <https://dapaibackend.lovable.app>, sign up (you'll be admin).
+- [ ] Go to `/admin`, set the system prompt, save.
+- [ ] Send a test message — reply comes from your PC.
+- [ ] Share the site. Promote anyone to Pro from `/admin`.
+
+That's it. Have fun.
