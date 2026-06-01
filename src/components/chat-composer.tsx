@@ -7,8 +7,8 @@ interface Props {
 }
 
 const MODELS = [
-  { id: "dap-ai-1.0", label: "DAP AI 1.0" },
-  { id: "dap-ai-lite", label: "DAP AI Lite" },
+  { id: "dap-ai-1.0", label: "DAP AI 3.2" },
+  { id: "dap-ai-lite", label: "DAP AI Lite 3.2" },
 ];
 
 export function ChatComposer({ onSend }: Props) {
