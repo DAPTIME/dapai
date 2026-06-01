@@ -1,15 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
 import { loadConfig } from "@/lib/ai-config";
-import {
-  appendMessage,
-  getThread,
-  type ChatMessage,
-  type Thread,
-} from "@/lib/chats";
+import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/c/$threadId")({
   head: () => ({ meta: [{ title: "Chat — DAP AI" }] }),
@@ -19,102 +17,64 @@ export const Route = createFileRoute("/c/$threadId")({
 function ChatPage() {
   const { threadId } = Route.useParams();
   const navigate = useNavigate();
-  const [thread, setThread] = useState<Thread | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
-  const autoSentRef = useRef<string | null>(null);
+  const { user, loading } = useAuth();
+  const qc = useQueryClient();
+  const fetchChat = useServerFn(getChat);
+  const fetchProfile = useServerFn(getProfile);
+  const send = useServerFn(sendChatMessage);
 
-  const refresh = useCallback(() => {
-    const t = getThread(threadId);
-    if (!t) {
-      navigate({ to: "/" });
-      return;
-    }
-    setThread({ ...t });
-  }, [threadId, navigate]);
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/login" });
+  }, [loading, user, navigate]);
 
-  const runAI = useCallback(async () => {
-    const cfg = loadConfig();
-    const current = getThread(threadId);
-    if (!current) return;
-    const history = current.messages.map((m) => ({
-      role: m.role,
-      content: m.text,
-    }));
-    const messages = cfg.systemPrompt?.trim()
-      ? [{ role: "system" as const, content: cfg.systemPrompt }, ...history]
-      : history;
-    const useDirect = cfg.enabled && cfg.endpoint;
-    const endpoint = useDirect ? cfg.endpoint : "/api/chat";
-    const model = cfg.model || "llama3";
+  const chatQuery = useQuery({
+    queryKey: ["chat", threadId],
+    queryFn: () => fetchChat({ data: { chatId: threadId } }),
+    enabled: !!user,
+  });
 
-    setBusy(true);
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(useDirect && cfg.apiKey
-            ? { Authorization: `Bearer ${cfg.apiKey}` }
-            : {}),
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(),
+    enabled: !!user,
+  });
+
+  const sendMut = useMutation({
+    mutationFn: (text: string) => {
+      const cfg = loadConfig();
+      const model =
+        (typeof window !== "undefined"
+          ? localStorage.getItem("dap.model")
+          : null) || "dap-ai-1.0";
+      return send({
+        data: {
+          chatId: threadId,
+          text,
+          model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
+          systemPrompt: cfg.systemPrompt,
         },
-        body: JSON.stringify({ model, messages, stream: false }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      const reply =
-        data?.choices?.[0]?.message?.content ??
-        data?.message?.content ??
-        "(empty response)";
-      appendMessage(threadId, {
-        id: Date.now() + 1,
-        role: "assistant",
-        text: reply,
-      });
-      refresh();
-    } catch {
-      toast.error("Couldn't reach your AI backend. Check Admin.");
-      appendMessage(threadId, {
-        id: Date.now() + 2,
-        role: "assistant",
-        text:
-          "No AI backend reachable. Open Admin → set AI_BACKEND_URL to your PC's tunnel running LM Studio or Ollama.",
-      });
-      refresh();
-    } finally {
-      setBusy(false);
-    }
-  }, [threadId, refresh]);
+    },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["chat", threadId] });
+      qc.invalidateQueries({ queryKey: ["chats"] });
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      if (result.forcedToLite) {
+        toast.info(
+          "You've used all 5 free DAP AI 3.2 messages — switched to DAP AI Lite."
+        );
+      }
+    },
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Send failed");
+    },
+  });
 
-  useEffect(() => {
-    refresh();
-    const handler = () => refresh();
-    window.addEventListener("dap:threads-changed", handler);
-    return () => window.removeEventListener("dap:threads-changed", handler);
-  }, [refresh]);
+  if (!user) return null;
 
-  // Auto-run AI if the thread ends on a user message with no assistant reply
-  // (e.g. user typed first message on the home page and was redirected here).
-  useEffect(() => {
-    if (!thread || busy) return;
-    const last = thread.messages[thread.messages.length - 1];
-    if (!last || last.role !== "user") return;
-    const key = `${threadId}:${last.id}`;
-    if (autoSentRef.current === key) return;
-    autoSentRef.current = key;
-    void runAI();
-  }, [thread, busy, runAI, threadId]);
-
-  const handleSend = async (text: string) => {
-    appendMessage(threadId, {
-      id: Date.now(),
-      role: "user",
-      text,
-    } satisfies ChatMessage);
-    refresh();
-    await runAI();
-  };
-
-  const visible = (thread?.messages ?? []).filter((m) => m.role !== "system");
+  const messages = chatQuery.data?.messages ?? [];
+  const visible = messages.filter((m) => m.role !== "system");
+  const busy = sendMut.isPending;
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -136,7 +96,7 @@ function ChatPage() {
                   {m.role === "user" ? "You" : "DAP AI"}
                 </div>
                 <div className="mt-1 whitespace-pre-wrap text-foreground">
-                  {m.text}
+                  {m.content}
                 </div>
               </div>
             </div>
@@ -147,7 +107,18 @@ function ChatPage() {
         </div>
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
-        <ChatComposer onSend={handleSend} />
+        <ChatComposer
+          onSend={(t) => sendMut.mutate(t)}
+          quotaInfo={
+            profileQuery.data && profileQuery.data.tier === "free"
+              ? {
+                  tier: "free",
+                  remainingPro: profileQuery.data.remainingPro ?? 0,
+                  limit: profileQuery.data.freeProLimit,
+                }
+              : { tier: "pro" }
+          }
+        />
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
           DAP AI may produce inaccurate info.
         </p>
