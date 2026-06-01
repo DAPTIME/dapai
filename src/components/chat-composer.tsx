@@ -42,7 +42,7 @@ export function ChatComposer({ onSend }: Props) {
           <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
             <Mic className="h-4 w-4" />
           </Button>
-          <span className="ml-2 hidden text-xs sm:inline">Lumen 1.0 · preview</span>
+          <span className="ml-2 hidden text-xs sm:inline">DAP AI 1.0 · preview</span>
         </div>
         <Button
           type="submit"
