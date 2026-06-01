@@ -34,7 +34,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-4">
         <Link to="/" className="flex items-center gap-2">
-          <img src={logo.url} alt="DAP AI" className="h-9 w-9 rounded-xl object-contain" />
+          <img src={logo.url} alt="DAP AI" className="h-14 w-14 rounded-xl object-contain" />
           <span className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
             DAP AI
           </span>
