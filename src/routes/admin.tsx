@@ -9,7 +9,7 @@ import { Cpu, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { loadConfig, saveConfig, type AIConfig } from "@/lib/ai-config";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin Console — Lumen" }] }),
+  head: () => ({ meta: [{ title: "Admin Console — DAP AI" }] }),
   component: Admin,
 });
 
