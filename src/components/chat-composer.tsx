@@ -69,18 +69,40 @@ export function ChatComposer({ onSend }: Props) {
           <select
             value={model}
             onChange={(e) => {
-              setModel(e.target.value);
-              if (typeof window !== "undefined") localStorage.setItem("dap.model", e.target.value);
+              const next = e.target.value;
+              const m = MODELS.find((mm) => mm.id === next);
+              if (m?.requiresAccount && !user) return; // gate
+              setModel(next);
+              if (typeof window !== "undefined") localStorage.setItem("dap.model", next);
             }}
             className="ml-2 rounded-md bg-transparent px-2 py-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
             aria-label="Select model"
           >
-            {MODELS.map((m) => (
-              <option key={m.id} value={m.id} className="bg-card text-foreground">
-                {m.label}
-              </option>
-            ))}
+            {MODELS.map((m) => {
+              const locked = m.requiresAccount && !user;
+              return (
+                <option
+                  key={m.id}
+                  value={m.id}
+                  disabled={locked}
+                  className="bg-card text-foreground"
+                >
+                  {m.label}
+                  {locked ? " — sign in required" : ""}
+                </option>
+              );
+            })}
           </select>
+          {!user && (
+            <Link
+              to="/login"
+              className="ml-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+              title="Sign in to use DAP AI 3.2"
+            >
+              <Lock className="h-3 w-3" />
+              Sign in for full DAP AI
+            </Link>
+          )}
         </div>
         <Button
           type="submit"
