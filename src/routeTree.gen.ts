@@ -17,6 +17,7 @@ import { Route as GemsRouteImport } from './routes/gems'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 
 const SignupRoute = SignupRouteImport.update({
@@ -59,6 +60,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CThreadIdRoute = CThreadIdRouteImport.update({
+  id: '/c/$threadId',
+  path: '/c/$threadId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/api/chat': typeof ApiChatRoute
+  '/c/$threadId': typeof CThreadIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/api/chat': typeof ApiChatRoute
+  '/c/$threadId': typeof CThreadIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/api/chat': typeof ApiChatRoute
+  '/c/$threadId': typeof CThreadIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/api/chat'
+    | '/c/$threadId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/api/chat'
+    | '/c/$threadId'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/api/chat'
+    | '/c/$threadId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +157,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   ApiChatRoute: typeof ApiChatRoute
+  CThreadIdRoute: typeof CThreadIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -205,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/c/$threadId': {
+      id: '/c/$threadId'
+      path: '/c/$threadId'
+      fullPath: '/c/$threadId'
+      preLoaderRoute: typeof CThreadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -225,7 +245,18 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   ApiChatRoute: ApiChatRoute,
+  CThreadIdRoute: CThreadIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

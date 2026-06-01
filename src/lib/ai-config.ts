@@ -3,6 +3,7 @@ export interface AIConfig {
   model: string;
   apiKey: string;
   enabled: boolean;
+  systemPrompt: string;
 }
 
 const KEY = "lumen.ai.config";
@@ -12,6 +13,7 @@ export const defaultConfig: AIConfig = {
   model: "llama3",
   apiKey: "",
   enabled: false,
+  systemPrompt: "You are DAP AI, a helpful and concise assistant.",
 };
 
 export function loadConfig(): AIConfig {
