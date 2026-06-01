@@ -1,24 +1,37 @@
 import { useState, useEffect, FormEvent } from "react";
-import { Send, Paperclip, Mic, Image as ImageIcon, Sparkles } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Send, Paperclip, Mic, Image as ImageIcon, Sparkles, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
 
 interface Props {
   onSend?: (text: string) => void;
 }
 
 const MODELS = [
-  { id: "dap-ai-1.0", label: "DAP AI 3.2" },
-  { id: "dap-ai-lite", label: "DAP AI Lite 3.2" },
+  { id: "dap-ai-1.0", label: "DAP AI 3.2", requiresAccount: true },
+  { id: "dap-ai-lite", label: "DAP AI Lite 3.2", requiresAccount: false },
 ];
 
 export function ChatComposer({ onSend }: Props) {
+  const { user } = useAuth();
   const [text, setText] = useState("");
-  const [model, setModel] = useState<string>(MODELS[0].id);
+  const [model, setModel] = useState<string>(
+    user ? MODELS[0].id : "dap-ai-lite"
+  );
 
   useEffect(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
-    if (saved && MODELS.some((m) => m.id === saved)) setModel(saved);
-  }, []);
+    const saved =
+      typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
+    const target =
+      saved && MODELS.some((m) => m.id === saved) ? saved : null;
+    if (target) {
+      const m = MODELS.find((mm) => mm.id === target)!;
+      setModel(!m.requiresAccount || user ? target : "dap-ai-lite");
+    } else if (!user) {
+      setModel("dap-ai-lite");
+    }
+  }, [user]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
