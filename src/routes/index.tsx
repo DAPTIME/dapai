@@ -133,7 +133,7 @@ function Home() {
                 />
                 <div className="flex-1">
                   <div className="text-xs font-medium text-muted-foreground">
-                    {m.role === "user" ? "You" : "Ascend"}
+                    {m.role === "user" ? "You" : "DAP AI"}
                   </div>
                   <div className="mt-1 whitespace-pre-wrap text-foreground">{m.text}</div>
                 </div>
