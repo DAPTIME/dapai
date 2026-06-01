@@ -114,6 +114,11 @@ function Home() {
                   "radial-gradient(ellipse 60% 40% at 50% 50%, oklch(0.35 0.18 260 / 0.55), transparent 70%)",
               }}
             />
+            <img
+              src={logo}
+              alt="DAP AI"
+              className="mb-4 h-16 w-16 rounded-2xl object-cover shadow-lg"
+            />
             <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
               {greeting}
             </h1>
