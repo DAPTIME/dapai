@@ -1,0 +1,60 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState, type FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
+
+export const Route = createFileRoute("/login")({
+  head: () => ({ meta: [{ title: "Sign in — DAP AI" }] }),
+  component: LoginPage,
+});
+
+function LoginPage() {
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await signIn(email, password);
+      toast.success("Welcome back");
+      navigate({ to: "/" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sign in failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6 py-12">
+      <h1 className="text-2xl font-semibold tracking-tight">Sign in to DAP AI</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Welcome back. Enter your details to continue.</p>
+      <form onSubmit={onSubmit} className="mt-8 space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        <Button type="submit" disabled={busy} className="w-full" style={{ background: "var(--gradient-brand)" }}>
+          {busy ? "Signing in…" : "Sign in"}
+        </Button>
+      </form>
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Don't have an account?{" "}
+        <Link to="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
+          Create one
+        </Link>
+      </p>
+    </div>
+  );
+}
