@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
@@ -21,6 +21,7 @@ function ChatPage() {
   const navigate = useNavigate();
   const [thread, setThread] = useState<Thread | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  const autoSentRef = useRef<string | null>(null);
 
   const refresh = useCallback(() => {
     const t = getThread(threadId);
@@ -31,31 +32,20 @@ function ChatPage() {
     setThread({ ...t });
   }, [threadId, navigate]);
 
-  useEffect(() => {
-    refresh();
-    const handler = () => refresh();
-    window.addEventListener("dap:threads-changed", handler);
-    return () => window.removeEventListener("dap:threads-changed", handler);
-  }, [refresh]);
-
-  const handleSend = async (text: string) => {
+  const runAI = useCallback(async () => {
     const cfg = loadConfig();
-    const userMsg: ChatMessage = { id: Date.now(), role: "user", text };
-    appendMessage(threadId, userMsg);
-    refresh();
-
-    const useDirect = cfg.enabled && cfg.endpoint;
-    const endpoint = useDirect ? cfg.endpoint : "/api/chat";
-    const model = cfg.model || "llama3";
-
     const current = getThread(threadId);
-    const history = (current?.messages ?? []).map((m) => ({
+    if (!current) return;
+    const history = current.messages.map((m) => ({
       role: m.role,
       content: m.text,
     }));
     const messages = cfg.systemPrompt?.trim()
-      ? [{ role: "system", content: cfg.systemPrompt }, ...history]
+      ? [{ role: "system" as const, content: cfg.systemPrompt }, ...history]
       : history;
+    const useDirect = cfg.enabled && cfg.endpoint;
+    const endpoint = useDirect ? cfg.endpoint : "/api/chat";
+    const model = cfg.model || "llama3";
 
     setBusy(true);
     try {
@@ -81,7 +71,7 @@ function ChatPage() {
         text: reply,
       });
       refresh();
-    } catch (e) {
+    } catch {
       toast.error("Couldn't reach your AI backend. Check Admin.");
       appendMessage(threadId, {
         id: Date.now() + 2,
@@ -93,6 +83,35 @@ function ChatPage() {
     } finally {
       setBusy(false);
     }
+  }, [threadId, refresh]);
+
+  useEffect(() => {
+    refresh();
+    const handler = () => refresh();
+    window.addEventListener("dap:threads-changed", handler);
+    return () => window.removeEventListener("dap:threads-changed", handler);
+  }, [refresh]);
+
+  // Auto-run AI if the thread ends on a user message with no assistant reply
+  // (e.g. user typed first message on the home page and was redirected here).
+  useEffect(() => {
+    if (!thread || busy) return;
+    const last = thread.messages[thread.messages.length - 1];
+    if (!last || last.role !== "user") return;
+    const key = `${threadId}:${last.id}`;
+    if (autoSentRef.current === key) return;
+    autoSentRef.current = key;
+    void runAI();
+  }, [thread, busy, runAI, threadId]);
+
+  const handleSend = async (text: string) => {
+    appendMessage(threadId, {
+      id: Date.now(),
+      role: "user",
+      text,
+    } satisfies ChatMessage);
+    refresh();
+    await runAI();
   };
 
   const visible = (thread?.messages ?? []).filter((m) => m.role !== "system");
