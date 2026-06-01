@@ -115,10 +115,26 @@ function Admin() {
           </div>
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="sysprompt">System prompt</Label>
+          <textarea
+            id="sysprompt"
+            value={cfg.systemPrompt}
+            onChange={(e) => update("systemPrompt", e.target.value)}
+            rows={4}
+            placeholder="You are DAP AI, a helpful assistant…"
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <p className="text-xs text-muted-foreground">
+            Sent as the <code>system</code> message at the start of every conversation.
+          </p>
+        </div>
+
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button onClick={onSave} style={{ background: "var(--gradient-brand)" }}>
             Save
           </Button>
+
           <Button variant="outline" onClick={onTest} disabled={status === "testing"}>
             {status === "testing" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Test connection
