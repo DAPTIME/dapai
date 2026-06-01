@@ -1,11 +1,25 @@
 import { useState, useEffect, FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Send, Paperclip, Mic, Image as ImageIcon, Sparkles, Lock } from "lucide-react";
+import {
+  Send,
+  Paperclip,
+  Mic,
+  Image as ImageIcon,
+  Sparkles,
+  Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 
+export interface QuotaInfo {
+  tier: "free" | "pro";
+  remainingPro?: number;
+  limit?: number;
+}
+
 interface Props {
   onSend?: (text: string) => void;
+  quotaInfo?: QuotaInfo;
 }
 
 const MODELS = [
@@ -13,25 +27,29 @@ const MODELS = [
   { id: "dap-ai-lite", label: "DAP AI Lite 3.2", requiresAccount: false },
 ];
 
-export function ChatComposer({ onSend }: Props) {
+export function ChatComposer({ onSend, quotaInfo }: Props) {
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [model, setModel] = useState<string>(
     user ? MODELS[0].id : "dap-ai-lite"
   );
 
+  // Force Lite for free users who have exhausted quota
+  const proExhausted =
+    quotaInfo?.tier === "free" && (quotaInfo.remainingPro ?? 0) <= 0;
+
   useEffect(() => {
     const saved =
       typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
-    const target =
-      saved && MODELS.some((m) => m.id === saved) ? saved : null;
+    const target = saved && MODELS.some((m) => m.id === saved) ? saved : null;
     if (target) {
       const m = MODELS.find((mm) => mm.id === target)!;
-      setModel(!m.requiresAccount || user ? target : "dap-ai-lite");
-    } else if (!user) {
+      const allow = (!m.requiresAccount || user) && !(m.id === "dap-ai-1.0" && proExhausted);
+      setModel(allow ? target : "dap-ai-lite");
+    } else if (!user || proExhausted) {
       setModel("dap-ai-lite");
     }
-  }, [user]);
+  }, [user, proExhausted]);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -71,7 +89,8 @@ export function ChatComposer({ onSend }: Props) {
             onChange={(e) => {
               const next = e.target.value;
               const m = MODELS.find((mm) => mm.id === next);
-              if (m?.requiresAccount && !user) return; // gate
+              if (m?.requiresAccount && !user) return;
+              if (next === "dap-ai-1.0" && proExhausted) return;
               setModel(next);
               if (typeof window !== "undefined") localStorage.setItem("dap.model", next);
             }}
@@ -79,7 +98,9 @@ export function ChatComposer({ onSend }: Props) {
             aria-label="Select model"
           >
             {MODELS.map((m) => {
-              const locked = m.requiresAccount && !user;
+              const locked =
+                (m.requiresAccount && !user) ||
+                (m.id === "dap-ai-1.0" && proExhausted);
               return (
                 <option
                   key={m.id}
@@ -88,7 +109,11 @@ export function ChatComposer({ onSend }: Props) {
                   className="bg-card text-foreground"
                 >
                   {m.label}
-                  {locked ? " — sign in required" : ""}
+                  {m.requiresAccount && !user
+                    ? " — sign in required"
+                    : m.id === "dap-ai-1.0" && proExhausted
+                      ? " — free limit reached"
+                      : ""}
                 </option>
               );
             })}
@@ -97,11 +122,15 @@ export function ChatComposer({ onSend }: Props) {
             <Link
               to="/login"
               className="ml-1 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-              title="Sign in to use DAP AI 3.2"
             >
               <Lock className="h-3 w-3" />
               Sign in for full DAP AI
             </Link>
+          )}
+          {quotaInfo?.tier === "free" && quotaInfo.limit != null && (
+            <span className="ml-2 text-xs text-muted-foreground">
+              {quotaInfo.remainingPro ?? 0}/{quotaInfo.limit} DAP AI 3.2 left
+            </span>
           )}
         </div>
         <Button
