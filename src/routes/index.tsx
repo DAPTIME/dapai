@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ChatComposer, SuggestionChips } from "@/components/chat-composer";
 import { loadConfig } from "@/lib/ai-config";
 import { toast } from "sonner";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -115,7 +115,7 @@ function Home() {
               }}
             />
             <img
-              src={logo}
+              src={logo.url}
               alt="DAP AI"
               className="mb-4 h-20 w-20 rounded-2xl object-cover shadow-lg"
             />
