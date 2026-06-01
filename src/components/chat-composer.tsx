@@ -53,7 +53,21 @@ export function ChatComposer({ onSend }: Props) {
           <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
             <Mic className="h-4 w-4" />
           </Button>
-          <span className="ml-2 hidden text-xs sm:inline">DAP AI 1.0 · preview</span>
+          <select
+            value={model}
+            onChange={(e) => {
+              setModel(e.target.value);
+              if (typeof window !== "undefined") localStorage.setItem("dap.model", e.target.value);
+            }}
+            className="ml-2 rounded-md bg-transparent px-2 py-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
+            aria-label="Select model"
+          >
+            {MODELS.map((m) => (
+              <option key={m.id} value={m.id} className="bg-card text-foreground">
+                {m.label}
+              </option>
+            ))}
+          </select>
         </div>
         <Button
           type="submit"
