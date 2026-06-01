@@ -115,7 +115,7 @@ function Home() {
               }}
             />
             <img
-              src={logo}
+              src={logo.url}
               alt="DAP AI"
               className="mb-4 h-20 w-20 rounded-2xl object-cover shadow-lg"
             />
