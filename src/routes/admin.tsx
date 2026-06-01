@@ -1,12 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Cpu, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Cpu, Shield } from "lucide-react";
 import { loadConfig, saveConfig, type AIConfig } from "@/lib/ai-config";
+import { useAuth } from "@/lib/auth";
+import {
+  adminAmIAdmin,
+  adminListUsers,
+  adminSetTier,
+} from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin Console — DAP AI" }] }),
@@ -14,45 +20,17 @@ export const Route = createFileRoute("/admin")({
 });
 
 function Admin() {
+  const { user } = useAuth();
   const [cfg, setCfg] = useState<AIConfig>(loadConfig);
-  const [status, setStatus] = useState<"idle" | "testing" | "ok" | "fail">("idle");
-
   useEffect(() => setCfg(loadConfig()), []);
-
-  const update = <K extends keyof AIConfig>(k: K, v: AIConfig[K]) =>
-    setCfg((c) => ({ ...c, [k]: v }));
 
   const onSave = () => {
     saveConfig(cfg);
-    toast.success("Configuration saved");
-  };
-
-  const onTest = async () => {
-    setStatus("testing");
-    try {
-      const res = await fetch(cfg.endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          model: cfg.model,
-          messages: [{ role: "user", content: "ping" }],
-          stream: false,
-        }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      setStatus("ok");
-      toast.success("Connected to your AI endpoint");
-    } catch (e) {
-      setStatus("fail");
-      toast.error("Could not reach endpoint. Check URL/CORS.");
-    }
+    toast.success("System prompt saved");
   };
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-12">
+    <div className="mx-auto max-w-3xl px-6 py-12">
       <div className="flex items-center gap-3">
         <div
           className="flex h-10 w-10 items-center justify-center rounded-xl text-primary-foreground"
@@ -61,128 +39,175 @@ function Admin() {
           <Cpu className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Admin Console</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Admin Console
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Connect your own AI — run on your PC's GPU via Ollama, LM Studio, or any OpenAI-compatible server.
+            Configure the AI's system prompt and (if you're an admin) manage user tiers.
           </p>
         </div>
       </div>
 
       <div className="mt-8 space-y-5 rounded-2xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="text-base">Use my own AI</Label>
-            <p className="text-sm text-muted-foreground">
-              Route chats to the endpoint below instead of the built-in mock.
-            </p>
-          </div>
-          <Switch checked={cfg.enabled} onCheckedChange={(v) => update("enabled", v)} />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="endpoint">Endpoint URL</Label>
-          <Input
-            id="endpoint"
-            value={cfg.endpoint}
-            onChange={(e) => update("endpoint", e.target.value)}
-            placeholder="http://localhost:11434/v1/chat/completions"
-          />
-          <p className="text-xs text-muted-foreground">
-            Ollama: <code>http://localhost:11434/v1/chat/completions</code> · LM Studio:{" "}
-            <code>http://localhost:1234/v1/chat/completions</code>
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="model">Model</Label>
-            <Input
-              id="model"
-              value={cfg.model}
-              onChange={(e) => update("model", e.target.value)}
-              placeholder="llama3"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="key">API key (optional)</Label>
-            <Input
-              id="key"
-              type="password"
-              value={cfg.apiKey}
-              onChange={(e) => update("apiKey", e.target.value)}
-              placeholder="Leave blank for local"
-            />
-          </div>
-        </div>
-
         <div className="space-y-2">
           <Label htmlFor="sysprompt">System prompt</Label>
           <textarea
             id="sysprompt"
             value={cfg.systemPrompt}
-            onChange={(e) => update("systemPrompt", e.target.value)}
-            rows={4}
-            placeholder="You are DAP AI, a helpful assistant…"
+            onChange={(e) =>
+              setCfg((c) => ({ ...c, systemPrompt: e.target.value }))
+            }
+            rows={5}
+            placeholder="You are DAP AI…"
             className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <p className="text-xs text-muted-foreground">
             Sent as the <code>system</code> message at the start of every conversation.
           </p>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          <Button onClick={onSave} style={{ background: "var(--gradient-brand)" }}>
-            Save
-          </Button>
-
-          <Button variant="outline" onClick={onTest} disabled={status === "testing"}>
-            {status === "testing" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Test connection
-          </Button>
-          {status === "ok" && (
-            <span className="inline-flex items-center gap-1 text-sm text-green-600">
-              <CheckCircle2 className="h-4 w-4" /> Reachable
-            </span>
-          )}
-          {status === "fail" && (
-            <span className="inline-flex items-center gap-1 text-sm text-destructive">
-              <XCircle className="h-4 w-4" /> Failed
-            </span>
-          )}
-        </div>
+        <Button onClick={onSave} style={{ background: "var(--gradient-brand)" }}>
+          Save
+        </Button>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-border bg-card p-5 text-sm">
-        <p className="font-medium text-foreground">Recommended: Server relay (works from anywhere)</p>
-        <p className="mt-1 text-muted-foreground">
-          The site already proxies chats through <code>/api/chat</code>. Just point that route at your PC by setting
-          one environment variable — no need to expose CORS or change browser settings.
+      <div className="mt-6 rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
+        Point the relay at your PC by setting the{" "}
+        <code>AI_BACKEND_URL</code> secret to your tunnel
+        (LM Studio / Ollama). The site forwards every chat through{" "}
+        <code>/api/chat</code> to that URL.
+      </div>
+
+      {user && <AdminUserManager />}
+    </div>
+  );
+}
+
+function AdminUserManager() {
+  const qc = useQueryClient();
+  const amIAdmin = useServerFn(adminAmIAdmin);
+  const listUsers = useServerFn(adminListUsers);
+  const setTier = useServerFn(adminSetTier);
+
+  const meQuery = useQuery({
+    queryKey: ["admin", "me"],
+    queryFn: () => amIAdmin(),
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: () => listUsers(),
+    enabled: meQuery.data?.isAdmin === true,
+  });
+
+  const mutate = useMutation({
+    mutationFn: (vars: { userId: string; tier: "free" | "pro" }) =>
+      setTier({
+        data: { userId: vars.userId, tier: vars.tier, resetUsage: vars.tier === "pro" },
+      }),
+    onSuccess: () => {
+      toast.success("Tier updated");
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  if (meQuery.isLoading) return null;
+  if (!meQuery.data?.isAdmin) {
+    return (
+      <div className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 font-medium text-foreground">
+          <Shield className="h-4 w-4" /> Admin-only section
         </p>
-        <ol className="mt-3 list-decimal space-y-1 pl-5 text-muted-foreground">
-          <li>On your PC, run Ollama (<code>ollama serve</code>) or LM Studio's local server.</li>
-          <li>
-            Expose it with a tunnel:
-            <ul className="ml-5 list-disc">
-              <li><code>ngrok http 11434</code> → copy the https URL</li>
-              <li>or <code>cloudflared tunnel --url http://localhost:11434</code></li>
-            </ul>
-          </li>
-          <li>
-            In Lovable (or your GitHub repo secrets if self-hosted), set
-            <code className="mx-1">AI_BACKEND_URL</code> to e.g.
-            <code className="mx-1">https://xxxx.ngrok-free.app/v1/chat/completions</code>.
-            Optional: <code>AI_BACKEND_KEY</code>.
-          </li>
-          <li>Done — all chat requests now hit your GPU.</li>
-        </ol>
-      </div>
-
-      <div className="mt-4 rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">Direct browser mode (advanced)</p>
         <p className="mt-1">
-          Toggling "Use my own AI" above makes the browser call the endpoint directly instead of the relay.
-          Only works if your endpoint allows CORS from this site.
+          You're signed in but don't have the admin role. To grant yourself
+          admin access, open the backend SQL editor and run:
         </p>
+        <pre className="mt-2 overflow-x-auto rounded-md bg-background p-3 text-xs">
+{`INSERT INTO public.user_roles (user_id, role)
+VALUES ('${"<your-user-id>"}', 'admin');`}
+        </pre>
+      </div>
+    );
+  }
+
+  const users = usersQuery.data ?? [];
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-center gap-2">
+        <Shield className="h-4 w-4" />
+        <h2 className="text-lg font-semibold">User tiers</h2>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Move people between free and pro. Free tier gets 5 DAP AI 3.2 messages, then Lite.
+      </p>
+
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-left text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="px-2 py-2">User</th>
+              <th className="px-2 py-2">Tier</th>
+              <th className="px-2 py-2">Pro msgs used</th>
+              <th className="px-2 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-t border-border">
+                <td className="px-2 py-2">
+                  <div className="font-medium">{u.name || "—"}</div>
+                  <div className="text-xs text-muted-foreground">{u.email}</div>
+                </td>
+                <td className="px-2 py-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs ${
+                      u.tier === "pro"
+                        ? "bg-primary/15 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {u.tier}
+                  </span>
+                </td>
+                <td className="px-2 py-2 text-muted-foreground">
+                  {u.pro_messages_used}
+                </td>
+                <td className="px-2 py-2 text-right">
+                  {u.tier === "free" ? (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        mutate.mutate({ userId: u.id, tier: "pro" })
+                      }
+                      style={{ background: "var(--gradient-brand)" }}
+                    >
+                      Promote to Pro
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        mutate.mutate({ userId: u.id, tier: "free" })
+                      }
+                    >
+                      Move to Free
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {users.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-2 py-6 text-center text-muted-foreground">
+                  No users yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

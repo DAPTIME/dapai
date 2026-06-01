@@ -1,8 +1,14 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 
-import { ChatComposer, SuggestionChips } from "@/components/chat-composer";
-import { createThread, appendMessage } from "@/lib/chats";
+import { SuggestionChips } from "@/components/chat-composer";
+import { ChatComposer } from "@/components/chat-composer";
+import { createChat, sendChatMessage } from "@/lib/chats.functions";
+import { loadConfig } from "@/lib/ai-config";
+import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
@@ -22,30 +28,51 @@ const GREETINGS = (name: string) => [
   `Let's get into it, ${name}.`,
   `How can I assist, ${name}?`,
   `Ask me anything, ${name}.`,
-  `At your service, ${name}.`,
-  `What are we building today, ${name}?`,
-  `Hi ${name}, fire away.`,
-  `Good to see you, ${name}.`,
 ];
 
 function Home() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [greeting, setGreeting] = useState<string>("");
+  const create = useServerFn(createChat);
+  const send = useServerFn(sendChatMessage);
 
   useEffect(() => {
-    const n =
-      typeof window !== "undefined" ? localStorage.getItem("ascend.name") : null;
-    const finalName = n || "friend";
+    const finalName = user?.name || "friend";
     const list = GREETINGS(finalName);
     setGreeting(list[Math.floor(Math.random() * list.length)]);
-  }, []);
+  }, [user]);
+
+  const startChat = useMutation({
+    mutationFn: async (text: string) => {
+      const chat = await create();
+      const cfg = loadConfig();
+      const model =
+        (typeof window !== "undefined"
+          ? localStorage.getItem("dap.model")
+          : null) || "dap-ai-1.0";
+      await send({
+        data: {
+          chatId: chat.id,
+          text,
+          model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
+          systemPrompt: cfg.systemPrompt,
+        },
+      });
+      return chat.id;
+    },
+    onSuccess: (chatId) => {
+      navigate({ to: "/c/$threadId", params: { threadId: chatId } });
+    },
+  });
 
   const handleSend = (text: string) => {
-    const t = createThread();
-    appendMessage(t.id, { id: Date.now(), role: "user", text });
-    navigate({ to: "/c/$threadId", params: { threadId: t.id } });
+    if (!user) {
+      navigate({ to: "/signup" });
+      return;
+    }
+    startChat.mutate(text);
   };
-
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
@@ -67,13 +94,31 @@ function Home() {
           <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
             {greeting}
           </h1>
+
+          {!user && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              <Link to="/signup" className="font-medium text-foreground underline">
+                Create an account
+              </Link>{" "}
+              to save chats and use DAP AI 3.2 (5 free messages, then Lite).
+            </p>
+          )}
+
           <div className="mt-10 w-full">
             <SuggestionChips onPick={handleSend} />
           </div>
         </div>
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
-        <ChatComposer onSend={handleSend} />
+        {user ? (
+          <ChatComposer onSend={handleSend} />
+        ) : (
+          <div className="mx-auto max-w-3xl text-center">
+            <Button asChild style={{ background: "var(--gradient-brand)" }}>
+              <Link to="/signup">Sign up to start chatting</Link>
+            </Button>
+          </div>
+        )}
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
           DAP AI may produce inaccurate info.
         </p>

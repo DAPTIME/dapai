@@ -1,18 +1,15 @@
+/**
+ * AI config (system prompt, model) stored in localStorage. Lives in the
+ * browser so each admin can tweak from their own machine; the system
+ * prompt itself is forwarded to the server fn on every send.
+ */
 export interface AIConfig {
-  endpoint: string;
-  model: string;
-  apiKey: string;
-  enabled: boolean;
   systemPrompt: string;
 }
 
 const KEY = "lumen.ai.config";
 
 export const defaultConfig: AIConfig = {
-  endpoint: "http://localhost:11434/v1/chat/completions",
-  model: "llama3",
-  apiKey: "",
-  enabled: false,
   systemPrompt: "You are DAP AI, a helpful and concise assistant.",
 };
 
