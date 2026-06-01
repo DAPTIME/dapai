@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChatComposer, SuggestionChips } from "@/components/chat-composer";
 import { loadConfig } from "@/lib/ai-config";
 import { toast } from "sonner";
+import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -112,6 +113,11 @@ function Home() {
                 background:
                   "radial-gradient(ellipse 60% 40% at 50% 50%, oklch(0.35 0.18 260 / 0.55), transparent 70%)",
               }}
+            />
+            <img
+              src={logo}
+              alt="DAP AI"
+              className="mb-4 h-16 w-16 rounded-2xl object-cover shadow-lg"
             />
             <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
               {greeting}
