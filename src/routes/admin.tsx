@@ -130,9 +130,11 @@ function Admin() {
           </p>
         </div>
 
+        <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button onClick={onSave} style={{ background: "var(--gradient-brand)" }}>
             Save
           </Button>
+
           <Button variant="outline" onClick={onTest} disabled={status === "testing"}>
             {status === "testing" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Test connection
