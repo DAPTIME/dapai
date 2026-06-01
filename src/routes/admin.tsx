@@ -9,7 +9,7 @@ import { Cpu, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { loadConfig, saveConfig, type AIConfig } from "@/lib/ai-config";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin Console — Lumen" }] }),
+  head: () => ({ meta: [{ title: "Admin Console — DAP AI" }] }),
   component: Admin,
 });
 
@@ -136,14 +136,37 @@ function Admin() {
         </div>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">How this works</p>
-        <ol className="mt-2 list-decimal space-y-1 pl-5">
-          <li>Install Ollama or LM Studio on your PC and start the local server.</li>
-          <li>Pull a model (e.g. <code>ollama pull llama3</code>) — it will run on your GPU.</li>
-          <li>Paste the endpoint above, save, and toggle "Use my own AI" on.</li>
-          <li>Your chats will run locally on your hardware — no data leaves your machine.</li>
+      <div className="mt-6 rounded-2xl border border-border bg-card p-5 text-sm">
+        <p className="font-medium text-foreground">Recommended: Server relay (works from anywhere)</p>
+        <p className="mt-1 text-muted-foreground">
+          The site already proxies chats through <code>/api/chat</code>. Just point that route at your PC by setting
+          one environment variable — no need to expose CORS or change browser settings.
+        </p>
+        <ol className="mt-3 list-decimal space-y-1 pl-5 text-muted-foreground">
+          <li>On your PC, run Ollama (<code>ollama serve</code>) or LM Studio's local server.</li>
+          <li>
+            Expose it with a tunnel:
+            <ul className="ml-5 list-disc">
+              <li><code>ngrok http 11434</code> → copy the https URL</li>
+              <li>or <code>cloudflared tunnel --url http://localhost:11434</code></li>
+            </ul>
+          </li>
+          <li>
+            In Lovable (or your GitHub repo secrets if self-hosted), set
+            <code className="mx-1">AI_BACKEND_URL</code> to e.g.
+            <code className="mx-1">https://xxxx.ngrok-free.app/v1/chat/completions</code>.
+            Optional: <code>AI_BACKEND_KEY</code>.
+          </li>
+          <li>Done — all chat requests now hit your GPU.</li>
         </ol>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Direct browser mode (advanced)</p>
+        <p className="mt-1">
+          Toggling "Use my own AI" above makes the browser call the endpoint directly instead of the relay.
+          Only works if your endpoint allows CORS from this site.
+        </p>
       </div>
     </div>
   );

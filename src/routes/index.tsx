@@ -8,7 +8,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Ascend — Your AI workspace" },
+      { title: "DAP AI — Your AI workspace" },
       { name: "description", content: "Your personal AI assistant." },
     ],
   }),
@@ -54,17 +54,11 @@ function Home() {
     const userMsg: Msg = { id: Date.now(), role: "user", text };
     setMessages((m) => [...m, userMsg]);
 
-    if (!cfg.enabled) {
-      setMessages((m) => [
-        ...m,
-        {
-          id: Date.now() + 1,
-          role: "assistant",
-          text: "No AI connected yet. Open Admin to point Ascend at your own GPU (Ollama / LM Studio).",
-        },
-      ]);
-      return;
-    }
+    // Default: use the server relay (/api/chat -> AI_BACKEND_URL on your PC).
+    // If the admin has toggled "use direct endpoint", call cfg.endpoint from the browser.
+    const useDirect = cfg.enabled && cfg.endpoint;
+    const endpoint = useDirect ? cfg.endpoint : "/api/chat";
+    const model = cfg.model || "llama3";
 
     setBusy(true);
     const history = [...messages, userMsg].map((m) => ({
@@ -72,15 +66,18 @@ function Home() {
       content: m.text,
     }));
     try {
-      const res = await fetch(cfg.endpoint, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
+          ...(useDirect && cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {}),
         },
-        body: JSON.stringify({ model: cfg.model, messages: history, stream: false }),
+        body: JSON.stringify({ model, messages: history, stream: false }),
       });
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || String(res.status));
+      }
       const data = await res.json();
       const reply =
         data?.choices?.[0]?.message?.content ??
@@ -88,7 +85,16 @@ function Home() {
         "(empty response)";
       setMessages((m) => [...m, { id: Date.now() + 2, role: "assistant", text: reply }]);
     } catch (e) {
-      toast.error("Couldn't reach your AI endpoint. Check Admin settings.");
+      toast.error("Couldn't reach your AI backend. Check Admin or set AI_BACKEND_URL.");
+      setMessages((m) => [
+        ...m,
+        {
+          id: Date.now() + 3,
+          role: "assistant",
+          text:
+            "No AI backend reachable. Open Admin for setup — point AI_BACKEND_URL at your PC's tunnel (ngrok / Cloudflare Tunnel) running Ollama or LM Studio.",
+        },
+      ]);
     } finally {
       setBusy(false);
     }
@@ -127,7 +133,7 @@ function Home() {
                 />
                 <div className="flex-1">
                   <div className="text-xs font-medium text-muted-foreground">
-                    {m.role === "user" ? "You" : "Ascend"}
+                    {m.role === "user" ? "You" : "DAP AI"}
                   </div>
                   <div className="mt-1 whitespace-pre-wrap text-foreground">{m.text}</div>
                 </div>
@@ -140,7 +146,7 @@ function Home() {
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
         <ChatComposer onSend={handleSend} />
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-          Ascend may produce inaccurate info.
+          DAP AI may produce inaccurate info.
         </p>
       </div>
     </div>
