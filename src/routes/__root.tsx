@@ -60,7 +60,7 @@ function RootComponent() {
             <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-3 backdrop-blur">
               <div className="flex items-center gap-2">
                 <SidebarTrigger />
-                <span className="text-sm font-medium text-muted-foreground">Lumen</span>
+                <span className="text-sm font-medium text-muted-foreground">DAP AI</span>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm">Upgrade</Button>
