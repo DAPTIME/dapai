@@ -40,29 +40,12 @@ function Home() {
     setGreeting(list[Math.floor(Math.random() * list.length)]);
   }, []);
 
-  const startNewChat = (firstMessage: string) => {
+  const handleSend = (text: string) => {
     const t = createThread();
-    appendMessage(t.id, { id: Date.now(), role: "user", text: firstMessage });
-    // Navigate to the thread; ChatPage will pick up the queued user message
-    // and send it via its own effect-free path. We just store it; the user
-    // taps send again? Better: navigate then trigger send.
+    appendMessage(t.id, { id: Date.now(), role: "user", text });
     navigate({ to: "/c/$threadId", params: { threadId: t.id } });
   };
 
-  const handleSend = (text: string) => {
-    // Create a thread, store the user msg, navigate. The thread page will
-    // render it; we also pre-flight the AI call here so it streams in.
-    const t = createThread();
-    appendMessage(t.id, { id: Date.now(), role: "user", text });
-    navigate({
-      to: "/c/$threadId",
-      params: { threadId: t.id },
-      search: { auto: text } as never,
-    });
-  };
-
-  // Keep startNewChat referenced so lint doesn't complain in future refactors.
-  void startNewChat;
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
