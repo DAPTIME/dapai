@@ -24,7 +24,7 @@ export function ChatComposer({ onSend }: Props) {
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Ask Lumen anything…"
+        placeholder="Ask DAP AI anything…"
         rows={2}
         className="w-full resize-none bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
         onKeyDown={(e) => {
