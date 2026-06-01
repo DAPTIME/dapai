@@ -146,7 +146,7 @@ function Home() {
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
         <ChatComposer onSend={handleSend} />
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-          Ascend may produce inaccurate info.
+          DAP AI may produce inaccurate info.
         </p>
       </div>
     </div>
