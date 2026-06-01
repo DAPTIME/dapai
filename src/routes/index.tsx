@@ -8,7 +8,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Ascend — Your AI workspace" },
+      { title: "DAP AI — Your AI workspace" },
       { name: "description", content: "Your personal AI assistant." },
     ],
   }),
