@@ -4,6 +4,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/lib/auth";
+import { AccountMenu } from "@/components/account-menu";
 import appCss from "../styles.css?url";
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -53,31 +55,29 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col">
-            <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-3 backdrop-blur">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger />
-                <span className="text-sm font-medium text-muted-foreground">DAP AI</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">Upgrade</Button>
-                <div
-                  className="h-8 w-8 rounded-full"
-                  style={{ background: "var(--gradient-brand)" }}
-                  aria-label="Account"
-                />
-              </div>
-            </header>
-            <main className="flex-1">
-              <Outlet />
-            </main>
+      <AuthProvider>
+        <SidebarProvider>
+          <div className="flex min-h-screen w-full bg-background">
+            <AppSidebar />
+            <div className="flex flex-1 flex-col">
+              <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-3 backdrop-blur">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger />
+                  <span className="text-sm font-medium text-muted-foreground">DAP AI</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm">Upgrade</Button>
+                  <AccountMenu />
+                </div>
+              </header>
+              <main className="flex-1">
+                <Outlet />
+              </main>
+            </div>
           </div>
-        </div>
-        <Toaster />
-      </SidebarProvider>
+          <Toaster />
+        </SidebarProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
