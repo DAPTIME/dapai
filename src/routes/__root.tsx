@@ -10,8 +10,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lumen — Your AI workspace" },
-      { name: "description", content: "Lumen is a fast, friendly AI chat workspace." },
+      { title: "DAP AI — Your AI workspace" },
+      { name: "description", content: "DAP AI is a fast, friendly AI chat workspace." },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
