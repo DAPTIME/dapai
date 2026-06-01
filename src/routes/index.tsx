@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChatComposer, SuggestionChips } from "@/components/chat-composer";
 import { loadConfig } from "@/lib/ai-config";
 import { toast } from "sonner";
+import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
