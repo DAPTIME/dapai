@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { MessageSquarePlus, Compass, Sparkles, History, Settings, HelpCircle, Cpu } from "lucide-react";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.png.asset.json";
 import {
   Sidebar,
   SidebarContent,
@@ -34,7 +34,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-4">
         <Link to="/" className="flex items-center gap-2">
-          <img src={logo} alt="DAP AI" className="h-9 w-9 rounded-xl object-cover" />
+          <img src={logo.url} alt="DAP AI" className="h-9 w-9 rounded-xl object-contain" />
           <span className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
             DAP AI
           </span>
