@@ -1,12 +1,41 @@
 /**
  * Server functions for chats. All run as the authenticated user so RLS
  * scopes every read/write to that user's rows.
+ *
+ * Two models, two independent queues, two independent backend URLs:
+ *   AI_BACKEND_URL_PRO   / AI_BACKEND_KEY_PRO    → dap-ai-1.0  (Pro)
+ *   AI_BACKEND_URL_LITE  / AI_BACKEND_KEY_LITE   → dap-ai-lite (Lite)
+ *
+ * Legacy fallback: AI_BACKEND_URL / AI_BACKEND_KEY is used for either
+ * model if the model-specific one isn't set, so older configs keep working.
+ *
+ * Chat memory limits per plan (oldest chats are auto-deleted on creation):
+ *   free → 5 chats
+ *   pro  → 10 chats
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { enqueue } from "@/lib/ai-queue";
 
 const FREE_PRO_LIMIT = 5;
+const CHAT_LIMITS = { free: 5, pro: 10 } as const;
+
+function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
+  url?: string;
+  key?: string;
+} {
+  if (model === "dap-ai-1.0") {
+    return {
+      url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
+      key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
+    };
+  }
+  return {
+    url: process.env.AI_BACKEND_URL_LITE ?? process.env.AI_BACKEND_URL,
+    key: process.env.AI_BACKEND_KEY_LITE ?? process.env.AI_BACKEND_KEY,
+  };
+}
 
 export const listChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -24,6 +53,29 @@ export const createChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+
+    // Look up the user's tier to know their chat-memory limit.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("tier")
+      .eq("id", userId)
+      .single();
+    const tier = (profile?.tier as "free" | "pro") ?? "free";
+    const limit = CHAT_LIMITS[tier];
+
+    // Prune oldest chats so that after we insert the new one we sit at
+    // exactly `limit`.
+    const { data: existing } = await supabase
+      .from("chats")
+      .select("id")
+      .order("updated_at", { ascending: false });
+    if (existing && existing.length >= limit) {
+      const toDelete = existing.slice(limit - 1).map((c) => c.id);
+      if (toDelete.length > 0) {
+        await supabase.from("chats").delete().in("id", toDelete);
+      }
+    }
+
     const { data, error } = await supabase
       .from("chats")
       .insert({ user_id: userId, title: "New chat" })
@@ -80,13 +132,20 @@ export const getProfile = createServerFn({ method: "GET" })
       data.tier === "pro"
         ? null
         : Math.max(0, FREE_PRO_LIMIT - data.pro_messages_used);
-    return { ...data, remainingPro, freeProLimit: FREE_PRO_LIMIT };
+    return {
+      ...data,
+      remainingPro,
+      freeProLimit: FREE_PRO_LIMIT,
+      chatLimit: CHAT_LIMITS[(data.tier as "free" | "pro") ?? "free"],
+    };
   });
 
 /**
  * Send a chat message:
- *  - enforces tier limits (free tier gets FREE_PRO_LIMIT DAP AI 3.2 msgs)
- *  - stores the user message, calls the relay, stores the assistant reply
+ *  - enforces tier limits (free tier gets FREE_PRO_LIMIT Pro msgs)
+ *  - stores the user message, calls the per-model backend through that
+ *    model's queue (so only one request at a time hits the local GPU
+ *    per model), stores the assistant reply
  *  - returns the updated message list + remainingPro
  */
 export const sendChatMessage = createServerFn({ method: "POST" })
@@ -112,7 +171,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .single();
     if (pErr) throw new Error(pErr.message);
 
-    // Tier gate: free users get FREE_PRO_LIMIT DAP AI 3.2 (dap-ai-1.0) msgs.
+    // Tier gate: free users get FREE_PRO_LIMIT Pro (dap-ai-1.0) msgs.
     let effectiveModel = data.model;
     let forcedToLite = false;
     if (
@@ -152,7 +211,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         .eq("id", data.chatId);
     }
 
-    // Gather full history for the model
+    // Gather full history for this chat → this is what gives each chat
+    // its own independent context window.
     const { data: history } = await supabase
       .from("chat_messages")
       .select("role, content")
@@ -169,41 +229,50 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       })),
     ];
 
-    // Call relay (same /api/chat as before). On the server we hit it via
-    // localhost-equivalent fetch using the request origin.
-    const backend = process.env.AI_BACKEND_URL;
+    const { url: backend, key } = backendFor(effectiveModel);
+
     let replyText = "";
     if (!backend) {
-      replyText =
-        "No AI backend configured yet. Set AI_BACKEND_URL to your PC's tunnel running LM Studio or Ollama.";
+      replyText = `No AI backend configured for ${effectiveModel}. Set ${
+        effectiveModel === "dap-ai-1.0"
+          ? "AI_BACKEND_URL_PRO"
+          : "AI_BACKEND_URL_LITE"
+      } to that model's tunnel URL (e.g. https://abcd.ngrok-free.app/v1/chat/completions).`;
     } else {
-      try {
-        const key = process.env.AI_BACKEND_KEY;
-        const res = await fetch(backend, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(key ? { Authorization: `Bearer ${key}` } : {}),
-          },
-          body: JSON.stringify({
-            model: effectiveModel,
-            messages,
-            stream: false,
-          }),
-        });
-        const json = (await res.json()) as {
-          choices?: { message?: { content?: string } }[];
-          message?: { content?: string };
-          error?: string;
-        };
-        replyText =
-          json?.choices?.[0]?.message?.content ??
-          json?.message?.content ??
-          json?.error ??
-          "(empty response)";
-      } catch (e) {
-        replyText = `Couldn't reach AI backend: ${(e as Error).message}`;
-      }
+      // Per-model queue: only one in-flight call per model at a time.
+      replyText = await enqueue(`model:${effectiveModel}`, async () => {
+        try {
+          const res = await fetch(backend, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(key ? { Authorization: `Bearer ${key}` } : {}),
+            },
+            body: JSON.stringify({
+              model: effectiveModel,
+              messages,
+              stream: false,
+            }),
+          });
+          const json = (await res.json()) as {
+            choices?: { message?: { content?: string } }[];
+            message?: { content?: string };
+            error?: string | { message?: string };
+          };
+          const errStr =
+            typeof json?.error === "string"
+              ? json.error
+              : json?.error?.message;
+          return (
+            json?.choices?.[0]?.message?.content ??
+            json?.message?.content ??
+            errStr ??
+            "(empty response)"
+          );
+        } catch (e) {
+          return `Couldn't reach AI backend: ${(e as Error).message}`;
+        }
+      });
     }
 
     // Insert assistant message
@@ -215,7 +284,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       model: effectiveModel,
     });
 
-    // Bump quota counter ONLY when the pro model was actually used
+    // Bump quota counter ONLY when the Pro model was actually used
     if (effectiveModel === "dap-ai-1.0" && profile.tier === "free") {
       await supabase
         .from("profiles")
