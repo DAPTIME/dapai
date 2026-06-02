@@ -86,7 +86,7 @@ function Home() {
           <img
             src={logo.url}
             alt="DAP AI"
-            className="mb-4 h-20 w-20 rounded-2xl object-cover shadow-lg"
+            className="mb-4 h-40 w-40 rounded-2xl object-cover shadow-lg"
           />
           <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
             {greeting}
