@@ -67,7 +67,13 @@ function ChatPage() {
     },
   });
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   const messages = chatQuery.data?.messages ?? [];
   const visible = messages.filter((m) => m.role !== "system");
