@@ -16,6 +16,7 @@ type AuthCtx = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  ready: boolean;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -38,33 +39,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
   const router = useRouter();
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Listener FIRST, then initial fetch (Supabase guidance).
+    let cancelled = false;
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (cancelled) return;
       setSession(s);
       setUser(toUser(s?.user));
       router.invalidate();
       queryClient.invalidateQueries();
     });
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) {
+        console.error("[auth] getSession error:", error.message);
+      }
       setSession(data.session);
       setUser(toUser(data.session?.user));
       setLoading(false);
+      setReady(true);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [router, queryClient]);
 
   const value: AuthCtx = {
     user,
     session,
     loading,
+    ready,
     signUp: async (email, password, name) => {
       const redirectUrl = `${window.location.origin}/`;
       const { error } = await supabase.auth.signUp({

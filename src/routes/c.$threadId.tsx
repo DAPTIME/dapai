@@ -16,15 +16,15 @@ export const Route = createFileRoute("/c/$threadId")({
 function ChatPage() {
   const { threadId } = Route.useParams();
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, ready } = useAuth();
   const qc = useQueryClient();
   const fetchChat = useServerFn(getChat);
   const fetchProfile = useServerFn(getProfile);
   const send = useServerFn(sendChatMessage);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [loading, user, navigate]);
+    if (ready && !loading && !user) navigate({ to: "/login" });
+  }, [ready, loading, user, navigate]);
 
   const chatQuery = useQuery({
     queryKey: ["chat", threadId],
@@ -67,7 +67,13 @@ function ChatPage() {
     },
   });
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   const messages = chatQuery.data?.messages ?? [];
   const visible = messages.filter((m) => m.role !== "system");

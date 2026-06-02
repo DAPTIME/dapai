@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupPage() {
-  const { signUp, signIn } = useAuth();
+  const { signUp, signIn, user, ready } = useAuth();
   const navigate = useNavigate();
   const saveRecovery = useServerFn(setRecoveryQuestion);
   const [name, setName] = useState("");
@@ -24,12 +24,17 @@ function SignupPage() {
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (ready && user) {
+      navigate({ to: "/" });
+    }
+  }, [ready, user, navigate]);
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
       await signUp(email, password, name);
-      // Sign in so the next call is authenticated, then store the recovery Q/A.
       try {
         await signIn(email, password);
         await saveRecovery({ data: { question: question.trim(), answer: answer.trim() } });
@@ -44,6 +49,14 @@ function SignupPage() {
       setBusy(false);
     }
   };
+
+  if (!ready) {
+    return (
+      <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col items-center justify-center px-6">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6 py-12">

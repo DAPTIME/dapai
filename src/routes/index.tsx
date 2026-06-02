@@ -31,7 +31,7 @@ const GREETINGS = (name: string) => [
 
 function Home() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const [greeting, setGreeting] = useState<string>("");
   const create = useServerFn(createChat);
   const send = useServerFn(sendChatMessage);
@@ -92,7 +92,7 @@ function Home() {
             {greeting}
           </h1>
 
-          {!user && (
+          {!user && ready && (
             <p className="mt-3 text-sm text-muted-foreground">
               <Link to="/signup" className="font-medium text-foreground underline">
                 Create an account
@@ -102,12 +102,22 @@ function Home() {
           )}
 
           <div className="mt-10 w-full">
-            <SuggestionChips onPick={handleSend} />
+            {!ready ? (
+              <div className="flex justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            ) : (
+              <SuggestionChips onPick={handleSend} />
+            )}
           </div>
         </div>
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
-        {user ? (
+        {!ready ? (
+          <div className="mx-auto flex max-w-3xl justify-center py-2">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : user ? (
           <ChatComposer onSend={handleSend} />
         ) : (
           <div className="mx-auto max-w-3xl text-center">
