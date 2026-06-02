@@ -113,7 +113,11 @@ function Home() {
         </div>
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
-        {user ? (
+        {!ready ? (
+          <div className="mx-auto flex max-w-3xl justify-center py-2">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : user ? (
           <ChatComposer onSend={handleSend} />
         ) : (
           <div className="mx-auto max-w-3xl text-center">
