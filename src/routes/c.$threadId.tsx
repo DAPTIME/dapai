@@ -16,15 +16,15 @@ export const Route = createFileRoute("/c/$threadId")({
 function ChatPage() {
   const { threadId } = Route.useParams();
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, ready } = useAuth();
   const qc = useQueryClient();
   const fetchChat = useServerFn(getChat);
   const fetchProfile = useServerFn(getProfile);
   const send = useServerFn(sendChatMessage);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [loading, user, navigate]);
+    if (ready && !loading && !user) navigate({ to: "/login" });
+  }, [ready, loading, user, navigate]);
 
   const chatQuery = useQuery({
     queryKey: ["chat", threadId],
