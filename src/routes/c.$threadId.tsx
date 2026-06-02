@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
-import { loadConfig } from "@/lib/ai-config";
 import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
 import { useAuth } from "@/lib/auth";
 
