@@ -5,13 +5,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Cpu, Shield } from "lucide-react";
-import { loadConfig, saveConfig, type AIConfig } from "@/lib/ai-config";
+import { Cpu, Shield, Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   adminAmIAdmin,
   adminListUsers,
   adminSetTier,
+  adminGetSystemPrompt,
+  adminSetSystemPrompt,
 } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin")({
@@ -21,13 +22,6 @@ export const Route = createFileRoute("/admin")({
 
 function Admin() {
   const { user } = useAuth();
-  const [cfg, setCfg] = useState<AIConfig>(loadConfig);
-  useEffect(() => setCfg(loadConfig()), []);
-
-  const onSave = () => {
-    saveConfig(cfg);
-    toast.success("System prompt saved");
-  };
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
@@ -43,41 +37,88 @@ function Admin() {
             Admin Console
           </h1>
           <p className="text-sm text-muted-foreground">
-            Configure the AI's system prompt and (if you're an admin) manage user tiers.
+            Edit the global system prompt and manage user tiers.
           </p>
         </div>
       </div>
 
-      <div className="mt-8 space-y-5 rounded-2xl border border-border bg-card p-6">
-        <div className="space-y-2">
-          <Label htmlFor="sysprompt">System prompt</Label>
-          <textarea
-            id="sysprompt"
-            value={cfg.systemPrompt}
-            onChange={(e) =>
-              setCfg((c) => ({ ...c, systemPrompt: e.target.value }))
-            }
-            rows={5}
-            placeholder="You are DAP AI…"
-            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <p className="text-xs text-muted-foreground">
-            Sent as the <code>system</code> message at the start of every conversation.
-          </p>
-        </div>
-        <Button onClick={onSave} style={{ background: "var(--gradient-brand)" }}>
-          Save
-        </Button>
-      </div>
-
-      <div className="mt-6 rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
-        Point the relay at your PC by setting the{" "}
-        <code>AI_BACKEND_URL</code> secret to your tunnel
-        (LM Studio / Ollama). The site forwards every chat through{" "}
-        <code>/api/chat</code> to that URL.
-      </div>
-
+      {user && <SystemPromptEditor />}
       {user && <AdminUserManager />}
+    </div>
+  );
+}
+
+function SystemPromptEditor() {
+  const qc = useQueryClient();
+  const amIAdmin = useServerFn(adminAmIAdmin);
+  const getPrompt = useServerFn(adminGetSystemPrompt);
+  const setPrompt = useServerFn(adminSetSystemPrompt);
+
+  const meQuery = useQuery({
+    queryKey: ["admin", "me"],
+    queryFn: () => amIAdmin(),
+  });
+
+  const promptQuery = useQuery({
+    queryKey: ["admin", "system-prompt"],
+    queryFn: () => getPrompt(),
+    enabled: meQuery.data?.isAdmin === true,
+  });
+
+  const [draft, setDraft] = useState("");
+  useEffect(() => {
+    if (promptQuery.data) setDraft(promptQuery.data.systemPrompt);
+  }, [promptQuery.data]);
+
+  const save = useMutation({
+    mutationFn: () => setPrompt({ data: { systemPrompt: draft } }),
+    onSuccess: () => {
+      toast.success("System prompt saved");
+      qc.invalidateQueries({ queryKey: ["admin", "system-prompt"] });
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "Failed to save"),
+  });
+
+  if (meQuery.isLoading) return null;
+  if (!meQuery.data?.isAdmin) {
+    return (
+      <div className="mt-8 rounded-2xl border border-dashed border-border bg-muted/40 p-5 text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 font-medium text-foreground">
+          <Lock className="h-4 w-4" /> System prompt is admin-only
+        </p>
+        <p className="mt-1">
+          Only admins can view or edit the system prompt. Regular users will
+          never see it.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8 space-y-5 rounded-2xl border border-border bg-card p-6">
+      <div className="space-y-2">
+        <Label htmlFor="sysprompt">System prompt (hidden from users)</Label>
+        <textarea
+          id="sysprompt"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={8}
+          placeholder="You are DAP AI…"
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        <p className="text-xs text-muted-foreground">
+          Stored on the server. Prepended to every chat as the{" "}
+          <code>system</code> message. Other users cannot see or read it.
+        </p>
+      </div>
+      <Button
+        onClick={() => save.mutate()}
+        disabled={save.isPending || promptQuery.isLoading}
+        style={{ background: "var(--gradient-brand)" }}
+      >
+        {save.isPending ? "Saving…" : "Save"}
+      </Button>
     </div>
   );
 }
