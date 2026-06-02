@@ -40,7 +40,6 @@ function ChatPage() {
 
   const sendMut = useMutation({
     mutationFn: (text: string) => {
-      const cfg = loadConfig();
       const model =
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
@@ -50,7 +49,6 @@ function ChatPage() {
           chatId: threadId,
           text,
           model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
-          systemPrompt: cfg.systemPrompt,
         },
       });
     },
