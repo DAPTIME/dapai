@@ -92,7 +92,7 @@ function Home() {
             {greeting}
           </h1>
 
-          {!user && (
+          {!user && ready && (
             <p className="mt-3 text-sm text-muted-foreground">
               <Link to="/signup" className="font-medium text-foreground underline">
                 Create an account
@@ -102,7 +102,13 @@ function Home() {
           )}
 
           <div className="mt-10 w-full">
-            <SuggestionChips onPick={handleSend} />
+            {!ready ? (
+              <div className="flex justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            ) : (
+              <SuggestionChips onPick={handleSend} />
+            )}
           </div>
         </div>
       </div>
