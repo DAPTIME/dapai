@@ -7,6 +7,50 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+export const adminListAllChats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { data: chats, error } = await supabaseAdmin
+      .from("chats")
+      .select("id, title, user_id, created_at, updated_at")
+      .order("updated_at", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    const userIds = Array.from(new Set((chats ?? []).map((c) => c.user_id)));
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email, name")
+      .in("id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]);
+    const map = new Map((profiles ?? []).map((p) => [p.id, p]));
+    return (chats ?? []).map((c) => ({
+      ...c,
+      user_email: map.get(c.user_id)?.email ?? null,
+      user_name: map.get(c.user_id)?.name ?? null,
+    }));
+  });
+
+export const adminGetChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const [{ data: chat }, { data: messages, error }] = await Promise.all([
+      supabaseAdmin
+        .from("chats")
+        .select("id, title, user_id, created_at, updated_at")
+        .eq("id", data.chatId)
+        .single(),
+      supabaseAdmin
+        .from("chat_messages")
+        .select("id, role, content, model, created_at")
+        .eq("chat_id", data.chatId)
+        .order("created_at", { ascending: true }),
+    ]);
+    if (error) throw new Error(error.message);
+    return { chat, messages: messages ?? [] };
+  });
+
 async function assertAdmin(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("user_roles")
