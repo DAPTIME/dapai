@@ -60,9 +60,11 @@ export function AccountMenu() {
         <DropdownMenuItem asChild>
           <Link to="/settings"><UserIcon className="mr-2 h-4 w-4" /> Account</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/admin"><SettingsIcon className="mr-2 h-4 w-4" /> Admin</Link>
-        </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link to="/admin"><SettingsIcon className="mr-2 h-4 w-4" /> Admin</Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => {
