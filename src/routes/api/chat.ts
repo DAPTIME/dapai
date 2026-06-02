@@ -1,36 +1,40 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { enqueue } from "@/lib/ai-queue";
 
 /**
- * Server relay for DAP AI.
+ * Raw HTTP relay for DAP AI (optional — the main app uses the
+ * sendChatMessage server fn). Picks the backend based on the `model`
+ * field in the body, then serializes calls per-model so the local GPU
+ * doesn't get hit twice at once.
  *
- * Set AI_BACKEND_URL (and optional AI_BACKEND_KEY) as a secret.
- * Point it at your PC via a tunnel (ngrok / cloudflared / tailscale funnel).
+ *   model: "dap-ai-1.0"  → AI_BACKEND_URL_PRO  / AI_BACKEND_KEY_PRO
+ *   model: "dap-ai-lite" → AI_BACKEND_URL_LITE / AI_BACKEND_KEY_LITE
+ *   (falls back to AI_BACKEND_URL / AI_BACKEND_KEY if not set)
  *
- * Rate limit: 5 words per second per client IP (token bucket), so a flood
- * of users can't overwhelm the local GPU.
+ * Rate limit: 5 words per second per client IP (token bucket).
  */
 
 const RATE_WORDS_PER_SEC = 5;
-const BUCKET_CAPACITY = 5; // burst allowance, in words
+const BUCKET_CAPACITY = 5;
 
 type Bucket = { tokens: number; updated: number };
 const buckets = new Map<string, Bucket>();
 
-function takeTokens(ip: string, cost: number): { ok: true } | { ok: false; retryAfter: number } {
+function takeTokens(
+  ip: string,
+  cost: number
+): { ok: true } | { ok: false; retryAfter: number } {
   const now = Date.now();
   const b = buckets.get(ip) ?? { tokens: BUCKET_CAPACITY, updated: now };
-  // Refill
   const elapsedSec = (now - b.updated) / 1000;
   b.tokens = Math.min(BUCKET_CAPACITY, b.tokens + elapsedSec * RATE_WORDS_PER_SEC);
   b.updated = now;
-
   if (b.tokens >= cost) {
     b.tokens -= cost;
     buckets.set(ip, b);
     return { ok: true };
   }
-  const deficit = cost - b.tokens;
-  const retryAfter = Math.ceil(deficit / RATE_WORDS_PER_SEC);
+  const retryAfter = Math.ceil((cost - b.tokens) / RATE_WORDS_PER_SEC);
   buckets.set(ip, b);
   return { ok: false, retryAfter };
 }
@@ -51,35 +55,53 @@ function clientIp(request: Request): string {
   );
 }
 
+function backendFor(model: string): { url?: string; key?: string } {
+  if (model === "dap-ai-lite") {
+    return {
+      url: process.env.AI_BACKEND_URL_LITE ?? process.env.AI_BACKEND_URL,
+      key: process.env.AI_BACKEND_KEY_LITE ?? process.env.AI_BACKEND_KEY,
+    };
+  }
+  return {
+    url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
+    key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
+  };
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const backend = process.env.AI_BACKEND_URL;
-        if (!backend) {
-          return Response.json(
-            {
-              error:
-                "No AI backend configured. Set AI_BACKEND_URL to your PC's tunnel URL.",
-            },
-            { status: 503 }
-          );
-        }
-
         const raw = await request.text();
 
-        // Word-count the latest user message for rate-limiting.
+        let model = "dap-ai-1.0";
         let cost = 1;
         try {
           const parsed = JSON.parse(raw) as {
+            model?: string;
             messages?: { role?: string; content?: string }[];
           };
+          if (parsed.model === "dap-ai-lite") model = "dap-ai-lite";
           const lastUser = [...(parsed.messages ?? [])]
             .reverse()
             .find((m) => m.role === "user");
           cost = Math.max(1, countWords(lastUser?.content));
         } catch {
-          // Malformed body — let upstream return the error.
+          /* upstream will surface the parse error */
+        }
+
+        const { url: backend, key } = backendFor(model);
+        if (!backend) {
+          return Response.json(
+            {
+              error: `No backend configured for ${model}. Set ${
+                model === "dap-ai-lite"
+                  ? "AI_BACKEND_URL_LITE"
+                  : "AI_BACKEND_URL_PRO"
+              }.`,
+            },
+            { status: 503 }
+          );
         }
 
         const ip = clientIp(request);
@@ -89,37 +111,36 @@ export const Route = createFileRoute("/api/chat")({
             {
               error: `Rate limit: max ${RATE_WORDS_PER_SEC} words/sec per user. Try again in ${gate.retryAfter}s.`,
             },
-            {
-              status: 429,
-              headers: { "Retry-After": String(gate.retryAfter) },
-            }
+            { status: 429, headers: { "Retry-After": String(gate.retryAfter) } }
           );
         }
 
-        const key = process.env.AI_BACKEND_KEY;
-        try {
-          const res = await fetch(backend, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(key ? { Authorization: `Bearer ${key}` } : {}),
-            },
-            body: raw,
-          });
-          const text = await res.text();
-          return new Response(text, {
-            status: res.status,
-            headers: {
-              "Content-Type":
-                res.headers.get("content-type") ?? "application/json",
-            },
-          });
-        } catch (e) {
-          return Response.json(
-            { error: `Could not reach AI_BACKEND_URL: ${(e as Error).message}` },
-            { status: 502 }
-          );
-        }
+        // Per-model queue: one request at a time per model.
+        return enqueue(`model:${model}`, async () => {
+          try {
+            const res = await fetch(backend, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(key ? { Authorization: `Bearer ${key}` } : {}),
+              },
+              body: raw,
+            });
+            const text = await res.text();
+            return new Response(text, {
+              status: res.status,
+              headers: {
+                "Content-Type":
+                  res.headers.get("content-type") ?? "application/json",
+              },
+            });
+          } catch (e) {
+            return Response.json(
+              { error: `Could not reach backend: ${(e as Error).message}` },
+              { status: 502 }
+            );
+          }
+        });
       },
     },
   },
