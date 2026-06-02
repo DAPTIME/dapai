@@ -101,6 +101,8 @@ export type Database = {
           id: string
           name: string | null
           pro_messages_used: number
+          recovery_answer_hash: string | null
+          recovery_question: string | null
           tier: Database["public"]["Enums"]["account_tier"]
           updated_at: string
         }
@@ -110,6 +112,8 @@ export type Database = {
           id: string
           name?: string | null
           pro_messages_used?: number
+          recovery_answer_hash?: string | null
+          recovery_question?: string | null
           tier?: Database["public"]["Enums"]["account_tier"]
           updated_at?: string
         }
@@ -119,6 +123,8 @@ export type Database = {
           id?: string
           name?: string | null
           pro_messages_used?: number
+          recovery_answer_hash?: string | null
+          recovery_question?: string | null
           tier?: Database["public"]["Enums"]["account_tier"]
           updated_at?: string
         }
