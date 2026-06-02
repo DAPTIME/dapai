@@ -156,14 +156,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         chatId: z.string().uuid(),
         text: z.string().min(1).max(8000),
         model: z.enum(["dap-ai-1.0", "dap-ai-lite"]),
-        systemPrompt: z.string().max(8000).optional(),
       })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
 
-    // Load profile to check tier & quota
     const { data: profile, error: pErr } = await supabase
       .from("profiles")
       .select("tier, pro_messages_used")
@@ -171,7 +169,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .single();
     if (pErr) throw new Error(pErr.message);
 
-    // Tier gate: free users get FREE_PRO_LIMIT Pro (dap-ai-1.0) msgs.
     let effectiveModel = data.model;
     let forcedToLite = false;
     if (
@@ -183,7 +180,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       forcedToLite = true;
     }
 
-    // Insert user message
     const { error: insUserErr } = await supabase.from("chat_messages").insert({
       chat_id: data.chatId,
       user_id: userId,
@@ -193,7 +189,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     });
     if (insUserErr) throw new Error(insUserErr.message);
 
-    // Update chat title if it's still default
     const { data: chatRow } = await supabase
       .from("chats")
       .select("title")
@@ -211,8 +206,16 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         .eq("id", data.chatId);
     }
 
-    // Gather full history for this chat → this is what gives each chat
-    // its own independent context window.
+    // Load the secret system prompt server-side via the admin client so
+    // it's injected for everyone but never readable by regular users.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: settings } = await supabaseAdmin
+      .from("ai_settings")
+      .select("system_prompt")
+      .eq("id", "global")
+      .maybeSingle();
+    const systemPrompt = settings?.system_prompt?.trim() ?? "";
+
     const { data: history } = await supabase
       .from("chat_messages")
       .select("role, content")
@@ -220,8 +223,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true });
 
     const messages = [
-      ...(data.systemPrompt?.trim()
-        ? [{ role: "system" as const, content: data.systemPrompt }]
+      ...(systemPrompt
+        ? [{ role: "system" as const, content: systemPrompt }]
         : []),
       ...(history ?? []).map((m) => ({
         role: m.role as "user" | "assistant" | "system",

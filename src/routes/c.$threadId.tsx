@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
-import { loadConfig } from "@/lib/ai-config";
 import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
 import { useAuth } from "@/lib/auth";
 
@@ -41,7 +40,6 @@ function ChatPage() {
 
   const sendMut = useMutation({
     mutationFn: (text: string) => {
-      const cfg = loadConfig();
       const model =
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
@@ -51,7 +49,6 @@ function ChatPage() {
           chatId: threadId,
           text,
           model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
-          systemPrompt: cfg.systemPrompt,
         },
       });
     },

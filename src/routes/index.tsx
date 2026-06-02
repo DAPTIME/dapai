@@ -6,7 +6,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { SuggestionChips } from "@/components/chat-composer";
 import { ChatComposer } from "@/components/chat-composer";
 import { createChat, sendChatMessage } from "@/lib/chats.functions";
-import { loadConfig } from "@/lib/ai-config";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png.asset.json";
@@ -46,7 +45,6 @@ function Home() {
   const startChat = useMutation({
     mutationFn: async (text: string) => {
       const chat = await create();
-      const cfg = loadConfig();
       const model =
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
@@ -56,7 +54,6 @@ function Home() {
           chatId: chat.id,
           text,
           model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
-          systemPrompt: cfg.systemPrompt,
         },
       });
       return chat.id;

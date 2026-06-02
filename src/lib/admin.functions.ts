@@ -66,3 +66,37 @@ export const adminAmIAdmin = createServerFn({ method: "GET" })
       .maybeSingle();
     return { isAdmin: !!data };
   });
+
+export const adminGetSystemPrompt = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { data, error } = await supabaseAdmin
+      .from("ai_settings")
+      .select("system_prompt, updated_at")
+      .eq("id", "global")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return {
+      systemPrompt: data?.system_prompt ?? "",
+      updatedAt: data?.updated_at ?? null,
+    };
+  });
+
+export const adminSetSystemPrompt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ systemPrompt: z.string().max(8000) }).parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin
+      .from("ai_settings")
+      .upsert({
+        id: "global",
+        system_prompt: data.systemPrompt,
+        updated_at: new Date().toISOString(),
+      });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
