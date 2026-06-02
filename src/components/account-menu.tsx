@@ -15,7 +15,7 @@ import {
 import { LogOut, Settings as SettingsIcon, User as UserIcon } from "lucide-react";
 
 export function AccountMenu() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, ready } = useAuth();
   const amIAdmin = useServerFn(adminAmIAdmin);
   const adminQuery = useQuery({
     queryKey: ["admin", "me"],
@@ -24,6 +24,14 @@ export function AccountMenu() {
   });
   const isAdmin = adminQuery.data?.isAdmin === true;
   const navigate = useNavigate();
+
+  if (!ready) {
+    return (
+      <div className="flex h-8 w-8 items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   if (!user) {
     return (
