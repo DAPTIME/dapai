@@ -49,6 +49,11 @@ function LoginPage() {
           {busy ? "Signing in…" : "Sign in"}
         </Button>
       </form>
+      <p className="mt-3 text-center text-sm">
+        <Link to="/forgot-password" className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+          Forgot password?
+        </Link>
+      </p>
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Don't have an account?{" "}
         <Link to="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">

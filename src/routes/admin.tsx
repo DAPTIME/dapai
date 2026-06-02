@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   adminAmIAdmin,
@@ -13,6 +13,8 @@ import {
   adminSetTier,
   adminGetSystemPrompt,
   adminSetSystemPrompt,
+  adminListAllChats,
+  adminGetChat,
 } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin")({
@@ -37,13 +39,99 @@ function Admin() {
             Admin Console
           </h1>
           <p className="text-sm text-muted-foreground">
-            Edit the global system prompt and manage user tiers.
+            Edit the global system prompt, manage tiers, and read every chat.
           </p>
         </div>
       </div>
 
       {user && <SystemPromptEditor />}
       {user && <AdminUserManager />}
+      {user && <AdminAllChats />}
+    </div>
+  );
+}
+
+function AdminAllChats() {
+  const amIAdmin = useServerFn(adminAmIAdmin);
+  const listAll = useServerFn(adminListAllChats);
+  const getOne = useServerFn(adminGetChat);
+
+  const meQuery = useQuery({ queryKey: ["admin", "me"], queryFn: () => amIAdmin() });
+  const chatsQuery = useQuery({
+    queryKey: ["admin", "all-chats"],
+    queryFn: () => listAll(),
+    enabled: meQuery.data?.isAdmin === true,
+  });
+
+  const [openId, setOpenId] = useState<string | null>(null);
+  const detail = useQuery({
+    queryKey: ["admin", "chat", openId],
+    queryFn: () => getOne({ data: { chatId: openId! } }),
+    enabled: !!openId,
+  });
+
+  if (meQuery.isLoading || !meQuery.data?.isAdmin) return null;
+  const chats = chatsQuery.data ?? [];
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-center gap-2">
+        <MessageSquare className="h-4 w-4" />
+        <h2 className="text-lg font-semibold">All chats</h2>
+      </div>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Every user's chats. Click one to read the conversation.
+      </p>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="max-h-[480px] overflow-y-auto rounded-md border border-border">
+          {chats.length === 0 && (
+            <div className="p-4 text-sm text-muted-foreground">
+              {chatsQuery.isLoading ? "Loading…" : "No chats yet."}
+            </div>
+          )}
+          {chats.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setOpenId(c.id)}
+              className={`block w-full border-b border-border px-3 py-2 text-left text-sm hover:bg-muted/40 ${
+                openId === c.id ? "bg-muted/60" : ""
+              }`}
+            >
+              <div className="truncate font-medium">{c.title}</div>
+              <div className="text-xs text-muted-foreground">
+                {c.user_name || c.user_email || c.user_id.slice(0, 8)} ·{" "}
+                {new Date(c.updated_at).toLocaleString()}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="max-h-[480px] overflow-y-auto rounded-md border border-border p-3">
+          {!openId && (
+            <p className="text-sm text-muted-foreground">Select a chat to view it.</p>
+          )}
+          {openId && detail.isLoading && (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          )}
+          {openId && detail.data && (
+            <div className="space-y-3">
+              {detail.data.messages.length === 0 && (
+                <p className="text-sm text-muted-foreground">Empty chat.</p>
+              )}
+              {detail.data.messages.map((m) => (
+                <div key={m.id} className="rounded-md border border-border p-2">
+                  <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+                    {m.role}
+                    {m.model ? ` · ${m.model}` : ""}
+                  </div>
+                  <div className="whitespace-pre-wrap text-sm">{m.content}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

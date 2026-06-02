@@ -76,7 +76,7 @@ export function AppSidebar() {
           <img
             src={logo.url}
             alt="DAP AI"
-            className="h-14 w-14 rounded-xl object-contain"
+            className="h-[4.55rem] w-[4.55rem] rounded-xl object-contain"
           />
           <span className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
             DAP AI
