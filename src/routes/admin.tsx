@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
   adminAmIAdmin,
@@ -13,6 +13,8 @@ import {
   adminSetTier,
   adminGetSystemPrompt,
   adminSetSystemPrompt,
+  adminListAllChats,
+  adminGetChat,
 } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin")({
