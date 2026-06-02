@@ -16,6 +16,7 @@ type AuthCtx = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  ready: boolean;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
