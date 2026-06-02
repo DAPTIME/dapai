@@ -1,5 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/lib/auth";
+import { adminAmIAdmin } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,6 +16,13 @@ import { LogOut, Settings as SettingsIcon, User as UserIcon } from "lucide-react
 
 export function AccountMenu() {
   const { user, signOut } = useAuth();
+  const amIAdmin = useServerFn(adminAmIAdmin);
+  const adminQuery = useQuery({
+    queryKey: ["admin", "me"],
+    queryFn: () => amIAdmin(),
+    enabled: !!user,
+  });
+  const isAdmin = adminQuery.data?.isAdmin === true;
   const navigate = useNavigate();
 
   if (!user) {
@@ -50,9 +60,11 @@ export function AccountMenu() {
         <DropdownMenuItem asChild>
           <Link to="/settings"><UserIcon className="mr-2 h-4 w-4" /> Account</Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/admin"><SettingsIcon className="mr-2 h-4 w-4" /> Admin</Link>
-        </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link to="/admin"><SettingsIcon className="mr-2 h-4 w-4" /> Admin</Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => {
