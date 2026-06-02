@@ -31,7 +31,7 @@ const GREETINGS = (name: string) => [
 
 function Home() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
   const [greeting, setGreeting] = useState<string>("");
   const create = useServerFn(createChat);
   const send = useServerFn(sendChatMessage);
