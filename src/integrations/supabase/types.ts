@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_settings: {
+        Row: {
+          id: string
+          system_prompt: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          system_prompt?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          system_prompt?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           chat_id: string
