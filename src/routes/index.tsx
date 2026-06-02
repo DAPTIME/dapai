@@ -45,7 +45,6 @@ function Home() {
   const startChat = useMutation({
     mutationFn: async (text: string) => {
       const chat = await create();
-      const cfg = loadConfig();
       const model =
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
@@ -55,7 +54,6 @@ function Home() {
           chatId: chat.id,
           text,
           model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
-          systemPrompt: cfg.systemPrompt,
         },
       });
       return chat.id;
