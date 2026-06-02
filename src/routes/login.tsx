@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,11 +12,17 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { signIn } = useAuth();
+  const { signIn, user, ready } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (ready && user) {
+      navigate({ to: "/" });
+    }
+  }, [ready, user, navigate]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -31,6 +37,14 @@ function LoginPage() {
       setBusy(false);
     }
   };
+
+  if (!ready) {
+    return (
+      <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col items-center justify-center px-6">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6 py-12">
