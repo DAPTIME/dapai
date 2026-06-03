@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
+import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
 import { useAuth } from "@/lib/auth";
 
@@ -134,15 +135,18 @@ function ChatPage() {
 
           {visible.map((m) => (
             <div key={m.id} className="flex gap-3 message-in">
-              <div
-                className="mt-1 h-8 w-8 shrink-0 rounded-full"
-                style={{
-                  background:
-                    m.role === "user"
-                      ? "oklch(0.85 0.04 255)"
-                      : "var(--gradient-brand)",
-                }}
-              />
+              {m.role === "user" ? (
+                <div
+                  className="mt-1 h-8 w-8 shrink-0 rounded-full"
+                  style={{ background: "oklch(0.85 0.04 255)" }}
+                />
+              ) : (
+                <img
+                  src={logo.url}
+                  alt="DAP AI"
+                  className="mt-1 h-8 w-8 shrink-0 rounded-full object-contain"
+                />
+              )}
               <div className="flex-1">
                 <div className="text-xs font-medium text-muted-foreground">
                   {m.role === "user" ? "You" : "DAP AI"}
@@ -161,9 +165,10 @@ function ChatPage() {
           ))}
           {busy && (
             <div className="flex gap-3 message-in">
-              <div
-                className="mt-1 h-8 w-8 shrink-0 rounded-full"
-                style={{ background: "var(--gradient-brand)" }}
+              <img
+                src={logo.url}
+                alt="DAP AI"
+                className="mt-1 h-8 w-8 shrink-0 rounded-full object-contain"
               />
               <div className="flex-1">
                 <div className="text-xs font-medium text-muted-foreground">
