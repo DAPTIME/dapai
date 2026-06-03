@@ -21,6 +21,58 @@ import { enqueue } from "@/lib/ai-queue";
 const FREE_PRO_LIMIT = 5;
 const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 
+/**
+ * Meta-prompt layer: ask a fast Lovable AI model to draft a short
+ * system-prompt addendum tailored to the current user request. Stacked
+ * on top of the admin's base prompt (and any Gem prompt) before hitting
+ * the local model. Best-effort — returns "" on any failure so chats
+ * still go through.
+ */
+async function generateMetaPrompt(
+  userText: string,
+  basePrompt: string,
+  gemName?: string
+): Promise<string> {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) return "";
+  try {
+    const res = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.1-flash-lite-preview",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a prompt engineer. Read the user's request and write a SHORT (<= 80 words) system-prompt addendum that primes the answering assistant for the best possible reply — domain expertise to adopt, format/structure hints, pitfalls to avoid, and tone. Output ONLY the addendum text. No preamble, no quotes, no headings.",
+            },
+            {
+              role: "user",
+              content: `Base assistant instructions:\n${basePrompt || "(none)"}${
+                gemName ? `\n\nActive persona: ${gemName}` : ""
+              }\n\nUser request:\n${userText}`,
+            },
+          ],
+          stream: false,
+        }),
+      }
+    );
+    if (!res.ok) return "";
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    return (json?.choices?.[0]?.message?.content ?? "").trim();
+  } catch {
+    return "";
+  }
+}
+
 function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
   url?: string;
   key?: string;
@@ -95,15 +147,25 @@ export const createChat = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     if (gem) {
-      await supabase.from("chat_messages").insert({
-        chat_id: chat.id,
-        user_id: userId,
-        role: "system",
-        content: `[Gem: ${gem.name}]\n${gem.systemPrompt}`,
-      });
+      const { error: gemErr } = await supabase.from("chat_messages").insert([
+        {
+          chat_id: chat.id,
+          user_id: userId,
+          role: "system",
+          content: `[Gem: ${gem.name}]\n${gem.systemPrompt}`,
+        },
+        {
+          chat_id: chat.id,
+          user_id: userId,
+          role: "assistant",
+          content: `${gem.emoji} **${gem.name}** is ready.\n\n${gem.opener}`,
+        },
+      ]);
+      if (gemErr) throw new Error(`Couldn't initialize Gem: ${gemErr.message}`);
     }
     return chat;
   });
+
 
 export const deleteChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -254,15 +316,35 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: true });
 
+    // Detect an active Gem from the chat's first system message (set by
+    // createChat when gemId was passed). Lets the meta-prompt know what
+    // persona is in play.
+    const firstSystem = (history ?? []).find((m) => m.role === "system");
+    const gemMatch = firstSystem?.content.match(/^\[Gem:\s*([^\]\n]+)\]/);
+    const gemName = gemMatch?.[1]?.trim();
+
+    // Meta-prompt layer: a fast Lovable AI model drafts a per-message
+    // system addendum on top of the admin base + Gem prompt.
+    const metaPrompt = await generateMetaPrompt(data.text, systemPrompt, gemName);
+
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(systemPrompt
         ? [{ role: "system" as const, content: systemPrompt }]
+        : []),
+      ...(metaPrompt
+        ? [
+            {
+              role: "system" as const,
+              content: `[Auto-tuned prompt for this request]\n${metaPrompt}`,
+            },
+          ]
         : []),
       ...(history ?? []).map((m) => ({
         role: m.role as "user" | "assistant" | "system",
         content: m.content as unknown,
       })),
     ];
+
 
     // If images were attached, upgrade the LAST user message to OpenAI
     // vision "content array" format so multimodal backends can see them.

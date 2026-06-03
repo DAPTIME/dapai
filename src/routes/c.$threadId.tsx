@@ -105,6 +105,11 @@ function ChatPage() {
   const visible = messages.filter((m) => m.role !== "system");
   const busy = sendMut.isPending;
 
+  // Detect an active Gem from the first system message ("[Gem: Name]\n...").
+  const firstSystem = messages.find((m) => m.role === "system");
+  const gemMatch = firstSystem?.content.match(/^\[Gem:\s*([^\]\n]+)\]/);
+  const gemName = gemMatch?.[1]?.trim();
+
   return (
     <div className="chat-page-enter flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex-1 overflow-y-auto">
@@ -112,6 +117,21 @@ function ChatPage() {
           <h1 className="sr-only">
             {chatQuery.data?.chat?.title || "Chat"}
           </h1>
+          {gemName && (
+            <div className="flex items-center justify-center">
+              <span
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-[var(--shadow-soft)]"
+                style={{ borderColor: "color-mix(in oklab, var(--primary) 35%, transparent)" }}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: "var(--gradient-brand)" }}
+                />
+                Gem active · {gemName}
+              </span>
+            </div>
+          )}
+
           {visible.map((m) => (
             <div key={m.id} className="flex gap-3 message-in">
               <div

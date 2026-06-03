@@ -47,9 +47,19 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [model, setModel] = useState<string>(
     user ? MODELS[0].id : "dap-ai-lite"
   );
+
+  // Keep the prompt textarea focused on mount and after each send finishes.
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+  useEffect(() => {
+    if (!pending) textareaRef.current?.focus();
+  }, [pending]);
+
 
   const proExhausted =
     quotaInfo?.tier === "free" && (quotaInfo.remainingPro ?? 0) <= 0;
@@ -119,6 +129,9 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
         </div>
       )}
       <textarea
+        ref={textareaRef}
+        autoFocus
+
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Ask DAP AI anything…"
