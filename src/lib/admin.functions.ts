@@ -241,3 +241,35 @@ export const adminSetSystemPrompt = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Site enable/disable. Stored in ai_settings (id="site_status"),
+ * using the system_prompt column to hold "on" or "off".
+ * Public read (anyone can check), admin-only write.
+ */
+export const getSiteStatus = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { data } = await supabaseAdmin
+      .from("ai_settings")
+      .select("system_prompt")
+      .eq("id", "site_status")
+      .maybeSingle();
+    const enabled =
+      (data?.system_prompt ?? "on").trim().toLowerCase() !== "off";
+    return { enabled };
+  }
+);
+
+export const adminSetSiteStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ enabled: z.boolean() }).parse(i))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin.from("ai_settings").upsert({
+      id: "site_status",
+      system_prompt: data.enabled ? "on" : "off",
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
