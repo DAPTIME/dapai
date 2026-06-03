@@ -9,6 +9,7 @@ import {
   HelpCircle,
   Cpu,
   Trash2,
+  Scale,
 } from "lucide-react";
 
 const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
