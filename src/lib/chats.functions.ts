@@ -483,7 +483,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         return [...sys, ...rest.slice(-LITE_HISTORY_LIMIT)];
       })().map((m) => ({
         role: m.role as "user" | "assistant" | "system",
-        content: m.content as unknown,
+        content:
+          effectiveModel === "dap-ai-lite" && m.role === "assistant"
+            ? sanitizeLiteReply(m.content)
+            : (m.content as unknown),
       })),
 
     ];
@@ -529,7 +532,13 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             enable_thinking: false,
             include_reasoning: false,
             return_reasoning: false,
-            chat_template_kwargs: { enable_thinking: false, thinking: false },
+            top_k: 1,
+            temperature: 0.2,
+            chat_template_kwargs: {
+              enable_thinking: false,
+              thinking: false,
+              no_think: true,
+            },
           };
           const res = await fetch(backend, {
             method: "POST",
