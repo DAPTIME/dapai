@@ -484,7 +484,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     }
 
 
-    const { url: backend, key } = backendFor(effectiveModel);
+    const { url: backend, key, upstreamModel } = backendFor(effectiveModel);
 
     let replyText = "";
     if (!backend) {
