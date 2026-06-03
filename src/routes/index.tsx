@@ -77,6 +77,7 @@ function Home() {
   const navigate = useNavigate();
   const { user, ready } = useAuth();
   const [greeting, setGreeting] = useState<string>("");
+  const [signupOpen, setSignupOpen] = useState(false);
   const create = useServerFn(createChat);
 
 
