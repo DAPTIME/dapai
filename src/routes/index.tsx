@@ -7,7 +7,7 @@ import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
 import { createChat } from "@/lib/chats.functions";
 
 import { useAuth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
+
 import logo from "@/assets/logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
