@@ -274,7 +274,7 @@ VALUES ('${"<your-user-id>"}', 'admin');`}
         <h2 className="text-lg font-semibold">User tiers</h2>
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        Move people between free and pro. Free tier gets 5 DAP AI 3.2 messages, then Lite.
+        Move people between free and pro. Free tier gets 5 DAP AI 3.2 messages.
       </p>
 
       <div className="mt-4 overflow-x-auto">
