@@ -35,6 +35,7 @@ const sections: { title: string; people: string[] }[] = [
       "Ibrahim Ali",
       "Mishika Sharma",
       "Shanjahanaa Murali",
+      "Svetlana",
     ],
   },
 ];
