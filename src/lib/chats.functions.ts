@@ -394,12 +394,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // Load the secret system prompt server-side via the admin client so
     // it's injected for everyone but never readable by regular users.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: settings } = await supabaseAdmin
+    const { data: perModel } = await supabaseAdmin
       .from("ai_settings")
       .select("system_prompt")
-      .eq("id", "global")
+      .eq("id", effectiveModel)
       .maybeSingle();
-    const systemPrompt = settings?.system_prompt?.trim() ?? "";
+    let systemPrompt = perModel?.system_prompt?.trim() ?? "";
+    if (!systemPrompt) {
+      const { data: legacy } = await supabaseAdmin
+        .from("ai_settings")
+        .select("system_prompt")
+        .eq("id", "global")
+        .maybeSingle();
+      systemPrompt = legacy?.system_prompt?.trim() ?? "";
+    }
 
     // Per-user memories (ChatGPT-style). Injected as a system message.
     const { data: memRows } = await supabase
