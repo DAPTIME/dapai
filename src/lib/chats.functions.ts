@@ -18,8 +18,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enqueue } from "@/lib/ai-queue";
 
-const FREE_PRO_LIMIT = 5;
 const CHAT_LIMITS = { free: 5, pro: 10 } as const;
+
+// Lite gets a smaller rolling window so its (smaller LM Studio context)
+// never overflows. Pro keeps the full history.
+const LITE_HISTORY_LIMIT = 12;
+
 
 /**
  * Meta-prompt layer: ask a fast Lovable AI model to draft a short
@@ -304,25 +308,18 @@ export const getProfile = createServerFn({ method: "GET" })
       .eq("id", userId)
       .single();
     if (error) throw new Error(error.message);
-    const remainingPro =
-      data.tier === "pro"
-        ? null
-        : Math.max(0, FREE_PRO_LIMIT - data.pro_messages_used);
     return {
       ...data,
-      remainingPro,
-      freeProLimit: FREE_PRO_LIMIT,
       chatLimit: CHAT_LIMITS[(data.tier as "free" | "pro") ?? "free"],
     };
   });
 
+
 /**
  * Send a chat message:
- *  - enforces tier limits (free tier gets FREE_PRO_LIMIT Pro msgs)
- *  - stores the user message, calls the per-model backend through that
- *    model's queue (so only one request at a time hits the local GPU
- *    per model), stores the assistant reply
- *  - returns the updated message list + remainingPro
+ *  - Free tier is locked to Lite. Pro tier may choose either model.
+ *  - Stores the user message, calls the per-model backend through that
+ *    model's queue (one in-flight request per model on the local GPU).
  */
 export const sendChatMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -352,14 +349,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     let effectiveModel = data.model;
     let forcedToLite = false;
-    if (
-      data.model === "dap-ai-1.0" &&
-      profile.tier === "free" &&
-      profile.pro_messages_used >= FREE_PRO_LIMIT
-    ) {
+    if (data.model === "dap-ai-1.0" && profile.tier !== "pro") {
       effectiveModel = "dap-ai-lite";
       forcedToLite = true;
     }
+
 
     const imageCount = data.images?.length ?? 0;
     const storedUserContent =
@@ -456,10 +450,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             },
           ]
         : []),
-      ...(history ?? []).map((m) => ({
+      // Keep the system message at the head (for DAP context) and trim
+      // the rolling history for Lite so it fits in its smaller LM Studio
+      // context window.
+      ...(() => {
+        const all = history ?? [];
+        if (effectiveModel !== "dap-ai-lite") return all;
+        const sys = all.filter((m) => m.role === "system");
+        const rest = all.filter((m) => m.role !== "system");
+        return [...sys, ...rest.slice(-LITE_HISTORY_LIMIT)];
+      })().map((m) => ({
         role: m.role as "user" | "assistant" | "system",
         content: m.content as unknown,
       })),
+
     ];
 
 
@@ -547,14 +551,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       model: effectiveModel,
     });
 
-    // Bump quota counter ONLY when the Pro model was actually used
-    if (effectiveModel === "dap-ai-1.0" && profile.tier === "free") {
-      await supabase
-        .from("profiles")
-        .update({ pro_messages_used: profile.pro_messages_used + 1 })
-        .eq("id", userId);
-    }
-
     // Auto-extract durable memories from the user's message (best-effort).
     try {
       const existingMems = (memRows ?? []).map((m) => m.content);
@@ -575,20 +571,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: true });
 
-    const remainingPro =
-      profile.tier === "pro"
-        ? null
-        : Math.max(
-            0,
-            FREE_PRO_LIMIT -
-              (profile.pro_messages_used +
-                (effectiveModel === "dap-ai-1.0" ? 1 : 0))
-          );
-
     return {
       messages: messagesOut ?? [],
       forcedToLite,
       effectiveModel,
-      remainingPro,
     };
   });
+

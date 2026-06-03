@@ -13,11 +13,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getProfile } from "@/lib/chats.functions";
+
 
 export interface QuotaInfo {
   tier: "free" | "pro";
-  remainingPro?: number;
-  limit?: number;
 }
 
 interface Props {
@@ -27,8 +29,18 @@ interface Props {
 }
 
 const MODELS = [
-  { id: "dap-ai-1.0", label: "DAP AI 3.2", requiresAccount: true },
-  { id: "dap-ai-lite", label: "DAP AI Lite 3.2", requiresAccount: false },
+  {
+    id: "dap-ai-1.0",
+    label: "DAP AI 3.2",
+    description: "Our most capable and ambitious model yet.",
+    requiresPro: true,
+  },
+  {
+    id: "dap-ai-lite",
+    label: "DAP AI Lite 3.2",
+    description: "Fast responses and simple answers.",
+    requiresPro: false,
+  },
 ];
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB per image
@@ -44,12 +56,23 @@ function readAsDataUrl(file: File): Promise<string> {
 
 export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const { user } = useAuth();
+  const fetchProfile = useServerFn(getProfile);
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(),
+    enabled: !!user && !quotaInfo,
+  });
+  const tier = quotaInfo?.tier ?? (profileQuery.data?.tier as "free" | "pro" | undefined);
+  const isPro = tier === "pro";
+  const canUsePro = !!user && isPro;
+
+
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [model, setModel] = useState<string>(
-    user ? MODELS[0].id : "dap-ai-lite"
+    canUsePro ? "dap-ai-1.0" : "dap-ai-lite"
   );
 
   // Keep the prompt textarea focused on mount and after each send finishes.
@@ -60,22 +83,18 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
     if (!pending) textareaRef.current?.focus();
   }, [pending]);
 
-
-  const proExhausted =
-    quotaInfo?.tier === "free" && (quotaInfo.remainingPro ?? 0) <= 0;
-
   useEffect(() => {
     const saved =
       typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
     const target = saved && MODELS.some((m) => m.id === saved) ? saved : null;
     if (target) {
       const m = MODELS.find((mm) => mm.id === target)!;
-      const allow = (!m.requiresAccount || user) && !(m.id === "dap-ai-1.0" && proExhausted);
+      const allow = !m.requiresPro || canUsePro;
       setModel(allow ? target : "dap-ai-lite");
-    } else if (!user || proExhausted) {
+    } else if (!canUsePro) {
       setModel("dap-ai-lite");
     }
-  }, [user, proExhausted]);
+  }, [canUsePro]);
 
   const handlePickImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -105,6 +124,8 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
     setText("");
     setImages([]);
   };
+
+  const activeModel = MODELS.find((m) => m.id === model) ?? MODELS[1];
 
   return (
     <form
@@ -168,35 +189,33 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
             onChange={(e) => {
               const next = e.target.value;
               const m = MODELS.find((mm) => mm.id === next);
-              if (m?.requiresAccount && !user) return;
-              if (next === "dap-ai-1.0" && proExhausted) return;
+              if (m?.requiresPro && !canUsePro) return;
               setModel(next);
               if (typeof window !== "undefined") localStorage.setItem("dap.model", next);
             }}
             className="ml-2 rounded-md bg-transparent px-2 py-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
             aria-label="Select model"
+            title={activeModel.description}
           >
             {MODELS.map((m) => {
-              const locked =
-                (m.requiresAccount && !user) ||
-                (m.id === "dap-ai-1.0" && proExhausted);
+              const locked = m.requiresPro && !canUsePro;
               return (
                 <option
                   key={m.id}
                   value={m.id}
                   disabled={locked}
                   className="bg-card text-foreground"
+                  title={m.description}
                 >
                   {m.label}
-                  {m.requiresAccount && !user
-                    ? " — sign in required"
-                    : m.id === "dap-ai-1.0" && proExhausted
-                      ? " — free limit reached"
-                      : ""}
+                  {locked ? (!user ? " — sign in required" : " — Pro only") : ""}
                 </option>
               );
             })}
           </select>
+          <span className="ml-2 hidden text-xs text-muted-foreground sm:inline">
+            {activeModel.description}
+          </span>
           {!user && (
             <Link
               to="/login"
@@ -205,11 +224,6 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
               <Lock className="h-3 w-3" />
               Sign in for full DAP AI
             </Link>
-          )}
-          {quotaInfo?.tier === "free" && quotaInfo.limit != null && (
-            <span className="ml-2 text-xs text-muted-foreground">
-              {quotaInfo.remainingPro ?? 0}/{quotaInfo.limit} DAP AI 3.2 left
-            </span>
           )}
         </div>
         <Button
