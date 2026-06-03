@@ -157,7 +157,7 @@ function ChatPage() {
                   </div>
                 ) : (
                   <div className="mt-1 whitespace-pre-wrap text-foreground">
-                    {m.model === "dap-ai-lite" ? cleanLiteDisplay(m.content) : m.content}
+                    {m.model === "dap-ai-lite" ? sanitizeLiteReply(m.content) : m.content}
                   </div>
                 )}
               </div>
