@@ -171,6 +171,25 @@ function Home() {
           DAP AI may produce inaccurate info.
         </p>
       </div>
+
+      <Dialog open={signupOpen} onOpenChange={setSignupOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Sign up to start chatting</DialogTitle>
+            <DialogDescription>
+              Create a free account to chat with DAP AI and save your conversations.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/login">Log in</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/signup">Create account</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
