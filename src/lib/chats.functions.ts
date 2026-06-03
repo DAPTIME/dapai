@@ -316,15 +316,35 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: true });
 
+    // Detect an active Gem from the chat's first system message (set by
+    // createChat when gemId was passed). Lets the meta-prompt know what
+    // persona is in play.
+    const firstSystem = (history ?? []).find((m) => m.role === "system");
+    const gemMatch = firstSystem?.content.match(/^\[Gem:\s*([^\]\n]+)\]/);
+    const gemName = gemMatch?.[1]?.trim();
+
+    // Meta-prompt layer: a fast Lovable AI model drafts a per-message
+    // system addendum on top of the admin base + Gem prompt.
+    const metaPrompt = await generateMetaPrompt(data.text, systemPrompt, gemName);
+
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(systemPrompt
         ? [{ role: "system" as const, content: systemPrompt }]
+        : []),
+      ...(metaPrompt
+        ? [
+            {
+              role: "system" as const,
+              content: `[Auto-tuned prompt for this request]\n${metaPrompt}`,
+            },
+          ]
         : []),
       ...(history ?? []).map((m) => ({
         role: m.role as "user" | "assistant" | "system",
         content: m.content as unknown,
       })),
     ];
+
 
     // If images were attached, upgrade the LAST user message to OpenAI
     // vision "content array" format so multimodal backends can see them.
