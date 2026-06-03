@@ -280,7 +280,61 @@ function UsersTab() {
           }
         }}
       />
+
+      <ViewProfileDialog user={viewing} onClose={() => setViewing(null)} />
     </div>
+  );
+}
+
+function ViewProfileDialog({
+  user,
+  onClose,
+}: {
+  user: AdminUser | null;
+  onClose: () => void;
+}) {
+  const rows: { label: string; value: string }[] = user
+    ? [
+        { label: "Name", value: user.name ?? "—" },
+        { label: "Email", value: user.email ?? "—" },
+        { label: "User ID", value: user.id },
+        { label: "Tier", value: user.tier },
+        { label: "Pro messages used", value: String(user.pro_messages_used) },
+        { label: "Created", value: new Date(user.created_at).toLocaleString() },
+      ]
+    : [];
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>User profile</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 text-sm">
+          {rows.map((r) => (
+            <div
+              key={r.label}
+              className="flex flex-col gap-0.5 border-b border-border pb-2 last:border-b-0"
+            >
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                {r.label}
+              </span>
+              <span className="break-all font-medium">{r.value}</span>
+            </div>
+          ))}
+          <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Password:</span>{" "}
+            Passwords are one-way hashed by the auth system and cannot be viewed
+            by anyone — not even you. Use the “Password” button to set a new one.
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
