@@ -154,14 +154,8 @@ function Home() {
           <div className="mx-auto flex max-w-3xl justify-center py-2">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
-        ) : user ? (
-          <ChatComposer onSend={handleSend} />
         ) : (
-          <div className="mx-auto max-w-3xl text-center">
-            <Button asChild style={{ background: "var(--gradient-brand)" }}>
-              <Link to="/signup">Sign up to start chatting</Link>
-            </Button>
-          </div>
+          <ChatComposer onSend={handleSend} />
         )}
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
           DAP AI may produce inaccurate info.
