@@ -32,25 +32,53 @@ export const Route = createFileRoute("/settings")({
 });
 
 function Settings() {
+  const [beta, setBeta] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setBeta(localStorage.getItem("dap.beta") === "1");
+  }, []);
+  const toggleBeta = (v: boolean) => {
+    setBeta(v);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dap.beta", v ? "1" : "0");
+    }
+  };
+
+  const rows = [
+    { id: "history", label: "Save chat history", desc: "Keep recent conversations in the sidebar.", checked: true, onChange: undefined as ((v: boolean) => void) | undefined },
+    { id: "sounds", label: "Sound effects", desc: "Play subtle sounds on send/receive.", checked: false, onChange: undefined },
+    { id: "beta", label: "Beta features", desc: "Try experimental tools early, including AI Memory.", checked: beta, onChange: toggleBeta },
+  ];
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
       <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
       <div className="mt-8 space-y-6">
-        {[
-          { id: "history", label: "Save chat history", desc: "Keep recent conversations in the sidebar." },
-          { id: "sounds", label: "Sound effects", desc: "Play subtle sounds on send/receive." },
-          { id: "beta", label: "Beta features", desc: "Try experimental tools early." },
-        ].map((row) => (
+        {rows.map((row) => (
           <div key={row.id} className="flex items-start justify-between rounded-2xl border border-border bg-card p-5">
             <div>
               <Label htmlFor={row.id} className="text-base">{row.label}</Label>
               <p className="mt-1 text-sm text-muted-foreground">{row.desc}</p>
             </div>
-            <Switch id={row.id} defaultChecked={row.id === "history"} />
+            <Switch
+              id={row.id}
+              checked={row.checked}
+              onCheckedChange={row.onChange}
+              disabled={!row.onChange}
+            />
           </div>
         ))}
 
-        <MemorySection />
+        {beta ? (
+          <MemorySection />
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-card/50 p-5 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 font-medium text-foreground">
+              <Brain className="h-4 w-4" /> AI Memory
+            </div>
+            <p className="mt-1">Enable Beta features above to try AI Memory.</p>
+          </div>
+        )}
       </div>
     </div>
   );
