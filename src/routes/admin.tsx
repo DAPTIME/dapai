@@ -622,6 +622,11 @@ function ChatsTab() {
           {openId && detail.isLoading && (
             <p className="text-sm text-muted-foreground">Loading…</p>
           )}
+          {openId && detail.error && (
+            <p className="text-sm text-destructive">
+              Failed to load chat: {(detail.error as Error).message}
+            </p>
+          )}
           {openId && detail.data && (
             <div className="space-y-3">
               {detail.data.messages.length === 0 && (
