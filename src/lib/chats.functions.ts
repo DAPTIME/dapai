@@ -507,6 +507,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               model: upstreamModel,
               messages,
               stream: false,
+              // Disable model "thinking"/reasoning for the Lite model so
+              // replies are fast and don't include <think> tokens.
+              ...(effectiveModel === "dap-ai-lite"
+                ? {
+                    reasoning_effort: "none",
+                    chat_template_kwargs: { enable_thinking: false },
+                  }
+                : {}),
             }),
           });
           const json = (await res.json()) as {
