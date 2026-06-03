@@ -95,15 +95,25 @@ export const createChat = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     if (gem) {
-      await supabase.from("chat_messages").insert({
-        chat_id: chat.id,
-        user_id: userId,
-        role: "system",
-        content: `[Gem: ${gem.name}]\n${gem.systemPrompt}`,
-      });
+      const { error: gemErr } = await supabase.from("chat_messages").insert([
+        {
+          chat_id: chat.id,
+          user_id: userId,
+          role: "system",
+          content: `[Gem: ${gem.name}]\n${gem.systemPrompt}`,
+        },
+        {
+          chat_id: chat.id,
+          user_id: userId,
+          role: "assistant",
+          content: `${gem.emoji} **${gem.name}** is ready.\n\n${gem.opener}`,
+        },
+      ]);
+      if (gemErr) throw new Error(`Couldn't initialize Gem: ${gemErr.message}`);
     }
     return chat;
   });
+
 
 export const deleteChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
