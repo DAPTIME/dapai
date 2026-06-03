@@ -55,16 +55,18 @@ function clientIp(request: Request): string {
   );
 }
 
-function backendFor(model: string): { url?: string; key?: string } {
+function backendFor(model: string): { url?: string; key?: string; upstreamModel?: string } {
   if (model === "dap-ai-lite") {
     return {
       url: process.env.AI_BACKEND_URL_LITE ?? process.env.AI_BACKEND_URL,
       key: process.env.AI_BACKEND_KEY_LITE ?? process.env.AI_BACKEND_KEY,
+      upstreamModel: process.env.AI_BACKEND_MODEL_LITE,
     };
   }
   return {
     url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
     key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
+    upstreamModel: process.env.AI_BACKEND_MODEL_PRO,
   };
 }
 
@@ -90,7 +92,7 @@ export const Route = createFileRoute("/api/chat")({
           /* upstream will surface the parse error */
         }
 
-        const { url: backend, key } = backendFor(model);
+        const { url: backend, key, upstreamModel } = backendFor(model);
         if (!backend) {
           return Response.json(
             {
@@ -102,6 +104,19 @@ export const Route = createFileRoute("/api/chat")({
             },
             { status: 503 }
           );
+        }
+
+        // Rewrite outgoing body's `model` to the upstream identifier
+        // (e.g. LM Studio's loaded-model name) if configured.
+        let outgoingBody = raw;
+        if (upstreamModel) {
+          try {
+            const parsed = JSON.parse(raw);
+            parsed.model = upstreamModel;
+            outgoingBody = JSON.stringify(parsed);
+          } catch {
+            /* keep raw */
+          }
         }
 
         const ip = clientIp(request);
@@ -124,7 +139,7 @@ export const Route = createFileRoute("/api/chat")({
                 "Content-Type": "application/json",
                 ...(key ? { Authorization: `Bearer ${key}` } : {}),
               },
-              body: raw,
+              body: outgoingBody,
             });
             const text = await res.text();
             return new Response(text, {

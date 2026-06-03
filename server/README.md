@@ -127,8 +127,38 @@ Quick tunnels rotate URLs every restart. If you want a stable URL, either:
 
 ## Part 3 — Tell the website where your PC is
 
+### Single AI
+
 The website needs ONE secret: `AI_BACKEND_URL`. This is the **full**
 chat-completions URL, including `/v1/chat/completions`.
+
+### Two AIs from ONE LM Studio (recommended)
+
+LM Studio only runs one server at a time, but it can hold **multiple
+models loaded at once** and pick which one to use based on the `model`
+field of each request. So you only need **one** LM Studio and **one**
+ngrok tunnel for both `DAP AI 3.2` (Pro) and `DAP AI Lite`.
+
+1. In LM Studio's **Developer** tab, load BOTH models (the big one for
+   Pro, a smaller/faster one for Lite). Both should be in the
+   loaded-models list at the top.
+2. Click **Start Server** once. One port, one tunnel.
+3. Note each model's exact identifier as LM Studio shows it
+   (e.g. `meta-llama-3.1-8b-instruct`, `qwen2.5-3b-instruct`).
+4. Set these four secrets via the agent:
+   - `AI_BACKEND_URL_PRO`   = `https://<your-tunnel>/v1/chat/completions`
+   - `AI_BACKEND_URL_LITE`  = **same URL** as above
+   - `AI_BACKEND_MODEL_PRO`  = the big model's identifier
+   - `AI_BACKEND_MODEL_LITE` = the small model's identifier
+
+The relay translates the site's model name (`dap-ai-1.0` / `dap-ai-lite`)
+into the matching LM Studio identifier before forwarding. Per-model
+system prompts (set in `/admin`) keep working unchanged.
+
+If both models don't fit in VRAM, drop one to a lower quant (Q4) or
+pick a smaller Lite model (3B–4B is plenty).
+
+
 
 Examples:
 - LM Studio via ngrok → `https://abcd-12-34-56-78.ngrok-free.app/v1/chat/completions`

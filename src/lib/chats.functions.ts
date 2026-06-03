@@ -134,16 +134,19 @@ async function extractMemories(
 function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
   url?: string;
   key?: string;
+  upstreamModel: string;
 } {
   if (model === "dap-ai-1.0") {
     return {
       url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
       key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
+      upstreamModel: process.env.AI_BACKEND_MODEL_PRO ?? model,
     };
   }
   return {
     url: process.env.AI_BACKEND_URL_LITE ?? process.env.AI_BACKEND_URL,
     key: process.env.AI_BACKEND_KEY_LITE ?? process.env.AI_BACKEND_KEY,
+    upstreamModel: process.env.AI_BACKEND_MODEL_LITE ?? model,
   };
 }
 
@@ -481,7 +484,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     }
 
 
-    const { url: backend, key } = backendFor(effectiveModel);
+    const { url: backend, key, upstreamModel } = backendFor(effectiveModel);
 
     let replyText = "";
     if (!backend) {
@@ -501,7 +504,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               ...(key ? { Authorization: `Bearer ${key}` } : {}),
             },
             body: JSON.stringify({
-              model: effectiveModel,
+              model: upstreamModel,
               messages,
               stream: false,
             }),
