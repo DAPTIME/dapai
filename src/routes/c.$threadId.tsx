@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
+import { getSiteStatus } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 
@@ -44,6 +45,13 @@ function ChatPage() {
     queryFn: () => fetchProfile(),
     enabled: !!user,
   });
+  const fetchSiteStatus = useServerFn(getSiteStatus);
+  const siteStatus = useQuery({
+    queryKey: ["site-status"],
+    queryFn: () => fetchSiteStatus(),
+    refetchInterval: 30_000,
+  });
+  const siteEnabled = siteStatus.data?.enabled !== false;
 
   const sendMut = useMutation({
     mutationFn: ({ text, images }: { text: string; images?: string[] }) => {
@@ -185,19 +193,31 @@ function ChatPage() {
         </div>
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
-        <ChatComposer
-          onSend={(text, images) => sendMut.mutate({ text, images })}
-          pending={busy}
-          quotaInfo={
-            profileQuery.data
-              ? { tier: profileQuery.data.tier as "free" | "pro" }
-              : undefined
-          }
-
-        />
-        <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-          DAP AI may produce inaccurate info.
-        </p>
+        {!siteEnabled ? (
+          <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
+            <h2 className="text-lg font-semibold text-foreground">
+              DAP AI is undergoing major reworks
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Please try again later.
+            </p>
+          </div>
+        ) : (
+          <>
+            <ChatComposer
+              onSend={(text, images) => sendMut.mutate({ text, images })}
+              pending={busy}
+              quotaInfo={
+                profileQuery.data
+                  ? { tier: profileQuery.data.tier as "free" | "pro" }
+                  : undefined
+              }
+            />
+            <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
+              DAP AI may produce inaccurate info.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

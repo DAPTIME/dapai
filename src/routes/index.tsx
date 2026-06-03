@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 
 import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
 import { createChat } from "@/lib/chats.functions";
+import { getSiteStatus } from "@/lib/admin.functions";
 
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,15 @@ function Home() {
   const [greeting, setGreeting] = useState<string>("");
   const [signupOpen, setSignupOpen] = useState(false);
   const create = useServerFn(createChat);
+  const fetchSiteStatus = useServerFn(getSiteStatus);
+  const siteStatus = useQuery({
+    queryKey: ["site-status"],
+    queryFn: () => fetchSiteStatus(),
+    refetchInterval: 30_000,
+  });
+  const siteEnabled = siteStatus.data?.enabled !== false;
+
+
 
 
   useEffect(() => {
@@ -161,23 +171,34 @@ function Home() {
               <div className="flex justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
-            ) : (
+            ) : siteEnabled ? (
               <SuggestionChips onPick={handleSend} />
-            )}
+            ) : null}
           </div>
         </div>
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
-        {!ready ? (
+        {!ready || siteStatus.isLoading ? (
           <div className="mx-auto flex max-w-3xl justify-center py-2">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : !siteEnabled ? (
+          <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
+            <h2 className="text-lg font-semibold text-foreground">
+              DAP AI is undergoing major reworks
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Please try again later.
+            </p>
           </div>
         ) : (
           <ChatComposer onSend={handleSend} />
         )}
-        <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-          DAP AI may produce inaccurate info.
-        </p>
+        {siteEnabled && (
+          <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
+            DAP AI may produce inaccurate info.
+          </p>
+        )}
       </div>
 
       <Dialog open={signupOpen} onOpenChange={setSignupOpen}>

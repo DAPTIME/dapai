@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power } from "lucide-react";
 import {
   adminAmIAdmin,
   adminListUsers,
@@ -24,6 +24,8 @@ import {
   adminSetSystemPrompt,
   adminListAllChats,
   adminGetChat,
+  getSiteStatus,
+  adminSetSiteStatus,
 } from "@/lib/admin.functions";
 import {
   listBetaTesters,
@@ -91,6 +93,9 @@ function Admin() {
             <TabsTrigger value="beta">
               <Users className="mr-2 h-4 w-4" /> Beta Testers
             </TabsTrigger>
+            <TabsTrigger value="site">
+              <Power className="mr-2 h-4 w-4" /> Site
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="mt-6">
@@ -104,6 +109,9 @@ function Admin() {
           </TabsContent>
           <TabsContent value="beta" className="mt-6">
             <BetaTab />
+          </TabsContent>
+          <TabsContent value="site" className="mt-6">
+            <SiteTab />
           </TabsContent>
         </Tabs>
       )}
@@ -773,6 +781,64 @@ function BetaTab() {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function SiteTab() {
+  const qc = useQueryClient();
+  const fetchStatus = useServerFn(getSiteStatus);
+  const setStatus = useServerFn(adminSetSiteStatus);
+
+  const statusQuery = useQuery({
+    queryKey: ["site-status"],
+    queryFn: () => fetchStatus(),
+  });
+
+  const toggle = useMutation({
+    mutationFn: (enabled: boolean) => setStatus({ data: { enabled } }),
+    onSuccess: (_d, enabled) => {
+      toast.success(enabled ? "Site enabled" : "Site disabled");
+      qc.invalidateQueries({ queryKey: ["site-status"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const enabled = statusQuery.data?.enabled ?? true;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6">
+      <h2 className="text-lg font-semibold">Site availability</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        When disabled, the chat composer is hidden everywhere and visitors see
+        a maintenance message. New chats cannot be sent.
+      </p>
+
+      <div className="mt-5 flex items-center gap-3 rounded-md border border-border bg-muted/30 p-4">
+        <span
+          className={`inline-flex h-2.5 w-2.5 rounded-full ${
+            enabled ? "bg-emerald-500" : "bg-destructive"
+          }`}
+        />
+        <span className="text-sm font-medium">
+          {statusQuery.isLoading
+            ? "Loading…"
+            : enabled
+              ? "DAP AI is live"
+              : "DAP AI is OFF — maintenance mode"}
+        </span>
+        <div className="ml-auto">
+          <Button
+            onClick={() => toggle.mutate(!enabled)}
+            disabled={statusQuery.isLoading || toggle.isPending}
+            variant={enabled ? "outline" : "default"}
+            style={!enabled ? { background: "var(--gradient-brand)" } : undefined}
+          >
+            <Power className="mr-2 h-4 w-4" />
+            {enabled ? "Turn OFF" : "Turn ON"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
