@@ -536,6 +536,19 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         .eq("id", userId);
     }
 
+    // Auto-extract durable memories from the user's message (best-effort).
+    try {
+      const existingMems = (memRows ?? []).map((m) => m.content);
+      const newMems = await extractMemories(data.text, existingMems);
+      if (newMems.length > 0) {
+        await supabase.from("user_memories").insert(
+          newMems.map((content) => ({ user_id: userId, content }))
+        );
+      }
+    } catch {
+      /* best-effort, ignore */
+    }
+
     // Return refreshed view
     const { data: messagesOut } = await supabase
       .from("chat_messages")
