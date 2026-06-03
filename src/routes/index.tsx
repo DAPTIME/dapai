@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
 import { createChat } from "@/lib/chats.functions";
+import { getSiteStatus } from "@/lib/admin.functions";
 
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
