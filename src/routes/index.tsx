@@ -7,6 +7,15 @@ import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
 import { createChat } from "@/lib/chats.functions";
 
 import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 import logo from "@/assets/logo.png.asset.json";
 
