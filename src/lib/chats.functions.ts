@@ -504,7 +504,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               ...(key ? { Authorization: `Bearer ${key}` } : {}),
             },
             body: JSON.stringify({
-              model: effectiveModel,
+              model: upstreamModel,
               messages,
               stream: false,
             }),
