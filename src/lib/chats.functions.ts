@@ -376,6 +376,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       ...(systemPrompt
         ? [{ role: "system" as const, content: systemPrompt }]
         : []),
+      ...(memoryBlock
+        ? [{ role: "system" as const, content: memoryBlock }]
+        : []),
       ...(metaPrompt
         ? [
             {
