@@ -45,6 +45,13 @@ function ChatPage() {
     queryFn: () => fetchProfile(),
     enabled: !!user,
   });
+  const fetchSiteStatus = useServerFn(getSiteStatus);
+  const siteStatus = useQuery({
+    queryKey: ["site-status"],
+    queryFn: () => fetchSiteStatus(),
+    refetchInterval: 30_000,
+  });
+  const siteEnabled = siteStatus.data?.enabled !== false;
 
   const sendMut = useMutation({
     mutationFn: ({ text, images }: { text: string; images?: string[] }) => {
