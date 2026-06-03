@@ -168,7 +168,7 @@ function sanitizeLiteReply(text: string): string {
     .replace(/^\s*(?:final(?: answer)?|answer|response)\s*:\s*/i, "");
 
   if (/^\s*(?:the user\b|i\s+(?:need|should|will|must|have|can|want|am going|would)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b)/i.test(out)) {
-    const directStart = out.search(/\b(?:hey|hi|hello|sure|absolutely|yes|no|thanks|you(?:'|’)re welcome|here(?:'|’)s|here is|got it|okay|of course)\b/i);
+    const directStart = out.search(/\b(?:hey|sure|absolutely|yes|no|thanks|you(?:'|’)re welcome|here(?:'|’)s|here is|got it|okay|of course)\b/i);
     if (directStart > 0) out = out.slice(directStart);
   }
 
