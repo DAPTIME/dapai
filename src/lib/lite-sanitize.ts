@@ -32,9 +32,14 @@ export function sanitizeLiteReply(text: string): string {
     out = out.slice((last.index ?? 0) + last[0].length);
   }
 
+  const directStart = out.search(directReplyCue);
+  if (directStart > 0 && reasoningLeakRe.test(out.slice(0, directStart))) {
+    out = out.slice(directStart);
+  }
+
   if (reasoningLeakRe.test(out)) {
-    const directStart = out.search(directReplyCue);
-    if (directStart > 0) out = out.slice(directStart);
+    const nextDirectStart = out.search(directReplyCue);
+    if (nextDirectStart > 0) out = out.slice(nextDirectStart);
   }
 
   const metaLeadRe =
