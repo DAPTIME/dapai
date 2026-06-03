@@ -93,6 +93,9 @@ function Admin() {
             <TabsTrigger value="beta">
               <Users className="mr-2 h-4 w-4" /> Beta Testers
             </TabsTrigger>
+            <TabsTrigger value="site">
+              <Power className="mr-2 h-4 w-4" /> Site
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="mt-6">
@@ -106,6 +109,9 @@ function Admin() {
           </TabsContent>
           <TabsContent value="beta" className="mt-6">
             <BetaTab />
+          </TabsContent>
+          <TabsContent value="site" className="mt-6">
+            <SiteTab />
           </TabsContent>
         </Tabs>
       )}
