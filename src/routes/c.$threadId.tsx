@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -44,7 +44,7 @@ function ChatPage() {
   });
 
   const sendMut = useMutation({
-    mutationFn: (text: string) => {
+    mutationFn: ({ text, images }: { text: string; images?: string[] }) => {
       const model =
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
@@ -53,6 +53,7 @@ function ChatPage() {
         data: {
           chatId: threadId,
           text,
+          images,
           model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
         },
       });
@@ -72,6 +73,26 @@ function ChatPage() {
     },
   });
 
+  // Auto-send any pending message stashed from the homepage navigation.
+  const pendingFired = useRef(false);
+  useEffect(() => {
+    if (!user || pendingFired.current) return;
+    if (typeof window === "undefined") return;
+    const key = `dap.pending.${threadId}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return;
+    pendingFired.current = true;
+    sessionStorage.removeItem(key);
+    try {
+      const payload = JSON.parse(raw) as { text: string; images?: string[] };
+      sendMut.mutate(payload);
+    } catch {
+      /* ignore */
+    }
+  }, [user, threadId, sendMut]);
+
+
+
   if (!user) {
     return (
       <div className="flex h-[calc(100vh-3.5rem)] items-center justify-center">
@@ -85,7 +106,7 @@ function ChatPage() {
   const busy = sendMut.isPending;
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
+    <div className="chat-page-enter flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
           <h1 className="sr-only">
@@ -140,7 +161,7 @@ function ChatPage() {
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
         <ChatComposer
-          onSend={(t) => sendMut.mutate(t)}
+          onSend={(text, images) => sendMut.mutate({ text, images })}
           pending={busy}
           quotaInfo={
             profileQuery.data && profileQuery.data.tier === "free"

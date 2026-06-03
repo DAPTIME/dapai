@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 
-import { SuggestionChips } from "@/components/chat-composer";
-import { ChatComposer } from "@/components/chat-composer";
-import { createChat, sendChatMessage } from "@/lib/chats.functions";
+import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
+import { createChat } from "@/lib/chats.functions";
+
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo.png.asset.json";
@@ -69,7 +69,7 @@ function Home() {
   const { user, ready } = useAuth();
   const [greeting, setGreeting] = useState<string>("");
   const create = useServerFn(createChat);
-  const send = useServerFn(sendChatMessage);
+
 
   useEffect(() => {
     const finalName = user?.name || "friend";
@@ -78,19 +78,15 @@ function Home() {
   }, [user]);
 
   const startChat = useMutation({
-    mutationFn: async (text: string) => {
+    mutationFn: async (payload: { text: string; images?: string[] }) => {
       const chat = await create();
-      const model =
-        (typeof window !== "undefined"
-          ? localStorage.getItem("dap.model")
-          : null) || "dap-ai-1.0";
-      await send({
-        data: {
-          chatId: chat.id,
-          text,
-          model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
-        },
-      });
+      // Stash pending message so the chat route auto-sends after navigation.
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          `dap.pending.${chat.id}`,
+          JSON.stringify(payload)
+        );
+      }
       return chat.id;
     },
     onSuccess: (chatId) => {
@@ -98,13 +94,14 @@ function Home() {
     },
   });
 
-  const handleSend = (text: string) => {
+  const handleSend = (text: string, images?: string[]) => {
     if (!user) {
       navigate({ to: "/signup" });
       return;
     }
-    startChat.mutate(text);
+    startChat.mutate({ text, images });
   };
+
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">

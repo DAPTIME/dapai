@@ -176,9 +176,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         chatId: z.string().uuid(),
         text: z.string().min(1).max(8000),
         model: z.enum(["dap-ai-1.0", "dap-ai-lite"]),
+        images: z
+          .array(z.string().startsWith("data:image/").max(8_000_000))
+          .max(4)
+          .optional(),
       })
       .parse(i)
   )
+
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
 
@@ -200,14 +205,21 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       forcedToLite = true;
     }
 
+    const imageCount = data.images?.length ?? 0;
+    const storedUserContent =
+      imageCount > 0
+        ? `${data.text}\n\n_(📎 ${imageCount} image${imageCount > 1 ? "s" : ""} attached)_`
+        : data.text;
+
     const { error: insUserErr } = await supabase.from("chat_messages").insert({
       chat_id: data.chatId,
       user_id: userId,
       role: "user",
-      content: data.text,
+      content: storedUserContent,
       model: effectiveModel,
     });
     if (insUserErr) throw new Error(insUserErr.message);
+
 
     const { data: chatRow } = await supabase
       .from("chats")
@@ -242,15 +254,36 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: true });
 
-    const messages = [
+    const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(systemPrompt
         ? [{ role: "system" as const, content: systemPrompt }]
         : []),
       ...(history ?? []).map((m) => ({
         role: m.role as "user" | "assistant" | "system",
-        content: m.content,
+        content: m.content as unknown,
       })),
     ];
+
+    // If images were attached, upgrade the LAST user message to OpenAI
+    // vision "content array" format so multimodal backends can see them.
+    if (imageCount > 0) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === "user") {
+          messages[i] = {
+            role: "user",
+            content: [
+              { type: "text", text: data.text },
+              ...(data.images ?? []).map((url) => ({
+                type: "image_url",
+                image_url: { url },
+              })),
+            ],
+          };
+          break;
+        }
+      }
+    }
+
 
     const { url: backend, key } = backendFor(effectiveModel);
 

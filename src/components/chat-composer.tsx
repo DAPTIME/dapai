@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Send,
@@ -8,9 +8,11 @@ import {
   Sparkles,
   Lock,
   Loader2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 
 export interface QuotaInfo {
   tier: "free" | "pro";
@@ -19,7 +21,7 @@ export interface QuotaInfo {
 }
 
 interface Props {
-  onSend?: (text: string) => void;
+  onSend?: (text: string, images?: string[]) => void;
   quotaInfo?: QuotaInfo;
   pending?: boolean;
 }
@@ -29,14 +31,26 @@ const MODELS = [
   { id: "dap-ai-lite", label: "DAP AI Lite 3.2", requiresAccount: false },
 ];
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB per image
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
 export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const { user } = useAuth();
   const [text, setText] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [model, setModel] = useState<string>(
     user ? MODELS[0].id : "dap-ai-lite"
   );
 
-  // Force Lite for free users who have exhausted quota
   const proExhausted =
     quotaInfo?.tier === "free" && (quotaInfo.remainingPro ?? 0) <= 0;
 
@@ -53,11 +67,33 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
     }
   }, [user, proExhausted]);
 
+  const handlePickImages = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const next: string[] = [];
+    for (const f of Array.from(files).slice(0, 4 - images.length)) {
+      if (!f.type.startsWith("image/")) {
+        toast.error(`${f.name} isn't an image.`);
+        continue;
+      }
+      if (f.size > MAX_IMAGE_BYTES) {
+        toast.error(`${f.name} is over 5 MB.`);
+        continue;
+      }
+      try {
+        next.push(await readAsDataUrl(f));
+      } catch {
+        toast.error(`Couldn't read ${f.name}.`);
+      }
+    }
+    if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) return;
-    onSend?.(text);
+    if (!text.trim() && images.length === 0) return;
+    onSend?.(text.trim() || "(image)", images.length ? images : undefined);
     setText("");
+    setImages([]);
   };
 
   return (
@@ -65,6 +101,23 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
       onSubmit={submit}
       className={`mx-auto w-full max-w-3xl rounded-3xl border border-border bg-card p-2 shadow-[var(--shadow-soft)] focus-within:ring-2 focus-within:ring-ring/40 transition ${pending ? "composer-pending" : ""}`}
     >
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-3 pt-2">
+          {images.map((src, i) => (
+            <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg border border-border">
+              <img src={src} alt={`Attachment ${i + 1}`} className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                className="absolute right-0.5 top-0.5 rounded-full bg-background/80 p-0.5 text-foreground hover:bg-background"
+                aria-label="Remove image"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -75,12 +128,23 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
           if (e.key === "Enter" && !e.shiftKey) submit(e);
         }}
       />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          handlePickImages(e.target.files);
+          e.target.value = "";
+        }}
+      />
       <div className="flex items-center justify-between px-2 pb-1">
         <div className="flex items-center gap-1 text-muted-foreground">
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Attach file">
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Attach file" onClick={() => fileInputRef.current?.click()}>
             <Paperclip className="h-4 w-4" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Attach image">
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Attach image" onClick={() => fileInputRef.current?.click()}>
             <ImageIcon className="h-4 w-4" />
           </Button>
           <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Voice input">
@@ -138,9 +202,9 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
         <Button
           type="submit"
           size="icon"
-          disabled={!text.trim() || pending}
-          className={`relative h-9 w-9 overflow-hidden rounded-full transition-transform active:scale-95 ${pending ? "send-pending" : ""} ${text.trim() && !pending ? "send-ready" : ""}`}
-          style={text.trim() || pending ? { background: "var(--gradient-brand)" } : undefined}
+          disabled={(!text.trim() && images.length === 0) || pending}
+          className={`relative h-9 w-9 overflow-hidden rounded-full transition-transform active:scale-95 ${pending ? "send-pending" : ""} ${(text.trim() || images.length) && !pending ? "send-ready" : ""}`}
+          style={text.trim() || images.length || pending ? { background: "var(--gradient-brand)" } : undefined}
           aria-label={pending ? "Sending" : "Send message"}
         >
           {pending ? (
