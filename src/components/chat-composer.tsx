@@ -29,7 +29,7 @@ const MODELS = [
   { id: "dap-ai-lite", label: "DAP AI Lite 3.2", requiresAccount: false },
 ];
 
-export function ChatComposer({ onSend, quotaInfo }: Props) {
+export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [model, setModel] = useState<string>(
