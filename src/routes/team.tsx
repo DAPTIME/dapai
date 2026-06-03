@@ -28,6 +28,7 @@ const sections: { title: string; people: string[] }[] = [
       "Alexander Evershed",
       "Ibrahim Ali",
       "Mishika Sharma",
+      "Shanjhaana Murali",
     ],
   },
 ];
