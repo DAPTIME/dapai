@@ -88,7 +88,9 @@ function ChatPage() {
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-          {visible.map((m) => (
+          <h1 className="sr-only">
+            {chatQuery.data?.chat?.title || "Chat"}
+          </h1>
             <div key={m.id} className="flex gap-3 message-in">
               <div
                 className="mt-1 h-8 w-8 shrink-0 rounded-full"
