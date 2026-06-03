@@ -134,7 +134,7 @@ function Home() {
               <Link to="/signup" className="font-medium text-foreground underline">
                 Create an account
               </Link>{" "}
-              to save chats and use DAP AI 3.2 (5 free messages, then Lite).
+              to save chats and use DAP AI 3.2.
             </p>
           )}
 
