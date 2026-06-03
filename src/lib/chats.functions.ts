@@ -342,15 +342,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
 
     // Block sends when the site is in maintenance mode.
-    const { data: status } = await supabase
-      .from("ai_settings")
-      .select("system_prompt")
-      .eq("id", "site_status")
-      .maybeSingle();
-    if ((status?.system_prompt ?? "on").trim().toLowerCase() === "off") {
-      throw new Error(
-        "DAP AI is undergoing major reworks. Please try again later."
+    {
+      const { supabaseAdmin } = await import(
+        "@/integrations/supabase/client.server"
       );
+      const { data: status } = await supabaseAdmin
+        .from("ai_settings")
+        .select("system_prompt")
+        .eq("id", "site_status")
+        .maybeSingle();
+      if ((status?.system_prompt ?? "on").trim().toLowerCase() === "off") {
+        throw new Error(
+          "DAP AI is undergoing major reworks. Please try again later."
+        );
+      }
     }
 
     const { data: profile, error: pErr } = await supabase
