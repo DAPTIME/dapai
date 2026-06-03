@@ -12,18 +12,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "DAP AI" },
-      { name: "description", content: "DAP AI is a fast, friendly AI chat workspace." },
-      { property: "og:title", content: "DAP AI" },
-      { name: "twitter:title", content: "DAP AI" },
-      { property: "og:description", content: "DAP AI is a fast, friendly AI chat workspace." },
-      { name: "twitter:description", content: "DAP AI is a fast, friendly AI chat workspace." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d4ddeeda-a5fa-491c-98ac-e5bf7f678179/id-preview-60df72d6--4e5794db-69e7-4998-9ede-a9b885182642.lovable.app-1780308353128.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d4ddeeda-a5fa-491c-98ac-e5bf7f678179/id-preview-60df72d6--4e5794db-69e7-4998-9ede-a9b885182642.lovable.app-1780308353128.png" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { title: "DAP AI — Your AI workspace" },
+      {
+        name: "description",
+        content:
+          "DAP AI is your personal AI workspace — fast, friendly chat with multiple models and specialized Gems for focused tasks.",
+      },
+      { property: "og:site_name", content: "DAP AI" },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              name: "DAP AI",
+              url: "https://dapai.lovable.app",
+            },
+            {
+              "@type": "WebSite",
+              name: "DAP AI",
+              url: "https://dapai.lovable.app",
+            },
+          ],
+        }),
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

@@ -1,0 +1,11 @@
+# DAP AI
+
+> DAP AI is a fast, friendly AI chat workspace with multiple model tiers and specialized assistants ("Gems") for focused tasks.
+
+DAP AI lets you have natural conversations with an AI assistant, switch between Pro and Lite models, and start specialized chats using preset personas like Career Coach, Code Reviewer, Trip Planner, and Study Buddy. Free accounts include 5 DAP AI 3.2 (Pro) messages, then switch to DAP AI Lite.
+
+## Pages
+
+- [Home](/): Start a new chat with DAP AI from the main composer.
+- [Gems](/gems): Specialized AI personas with their own system prompts stacked on top of DAP AI.
+- [Help](/help): Frequently asked questions about DAP AI.

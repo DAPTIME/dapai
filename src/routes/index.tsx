@@ -14,7 +14,42 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "DAP AI — Your AI workspace" },
-      { name: "description", content: "Your personal AI assistant." },
+      {
+        name: "description",
+        content:
+          "DAP AI is your personal AI workspace for fast, friendly chat and productivity assistance. Switch between Pro and Lite models or pick a specialized Gem.",
+      },
+      { property: "og:title", content: "DAP AI — Your AI workspace" },
+      {
+        property: "og:description",
+        content:
+          "Chat with DAP AI — your personal AI workspace for productivity, learning, and creative work.",
+      },
+      { property: "og:url", content: "https://dapai.lovable.app/" },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d4ddeeda-a5fa-491c-98ac-e5bf7f678179/id-preview-60df72d6--4e5794db-69e7-4998-9ede-a9b885182642.lovable.app-1780308353128.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d4ddeeda-a5fa-491c-98ac-e5bf7f678179/id-preview-60df72d6--4e5794db-69e7-4998-9ede-a9b885182642.lovable.app-1780308353128.png",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://dapai.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Service",
+          name: "DAP AI",
+          serviceType: "AI chat assistant",
+          provider: { "@type": "Organization", name: "DAP AI" },
+          url: "https://dapai.lovable.app/",
+        }),
+      },
     ],
   }),
   component: Home,
