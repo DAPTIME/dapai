@@ -83,6 +83,15 @@ function Home() {
   const [greeting, setGreeting] = useState<string>("");
   const [signupOpen, setSignupOpen] = useState(false);
   const create = useServerFn(createChat);
+  const fetchSiteStatus = useServerFn(getSiteStatus);
+  const siteStatus = useQuery({
+    queryKey: ["site-status"],
+    queryFn: () => fetchSiteStatus(),
+    refetchInterval: 30_000,
+  });
+  const siteEnabled = siteStatus.data?.enabled !== false;
+
+
 
 
   useEffect(() => {
