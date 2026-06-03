@@ -91,6 +91,7 @@ function ChatPage() {
           <h1 className="sr-only">
             {chatQuery.data?.chat?.title || "Chat"}
           </h1>
+          {visible.map((m) => (
             <div key={m.id} className="flex gap-3 message-in">
               <div
                 className="mt-1 h-8 w-8 shrink-0 rounded-full"
