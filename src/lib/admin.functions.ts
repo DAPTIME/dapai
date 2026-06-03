@@ -142,7 +142,12 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
       );
       if (error) throw new Error(error.message);
     }
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      name?: string;
+      email?: string;
+      tier?: "free" | "pro";
+      pro_messages_used?: number;
+    } = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.email !== undefined) patch.email = data.email;
     if (data.tier !== undefined) patch.tier = data.tier;
