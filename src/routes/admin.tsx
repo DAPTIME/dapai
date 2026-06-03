@@ -590,44 +590,41 @@ function ChatsTab() {
           Failed to load chats: {(chatsQuery.error as Error).message}
         </div>
       )}
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <div className="max-h-[560px] overflow-y-auto rounded-md border border-border">
-          {chats.length === 0 && (
-            <div className="p-4 text-sm text-muted-foreground">
-              {chatsQuery.isLoading ? "Loading…" : "No chats yet."}
+      <div className="mt-4 max-h-[560px] overflow-y-auto rounded-md border border-border">
+        {chats.length === 0 && (
+          <div className="p-4 text-sm text-muted-foreground">
+            {chatsQuery.isLoading ? "Loading…" : "No chats yet."}
+          </div>
+        )}
+        {chats.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setOpenId(c.id)}
+            className="block w-full border-b border-border px-3 py-2 text-left text-sm hover:bg-muted/40"
+          >
+            <div className="truncate font-medium">{c.title}</div>
+            <div className="text-xs text-muted-foreground">
+              {c.user_name || c.user_email || c.user_id.slice(0, 8)} ·{" "}
+              {new Date(c.updated_at).toLocaleString()}
             </div>
-          )}
-          {chats.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setOpenId(c.id)}
-              className={`block w-full border-b border-border px-3 py-2 text-left text-sm hover:bg-muted/40 ${
-                openId === c.id ? "bg-muted/60" : ""
-              }`}
-            >
-              <div className="truncate font-medium">{c.title}</div>
-              <div className="text-xs text-muted-foreground">
-                {c.user_name || c.user_email || c.user_id.slice(0, 8)} ·{" "}
-                {new Date(c.updated_at).toLocaleString()}
-              </div>
-            </button>
-          ))}
-        </div>
-        <div className="max-h-[560px] overflow-y-auto rounded-md border border-border p-3">
-          {!openId && (
-            <p className="text-sm text-muted-foreground">
-              Select a chat to view it.
-            </p>
-          )}
-          {openId && detail.isLoading && (
+          </button>
+        ))}
+      </div>
+
+      <Dialog open={!!openId} onOpenChange={(o) => !o && setOpenId(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Chat conversation</DialogTitle>
+          </DialogHeader>
+          {detail.isLoading && (
             <p className="text-sm text-muted-foreground">Loading…</p>
           )}
-          {openId && detail.error && (
+          {detail.error && (
             <p className="text-sm text-destructive">
               Failed to load chat: {(detail.error as Error).message}
             </p>
           )}
-          {openId && detail.data && (
+          {detail.data && (
             <div className="space-y-3">
               {detail.data.messages.length === 0 && (
                 <p className="text-sm text-muted-foreground">Empty chat.</p>
@@ -643,8 +640,8 @@ function ChatsTab() {
               ))}
             </div>
           )}
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
