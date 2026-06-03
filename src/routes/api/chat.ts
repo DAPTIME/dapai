@@ -119,10 +119,13 @@ export const Route = createFileRoute("/api/chat")({
             parsed.enable_thinking = false;
             parsed.include_reasoning = false;
             parsed.return_reasoning = false;
+            parsed.top_k = 1;
+            parsed.temperature = 0.2;
             parsed.chat_template_kwargs = {
               ...(parsed.chat_template_kwargs ?? {}),
               enable_thinking: false,
               thinking: false,
+              no_think: true,
             };
             parsed.messages = [
               {
