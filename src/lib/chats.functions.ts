@@ -73,6 +73,64 @@ async function generateMetaPrompt(
   }
 }
 
+/**
+ * Use a fast Lovable AI model to detect if the user's message contains a
+ * durable personal fact worth remembering across chats (name, preferences,
+ * job, location, ongoing project, etc.). Returns 0+ short memory strings.
+ * Returns [] on any failure.
+ */
+async function extractMemories(
+  userText: string,
+  existing: string[]
+): Promise<string[]> {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) return [];
+  try {
+    const res = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.1-flash-lite-preview",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Extract durable personal facts from the user message that an assistant should remember across future conversations (name, age, location, job, hobbies, preferences, ongoing projects, important relationships, etc.). Ignore one-off questions, requests, opinions about external topics, and anything ephemeral. Return STRICT JSON: {\"memories\": string[]}. Each memory is a short third-person fact under 140 chars (e.g. \"Lives in London\", \"Prefers concise answers\"). If nothing qualifies, return {\"memories\": []}. Do NOT duplicate facts already known.",
+            },
+            {
+              role: "user",
+              content: `Already known about user:\n${
+                existing.length ? existing.map((m) => `- ${m}`).join("\n") : "(none)"
+              }\n\nNew user message:\n${userText}`,
+            },
+          ],
+          response_format: { type: "json_object" },
+          stream: false,
+        }),
+      }
+    );
+    if (!res.ok) return [];
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    const raw = json?.choices?.[0]?.message?.content ?? "";
+    const parsed = JSON.parse(raw) as { memories?: unknown };
+    if (!Array.isArray(parsed.memories)) return [];
+    return parsed.memories
+      .filter((m): m is string => typeof m === "string")
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0 && m.length <= 200)
+      .slice(0, 5);
+  } catch {
+    return [];
+  }
+}
+
 function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
   url?: string;
   key?: string;
@@ -343,6 +401,18 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .maybeSingle();
     const systemPrompt = settings?.system_prompt?.trim() ?? "";
 
+    // Per-user memories (ChatGPT-style). Injected as a system message.
+    const { data: memRows } = await supabase
+      .from("user_memories")
+      .select("content")
+      .order("created_at", { ascending: true });
+    const memoryBlock =
+      memRows && memRows.length > 0
+        ? `What you remember about this user (use naturally, don't recite):\n${memRows
+            .map((m) => `- ${m.content}`)
+            .join("\n")}`
+        : "";
+
     const { data: history } = await supabase
       .from("chat_messages")
       .select("role, content")
@@ -363,6 +433,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(systemPrompt
         ? [{ role: "system" as const, content: systemPrompt }]
+        : []),
+      ...(memoryBlock
+        ? [{ role: "system" as const, content: memoryBlock }]
         : []),
       ...(metaPrompt
         ? [
@@ -461,6 +534,19 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         .from("profiles")
         .update({ pro_messages_used: profile.pro_messages_used + 1 })
         .eq("id", userId);
+    }
+
+    // Auto-extract durable memories from the user's message (best-effort).
+    try {
+      const existingMems = (memRows ?? []).map((m) => m.content);
+      const newMems = await extractMemories(data.text, existingMems);
+      if (newMems.length > 0) {
+        await supabase.from("user_memories").insert(
+          newMems.map((content) => ({ user_id: userId, content }))
+        );
+      }
+    } catch {
+      /* best-effort, ignore */
     }
 
     // Return refreshed view
