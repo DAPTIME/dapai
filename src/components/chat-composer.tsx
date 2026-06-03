@@ -63,7 +63,7 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   return (
     <form
       onSubmit={submit}
-      className="mx-auto w-full max-w-3xl rounded-3xl border border-border bg-card p-2 shadow-[var(--shadow-soft)] focus-within:ring-2 focus-within:ring-ring/40 transition"
+      className={`mx-auto w-full max-w-3xl rounded-3xl border border-border bg-card p-2 shadow-[var(--shadow-soft)] focus-within:ring-2 focus-within:ring-ring/40 transition ${pending ? "composer-pending" : ""}`}
     >
       <textarea
         value={text}
