@@ -176,9 +176,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         chatId: z.string().uuid(),
         text: z.string().min(1).max(8000),
         model: z.enum(["dap-ai-1.0", "dap-ai-lite"]),
+        images: z
+          .array(z.string().startsWith("data:image/").max(8_000_000))
+          .max(4)
+          .optional(),
       })
       .parse(i)
   )
+
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
 
