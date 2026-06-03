@@ -17,6 +17,46 @@ const FAQS = [
     q: "What's the difference between the Pro and Lite models?",
     a: "DAP AI 3.2 (Pro) is the stronger model with better reasoning. DAP AI Lite is faster and unlimited. Free accounts get 5 Pro messages, then switch to Lite automatically.",
   },
+  {
+    q: "What are DAPs?",
+    a: "DAPs are custom AI personas you can create. Each DAP has its own instructions and personality, so you can build a Coding Mentor, a Sous Chef, a Study Buddy — whatever you need.",
+  },
+  {
+    q: "How do I create a custom DAP?",
+    a: "Go to the DAPs page, scroll to 'New custom DAP', give it a name, emoji, and instructions. Once saved, it appears in your DAP list and you can start chats with it.",
+  },
+  {
+    q: "Can I delete a custom DAP?",
+    a: "Yes. On the DAPs page, click the trash icon next to any custom DAP you created. This also removes it from the sidebar.",
+  },
+  {
+    q: "How do I switch models mid-chat?",
+    a: "You don't need to. If you have Pro messages remaining, DAP AI 3.2 is used automatically. Once those run out, Lite kicks in. You can upgrade to Pro anytime for more Pro messages.",
+  },
+  {
+    q: "Does DAP AI remember my chats?",
+    a: "Yes — each chat thread keeps full context, so the AI remembers what you discussed earlier in that conversation.",
+  },
+  {
+    q: "Keyboard shortcuts",
+    a: "Press Cmd/Ctrl + Enter to send a message. Press Escape to close modals or collapse open panels.",
+  },
+  {
+    q: "Is my data private?",
+    a: "Chats are tied to your account and protected by Row Level Security in our backend. Only you can read your own conversations.",
+  },
+  {
+    q: "How do I upgrade to Pro?",
+    a: "Click your profile in the sidebar, then 'Manage subscription' to upgrade. Pro unlocks more Pro model messages and a larger chat history.",
+  },
+  {
+    q: "The AI gave a weird or wrong answer. What should I do?",
+    a: "Try rephrasing your question or giving more context. You can also start a fresh chat — sometimes a clean thread helps. If it's consistently wrong, let us know through the feedback option.",
+  },
+  {
+    q: "Can I use DAP AI on mobile?",
+    a: "Yes. The site is fully responsive and works on phones and tablets. Just visit the same URL on any device.",
+  },
 ];
 
 export const Route = createFileRoute("/help")({
@@ -26,7 +66,7 @@ export const Route = createFileRoute("/help")({
       {
         name: "description",
         content:
-          "Answers to common DAP AI questions: starting chats, managing history, model differences, and account tiers.",
+          "Answers to common DAP AI questions: starting chats, managing history, model differences, DAPs, and account tiers.",
       },
       { property: "og:title", content: "Help & FAQ — DAP AI" },
       {
