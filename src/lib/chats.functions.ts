@@ -18,8 +18,12 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enqueue } from "@/lib/ai-queue";
 
-const FREE_PRO_LIMIT = 5;
 const CHAT_LIMITS = { free: 5, pro: 10 } as const;
+
+// Lite gets a smaller rolling window so its (smaller LM Studio context)
+// never overflows. Pro keeps the full history.
+const LITE_HISTORY_LIMIT = 12;
+
 
 /**
  * Meta-prompt layer: ask a fast Lovable AI model to draft a short
