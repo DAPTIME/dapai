@@ -164,7 +164,7 @@ export function AppSidebar() {
                             e.stopPropagation();
                             deleteMut.mutate(t.id);
                           }}
-                          className="mr-1 flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 md:hidden md:h-7 md:w-7 md:group-hover/row:flex"
+                          className="mr-1 flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 md:hidden md:h-7 md:w-7 md:group-hover/row:flex"
                           aria-label="Delete chat"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
