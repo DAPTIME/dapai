@@ -122,6 +122,7 @@ function UsersTab() {
 
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [pwUser, setPwUser] = useState<AdminUser | null>(null);
+  const [viewing, setViewing] = useState<AdminUser | null>(null);
 
   const setTier = useMutation({
     mutationFn: (vars: { userId: string; tier: "free" | "pro" }) =>
