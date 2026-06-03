@@ -9,6 +9,7 @@ import {
   HelpCircle,
   Cpu,
   Trash2,
+  Scale,
 } from "lucide-react";
 
 const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
@@ -197,6 +198,14 @@ export function AppSidebar() {
               <Link to="/help">
                 <HelpCircle />
                 <span>Help</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === "/terms"}>
+              <Link to="/terms">
+                <Scale />
+                <span>Terms</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
