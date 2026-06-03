@@ -94,6 +94,39 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_daps: {
+        Row: {
+          created_at: string
+          description: string
+          emoji: string
+          id: string
+          name: string
+          opener: string
+          system_prompt: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          emoji?: string
+          id?: string
+          name: string
+          opener?: string
+          system_prompt: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          emoji?: string
+          id?: string
+          name?: string
+          opener?: string
+          system_prompt?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

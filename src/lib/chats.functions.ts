@@ -105,14 +105,46 @@ export const createChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
     z
-      .object({ dapId: z.string().min(1).max(64).optional() })
+      .object({ dapId: z.string().min(1).max(128).optional() })
       .optional()
       .parse(i ?? {})
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { DAPS } = await import("@/lib/daps");
-    const dap = data?.dapId ? DAPS.find((g) => g.id === data.dapId) : undefined;
+
+    // Resolve built-in or custom DAP. Custom IDs are prefixed "custom:<uuid>".
+    let dap:
+      | { name: string; emoji: string; systemPrompt: string; opener: string }
+      | undefined;
+
+    if (data?.dapId?.startsWith("custom:")) {
+      const customId = data.dapId.slice("custom:".length);
+      const { data: row } = await supabase
+        .from("custom_daps")
+        .select("name, emoji, system_prompt, opener")
+        .eq("id", customId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (row) {
+        dap = {
+          name: row.name,
+          emoji: row.emoji,
+          systemPrompt: row.system_prompt,
+          opener: row.opener || `Hi — I'm **${row.name}**. How can I help?`,
+        };
+      }
+    } else if (data?.dapId) {
+      const { DAPS } = await import("@/lib/daps");
+      const found = DAPS.find((g) => g.id === data.dapId);
+      if (found) {
+        dap = {
+          name: found.name,
+          emoji: found.emoji,
+          systemPrompt: found.systemPrompt,
+          opener: found.opener,
+        };
+      }
+    }
 
     // Look up the user's tier to know their chat-memory limit.
     const { data: profile } = await supabase
@@ -165,6 +197,7 @@ export const createChat = createServerFn({ method: "POST" })
     }
     return chat;
   });
+
 
 
 export const deleteChat = createServerFn({ method: "POST" })
