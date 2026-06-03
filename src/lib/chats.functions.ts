@@ -434,7 +434,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     // Meta-prompt layer: a fast Lovable AI model drafts a per-message
     // system addendum on top of the admin base + DAP prompt.
-    const metaPrompt = await generateMetaPrompt(data.text, systemPrompt, dapName);
+    const metaPrompt =
+      effectiveModel === "dap-ai-lite"
+        ? ""
+        : await generateMetaPrompt(data.text, systemPrompt, dapName);
 
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(effectiveModel === "dap-ai-lite"
@@ -457,6 +460,15 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             {
               role: "system" as const,
               content: `[Auto-tuned prompt for this request]\n${metaPrompt}`,
+            },
+          ]
+        : []),
+      ...(effectiveModel === "dap-ai-lite"
+        ? [
+            {
+              role: "system" as const,
+              content:
+                "FINAL LITE MODE RULE: Reply with only the user-facing answer. Omit all reasoning, analysis, planning, and commentary about instructions. Do not mention what the user said or what you need to do.",
             },
           ]
         : []),
@@ -548,7 +560,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             json?.message?.content ??
             errStr ??
             "(empty response)";
-          if (effectiveModel === "dap-ai-lite") out = sanitizeLiteReply(out);
+          if (effectiveModel === "dap-ai-lite") {
+            out = sanitizeLiteReply(out);
+            if (hasLiteReasoningLeak(out)) out = sanitizeLiteReply(out);
+          }
           return out;
         } catch (e) {
           return `Couldn't reach AI backend: ${(e as Error).message}`;
