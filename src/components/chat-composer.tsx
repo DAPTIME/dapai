@@ -138,11 +138,16 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
         <Button
           type="submit"
           size="icon"
-          disabled={!text.trim()}
-          className="h-9 w-9 rounded-full"
-          style={text.trim() ? { background: "var(--gradient-brand)" } : undefined}
+          disabled={!text.trim() || pending}
+          className={`relative h-9 w-9 overflow-hidden rounded-full transition-transform active:scale-95 ${pending ? "send-pending" : ""} ${text.trim() && !pending ? "send-ready" : ""}`}
+          style={text.trim() || pending ? { background: "var(--gradient-brand)" } : undefined}
+          aria-label={pending ? "Sending" : "Send message"}
         >
-          <Send className="h-4 w-4" />
+          {pending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
         </Button>
       </div>
     </form>
