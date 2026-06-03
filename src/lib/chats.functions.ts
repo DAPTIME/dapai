@@ -254,15 +254,36 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: true });
 
-    const messages = [
+    const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(systemPrompt
         ? [{ role: "system" as const, content: systemPrompt }]
         : []),
       ...(history ?? []).map((m) => ({
         role: m.role as "user" | "assistant" | "system",
-        content: m.content,
+        content: m.content as unknown,
       })),
     ];
+
+    // If images were attached, upgrade the LAST user message to OpenAI
+    // vision "content array" format so multimodal backends can see them.
+    if (imageCount > 0) {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === "user") {
+          messages[i] = {
+            role: "user",
+            content: [
+              { type: "text", text: data.text },
+              ...(data.images ?? []).map((url) => ({
+                type: "image_url",
+                image_url: { url },
+              })),
+            ],
+          };
+          break;
+        }
+      }
+    }
+
 
     const { url: backend, key } = backendFor(effectiveModel);
 
