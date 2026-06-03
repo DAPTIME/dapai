@@ -541,14 +541,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       model: effectiveModel,
     });
 
-    // Bump quota counter ONLY when the Pro model was actually used
-    if (effectiveModel === "dap-ai-1.0" && profile.tier === "free") {
-      await supabase
-        .from("profiles")
-        .update({ pro_messages_used: profile.pro_messages_used + 1 })
-        .eq("id", userId);
-    }
-
     // Auto-extract durable memories from the user's message (best-effort).
     try {
       const existingMems = (memRows ?? []).map((m) => m.content);
@@ -569,20 +561,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: true });
 
-    const remainingPro =
-      profile.tier === "pro"
-        ? null
-        : Math.max(
-            0,
-            FREE_PRO_LIMIT -
-              (profile.pro_messages_used +
-                (effectiveModel === "dap-ai-1.0" ? 1 : 0))
-          );
-
     return {
       messages: messagesOut ?? [],
       forcedToLite,
       effectiveModel,
-      remainingPro,
     };
   });
+
