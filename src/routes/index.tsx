@@ -122,7 +122,7 @@ function Home() {
             height={512}
             loading="eager"
             decoding="async"
-            className="mb-6 h-[min(70vw,28rem)] w-[min(70vw,28rem)] object-contain drop-shadow-[0_10px_40px_oklch(0.55_0.22_280/0.45)]"
+            className="mb-6 h-[min(40vw,16rem)] w-[min(40vw,16rem)] object-contain drop-shadow-[0_10px_40px_oklch(0.55_0.22_280/0.45)]"
           />
 
           <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
