@@ -7,6 +7,7 @@ import {
   Image as ImageIcon,
   Sparkles,
   Lock,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
@@ -20,6 +21,7 @@ export interface QuotaInfo {
 interface Props {
   onSend?: (text: string) => void;
   quotaInfo?: QuotaInfo;
+  pending?: boolean;
 }
 
 const MODELS = [
@@ -27,7 +29,7 @@ const MODELS = [
   { id: "dap-ai-lite", label: "DAP AI Lite 3.2", requiresAccount: false },
 ];
 
-export function ChatComposer({ onSend, quotaInfo }: Props) {
+export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const { user } = useAuth();
   const [text, setText] = useState("");
   const [model, setModel] = useState<string>(
@@ -61,7 +63,7 @@ export function ChatComposer({ onSend, quotaInfo }: Props) {
   return (
     <form
       onSubmit={submit}
-      className="mx-auto w-full max-w-3xl rounded-3xl border border-border bg-card p-2 shadow-[var(--shadow-soft)] focus-within:ring-2 focus-within:ring-ring/40 transition"
+      className={`mx-auto w-full max-w-3xl rounded-3xl border border-border bg-card p-2 shadow-[var(--shadow-soft)] focus-within:ring-2 focus-within:ring-ring/40 transition ${pending ? "composer-pending" : ""}`}
     >
       <textarea
         value={text}
@@ -136,11 +138,16 @@ export function ChatComposer({ onSend, quotaInfo }: Props) {
         <Button
           type="submit"
           size="icon"
-          disabled={!text.trim()}
-          className="h-9 w-9 rounded-full"
-          style={text.trim() ? { background: "var(--gradient-brand)" } : undefined}
+          disabled={!text.trim() || pending}
+          className={`relative h-9 w-9 overflow-hidden rounded-full transition-transform active:scale-95 ${pending ? "send-pending" : ""} ${text.trim() && !pending ? "send-ready" : ""}`}
+          style={text.trim() || pending ? { background: "var(--gradient-brand)" } : undefined}
+          aria-label={pending ? "Sending" : "Send message"}
         >
-          <Send className="h-4 w-4" />
+          {pending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
         </Button>
       </div>
     </form>
