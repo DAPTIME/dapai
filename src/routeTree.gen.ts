@@ -14,8 +14,8 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HelpRouteImport } from './routes/help'
-import { Route as GemsRouteImport } from './routes/gems'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as DapsRouteImport } from './routes/daps'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
@@ -46,14 +46,14 @@ const HelpRoute = HelpRouteImport.update({
   path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GemsRoute = GemsRouteImport.update({
-  id: '/gems',
-  path: '/gems',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DapsRoute = DapsRouteImport.update({
+  id: '/daps',
+  path: '/daps',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -80,8 +80,8 @@ const ApiChatRoute = ApiChatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/gems': typeof GemsRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
@@ -93,8 +93,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/gems': typeof GemsRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
@@ -107,8 +107,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/gems': typeof GemsRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
@@ -122,8 +122,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/daps'
     | '/forgot-password'
-    | '/gems'
     | '/help'
     | '/login'
     | '/settings'
@@ -135,8 +135,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/daps'
     | '/forgot-password'
-    | '/gems'
     | '/help'
     | '/login'
     | '/settings'
@@ -148,8 +148,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/daps'
     | '/forgot-password'
-    | '/gems'
     | '/help'
     | '/login'
     | '/settings'
@@ -162,8 +162,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  DapsRoute: typeof DapsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  GemsRoute: typeof GemsRoute
   HelpRoute: typeof HelpRoute
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
@@ -210,18 +210,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/gems': {
-      id: '/gems'
-      path: '/gems'
-      fullPath: '/gems'
-      preLoaderRoute: typeof GemsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/forgot-password': {
       id: '/forgot-password'
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/daps': {
+      id: '/daps'
+      path: '/daps'
+      fullPath: '/daps'
+      preLoaderRoute: typeof DapsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -258,8 +258,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  DapsRoute: DapsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  GemsRoute: GemsRoute,
   HelpRoute: HelpRoute,
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
@@ -271,3 +271,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

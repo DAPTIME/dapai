@@ -2,14 +2,14 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Sparkles } from "lucide-react";
-import { GEMS } from "@/lib/gems";
+import { DAPS } from "@/lib/daps";
 import { createChat } from "@/lib/chats.functions";
 import { useAuth } from "@/lib/auth";
 
-export const Route = createFileRoute("/gems")({
+export const Route = createFileRoute("/daps")({
   head: () => ({
     meta: [
-      { title: "Gems — DAP AI" },
+      { title: "DAPs — DAP AI" },
       {
         name: "description",
         content:
@@ -17,16 +17,16 @@ export const Route = createFileRoute("/gems")({
       },
     ],
   }),
-  component: Gems,
+  component: Daps,
 });
 
-function Gems() {
+function Daps() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const create = useServerFn(createChat);
 
-  const startGem = useMutation({
-    mutationFn: (gemId: string) => create({ data: { gemId } }),
+  const startDap = useMutation({
+    mutationFn: (dapId: string) => create({ data: { dapId } }),
     onSuccess: (chat) =>
       navigate({ to: "/c/$threadId", params: { threadId: chat.id } }),
   });
@@ -36,24 +36,24 @@ function Gems() {
       navigate({ to: "/login" });
       return;
     }
-    startGem.mutate(id);
+    startDap.mutate(id);
   };
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Gems</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">DAPs</h1>
         <p className="mt-2 text-muted-foreground">
-          Specialized AI personas. Each Gem adds its own system prompt on top of
+          Specialized AI personas. Each DAP adds its own system prompt on top of
           the base DAP AI prompt.
         </p>
       </div>
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        {GEMS.map((g) => (
+        {DAPS.map((g) => (
           <button
             key={g.id}
             onClick={() => launch(g.id)}
-            disabled={startGem.isPending}
+            disabled={startDap.isPending}
             className="group text-left rounded-2xl border border-border bg-card p-5 transition hover:border-ring/40 hover:shadow-[var(--shadow-soft)] disabled:opacity-60"
           >
             <div className="flex items-center gap-2">

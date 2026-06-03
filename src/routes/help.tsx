@@ -7,7 +7,7 @@ const FAQS = [
   },
   {
     q: "How do I start a new chat?",
-    a: "Click 'New chat' in the sidebar, the DAP AI logo at the top, or pick a Gem from the Gems tab.",
+    a: "Click 'New chat' in the sidebar, the DAP AI logo at the top, or pick a DAP from the DAPs tab.",
   },
   {
     q: "Where do my conversations go?",

@@ -1,14 +1,14 @@
-export type Gem = {
+export type Dap = {
   id: string;
   name: string;
   desc: string;
   emoji: string;
   systemPrompt: string;
-  /** First assistant message shown when a Gem chat starts. */
+  /** First assistant message shown when a Dap chat starts. */
   opener: string;
 };
 
-export const GEMS: Gem[] = [
+export const DAPS: Dap[] = [
   {
     id: "career-coach",
     name: "Career coach",
@@ -71,6 +71,6 @@ export const GEMS: Gem[] = [
   },
 ];
 
-export function getGem(id: string): Gem | undefined {
-  return GEMS.find((g) => g.id === id);
+export function getDap(id: string): Dap | undefined {
+  return DAPS.find((g) => g.id === id);
 }

@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "DAP AI is your personal AI workspace for fast, friendly chat and productivity assistance. Switch between Pro and Lite models or pick a specialized Gem.",
+          "DAP AI is your personal AI workspace for fast, friendly chat and productivity assistance. Switch between Pro and Lite models or pick a specialized DAP.",
       },
       { property: "og:title", content: "DAP AI — Your AI workspace" },
       {
