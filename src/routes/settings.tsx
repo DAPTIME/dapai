@@ -14,6 +14,7 @@ import {
   deleteMemory,
   clearMemories,
 } from "@/lib/memories.functions";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
