@@ -30,6 +30,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:site_name", content: "DAP AI" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "google-site-verification", content: "ihyVMpSKja5zvyeVXgKwlPewFA3s5qzQJX9FolcYAHI" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
     scripts: [
