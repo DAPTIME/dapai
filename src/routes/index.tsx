@@ -118,11 +118,13 @@ function Home() {
           <img
             src={logo.url}
             alt="DAP AI"
-            width={240}
-            height={240}
+            width={512}
+            height={512}
             loading="eager"
-            className="mb-4 h-60 w-60 rounded-2xl object-cover shadow-lg"
+            decoding="async"
+            className="mb-6 h-[min(70vw,28rem)] w-[min(70vw,28rem)] object-contain drop-shadow-[0_10px_40px_oklch(0.55_0.22_280/0.45)]"
           />
+
           <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
             {greeting}
           </h1>
