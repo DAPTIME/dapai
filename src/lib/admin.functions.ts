@@ -51,7 +51,17 @@ export const adminGetChat = createServerFn({ method: "POST" })
     return { chat, messages: messages ?? [] };
   });
 
+const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
+
 async function assertAdmin(userId: string) {
+  // Verify the signed-in user's email matches the single allowed admin AND
+  // the user has the admin role. Both must hold.
+  const { data: authUser, error: authErr } =
+    await supabaseAdmin.auth.admin.getUserById(userId);
+  if (authErr) throw new Error(authErr.message);
+  const email = authUser?.user?.email?.toLowerCase() ?? "";
+  if (email !== ADMIN_EMAIL) throw new Error("Forbidden: admin role required");
+
   const { data, error } = await supabaseAdmin
     .from("user_roles")
     .select("role")
