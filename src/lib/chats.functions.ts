@@ -21,6 +21,58 @@ import { enqueue } from "@/lib/ai-queue";
 const FREE_PRO_LIMIT = 5;
 const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 
+/**
+ * Meta-prompt layer: ask a fast Lovable AI model to draft a short
+ * system-prompt addendum tailored to the current user request. Stacked
+ * on top of the admin's base prompt (and any Gem prompt) before hitting
+ * the local model. Best-effort — returns "" on any failure so chats
+ * still go through.
+ */
+async function generateMetaPrompt(
+  userText: string,
+  basePrompt: string,
+  gemName?: string
+): Promise<string> {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) return "";
+  try {
+    const res = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.1-flash-lite-preview",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a prompt engineer. Read the user's request and write a SHORT (<= 80 words) system-prompt addendum that primes the answering assistant for the best possible reply — domain expertise to adopt, format/structure hints, pitfalls to avoid, and tone. Output ONLY the addendum text. No preamble, no quotes, no headings.",
+            },
+            {
+              role: "user",
+              content: `Base assistant instructions:\n${basePrompt || "(none)"}${
+                gemName ? `\n\nActive persona: ${gemName}` : ""
+              }\n\nUser request:\n${userText}`,
+            },
+          ],
+          stream: false,
+        }),
+      }
+    );
+    if (!res.ok) return "";
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    return (json?.choices?.[0]?.message?.content ?? "").trim();
+  } catch {
+    return "";
+  }
+}
+
 function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
   url?: string;
   key?: string;
