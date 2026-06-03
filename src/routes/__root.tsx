@@ -110,3 +110,12 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
+
+function RouteTransition({ children }: { children: React.ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <div key={pathname} className="route-transition-enter">
+      {children}
+    </div>
+  );
+}
