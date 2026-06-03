@@ -7,6 +7,15 @@ import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
 import { createChat } from "@/lib/chats.functions";
 
 import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 import logo from "@/assets/logo.png.asset.json";
 
@@ -68,6 +77,7 @@ function Home() {
   const navigate = useNavigate();
   const { user, ready } = useAuth();
   const [greeting, setGreeting] = useState<string>("");
+  const [signupOpen, setSignupOpen] = useState(false);
   const create = useServerFn(createChat);
 
 
@@ -96,7 +106,7 @@ function Home() {
 
   const handleSend = (text: string, images?: string[]) => {
     if (!user) {
-      navigate({ to: "/signup" });
+      setSignupOpen(true);
       return;
     }
     startChat.mutate({ text, images });
@@ -161,6 +171,25 @@ function Home() {
           DAP AI may produce inaccurate info.
         </p>
       </div>
+
+      <Dialog open={signupOpen} onOpenChange={setSignupOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Sign up to start chatting</DialogTitle>
+            <DialogDescription>
+              Create a free account to chat with DAP AI and save your conversations.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/login">Log in</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/signup">Create account</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
