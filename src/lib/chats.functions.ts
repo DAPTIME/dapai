@@ -441,7 +441,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             {
               role: "system" as const,
               content:
-                "Do not think out loud, do not produce any reasoning, planning, scratchpad, or <think> tags. Respond directly with the final answer only.",
+                "CRITICAL: Output ONLY your final reply to the user. Do NOT think out loud. Do NOT narrate what you're about to do. Do NOT reference 'the user', 'instructions', 'persona', or your own reasoning process. Do NOT produce any <think> tags, scratchpad, planning, or meta-commentary. Never start with phrases like 'The user said...', 'I need to...', 'I should...', 'I'll respond...'. Just write the answer directly, as if speaking to the user.",
             },
           ]
         : []),
