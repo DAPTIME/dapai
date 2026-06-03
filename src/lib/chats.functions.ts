@@ -17,6 +17,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enqueue } from "@/lib/ai-queue";
+import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
 
 const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 
@@ -152,34 +153,6 @@ function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
     key: process.env.AI_BACKEND_KEY_LITE ?? process.env.AI_BACKEND_KEY,
     upstreamModel: process.env.AI_BACKEND_MODEL_LITE ?? model,
   };
-}
-
-function sanitizeLiteReply(text: string): string {
-  const original = text;
-  let out = text
-    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, "")
-    .replace(/<think\b[^>]*>[\s\S]*$/gi, "")
-    .replace(/<thinking\b[^>]*>[\s\S]*?<\/thinking>/gi, "")
-    .replace(/<reasoning\b[^>]*>[\s\S]*?<\/reasoning>/gi, "")
-    .replace(/<\|begin_of_thought\|>[\s\S]*?<\|end_of_thought\|>/gi, "")
-    .replace(/\|begin_of_thought\|[\s\S]*?\|end_of_thought\|/gi, "")
-    .replace(/<\|begin_of_reasoning\|>[\s\S]*?<\|end_of_reasoning\|>/gi, "")
-    .replace(/^\s*(?:thinking|thought|reasoning|analysis|scratchpad)\s*:[\s\S]*?\n\s*(?:final(?: answer)?|answer|response)\s*:\s*/i, "")
-    .replace(/^\s*(?:final(?: answer)?|answer|response)\s*:\s*/i, "");
-
-  if (/^\s*(?:the user\b|i\s+(?:need|should|will|must|have|can|want|am going|would)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b)/i.test(out)) {
-    const directStart = out.search(/\b(?:hey|sure|absolutely|yes|no|thanks|you(?:'|’)re welcome|here(?:'|’)s|here is|got it|okay|of course)\b/i);
-    if (directStart > 0) out = out.slice(directStart);
-  }
-
-  const metaSentenceRe =
-    /^\s*(?:the user\b[\s\S]{0,320}?[.!?]["'’)\]]?|i\s+(?:need|should|will|must|have|can|want|am going|would)\b[\s\S]{0,320}?[.!?]["'’)\]]?|i['’]ll\b[\s\S]{0,320}?[.!?]["'’)\]]?|(?:as per|per|according to|based on|following)\b[\s\S]{0,320}?[.!?]["'’)\]]?|(?:my|the)\s+(?:response|reply|answer)\b[\s\S]{0,320}?[.!?]["'’)\]]?)\s*/i;
-  let guard = 0;
-  while (metaSentenceRe.test(out) && guard++ < 12) {
-    out = out.replace(metaSentenceRe, "").replace(/^\s*["'’)\]].?\s*/, "");
-  }
-
-  return out.trim() || original.trim();
 }
 
 export const listChats = createServerFn({ method: "GET" })
