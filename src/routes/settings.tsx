@@ -58,6 +58,7 @@ function Settings() {
 
 function MemorySection() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const list = useServerFn(listMemories);
   const add = useServerFn(addMemory);
   const remove = useServerFn(deleteMemory);
@@ -68,6 +69,7 @@ function MemorySection() {
   const memsQuery = useQuery({
     queryKey: ["memories"],
     queryFn: () => list(),
+    enabled: !!user,
   });
 
   const addMut = useMutation({
