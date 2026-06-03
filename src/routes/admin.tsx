@@ -585,6 +585,11 @@ function ChatsTab() {
       <p className="mt-1 text-sm text-muted-foreground">
         Every user's chats. Click one to read the conversation.
       </p>
+      {chatsQuery.error && (
+        <div className="mt-3 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+          Failed to load chats: {(chatsQuery.error as Error).message}
+        </div>
+      )}
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div className="max-h-[560px] overflow-y-auto rounded-md border border-border">
           {chats.length === 0 && (
