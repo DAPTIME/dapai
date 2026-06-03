@@ -77,13 +77,13 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
       />
       <div className="flex items-center justify-between px-2 pb-1">
         <div className="flex items-center gap-1 text-muted-foreground">
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Attach file">
             <Paperclip className="h-4 w-4" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Attach image">
             <ImageIcon className="h-4 w-4" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Voice input">
             <Mic className="h-4 w-4" />
           </Button>
           <select

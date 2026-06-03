@@ -3,7 +3,17 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings — Lumen" }] }),
+  head: () => ({
+    meta: [
+      { title: "Settings — DAP AI" },
+      {
+        name: "description",
+        content:
+          "Manage your DAP AI account preferences: chat history, sound effects, and beta features.",
+      },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: Settings,
 });
 

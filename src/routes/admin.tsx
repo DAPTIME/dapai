@@ -18,7 +18,12 @@ import {
 } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin Console — DAP AI" }] }),
+  head: () => ({
+    meta: [
+      { title: "Admin Console — DAP AI" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: Admin,
 });
 

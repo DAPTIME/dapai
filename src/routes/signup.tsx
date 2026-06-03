@@ -9,7 +9,17 @@ import { useAuth } from "@/lib/auth";
 import { setRecoveryQuestion } from "@/lib/recovery.functions";
 
 export const Route = createFileRoute("/signup")({
-  head: () => ({ meta: [{ title: "Create account — DAP AI" }] }),
+  head: () => ({
+    meta: [
+      { title: "Create account — DAP AI" },
+      {
+        name: "description",
+        content:
+          "Create a free DAP AI account to save chats and unlock the DAP AI 3.2 model.",
+      },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: SignupPage,
 });
 

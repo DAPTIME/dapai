@@ -9,7 +9,12 @@ import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/c/$threadId")({
-  head: () => ({ meta: [{ title: "Chat — DAP AI" }] }),
+  head: () => ({
+    meta: [
+      { title: "Chat — DAP AI" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: ChatPage,
 });
 
