@@ -129,6 +129,9 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
         </div>
       )}
       <textarea
+        ref={textareaRef}
+        autoFocus
+
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Ask DAP AI anything…"
