@@ -308,25 +308,18 @@ export const getProfile = createServerFn({ method: "GET" })
       .eq("id", userId)
       .single();
     if (error) throw new Error(error.message);
-    const remainingPro =
-      data.tier === "pro"
-        ? null
-        : Math.max(0, FREE_PRO_LIMIT - data.pro_messages_used);
     return {
       ...data,
-      remainingPro,
-      freeProLimit: FREE_PRO_LIMIT,
       chatLimit: CHAT_LIMITS[(data.tier as "free" | "pro") ?? "free"],
     };
   });
 
+
 /**
  * Send a chat message:
- *  - enforces tier limits (free tier gets FREE_PRO_LIMIT Pro msgs)
- *  - stores the user message, calls the per-model backend through that
- *    model's queue (so only one request at a time hits the local GPU
- *    per model), stores the assistant reply
- *  - returns the updated message list + remainingPro
+ *  - Free tier is locked to Lite. Pro tier may choose either model.
+ *  - Stores the user message, calls the per-model backend through that
+ *    model's queue (one in-flight request per model on the local GPU).
  */
 export const sendChatMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -356,14 +349,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     let effectiveModel = data.model;
     let forcedToLite = false;
-    if (
-      data.model === "dap-ai-1.0" &&
-      profile.tier === "free" &&
-      profile.pro_messages_used >= FREE_PRO_LIMIT
-    ) {
+    if (data.model === "dap-ai-1.0" && profile.tier !== "pro") {
       effectiveModel = "dap-ai-lite";
       forcedToLite = true;
     }
+
 
     const imageCount = data.images?.length ?? 0;
     const storedUserContent =
