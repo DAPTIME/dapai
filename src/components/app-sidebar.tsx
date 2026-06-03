@@ -26,6 +26,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import {
@@ -43,6 +44,7 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isMobile, setOpenMobile } = useSidebar();
   const qc = useQueryClient();
   const list = useServerFn(listChats);
   const create = useServerFn(createChat);
@@ -66,6 +68,7 @@ export function AppSidebar() {
     mutationFn: (id: string) => remove({ data: { chatId: id } }),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: ["chats"] });
+      if (isMobile) setOpenMobile(false);
       if (pathname === `/c/${id}`) navigate({ to: "/" });
     },
   });
