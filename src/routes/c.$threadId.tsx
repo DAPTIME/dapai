@@ -19,6 +19,23 @@ export const Route = createFileRoute("/c/$threadId")({
   component: ChatPage,
 });
 
+function cleanLiteDisplay(content: string): string {
+  let out = content
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, "")
+    .replace(/<think\b[^>]*>[\s\S]*$/gi, "")
+    .replace(/<\|begin_of_thought\|>[\s\S]*?<\|end_of_thought\|>/gi, "")
+    .replace(/\|begin_of_thought\|[\s\S]*?\|end_of_thought\|/gi, "");
+  if (/^\s*(?:the user\b|i\s+(?:need|should|will|must|have|can|want|am going|would)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b)/i.test(out)) {
+    const directStart = out.search(/\b(?:hey|sure|absolutely|yes|no|thanks|you(?:'|’)re welcome|here(?:'|’)s|here is|got it|okay|of course)\b/i);
+    if (directStart > 0) out = out.slice(directStart);
+  }
+  const metaSentenceRe =
+    /^\s*(?:the user\b[\s\S]{0,320}?[.!?]["'’)\]]?|i\s+(?:need|should|will|must|have|can|want|am going|would)\b[\s\S]{0,320}?[.!?]["'’)\]]?|i['’]ll\b[\s\S]{0,320}?[.!?]["'’)\]]?|(?:as per|per|according to|based on|following)\b[\s\S]{0,320}?[.!?]["'’)\]]?)\s*/i;
+  let guard = 0;
+  while (metaSentenceRe.test(out) && guard++ < 12) out = out.replace(metaSentenceRe, "");
+  return out.trim() || content;
+}
+
 function ChatPage() {
   const { threadId } = Route.useParams();
   const navigate = useNavigate();
@@ -156,7 +173,7 @@ function ChatPage() {
                   </div>
                 ) : (
                   <div className="mt-1 whitespace-pre-wrap text-foreground">
-                    {m.content}
+                    {m.model === "dap-ai-lite" ? cleanLiteDisplay(m.content) : m.content}
                   </div>
                 )}
               </div>

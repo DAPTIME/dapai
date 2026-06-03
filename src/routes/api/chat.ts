@@ -70,6 +70,28 @@ function backendFor(model: string): { url?: string; key?: string; upstreamModel?
   };
 }
 
+function sanitizeLiteReply(text: string): string {
+  const original = text;
+  let out = text
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, "")
+    .replace(/<think\b[^>]*>[\s\S]*$/gi, "")
+    .replace(/<thinking\b[^>]*>[\s\S]*?<\/thinking>/gi, "")
+    .replace(/<reasoning\b[^>]*>[\s\S]*?<\/reasoning>/gi, "")
+    .replace(/<\|begin_of_thought\|>[\s\S]*?<\|end_of_thought\|>/gi, "")
+    .replace(/\|begin_of_thought\|[\s\S]*?\|end_of_thought\|/gi, "")
+    .replace(/^\s*(?:thinking|thought|reasoning|analysis|scratchpad)\s*:[\s\S]*?\n\s*(?:final(?: answer)?|answer|response)\s*:\s*/i, "")
+    .replace(/^\s*(?:final(?: answer)?|answer|response)\s*:\s*/i, "");
+  if (/^\s*(?:the user\b|i\s+(?:need|should|will|must|have|can|want|am going|would)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b)/i.test(out)) {
+    const directStart = out.search(/\b(?:hey|sure|absolutely|yes|no|thanks|you(?:'|’)re welcome|here(?:'|’)s|here is|got it|okay|of course)\b/i);
+    if (directStart > 0) out = out.slice(directStart);
+  }
+  const metaSentenceRe =
+    /^\s*(?:the user\b[\s\S]{0,320}?[.!?]["'’)\]]?|i\s+(?:need|should|will|must|have|can|want|am going|would)\b[\s\S]{0,320}?[.!?]["'’)\]]?|i['’]ll\b[\s\S]{0,320}?[.!?]["'’)\]]?|(?:as per|per|according to|based on|following)\b[\s\S]{0,320}?[.!?]["'’)\]]?|(?:my|the)\s+(?:response|reply|answer)\b[\s\S]{0,320}?[.!?]["'’)\]]?)\s*/i;
+  let guard = 0;
+  while (metaSentenceRe.test(out) && guard++ < 12) out = out.replace(metaSentenceRe, "");
+  return out.trim() || original.trim();
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
@@ -109,14 +131,32 @@ export const Route = createFileRoute("/api/chat")({
         // Rewrite outgoing body's `model` to the upstream identifier
         // (e.g. LM Studio's loaded-model name) if configured.
         let outgoingBody = raw;
-        if (upstreamModel) {
-          try {
-            const parsed = JSON.parse(raw);
-            parsed.model = upstreamModel;
-            outgoingBody = JSON.stringify(parsed);
-          } catch {
-            /* keep raw */
+        try {
+          const parsed = JSON.parse(raw);
+          if (upstreamModel) parsed.model = upstreamModel;
+          if (model === "dap-ai-lite") {
+            parsed.reasoning_effort = "none";
+            parsed.thinking = false;
+            parsed.enable_thinking = false;
+            parsed.include_reasoning = false;
+            parsed.return_reasoning = false;
+            parsed.chat_template_kwargs = {
+              ...(parsed.chat_template_kwargs ?? {}),
+              enable_thinking: false,
+              thinking: false,
+            };
+            parsed.messages = [
+              {
+                role: "system",
+                content:
+                  "CRITICAL: Output ONLY the final answer. Do not include reasoning, thinking, analysis, scratchpad, planning, or meta-commentary.",
+              },
+              ...(Array.isArray(parsed.messages) ? parsed.messages : []),
+            ];
           }
+          outgoingBody = JSON.stringify(parsed);
+        } catch {
+          /* keep raw */
         }
 
         const ip = clientIp(request);
@@ -141,7 +181,21 @@ export const Route = createFileRoute("/api/chat")({
               },
               body: outgoingBody,
             });
-            const text = await res.text();
+            let text = await res.text();
+            if (model === "dap-ai-lite") {
+              try {
+                const json = JSON.parse(text);
+                const content = json?.choices?.[0]?.message?.content ?? json?.message?.content;
+                if (typeof content === "string") {
+                  const cleaned = sanitizeLiteReply(content);
+                  if (json?.choices?.[0]?.message) json.choices[0].message.content = cleaned;
+                  else if (json?.message) json.message.content = cleaned;
+                  text = JSON.stringify(json);
+                }
+              } catch {
+                text = sanitizeLiteReply(text);
+              }
+            }
             return new Response(text, {
               status: res.status,
               headers: {

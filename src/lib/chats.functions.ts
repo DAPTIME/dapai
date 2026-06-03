@@ -154,6 +154,34 @@ function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
   };
 }
 
+function sanitizeLiteReply(text: string): string {
+  const original = text;
+  let out = text
+    .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, "")
+    .replace(/<think\b[^>]*>[\s\S]*$/gi, "")
+    .replace(/<thinking\b[^>]*>[\s\S]*?<\/thinking>/gi, "")
+    .replace(/<reasoning\b[^>]*>[\s\S]*?<\/reasoning>/gi, "")
+    .replace(/<\|begin_of_thought\|>[\s\S]*?<\|end_of_thought\|>/gi, "")
+    .replace(/\|begin_of_thought\|[\s\S]*?\|end_of_thought\|/gi, "")
+    .replace(/<\|begin_of_reasoning\|>[\s\S]*?<\|end_of_reasoning\|>/gi, "")
+    .replace(/^\s*(?:thinking|thought|reasoning|analysis|scratchpad)\s*:[\s\S]*?\n\s*(?:final(?: answer)?|answer|response)\s*:\s*/i, "")
+    .replace(/^\s*(?:final(?: answer)?|answer|response)\s*:\s*/i, "");
+
+  if (/^\s*(?:the user\b|i\s+(?:need|should|will|must|have|can|want|am going|would)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b)/i.test(out)) {
+    const directStart = out.search(/\b(?:hey|sure|absolutely|yes|no|thanks|you(?:'|’)re welcome|here(?:'|’)s|here is|got it|okay|of course)\b/i);
+    if (directStart > 0) out = out.slice(directStart);
+  }
+
+  const metaSentenceRe =
+    /^\s*(?:the user\b[\s\S]{0,320}?[.!?]["'’)\]]?|i\s+(?:need|should|will|must|have|can|want|am going|would)\b[\s\S]{0,320}?[.!?]["'’)\]]?|i['’]ll\b[\s\S]{0,320}?[.!?]["'’)\]]?|(?:as per|per|according to|based on|following)\b[\s\S]{0,320}?[.!?]["'’)\]]?|(?:my|the)\s+(?:response|reply|answer)\b[\s\S]{0,320}?[.!?]["'’)\]]?)\s*/i;
+  let guard = 0;
+  while (metaSentenceRe.test(out) && guard++ < 12) {
+    out = out.replace(metaSentenceRe, "").replace(/^\s*["'’)\]].?\s*/, "");
+  }
+
+  return out.trim() || original.trim();
+}
+
 export const listChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -510,6 +538,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // Per-model queue: only one in-flight call per model at a time.
       replyText = await enqueue(`model:${effectiveModel}`, async () => {
         try {
+          const liteOptions = {
+            reasoning_effort: "none",
+            thinking: false,
+            enable_thinking: false,
+            include_reasoning: false,
+            return_reasoning: false,
+            chat_template_kwargs: { enable_thinking: false, thinking: false },
+          };
           const res = await fetch(backend, {
             method: "POST",
             headers: {
@@ -522,12 +558,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               stream: false,
               // Disable model "thinking"/reasoning for the Lite model so
               // replies are fast and don't include <think> tokens.
-              ...(effectiveModel === "dap-ai-lite"
-                ? {
-                    reasoning_effort: "none",
-                    chat_template_kwargs: { enable_thinking: false },
-                  }
-                : {}),
+              ...(effectiveModel === "dap-ai-lite" ? liteOptions : {}),
             }),
           });
           const json = (await res.json()) as {
@@ -544,25 +575,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             json?.message?.content ??
             errStr ??
             "(empty response)";
-          if (effectiveModel === "dap-ai-lite") {
-            // Strip reasoning/thinking blocks the model emits even
-            // when we asked it not to think.
-            out = out
-              .replace(/<think>[\s\S]*?<\/think>/gi, "")
-              .replace(/<think>[\s\S]*$/gi, "")
-              .replace(/<\|begin_of_thought\|>[\s\S]*?<\|end_of_thought\|>/gi, "")
-              .replace(/^\s*(?:thinking|thought|reasoning)\s*:[\s\S]*?\n\n/i, "");
-            // Some models still leak first-person planning prose with no
-            // tags ("The user said X. I need to respond..."). Strip leading
-            // meta-sentences until the actual reply begins.
-            const metaRe =
-              /^\s*(?:The user\b[^.!?\n]*[.!?]|I(?:'ll| will| must| need to| should(?:n't)?| have to| can(?:not|'t)?)\b[^.!?\n]*[.!?]|(?:As per|Per|According to|Based on|Following)\s+(?:the|my|these)\s+(?:persona|instructions?|system|prompt|rules|guidelines)\b[^.!?\n]*[.!?]|My (?:response|reply|answer)\b[^.!?\n]*[.!?])\s*/i;
-            let guard = 0;
-            while (metaRe.test(out) && guard++ < 10) {
-              out = out.replace(metaRe, "");
-            }
-            out = out.trim();
-          }
+          if (effectiveModel === "dap-ai-lite") out = sanitizeLiteReply(out);
           return out;
         } catch (e) {
           return `Couldn't reach AI backend: ${(e as Error).message}`;
