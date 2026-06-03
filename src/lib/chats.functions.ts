@@ -51,8 +51,16 @@ export const listChats = createServerFn({ method: "GET" })
 
 export const createChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((i) =>
+    z
+      .object({ gemId: z.string().min(1).max(64).optional() })
+      .optional()
+      .parse(i ?? {})
+  )
+  .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const { GEMS } = await import("@/lib/gems");
+    const gem = data?.gemId ? GEMS.find((g) => g.id === data.gemId) : undefined;
 
     // Look up the user's tier to know their chat-memory limit.
     const { data: profile } = await supabase
@@ -76,13 +84,25 @@ export const createChat = createServerFn({ method: "POST" })
       }
     }
 
-    const { data, error } = await supabase
+    const { data: chat, error } = await supabase
       .from("chats")
-      .insert({ user_id: userId, title: "New chat" })
+      .insert({
+        user_id: userId,
+        title: gem ? `${gem.name} chat` : "New chat",
+      })
       .select("id, title, created_at, updated_at")
       .single();
     if (error) throw new Error(error.message);
-    return data;
+
+    if (gem) {
+      await supabase.from("chat_messages").insert({
+        chat_id: chat.id,
+        user_id: userId,
+        role: "system",
+        content: `[Gem: ${gem.name}]\n${gem.systemPrompt}`,
+      });
+    }
+    return chat;
   });
 
 export const deleteChat = createServerFn({ method: "POST" })

@@ -84,7 +84,7 @@ function ChatPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
           {visible.map((m) => (
-            <div key={m.id} className="flex gap-3">
+            <div key={m.id} className="flex gap-3 message-in">
               <div
                 className="mt-1 h-8 w-8 shrink-0 rounded-full"
                 style={{
@@ -98,14 +98,35 @@ function ChatPage() {
                 <div className="text-xs font-medium text-muted-foreground">
                   {m.role === "user" ? "You" : "DAP AI"}
                 </div>
-                <div className="mt-1 whitespace-pre-wrap text-foreground">
-                  {m.content}
-                </div>
+                {m.role === "user" ? (
+                  <div className="user-bubble mt-1 inline-block whitespace-pre-wrap">
+                    {m.content}
+                  </div>
+                ) : (
+                  <div className="mt-1 whitespace-pre-wrap text-foreground">
+                    {m.content}
+                  </div>
+                )}
               </div>
             </div>
           ))}
           {busy && (
-            <div className="text-sm text-muted-foreground">Thinking…</div>
+            <div className="flex gap-3 message-in">
+              <div
+                className="mt-1 h-8 w-8 shrink-0 rounded-full"
+                style={{ background: "var(--gradient-brand)" }}
+              />
+              <div className="flex-1">
+                <div className="text-xs font-medium text-muted-foreground">
+                  DAP AI
+                </div>
+                <div className="mt-2">
+                  <span className="thinking-dot" />
+                  <span className="thinking-dot" />
+                  <span className="thinking-dot" />
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

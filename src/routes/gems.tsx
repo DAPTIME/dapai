@@ -1,40 +1,68 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Sparkles, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Sparkles } from "lucide-react";
+import { GEMS } from "@/lib/gems";
+import { createChat } from "@/lib/chats.functions";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/gems")({
-  head: () => ({ meta: [{ title: "Gems — Lumen" }] }),
+  head: () => ({
+    meta: [
+      { title: "Gems — DAP AI" },
+      {
+        name: "description",
+        content:
+          "Custom AI helpers with their own system prompts stacked on top of DAP AI.",
+      },
+    ],
+  }),
   component: Gems,
 });
 
-const gems = [
-  { name: "Career coach", desc: "Helps with resumes, interviews, and career moves." },
-  { name: "Code reviewer", desc: "Reviews code and suggests improvements." },
-  { name: "Trip planner", desc: "Builds day-by-day travel itineraries." },
-  { name: "Study buddy", desc: "Quizzes you and explains tough concepts." },
-];
-
 function Gems() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const create = useServerFn(createChat);
+
+  const startGem = useMutation({
+    mutationFn: (gemId: string) => create({ data: { gemId } }),
+    onSuccess: (chat) =>
+      navigate({ to: "/c/$threadId", params: { threadId: chat.id } }),
+  });
+
+  const launch = (id: string) => {
+    if (!user) {
+      navigate({ to: "/login" });
+      return;
+    }
+    startGem.mutate(id);
+  };
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Gems</h1>
-          <p className="mt-2 text-muted-foreground">Custom AI helpers for specific tasks.</p>
-        </div>
-        <Button style={{ background: "var(--gradient-brand)" }}>
-          <Plus className="mr-2 h-4 w-4" /> New Gem
-        </Button>
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight">Gems</h1>
+        <p className="mt-2 text-muted-foreground">
+          Specialized AI personas. Each Gem adds its own system prompt on top of
+          the base DAP AI prompt.
+        </p>
       </div>
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        {gems.map((g) => (
-          <div key={g.name} className="rounded-2xl border border-border bg-card p-5">
+        {GEMS.map((g) => (
+          <button
+            key={g.id}
+            onClick={() => launch(g.id)}
+            disabled={startGem.isPending}
+            className="group text-left rounded-2xl border border-border bg-card p-5 transition hover:border-ring/40 hover:shadow-[var(--shadow-soft)] disabled:opacity-60"
+          >
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-xl">{g.emoji}</span>
               <h3 className="font-medium">{g.name}</h3>
+              <Sparkles className="ml-auto h-4 w-4 text-primary opacity-0 transition group-hover:opacity-100" />
             </div>
             <p className="mt-2 text-sm text-muted-foreground">{g.desc}</p>
-          </div>
+          </button>
         ))}
       </div>
     </div>

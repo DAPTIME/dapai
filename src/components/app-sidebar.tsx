@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   MessageSquarePlus,
-  Compass,
   Sparkles,
   History,
   Settings,
@@ -11,6 +10,8 @@ import {
   Cpu,
   Trash2,
 } from "lucide-react";
+
+const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
 import logo from "@/assets/logo.png.asset.json";
 import {
   Sidebar,
@@ -32,7 +33,6 @@ import {
 } from "@/lib/chats.functions";
 
 const main = [
-  { title: "Explore", url: "/explore", icon: Compass },
   { title: "Gems", url: "/gems", icon: Sparkles },
 ] as const;
 
@@ -174,14 +174,16 @@ export function AppSidebar() {
 
       <SidebarFooter className="pb-4">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === "/admin"}>
-              <Link to="/admin">
-                <Cpu />
-                <span>Admin</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {user?.email?.toLowerCase() === ADMIN_EMAIL && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/admin"}>
+                <Link to="/admin">
+                  <Cpu />
+                  <span>Admin</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={pathname === "/settings"}>
               <Link to="/settings">
