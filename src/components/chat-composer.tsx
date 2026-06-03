@@ -21,6 +21,7 @@ export interface QuotaInfo {
 interface Props {
   onSend?: (text: string) => void;
   quotaInfo?: QuotaInfo;
+  pending?: boolean;
 }
 
 const MODELS = [
