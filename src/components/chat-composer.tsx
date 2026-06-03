@@ -231,13 +231,40 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   );
 }
 
+const SUGGESTION_POOL = [
+  { icon: Sparkles, label: "Brainstorm names for a side project" },
+  { icon: Sparkles, label: "Plan a 5-day trip to Lisbon" },
+  { icon: Sparkles, label: "Explain transformers like I'm 12" },
+  { icon: Sparkles, label: "Draft a polite follow-up email" },
+  { icon: Sparkles, label: "Write a Python script to sort files" },
+  { icon: Sparkles, label: "Help me prep for a tech interview" },
+  { icon: Sparkles, label: "Summarize the concept of blockchain" },
+  { icon: Sparkles, label: "Create a weekly meal prep plan" },
+  { icon: Sparkles, label: "Debug my React useEffect loop" },
+  { icon: Sparkles, label: "Suggest a good book on leadership" },
+  { icon: Sparkles, label: "Write a haiku about AI" },
+  { icon: Sparkles, label: "Compare TypeScript vs Python" },
+  { icon: Sparkles, label: "Outline a pitch deck for a SaaS idea" },
+  { icon: Sparkles, label: "Help me negotiate a salary raise" },
+  { icon: Sparkles, label: "Build a workout plan for beginners" },
+  { icon: Sparkles, label: "Explain quantum computing simply" },
+  { icon: Sparkles, label: "Generate 10 social post ideas" },
+  { icon: Sparkles, label: "Review my resume bullet points" },
+  { icon: Sparkles, label: "Help me learn guitar chords faster" },
+  { icon: Sparkles, label: "Write a bedtime story for a 5-year-old" },
+];
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export function SuggestionChips({ onPick }: { onPick?: (s: string) => void }) {
-  const items = [
-    { icon: Sparkles, label: "Brainstorm names for a side project" },
-    { icon: Sparkles, label: "Plan a 5-day trip to Lisbon" },
-    { icon: Sparkles, label: "Explain transformers like I'm 12" },
-    { icon: Sparkles, label: "Draft a polite follow-up email" },
-  ];
+  const items = shuffle(SUGGESTION_POOL).slice(0, 4);
   return (
     <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
       {items.map((it) => (
