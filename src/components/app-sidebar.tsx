@@ -10,6 +10,7 @@ import {
   Cpu,
   Trash2,
   Scale,
+  Users,
 } from "lucide-react";
 
 const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
@@ -35,6 +36,7 @@ import {
 
 const main = [
   { title: "DAPs", url: "/daps", icon: Sparkles },
+  { title: "Our Team", url: "/team", icon: Users },
 ] as const;
 
 export function AppSidebar() {
