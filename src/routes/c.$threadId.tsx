@@ -105,10 +105,10 @@ function ChatPage() {
   const visible = messages.filter((m) => m.role !== "system");
   const busy = sendMut.isPending;
 
-  // Detect an active Gem from the first system message ("[Gem: Name]\n...").
+  // Detect an active DAP from the first system message ("[DAP: Name]\n...").
   const firstSystem = messages.find((m) => m.role === "system");
-  const gemMatch = firstSystem?.content.match(/^\[Gem:\s*([^\]\n]+)\]/);
-  const gemName = gemMatch?.[1]?.trim();
+  const dapMatch = firstSystem?.content.match(/^\[DAP:\s*([^\]\n]+)\]/);
+  const dapName = dapMatch?.[1]?.trim();
 
   return (
     <div className="chat-page-enter flex h-[calc(100vh-3.5rem)] flex-col">
@@ -117,7 +117,7 @@ function ChatPage() {
           <h1 className="sr-only">
             {chatQuery.data?.chat?.title || "Chat"}
           </h1>
-          {gemName && (
+          {dapName && (
             <div className="flex items-center justify-center">
               <span
                 className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-[var(--shadow-soft)]"
@@ -127,7 +127,7 @@ function ChatPage() {
                   className="h-1.5 w-1.5 rounded-full"
                   style={{ background: "var(--gradient-brand)" }}
                 />
-                Gem active · {gemName}
+                DAP active · {dapName}
               </span>
             </div>
           )}

@@ -16,7 +16,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "DAP AI is your personal AI workspace — fast, friendly chat with multiple models and specialized Gems for focused tasks.",
+          "DAP AI is your personal AI workspace — fast, friendly chat with multiple models and specialized DAPs for focused tasks.",
       },
       { property: "og:site_name", content: "DAP AI" },
       { property: "og:type", content: "website" },

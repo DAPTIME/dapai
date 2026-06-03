@@ -24,14 +24,14 @@ const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 /**
  * Meta-prompt layer: ask a fast Lovable AI model to draft a short
  * system-prompt addendum tailored to the current user request. Stacked
- * on top of the admin's base prompt (and any Gem prompt) before hitting
+ * on top of the admin's base prompt (and any DAP prompt) before hitting
  * the local model. Best-effort — returns "" on any failure so chats
  * still go through.
  */
 async function generateMetaPrompt(
   userText: string,
   basePrompt: string,
-  gemName?: string
+  dapName?: string
 ): Promise<string> {
   const key = process.env.LOVABLE_API_KEY;
   if (!key) return "";
@@ -55,7 +55,7 @@ async function generateMetaPrompt(
             {
               role: "user",
               content: `Base assistant instructions:\n${basePrompt || "(none)"}${
-                gemName ? `\n\nActive persona: ${gemName}` : ""
+                dapName ? `\n\nActive persona: ${dapName}` : ""
               }\n\nUser request:\n${userText}`,
             },
           ],
@@ -105,14 +105,14 @@ export const createChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
     z
-      .object({ gemId: z.string().min(1).max(64).optional() })
+      .object({ dapId: z.string().min(1).max(64).optional() })
       .optional()
       .parse(i ?? {})
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { GEMS } = await import("@/lib/gems");
-    const gem = data?.gemId ? GEMS.find((g) => g.id === data.gemId) : undefined;
+    const { DAPS } = await import("@/lib/daps");
+    const dap = data?.dapId ? DAPS.find((g) => g.id === data.dapId) : undefined;
 
     // Look up the user's tier to know their chat-memory limit.
     const { data: profile } = await supabase
@@ -140,28 +140,28 @@ export const createChat = createServerFn({ method: "POST" })
       .from("chats")
       .insert({
         user_id: userId,
-        title: gem ? `${gem.name} chat` : "New chat",
+        title: dap ? `${dap.name} chat` : "New chat",
       })
       .select("id, title, created_at, updated_at")
       .single();
     if (error) throw new Error(error.message);
 
-    if (gem) {
-      const { error: gemErr } = await supabase.from("chat_messages").insert([
+    if (dap) {
+      const { error: dapErr } = await supabase.from("chat_messages").insert([
         {
           chat_id: chat.id,
           user_id: userId,
           role: "system",
-          content: `[Gem: ${gem.name}]\n${gem.systemPrompt}`,
+          content: `[DAP: ${dap.name}]\n${dap.systemPrompt}`,
         },
         {
           chat_id: chat.id,
           user_id: userId,
           role: "assistant",
-          content: `${gem.emoji} **${gem.name}** is ready.\n\n${gem.opener}`,
+          content: `${dap.emoji} **${dap.name}** is ready.\n\n${dap.opener}`,
         },
       ]);
-      if (gemErr) throw new Error(`Couldn't initialize Gem: ${gemErr.message}`);
+      if (dapErr) throw new Error(`Couldn't initialize DAP: ${dapErr.message}`);
     }
     return chat;
   });
@@ -316,16 +316,16 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: true });
 
-    // Detect an active Gem from the chat's first system message (set by
-    // createChat when gemId was passed). Lets the meta-prompt know what
+    // Detect an active DAP from the chat's first system message (set by
+    // createChat when dapId was passed). Lets the meta-prompt know what
     // persona is in play.
     const firstSystem = (history ?? []).find((m) => m.role === "system");
-    const gemMatch = firstSystem?.content.match(/^\[Gem:\s*([^\]\n]+)\]/);
-    const gemName = gemMatch?.[1]?.trim();
+    const dapMatch = firstSystem?.content.match(/^\[DAP:\s*([^\]\n]+)\]/);
+    const dapName = dapMatch?.[1]?.trim();
 
     // Meta-prompt layer: a fast Lovable AI model drafts a per-message
-    // system addendum on top of the admin base + Gem prompt.
-    const metaPrompt = await generateMetaPrompt(data.text, systemPrompt, gemName);
+    // system addendum on top of the admin base + DAP prompt.
+    const metaPrompt = await generateMetaPrompt(data.text, systemPrompt, dapName);
 
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(systemPrompt

@@ -33,7 +33,7 @@ import {
 } from "@/lib/chats.functions";
 
 const main = [
-  { title: "Gems", url: "/gems", icon: Sparkles },
+  { title: "DAPs", url: "/daps", icon: Sparkles },
 ] as const;
 
 export function AppSidebar() {
