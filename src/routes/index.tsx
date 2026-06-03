@@ -106,7 +106,7 @@ function Home() {
 
   const handleSend = (text: string, images?: string[]) => {
     if (!user) {
-      navigate({ to: "/signup" });
+      setSignupOpen(true);
       return;
     }
     startChat.mutate({ text, images });
