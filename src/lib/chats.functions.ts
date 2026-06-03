@@ -205,14 +205,21 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       forcedToLite = true;
     }
 
+    const imageCount = data.images?.length ?? 0;
+    const storedUserContent =
+      imageCount > 0
+        ? `${data.text}\n\n_(📎 ${imageCount} image${imageCount > 1 ? "s" : ""} attached)_`
+        : data.text;
+
     const { error: insUserErr } = await supabase.from("chat_messages").insert({
       chat_id: data.chatId,
       user_id: userId,
       role: "user",
-      content: data.text,
+      content: storedUserContent,
       model: effectiveModel,
     });
     if (insUserErr) throw new Error(insUserErr.message);
+
 
     const { data: chatRow } = await supabase
       .from("chats")
