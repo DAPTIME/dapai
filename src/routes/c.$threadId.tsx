@@ -9,7 +9,12 @@ import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/c/$threadId")({
-  head: () => ({ meta: [{ title: "Chat — DAP AI" }] }),
+  head: () => ({
+    meta: [
+      { title: "Chat — DAP AI" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: ChatPage,
 });
 
@@ -83,6 +88,9 @@ function ChatPage() {
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+          <h1 className="sr-only">
+            {chatQuery.data?.chat?.title || "Chat"}
+          </h1>
           {visible.map((m) => (
             <div key={m.id} className="flex gap-3 message-in">
               <div

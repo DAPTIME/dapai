@@ -7,7 +7,16 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Sign in — DAP AI" }] }),
+  head: () => ({
+    meta: [
+      { title: "Sign in — DAP AI" },
+      {
+        name: "description",
+        content: "Sign in to your DAP AI account to continue your chats.",
+      },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: LoginPage,
 });
 

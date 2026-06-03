@@ -11,7 +11,12 @@ import {
 } from "@/lib/recovery.functions";
 
 export const Route = createFileRoute("/forgot-password")({
-  head: () => ({ meta: [{ title: "Forgot password — DAP AI" }] }),
+  head: () => ({
+    meta: [
+      { title: "Forgot password — DAP AI" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
   component: ForgotPasswordPage,
 });
 
