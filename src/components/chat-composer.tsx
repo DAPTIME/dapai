@@ -13,6 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getProfile } from "@/lib/chats.functions";
+
 
 export interface QuotaInfo {
   tier: "free" | "pro";
@@ -52,8 +56,16 @@ function readAsDataUrl(file: File): Promise<string> {
 
 export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const { user } = useAuth();
-  const isPro = quotaInfo?.tier === "pro";
+  const fetchProfile = useServerFn(getProfile);
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(),
+    enabled: !!user && !quotaInfo,
+  });
+  const tier = quotaInfo?.tier ?? (profileQuery.data?.tier as "free" | "pro" | undefined);
+  const isPro = tier === "pro";
   const canUsePro = !!user && isPro;
+
 
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
