@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -44,7 +44,7 @@ function ChatPage() {
   });
 
   const sendMut = useMutation({
-    mutationFn: (text: string) => {
+    mutationFn: ({ text, images }: { text: string; images?: string[] }) => {
       const model =
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
@@ -53,6 +53,7 @@ function ChatPage() {
         data: {
           chatId: threadId,
           text,
+          images,
           model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
         },
       });
@@ -71,6 +72,26 @@ function ChatPage() {
       toast.error(e instanceof Error ? e.message : "Send failed");
     },
   });
+
+  // Auto-send any pending message stashed from the homepage navigation.
+  const pendingFired = useRef(false);
+  useEffect(() => {
+    if (!user || pendingFired.current) return;
+    if (typeof window === "undefined") return;
+    const key = `dap.pending.${threadId}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return;
+    pendingFired.current = true;
+    sessionStorage.removeItem(key);
+    try {
+      const payload = JSON.parse(raw) as { text: string; images?: string[] };
+      sendMut.mutate(payload);
+    } catch {
+      /* ignore */
+    }
+  }, [user, threadId, sendMut]);
+
+
 
   if (!user) {
     return (
