@@ -119,7 +119,7 @@ function Home() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex-1 overflow-y-auto">
-        <div className="relative mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-4 py-10 text-center">
+        <div className="relative mx-auto flex min-h-full max-w-3xl flex-col items-center justify-center px-4 py-10 text-center">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 -z-10"
