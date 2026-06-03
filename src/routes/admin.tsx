@@ -196,6 +196,13 @@ function UsersTab() {
                     <Button
                       size="sm"
                       variant="outline"
+                      onClick={() => setViewing(u)}
+                    >
+                      <Eye className="mr-1 h-3.5 w-3.5" /> View
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => setEditing(u)}
                     >
                       <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
