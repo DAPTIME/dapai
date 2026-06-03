@@ -343,6 +343,18 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .maybeSingle();
     const systemPrompt = settings?.system_prompt?.trim() ?? "";
 
+    // Per-user memories (ChatGPT-style). Injected as a system message.
+    const { data: memRows } = await supabase
+      .from("user_memories")
+      .select("content")
+      .order("created_at", { ascending: true });
+    const memoryBlock =
+      memRows && memRows.length > 0
+        ? `What you remember about this user (use naturally, don't recite):\n${memRows
+            .map((m) => `- ${m.content}`)
+            .join("\n")}`
+        : "";
+
     const { data: history } = await supabase
       .from("chat_messages")
       .select("role, content")
