@@ -131,14 +131,32 @@ export const Route = createFileRoute("/api/chat")({
         // Rewrite outgoing body's `model` to the upstream identifier
         // (e.g. LM Studio's loaded-model name) if configured.
         let outgoingBody = raw;
-        if (upstreamModel) {
-          try {
-            const parsed = JSON.parse(raw);
-            parsed.model = upstreamModel;
-            outgoingBody = JSON.stringify(parsed);
-          } catch {
-            /* keep raw */
+        try {
+          const parsed = JSON.parse(raw);
+          if (upstreamModel) parsed.model = upstreamModel;
+          if (model === "dap-ai-lite") {
+            parsed.reasoning_effort = "none";
+            parsed.thinking = false;
+            parsed.enable_thinking = false;
+            parsed.include_reasoning = false;
+            parsed.return_reasoning = false;
+            parsed.chat_template_kwargs = {
+              ...(parsed.chat_template_kwargs ?? {}),
+              enable_thinking: false,
+              thinking: false,
+            };
+            parsed.messages = [
+              {
+                role: "system",
+                content:
+                  "CRITICAL: Output ONLY the final answer. Do not include reasoning, thinking, analysis, scratchpad, planning, or meta-commentary.",
+              },
+              ...(Array.isArray(parsed.messages) ? parsed.messages : []),
+            ];
           }
+          outgoingBody = JSON.stringify(parsed);
+        } catch {
+          /* keep raw */
         }
 
         const ip = clientIp(request);
@@ -163,7 +181,21 @@ export const Route = createFileRoute("/api/chat")({
               },
               body: outgoingBody,
             });
-            const text = await res.text();
+            let text = await res.text();
+            if (model === "dap-ai-lite") {
+              try {
+                const json = JSON.parse(text);
+                const content = json?.choices?.[0]?.message?.content ?? json?.message?.content;
+                if (typeof content === "string") {
+                  const cleaned = sanitizeLiteReply(content);
+                  if (json?.choices?.[0]?.message) json.choices[0].message.content = cleaned;
+                  else if (json?.message) json.message.content = cleaned;
+                  text = JSON.stringify(json);
+                }
+              } catch {
+                text = sanitizeLiteReply(text);
+              }
+            }
             return new Response(text, {
               status: res.status,
               headers: {
