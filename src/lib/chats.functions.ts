@@ -450,10 +450,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             },
           ]
         : []),
-      ...(history ?? []).map((m) => ({
+      // Keep the system message at the head (for DAP context) and trim
+      // the rolling history for Lite so it fits in its smaller LM Studio
+      // context window.
+      ...(() => {
+        const all = history ?? [];
+        if (effectiveModel !== "dap-ai-lite") return all;
+        const sys = all.filter((m) => m.role === "system");
+        const rest = all.filter((m) => m.role !== "system");
+        return [...sys, ...rest.slice(-LITE_HISTORY_LIMIT)];
+      })().map((m) => ({
         role: m.role as "user" | "assistant" | "system",
         content: m.content as unknown,
       })),
+
     ];
 
 
