@@ -174,14 +174,16 @@ export function AppSidebar() {
 
       <SidebarFooter className="pb-4">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === "/admin"}>
-              <Link to="/admin">
-                <Cpu />
-                <span>Admin</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {user?.email?.toLowerCase() === ADMIN_EMAIL && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/admin"}>
+                <Link to="/admin">
+                  <Cpu />
+                  <span>Admin</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={pathname === "/settings"}>
               <Link to="/settings">
