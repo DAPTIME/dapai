@@ -26,6 +26,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import {
@@ -43,6 +44,7 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isMobile, setOpenMobile } = useSidebar();
   const qc = useQueryClient();
   const list = useServerFn(listChats);
   const create = useServerFn(createChat);
@@ -66,6 +68,7 @@ export function AppSidebar() {
     mutationFn: (id: string) => remove({ data: { chatId: id } }),
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: ["chats"] });
+      if (isMobile) setOpenMobile(false);
       if (pathname === `/c/${id}`) navigate({ to: "/" });
     },
   });
@@ -155,12 +158,13 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                         <button
                           type="button"
+                          disabled={deleteMut.isPending}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             deleteMut.mutate(t.id);
                           }}
-                          className="mr-1 hidden h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground group-hover/row:flex"
+                          className="mr-1 flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 md:hidden md:h-7 md:w-7 md:group-hover/row:flex"
                           aria-label="Delete chat"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
