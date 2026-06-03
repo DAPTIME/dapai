@@ -14,6 +14,7 @@ import {
   deleteMemory,
   clearMemories,
 } from "@/lib/memories.functions";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -57,6 +58,7 @@ function Settings() {
 
 function MemorySection() {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const list = useServerFn(listMemories);
   const add = useServerFn(addMemory);
   const remove = useServerFn(deleteMemory);
@@ -67,6 +69,7 @@ function MemorySection() {
   const memsQuery = useQuery({
     queryKey: ["memories"],
     queryFn: () => list(),
+    enabled: !!user,
   });
 
   const addMut = useMutation({
