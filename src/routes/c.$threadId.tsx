@@ -64,15 +64,14 @@ function ChatPage() {
       qc.invalidateQueries({ queryKey: ["chats"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
       if (result.forcedToLite) {
-        toast.info(
-          "You've used all 5 free DAP AI 3.2 messages — switched to DAP AI Lite."
-        );
+        toast.info("DAP AI 3.2 is Pro-only — replied with DAP AI Lite.");
       }
     },
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Send failed");
     },
   });
+
 
   // Auto-send any pending message stashed from the homepage navigation.
   const pendingFired = useRef(false);
@@ -189,14 +188,11 @@ function ChatPage() {
           onSend={(text, images) => sendMut.mutate({ text, images })}
           pending={busy}
           quotaInfo={
-            profileQuery.data && profileQuery.data.tier === "free"
-              ? {
-                  tier: "free",
-                  remainingPro: profileQuery.data.remainingPro ?? 0,
-                  limit: profileQuery.data.freeProLimit,
-                }
-              : { tier: "pro" }
+            profileQuery.data
+              ? { tier: profileQuery.data.tier as "free" | "pro" }
+              : undefined
           }
+
         />
         <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
           DAP AI may produce inaccurate info.
