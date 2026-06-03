@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye } from "lucide-react";
 import {
   adminAmIAdmin,
   adminListUsers,
@@ -122,6 +122,7 @@ function UsersTab() {
 
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [pwUser, setPwUser] = useState<AdminUser | null>(null);
+  const [viewing, setViewing] = useState<AdminUser | null>(null);
 
   const setTier = useMutation({
     mutationFn: (vars: { userId: string; tier: "free" | "pro" }) =>
@@ -192,6 +193,13 @@ function UsersTab() {
                 </td>
                 <td className="px-2 py-2">
                   <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setViewing(u)}
+                    >
+                      <Eye className="mr-1 h-3.5 w-3.5" /> View
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -272,7 +280,61 @@ function UsersTab() {
           }
         }}
       />
+
+      <ViewProfileDialog user={viewing} onClose={() => setViewing(null)} />
     </div>
+  );
+}
+
+function ViewProfileDialog({
+  user,
+  onClose,
+}: {
+  user: AdminUser | null;
+  onClose: () => void;
+}) {
+  const rows: { label: string; value: string }[] = user
+    ? [
+        { label: "Name", value: user.name ?? "—" },
+        { label: "Email", value: user.email ?? "—" },
+        { label: "User ID", value: user.id },
+        { label: "Tier", value: user.tier },
+        { label: "Pro messages used", value: String(user.pro_messages_used) },
+        { label: "Created", value: new Date(user.created_at).toLocaleString() },
+      ]
+    : [];
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>User profile</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2 text-sm">
+          {rows.map((r) => (
+            <div
+              key={r.label}
+              className="flex flex-col gap-0.5 border-b border-border pb-2 last:border-b-0"
+            >
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                {r.label}
+              </span>
+              <span className="break-all font-medium">{r.value}</span>
+            </div>
+          ))}
+          <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Password:</span>{" "}
+            Passwords are one-way hashed by the auth system and cannot be viewed
+            by anyone — not even you. Use the “Password” button to set a new one.
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -523,6 +585,11 @@ function ChatsTab() {
       <p className="mt-1 text-sm text-muted-foreground">
         Every user's chats. Click one to read the conversation.
       </p>
+      {chatsQuery.error && (
+        <div className="mt-3 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+          Failed to load chats: {(chatsQuery.error as Error).message}
+        </div>
+      )}
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div className="max-h-[560px] overflow-y-auto rounded-md border border-border">
           {chats.length === 0 && (
@@ -554,6 +621,11 @@ function ChatsTab() {
           )}
           {openId && detail.isLoading && (
             <p className="text-sm text-muted-foreground">Loading…</p>
+          )}
+          {openId && detail.error && (
+            <p className="text-sm text-destructive">
+              Failed to load chat: {(detail.error as Error).message}
+            </p>
           )}
           {openId && detail.data && (
             <div className="space-y-3">
