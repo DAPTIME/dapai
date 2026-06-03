@@ -69,7 +69,7 @@ function Home() {
   const { user, ready } = useAuth();
   const [greeting, setGreeting] = useState<string>("");
   const create = useServerFn(createChat);
-  const send = useServerFn(sendChatMessage);
+
 
   useEffect(() => {
     const finalName = user?.name || "friend";
