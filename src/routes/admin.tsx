@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus } from "lucide-react";
 import {
   adminAmIAdmin,
   adminListUsers,
@@ -25,6 +25,11 @@ import {
   adminListAllChats,
   adminGetChat,
 } from "@/lib/admin.functions";
+import {
+  listBetaTesters,
+  adminAddBetaTester,
+  adminRemoveBetaTester,
+} from "@/lib/beta.functions";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -83,6 +88,9 @@ function Admin() {
             <TabsTrigger value="chats">
               <MessageSquare className="mr-2 h-4 w-4" /> All Chats
             </TabsTrigger>
+            <TabsTrigger value="beta">
+              <Users className="mr-2 h-4 w-4" /> Beta Testers
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="mt-6">
@@ -93,6 +101,9 @@ function Admin() {
           </TabsContent>
           <TabsContent value="chats" className="mt-6">
             <ChatsTab />
+          </TabsContent>
+          <TabsContent value="beta" className="mt-6">
+            <BetaTab />
           </TabsContent>
         </Tabs>
       )}
@@ -642,6 +653,98 @@ function ChatsTab() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function BetaTab() {
+  const qc = useQueryClient();
+  const fetchList = useServerFn(listBetaTesters);
+  const addFn = useServerFn(adminAddBetaTester);
+  const removeFn = useServerFn(adminRemoveBetaTester);
+  const [name, setName] = useState("");
+
+  const listQuery = useQuery({
+    queryKey: ["beta-testers"],
+    queryFn: () => fetchList(),
+  });
+
+  const add = useMutation({
+    mutationFn: (n: string) => addFn({ data: { name: n } }),
+    onSuccess: () => {
+      toast.success("Beta tester added");
+      setName("");
+      qc.invalidateQueries({ queryKey: ["beta-testers"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => removeFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Removed");
+      qc.invalidateQueries({ queryKey: ["beta-testers"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const list = listQuery.data ?? [];
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div>
+        <h2 className="text-lg font-semibold">Beta Testers</h2>
+        <p className="text-sm text-muted-foreground">
+          Add or remove names shown on the public Team page.
+        </p>
+      </div>
+
+      <form
+        className="mt-4 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const trimmed = name.trim();
+          if (!trimmed) return;
+          add.mutate(trimmed);
+        }}
+      >
+        <Input
+          placeholder="Full name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={120}
+        />
+        <Button type="submit" disabled={add.isPending || !name.trim()}>
+          <Plus className="mr-1 h-4 w-4" /> Add
+        </Button>
+      </form>
+
+      <ul className="mt-5 divide-y divide-border rounded-md border border-border">
+        {listQuery.isLoading && (
+          <li className="px-3 py-3 text-sm text-muted-foreground">Loading…</li>
+        )}
+        {!listQuery.isLoading && list.length === 0 && (
+          <li className="px-3 py-3 text-sm text-muted-foreground">
+            No beta testers yet.
+          </li>
+        )}
+        {list.map((b) => (
+          <li
+            key={b.id}
+            className="flex items-center justify-between px-3 py-2 text-sm"
+          >
+            <span className="font-medium">{b.name}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => remove.mutate(b.id)}
+              disabled={remove.isPending}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove
+            </Button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
