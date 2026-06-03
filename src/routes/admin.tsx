@@ -520,13 +520,38 @@ function ResetPasswordDialog({
 }
 
 function SystemPromptTab() {
+  return (
+    <div className="space-y-6">
+      <SystemPromptEditor
+        model="dap-ai-1.0"
+        title="DAP AI 1.0 (Pro)"
+        description="Used when the Pro model is selected. Falls back to the legacy global prompt if left empty."
+      />
+      <SystemPromptEditor
+        model="dap-ai-lite"
+        title="DAP AI Lite"
+        description="Used when the Lite model is selected. Falls back to the legacy global prompt if left empty."
+      />
+    </div>
+  );
+}
+
+function SystemPromptEditor({
+  model,
+  title,
+  description,
+}: {
+  model: "dap-ai-1.0" | "dap-ai-lite";
+  title: string;
+  description: string;
+}) {
   const qc = useQueryClient();
   const getPrompt = useServerFn(adminGetSystemPrompt);
   const setPrompt = useServerFn(adminSetSystemPrompt);
 
   const promptQuery = useQuery({
-    queryKey: ["admin", "system-prompt"],
-    queryFn: () => getPrompt(),
+    queryKey: ["admin", "system-prompt", model],
+    queryFn: () => getPrompt({ data: { model } }),
   });
 
   const [draft, setDraft] = useState("");
@@ -535,10 +560,11 @@ function SystemPromptTab() {
   }, [promptQuery.data]);
 
   const save = useMutation({
-    mutationFn: () => setPrompt({ data: { systemPrompt: draft } }),
+    mutationFn: () =>
+      setPrompt({ data: { model, systemPrompt: draft } }),
     onSuccess: () => {
-      toast.success("System prompt saved");
-      qc.invalidateQueries({ queryKey: ["admin", "system-prompt"] });
+      toast.success(`${title} prompt saved`);
+      qc.invalidateQueries({ queryKey: ["admin", "system-prompt", model] });
     },
     onError: (e) =>
       toast.error(e instanceof Error ? e.message : "Failed to save"),
@@ -547,19 +573,21 @@ function SystemPromptTab() {
   return (
     <div className="space-y-5 rounded-2xl border border-border bg-card p-6">
       <div className="space-y-2">
-        <Label htmlFor="sysprompt">System prompt (hidden from users)</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor={`sysprompt-${model}`} className="text-base font-semibold">
+            {title}
+          </Label>
+          <code className="text-xs text-muted-foreground">{model}</code>
+        </div>
         <textarea
-          id="sysprompt"
+          id={`sysprompt-${model}`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={10}
           placeholder="You are DAP AI…"
           className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
-        <p className="text-xs text-muted-foreground">
-          Stored on the server. Prepended to every chat as the{" "}
-          <code>system</code> message. Other users cannot read it.
-        </p>
+        <p className="text-xs text-muted-foreground">{description}</p>
       </div>
       <Button
         onClick={() => save.mutate()}

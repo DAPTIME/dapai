@@ -184,33 +184,57 @@ export const adminResetPassword = createServerFn({ method: "POST" })
 
 
 
-export const adminGetSystemPrompt = createServerFn({ method: "GET" })
+const MODEL_IDS = ["dap-ai-1.0", "dap-ai-lite"] as const;
+type ModelId = (typeof MODEL_IDS)[number];
+
+export const adminGetSystemPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((i) =>
+    z
+      .object({ model: z.enum(MODEL_IDS).optional() })
+      .parse(i ?? {})
+  )
+  .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
-    const { data, error } = await supabaseAdmin
+    const id: string = data.model ?? "global";
+    const { data: row, error } = await supabaseAdmin
       .from("ai_settings")
       .select("system_prompt, updated_at")
-      .eq("id", "global")
+      .eq("id", id)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return {
-      systemPrompt: data?.system_prompt ?? "",
-      updatedAt: data?.updated_at ?? null,
-    };
+    // Fallback to legacy "global" row when a per-model prompt isn't set yet.
+    let systemPrompt = row?.system_prompt ?? "";
+    let updatedAt = row?.updated_at ?? null;
+    if (!row && data.model) {
+      const { data: legacy } = await supabaseAdmin
+        .from("ai_settings")
+        .select("system_prompt, updated_at")
+        .eq("id", "global")
+        .maybeSingle();
+      systemPrompt = legacy?.system_prompt ?? "";
+      updatedAt = legacy?.updated_at ?? null;
+    }
+    return { systemPrompt, updatedAt };
   });
 
 export const adminSetSystemPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({ systemPrompt: z.string().max(8000) }).parse(i)
+    z
+      .object({
+        systemPrompt: z.string().max(8000),
+        model: z.enum(MODEL_IDS).optional(),
+      })
+      .parse(i)
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const id: string = data.model ?? "global";
     const { error } = await supabaseAdmin
       .from("ai_settings")
       .upsert({
-        id: "global",
+        id,
         system_prompt: data.systemPrompt,
         updated_at: new Date().toISOString(),
       });
