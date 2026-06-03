@@ -551,8 +551,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               .replace(/<think>[\s\S]*?<\/think>/gi, "")
               .replace(/<think>[\s\S]*$/gi, "")
               .replace(/<\|begin_of_thought\|>[\s\S]*?<\|end_of_thought\|>/gi, "")
-              .replace(/^\s*(?:thinking|thought|reasoning)\s*:[\s\S]*?\n\n/i, "")
-              .trim();
+              .replace(/^\s*(?:thinking|thought|reasoning)\s*:[\s\S]*?\n\n/i, "");
+            // Some models still leak first-person planning prose with no
+            // tags ("The user said X. I need to respond..."). Strip leading
+            // meta-sentences until the actual reply begins.
+            const metaRe =
+              /^\s*(?:The user\b[^.!?\n]*[.!?]|I(?:'ll| will| must| need to| should(?:n't)?| have to| can(?:not|'t)?)\b[^.!?\n]*[.!?]|(?:As per|Per|According to|Based on|Following)\s+(?:the|my|these)\s+(?:persona|instructions?|system|prompt|rules|guidelines)\b[^.!?\n]*[.!?]|My (?:response|reply|answer)\b[^.!?\n]*[.!?])\s*/i;
+            let guard = 0;
+            while (metaRe.test(out) && guard++ < 10) {
+              out = out.replace(metaRe, "");
+            }
+            out = out.trim();
           }
           return out;
         } catch (e) {
