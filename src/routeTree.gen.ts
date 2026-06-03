@@ -14,7 +14,6 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HelpRouteImport } from './routes/help'
-import { Route as GemsRouteImport } from './routes/gems'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DapsRouteImport } from './routes/daps'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -45,11 +44,6 @@ const LoginRoute = LoginRouteImport.update({
 const HelpRoute = HelpRouteImport.update({
   id: '/help',
   path: '/help',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GemsRoute = GemsRouteImport.update({
-  id: '/gems',
-  path: '/gems',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -88,7 +82,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/gems': typeof GemsRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
@@ -102,7 +95,6 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/gems': typeof GemsRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
@@ -117,7 +109,6 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/gems': typeof GemsRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
@@ -133,7 +124,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/daps'
     | '/forgot-password'
-    | '/gems'
     | '/help'
     | '/login'
     | '/settings'
@@ -147,7 +137,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/daps'
     | '/forgot-password'
-    | '/gems'
     | '/help'
     | '/login'
     | '/settings'
@@ -161,7 +150,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/daps'
     | '/forgot-password'
-    | '/gems'
     | '/help'
     | '/login'
     | '/settings'
@@ -176,7 +164,6 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   DapsRoute: typeof DapsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  GemsRoute: typeof GemsRoute
   HelpRoute: typeof HelpRoute
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
@@ -221,13 +208,6 @@ declare module '@tanstack/react-router' {
       path: '/help'
       fullPath: '/help'
       preLoaderRoute: typeof HelpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gems': {
-      id: '/gems'
-      path: '/gems'
-      fullPath: '/gems'
-      preLoaderRoute: typeof GemsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -280,7 +260,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   DapsRoute: DapsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  GemsRoute: GemsRoute,
   HelpRoute: HelpRoute,
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
