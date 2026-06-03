@@ -530,12 +530,22 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             typeof json?.error === "string"
               ? json.error
               : json?.error?.message;
-          return (
+          let out =
             json?.choices?.[0]?.message?.content ??
             json?.message?.content ??
             errStr ??
-            "(empty response)"
-          );
+            "(empty response)";
+          if (effectiveModel === "dap-ai-lite") {
+            // Strip reasoning/thinking blocks the model emits even
+            // when we asked it not to think.
+            out = out
+              .replace(/<think>[\s\S]*?<\/think>/gi, "")
+              .replace(/<think>[\s\S]*$/gi, "")
+              .replace(/<\|begin_of_thought\|>[\s\S]*?<\|end_of_thought\|>/gi, "")
+              .replace(/^\s*(?:thinking|thought|reasoning)\s*:[\s\S]*?\n\n/i, "")
+              .trim();
+          }
+          return out;
         } catch (e) {
           return `Couldn't reach AI backend: ${(e as Error).message}`;
         }
