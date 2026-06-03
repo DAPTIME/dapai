@@ -112,14 +112,72 @@ export const adminSetTier = createServerFn({ method: "POST" })
 export const adminAmIAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    return { isAdmin: !!data };
+    try {
+      await assertAdmin(context.userId);
+      return { isAdmin: true };
+    } catch {
+      return { isAdmin: false };
+    }
   });
+
+export const adminUpdateUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        name: z.string().trim().min(1).max(120).optional(),
+        email: z.string().trim().email().max(255).optional(),
+        tier: z.enum(["free", "pro"]).optional(),
+        resetUsage: z.boolean().optional(),
+      })
+      .parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    if (data.email) {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(
+        data.userId,
+        { email: data.email, email_confirm: true }
+      );
+      if (error) throw new Error(error.message);
+    }
+    const patch: Record<string, unknown> = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.email !== undefined) patch.email = data.email;
+    if (data.tier !== undefined) patch.tier = data.tier;
+    if (data.resetUsage) patch.pro_messages_used = 0;
+    if (Object.keys(patch).length > 0) {
+      const { error } = await supabaseAdmin
+        .from("profiles")
+        .update(patch)
+        .eq("id", data.userId);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+export const adminResetPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        newPassword: z.string().min(6).max(128),
+      })
+      .parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(
+      data.userId,
+      { password: data.newPassword }
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 
 export const adminGetSystemPrompt = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
