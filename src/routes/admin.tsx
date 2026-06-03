@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power } from "lucide-react";
 import {
   adminAmIAdmin,
   adminListUsers,
@@ -24,6 +24,8 @@ import {
   adminSetSystemPrompt,
   adminListAllChats,
   adminGetChat,
+  getSiteStatus,
+  adminSetSiteStatus,
 } from "@/lib/admin.functions";
 import {
   listBetaTesters,
