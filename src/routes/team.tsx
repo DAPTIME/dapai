@@ -10,6 +10,12 @@ export const Route = createFileRoute("/team")({
         content:
           "Meet the team behind DAP AI — creator, AI designer, and beta testers.",
       },
+      { property: "og:title", content: "Our Team — DAP AI" },
+      {
+        property: "og:description",
+        content: "Meet the creator, AI designer, and beta testers behind DAP AI.",
+      },
+      { property: "og:url", content: "https://dapai.lovable.app/team" },
     ],
     links: [{ rel: "canonical", href: "https://dapai.lovable.app/team" }],
   }),

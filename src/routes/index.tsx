@@ -22,17 +22,18 @@ import logo from "@/assets/logo.png.asset.json";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "DAP AI — Your AI workspace" },
+      { title: "DAP AI — Free AI Chatbot" },
       {
         name: "description",
         content:
-          "DAP AI is your personal AI workspace for fast, friendly chat and productivity assistance. Switch between Pro and Lite models or pick a specialized DAP.",
+          "DAP AI is a fast, friendly AI chatbot and workspace for answers, writing, studying, coding, and custom AI assistants called DAPs.",
       },
-      { property: "og:title", content: "DAP AI — Your AI workspace" },
+      { name: "keywords", content: "DAP AI, DAPAI, AI chatbot, free AI chat, AI assistant, DAPs" },
+      { property: "og:title", content: "DAP AI — Free AI Chatbot" },
       {
         property: "og:description",
         content:
-          "Chat with DAP AI — your personal AI workspace for productivity, learning, and creative work.",
+          "Chat with DAP AI for fast answers, writing help, studying, coding, and custom AI assistants.",
       },
       { property: "og:url", content: "https://dapai.lovable.app/" },
       {
@@ -56,6 +57,8 @@ export const Route = createFileRoute("/")({
           name: "DAP AI",
           serviceType: "AI chat assistant",
           provider: { "@type": "Organization", name: "DAP AI" },
+          description:
+            "A fast AI chatbot and workspace for answers, writing, studying, coding, and custom AI assistants called DAPs.",
           url: "https://dapai.lovable.app/",
         }),
       },
@@ -135,9 +138,14 @@ function Home() {
             className="mb-6 h-[min(25vw,10rem)] w-[min(25vw,10rem)] object-contain drop-shadow-[0_10px_40px_oklch(0.55_0.22_280/0.45)]"
           />
 
-          <h1 className="text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
-            {greeting}
+          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+            DAP AI
           </h1>
+
+          <p className="mt-3 max-w-xl text-base text-muted-foreground">
+            {greeting} DAP AI is a fast AI chatbot for answers, writing, studying,
+            coding, and custom AI assistants.
+          </p>
 
           {!user && ready && (
             <p className="mt-3 text-sm text-muted-foreground">

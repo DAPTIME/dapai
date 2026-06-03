@@ -17,13 +17,21 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/daps")({
   head: () => ({
     meta: [
-      { title: "DAPs — DAP AI" },
+      { title: "Custom AI Assistants — DAP AI" },
       {
         name: "description",
         content:
-          "Custom AI helpers with their own system prompts stacked on top of DAP AI.",
+          "Explore DAP AI's custom AI assistants for coding, studying, writing, planning, and focused tasks.",
       },
+      { property: "og:title", content: "Custom AI Assistants — DAP AI" },
+      {
+        property: "og:description",
+        content:
+          "Explore specialized DAP AI assistants for coding, studying, writing, planning, and focused tasks.",
+      },
+      { property: "og:url", content: "https://dapai.lovable.app/daps" },
     ],
+    links: [{ rel: "canonical", href: "https://dapai.lovable.app/daps" }],
   }),
   component: Daps,
 });
