@@ -161,7 +161,7 @@ function ChatPage() {
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
         <ChatComposer
-          onSend={(t) => sendMut.mutate(t)}
+          onSend={(text, images) => sendMut.mutate({ text, images })}
           pending={busy}
           quotaInfo={
             profileQuery.data && profileQuery.data.tier === "free"
