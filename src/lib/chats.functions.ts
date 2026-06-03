@@ -436,6 +436,15 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const metaPrompt = await generateMetaPrompt(data.text, systemPrompt, dapName);
 
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
+      ...(effectiveModel === "dap-ai-lite"
+        ? [
+            {
+              role: "system" as const,
+              content:
+                "Do not think out loud, do not produce any reasoning, planning, scratchpad, or <think> tags. Respond directly with the final answer only.",
+            },
+          ]
+        : []),
       ...(systemPrompt
         ? [{ role: "system" as const, content: systemPrompt }]
         : []),
