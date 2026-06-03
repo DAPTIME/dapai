@@ -1,7 +1,7 @@
 const LITE_FALLBACK_REPLY = "I’m here. How can I help?";
 
 const directReplyCue =
-  /\b(?:hey|hi|hello|sure|absolutely|yes|no|thanks|you(?:'|’)re welcome|here(?:'|’)s|here is|got it|okay|of course|sorry|i(?:'|’)m sorry|let(?:'|’)s|you can|try|use|open|click|select)\b/i;
+  /\b(?:hey|sure|absolutely|yes|no|thanks|you(?:'|’)re welcome|here(?:'|’)s|here is|got it|okay|of course|sorry|i(?:'|’)m sorry|let(?:'|’)s|you can|try|use|open|click|select)\b/i;
 
 const reasoningLeakRe =
   /<\/?(?:think|thinking|reasoning)\b|\|begin_of_(?:thought|reasoning)\||(?:^|\n)\s*(?:thinking|thought|reasoning|analysis|scratchpad)\s*:|^\s*(?:the user\s+(?:said|asked|wants|needs|provided)|user message\b|i\s+(?:need|should|will|must|have to|can|want|am going|would)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b)/i;
