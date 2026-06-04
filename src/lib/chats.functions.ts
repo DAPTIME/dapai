@@ -577,6 +577,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             },
           ]
         : []),
+      ...(webContext
+        ? [{ role: "system" as const, content: webContext }]
+        : []),
+
 
       // Keep the system message at the head (for DAP context) and trim
       // the rolling history for Lite so it fits in its smaller LM Studio
