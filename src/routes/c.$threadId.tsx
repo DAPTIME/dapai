@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
-import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
+import { getChat, sendChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
 import { getSiteStatus } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
