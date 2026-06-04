@@ -573,7 +573,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     }
 
     const ANTI_SYCOPHANCY =
-      "Do NOT blindly agree with facts, numbers, or claims the user asserts. If the user states a value that contradicts your knowledge or the web search results, push back politely and state the correct value. Never invent stats. If you don't actually know, say so.";
+      "Accuracy rules: (1) NEVER invent specific numbers, stats, dates, names, prices, or version numbers. If you don't actually know the exact value, say \"I'm not sure\" or \"I don't have that info\" — do not guess and do not output a plausible-looking number. (2) For niche topics (specific games, mods, private projects, internal tools, fan communities) assume the user knows more than you. If the user states a value, trust it and use it going forward unless web search results clearly contradict it. (3) If web search results are present above, prefer them over both your training data and the user's claim, and cite [1], [2] when relevant.";
 
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(effectiveModel === "dap-ai-lite"
