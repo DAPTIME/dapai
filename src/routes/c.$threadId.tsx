@@ -210,11 +210,21 @@ function ChatPage() {
                 <div className="text-xs font-medium text-muted-foreground">
                   DAP AI
                 </div>
-                <div className="mt-2">
-                  <span className="thinking-dot" />
-                  <span className="thinking-dot" />
-                  <span className="thinking-dot" />
-                </div>
+                {searchingWeb ? (
+                  <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                    <span
+                      className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+                      aria-hidden
+                    />
+                    <span>Searching the web…</span>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                  </div>
+                )}
               </div>
             </div>
           )}
