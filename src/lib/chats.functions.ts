@@ -543,6 +543,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         ? ""
         : await generateMetaPrompt(data.text, systemPrompt, dapName);
 
+    // Auto web-search: a fast classifier decides if the question needs
+    // fresh info; if so we run a Firecrawl search and inject the results
+    // as system context so the model can answer accurately and cite.
+    let webContext = "";
+    try {
+      const query = await planWebSearch(data.text);
+      if (query) webContext = await webSearchContext(query);
+    } catch {
+      /* best-effort */
+    }
+
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(effectiveModel === "dap-ai-lite"
         ? [
