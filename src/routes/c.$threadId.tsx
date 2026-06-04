@@ -10,6 +10,7 @@ import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
 import { getSiteStatus } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
+import { MarkdownMessage } from "@/components/markdown-message";
 
 export const Route = createFileRoute("/c/$threadId")({
   head: () => ({
@@ -164,8 +165,10 @@ function ChatPage() {
                     {m.content}
                   </div>
                 ) : (
-                  <div className="mt-1 whitespace-pre-wrap text-foreground">
-                    {m.model === "dap-ai-lite" ? sanitizeLiteReply(m.content) : m.content}
+                  <div className="mt-1 text-foreground">
+                    <MarkdownMessage
+                      content={m.model === "dap-ai-lite" ? sanitizeLiteReply(m.content) : m.content}
+                    />
                   </div>
                 )}
               </div>
