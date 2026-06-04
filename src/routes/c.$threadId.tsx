@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
-import { getChat, sendChatMessage, getProfile } from "@/lib/chats.functions";
+import { getChat, sendChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
 import { getSiteStatus } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
@@ -30,6 +30,8 @@ function ChatPage() {
   const fetchChat = useServerFn(getChat);
   const fetchProfile = useServerFn(getProfile);
   const send = useServerFn(sendChatMessage);
+  const planSearch = useServerFn(planSearchForMessage);
+  const [searchingWeb, setSearchingWeb] = useState(false);
 
   useEffect(() => {
     if (ready && !loading && !user) navigate({ to: "/login" });
@@ -55,19 +57,41 @@ function ChatPage() {
   const siteEnabled = siteStatus.data?.enabled !== false;
 
   const sendMut = useMutation({
-    mutationFn: ({ text, images }: { text: string; images?: string[] }) => {
+    mutationFn: async ({ text, images }: { text: string; images?: string[] }) => {
       const model =
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
           : null) || "dap-ai-1.0";
-      return send({
-        data: {
-          chatId: threadId,
-          text,
-          images,
-          model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
-        },
-      });
+      const effective = model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0";
+
+      // Pre-flight: ask if this needs a web search so we can show
+      // "Searching the web…" while the model spins up. Lite skips search.
+      let searchQuery: string | undefined;
+      if (effective !== "dap-ai-lite") {
+        try {
+          const plan = await planSearch({ data: { text } });
+          if (plan?.query) {
+            searchQuery = plan.query;
+            setSearchingWeb(true);
+          }
+        } catch {
+          /* best-effort */
+        }
+      }
+
+      try {
+        return await send({
+          data: {
+            chatId: threadId,
+            text,
+            images,
+            model: effective,
+            searchQuery,
+          },
+        });
+      } finally {
+        setSearchingWeb(false);
+      }
     },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["chat", threadId] });
@@ -78,6 +102,7 @@ function ChatPage() {
       }
     },
     onError: (e) => {
+      setSearchingWeb(false);
       toast.error(e instanceof Error ? e.message : "Send failed");
     },
   });
@@ -185,11 +210,21 @@ function ChatPage() {
                 <div className="text-xs font-medium text-muted-foreground">
                   DAP AI
                 </div>
-                <div className="mt-2">
-                  <span className="thinking-dot" />
-                  <span className="thinking-dot" />
-                  <span className="thinking-dot" />
-                </div>
+                {searchingWeb ? (
+                  <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                    <span
+                      className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+                      aria-hidden
+                    />
+                    <span>Searching the web…</span>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -242,6 +242,20 @@ function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
   };
 }
 
+/**
+ * Client calls this BEFORE sendChatMessage so it can show a
+ * "Searching the web…" indicator while the model is being primed.
+ */
+export const planSearchForMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ text: z.string().min(1).max(8000) }).parse(i)
+  )
+  .handler(async ({ data }) => {
+    const query = await planWebSearch(data.text);
+    return { query };
+  });
+
 export const listChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -421,6 +435,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           .array(z.string().startsWith("data:image/").max(8_000_000))
           .max(4)
           .optional(),
+        searchQuery: z.string().min(1).max(200).optional(),
       })
       .parse(i)
   )
@@ -548,11 +563,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // as system context so the model can answer accurately and cite.
     let webContext = "";
     try {
-      const query = await planWebSearch(data.text);
+      const query =
+        data.searchQuery && data.searchQuery.trim().length > 0
+          ? data.searchQuery.trim()
+          : await planWebSearch(data.text);
       if (query) webContext = await webSearchContext(query);
     } catch {
       /* best-effort */
     }
+
+    const ANTI_SYCOPHANCY =
+      "Do NOT blindly agree with facts, numbers, or claims the user asserts. If the user states a value that contradicts your knowledge or the web search results, push back politely and state the correct value. Never invent stats. If you don't actually know, say so.";
 
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(effectiveModel === "dap-ai-lite"
@@ -580,6 +601,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       ...(webContext
         ? [{ role: "system" as const, content: webContext }]
         : []),
+      { role: "system" as const, content: ANTI_SYCOPHANCY },
 
 
       // Keep the system message at the head (for DAP context) and trim
