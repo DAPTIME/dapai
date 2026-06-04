@@ -25,6 +25,9 @@ const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 // never overflows. Pro keeps the full history.
 const LITE_HISTORY_LIMIT = 12;
 
+const LITE_NO_THINK_PROMPT =
+  "You are DAP AI Lite, also known as the Gemma E2B model. Thinking mode is OFF. Answer with only the final user-facing response. Never write internal reasoning, planning, analysis, scratchpad, self-talk, or sentences like 'I need to'. Do not output <think> tags or explain how you will answer.";
+
 
 /**
  * Meta-prompt layer: ask a fast Lovable AI model to draft a short
@@ -461,8 +464,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         ? [
             {
               role: "system" as const,
-              content:
-                "You are DAP AI Lite, a concise helpful assistant. Always answer correctly and directly. Do not show reasoning, planning, scratchpad, or <think> tags — just give the final answer.",
+              content: LITE_NO_THINK_PROMPT,
             },
           ]
         : []),
@@ -547,6 +549,13 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               enable_thinking: false,
               thinking: false,
               no_think: true,
+            },
+            extra_body: {
+              chat_template_kwargs: {
+                enable_thinking: false,
+                thinking: false,
+                no_think: true,
+              },
             },
           };
 
