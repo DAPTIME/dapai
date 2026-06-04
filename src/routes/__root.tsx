@@ -1,5 +1,6 @@
 import { Outlet, createRootRouteWithContext, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { AccountMenu } from "@/components/account-menu";
+import { getProfile } from "@/lib/chats.functions";
 import appCss from "../styles.css?url";
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -104,36 +106,7 @@ function RootComponent() {
           <div className="flex min-h-screen w-full bg-background">
             <AppSidebar />
             <div className="flex flex-1 flex-col">
-              <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-3 backdrop-blur">
-                <div className="flex items-center gap-2">
-                  <SidebarTrigger />
-                  <span className="text-sm font-medium text-muted-foreground">DAP AI</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm">Upgrade</Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Upgrade to Pro</DialogTitle>
-                        <DialogDescription>
-                          Pay Devansh 5 AED irl 💸
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
-                        Hand over 5 AED to Devansh in person, and your account will be upgraded to Pro.
-                      </div>
-                      <DialogFooter>
-                        <Button variant="secondary" size="sm" onClick={(e) => (e.currentTarget.closest('[role="dialog"]') as HTMLElement)?.querySelector<HTMLButtonElement>('[aria-label="Close"]')?.click()}>
-                          Got it
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                  <AccountMenu />
-                </div>
-              </header>
+              <HeaderBar />
               <main className="flex-1">
                 <RouteTransition>
                   <Outlet />
@@ -145,6 +118,52 @@ function RootComponent() {
         </SidebarProvider>
       </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function HeaderBar() {
+  const { user } = useAuth();
+  const fetchProfile = useServerFn(getProfile);
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(),
+    enabled: !!user,
+  });
+  const isPro = profileQuery.data?.tier === "pro";
+
+  return (
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-3 backdrop-blur">
+      <div className="flex items-center gap-2">
+        <SidebarTrigger />
+        <span className="text-sm font-medium text-muted-foreground">DAP AI</span>
+      </div>
+      <div className="flex items-center gap-2">
+        {!isPro && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm">Upgrade</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Upgrade to Pro</DialogTitle>
+                <DialogDescription>
+                  Pay Devansh 5 AED irl 💸
+                </DialogDescription>
+              </DialogHeader>
+              <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
+                Hand over 5 AED to Devansh in person, and your account will be upgraded to Pro.
+              </div>
+              <DialogFooter>
+                <Button variant="secondary" size="sm" onClick={(e) => (e.currentTarget.closest('[role="dialog"]') as HTMLElement)?.querySelector<HTMLButtonElement>('[aria-label="Close"]')?.click()}>
+                  Got it
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+        <AccountMenu />
+      </div>
+    </header>
   );
 }
 
