@@ -242,6 +242,20 @@ function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
   };
 }
 
+/**
+ * Client calls this BEFORE sendChatMessage so it can show a
+ * "Searching the web…" indicator while the model is being primed.
+ */
+export const planSearchForMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ text: z.string().min(1).max(8000) }).parse(i)
+  )
+  .handler(async ({ data }) => {
+    const query = await planWebSearch(data.text);
+    return { query };
+  });
+
 export const listChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
