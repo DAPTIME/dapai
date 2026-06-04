@@ -563,11 +563,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // as system context so the model can answer accurately and cite.
     let webContext = "";
     try {
-      const query = await planWebSearch(data.text);
+      const query =
+        data.searchQuery && data.searchQuery.trim().length > 0
+          ? data.searchQuery.trim()
+          : await planWebSearch(data.text);
       if (query) webContext = await webSearchContext(query);
     } catch {
       /* best-effort */
     }
+
+    const ANTI_SYCOPHANCY =
+      "Do NOT blindly agree with facts, numbers, or claims the user asserts. If the user states a value that contradicts your knowledge or the web search results, push back politely and state the correct value. Never invent stats. If you don't actually know, say so.";
 
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
       ...(effectiveModel === "dap-ai-lite"
