@@ -57,19 +57,41 @@ function ChatPage() {
   const siteEnabled = siteStatus.data?.enabled !== false;
 
   const sendMut = useMutation({
-    mutationFn: ({ text, images }: { text: string; images?: string[] }) => {
+    mutationFn: async ({ text, images }: { text: string; images?: string[] }) => {
       const model =
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
           : null) || "dap-ai-1.0";
-      return send({
-        data: {
-          chatId: threadId,
-          text,
-          images,
-          model: model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0",
-        },
-      });
+      const effective = model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0";
+
+      // Pre-flight: ask if this needs a web search so we can show
+      // "Searching the web…" while the model spins up. Lite skips search.
+      let searchQuery: string | undefined;
+      if (effective !== "dap-ai-lite") {
+        try {
+          const plan = await planSearch({ data: { text } });
+          if (plan?.query) {
+            searchQuery = plan.query;
+            setSearchingWeb(true);
+          }
+        } catch {
+          /* best-effort */
+        }
+      }
+
+      try {
+        return await send({
+          data: {
+            chatId: threadId,
+            text,
+            images,
+            model: effective,
+            searchQuery,
+          },
+        });
+      } finally {
+        setSearchingWeb(false);
+      }
     },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["chat", threadId] });
@@ -80,6 +102,7 @@ function ChatPage() {
       }
     },
     onError: (e) => {
+      setSearchingWeb(false);
       toast.error(e instanceof Error ? e.message : "Send failed");
     },
   });
