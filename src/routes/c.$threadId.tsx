@@ -30,6 +30,8 @@ function ChatPage() {
   const fetchChat = useServerFn(getChat);
   const fetchProfile = useServerFn(getProfile);
   const send = useServerFn(sendChatMessage);
+  const planSearch = useServerFn(planSearchForMessage);
+  const [searchingWeb, setSearchingWeb] = useState(false);
 
   useEffect(() => {
     if (ready && !loading && !user) navigate({ to: "/login" });
