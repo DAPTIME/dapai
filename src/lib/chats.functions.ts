@@ -435,6 +435,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           .array(z.string().startsWith("data:image/").max(8_000_000))
           .max(4)
           .optional(),
+        searchQuery: z.string().min(1).max(200).optional(),
       })
       .parse(i)
   )
