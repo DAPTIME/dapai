@@ -541,14 +541,15 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             enable_thinking: false,
             include_reasoning: false,
             return_reasoning: false,
-            top_k: 1,
-            temperature: 0.2,
+            temperature: 0,
+            top_p: 1,
             chat_template_kwargs: {
               enable_thinking: false,
               thinking: false,
               no_think: true,
             },
           };
+
           const res = await fetch(backend, {
             method: "POST",
             headers: {
