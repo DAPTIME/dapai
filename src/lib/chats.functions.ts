@@ -139,6 +139,91 @@ async function extractMemories(
   }
 }
 
+/**
+ * Decide if the user's message needs fresh information from the web
+ * (current events, "latest", prices, scores, recent releases, real-time
+ * facts, anything time-sensitive). Returns a tight search query when yes,
+ * null when no. Best-effort — returns null on failure.
+ */
+async function planWebSearch(userText: string): Promise<string | null> {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.1-flash-lite-preview",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Decide if answering the user's message correctly REQUIRES fresh internet information (current events, 'latest' / 'newest' / 'recent', live scores, today's prices, recent releases, news, who currently holds X, real-time facts). If yes, produce a short Google-style search query. If the answer is timeless general knowledge, math, coding, opinions, or the model can answer from training, say no. Return STRICT JSON: {\"search\": boolean, \"query\": string}.",
+            },
+            { role: "user", content: userText },
+          ],
+          response_format: { type: "json_object" },
+          stream: false,
+        }),
+      }
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+    };
+    const raw = json?.choices?.[0]?.message?.content ?? "";
+    const parsed = JSON.parse(raw) as { search?: boolean; query?: string };
+    if (!parsed.search) return null;
+    const q = (parsed.query ?? userText).trim();
+    return q.length > 0 ? q.slice(0, 200) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Search the web via Firecrawl and return a compact, model-friendly
+ * context block. Returns "" on failure.
+ */
+async function webSearchContext(query: string): Promise<string> {
+  const key = process.env.FIRECRAWL_API_KEY;
+  if (!key) return "";
+  try {
+    const res = await fetch("https://api.firecrawl.dev/v2/search", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query, limit: 5 }),
+    });
+    if (!res.ok) return "";
+    const json = (await res.json()) as {
+      data?: {
+        web?: Array<{ url?: string; title?: string; description?: string }>;
+      } & Array<{ url?: string; title?: string; description?: string }>;
+    };
+    const results = Array.isArray(json?.data)
+      ? json.data
+      : json?.data?.web ?? [];
+    if (!results || results.length === 0) return "";
+    const lines = results.slice(0, 5).map((r, i) => {
+      const title = (r.title ?? "").trim();
+      const desc = (r.description ?? "").trim().slice(0, 300);
+      const url = (r.url ?? "").trim();
+      return `[${i + 1}] ${title}\n${desc}\n${url}`;
+    });
+    return `Live web search results for: "${query}"\nUse these to answer accurately. Cite sources inline like [1], [2] when relevant. If the results don't actually answer the question, say so honestly.\n\n${lines.join("\n\n")}`;
+  } catch {
+    return "";
+  }
+}
+
 function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
   url?: string;
   key?: string;
