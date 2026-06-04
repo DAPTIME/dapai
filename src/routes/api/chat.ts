@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { enqueue } from "@/lib/ai-queue";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 
+const LITE_NO_THINK_PROMPT =
+  "You are DAP AI Lite, also known as the Gemma E2B model. Thinking mode is OFF. Answer with only the final user-facing response. Never write internal reasoning, planning, analysis, scratchpad, self-talk, or sentences like 'I need to'. Do not output <think> tags or explain how you will answer.";
+
 /**
  * Raw HTTP relay for DAP AI (optional — the main app uses the
  * sendChatMessage server fn). Picks the backend based on the `model`
@@ -127,11 +130,19 @@ export const Route = createFileRoute("/api/chat")({
               thinking: false,
               no_think: true,
             };
+            parsed.extra_body = {
+              ...(parsed.extra_body ?? {}),
+              chat_template_kwargs: {
+                ...(parsed.extra_body?.chat_template_kwargs ?? {}),
+                enable_thinking: false,
+                thinking: false,
+                no_think: true,
+              },
+            };
             parsed.messages = [
               {
                 role: "system",
-                content:
-                  "You are DAP AI Lite, a concise helpful assistant. Always answer correctly and directly. Do not show reasoning, planning, scratchpad, or <think> tags — just give the final answer.",
+                content: LITE_NO_THINK_PROMPT,
               },
               ...(Array.isArray(parsed.messages) ? parsed.messages : []),
             ];

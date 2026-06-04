@@ -10,7 +10,10 @@ const directReplyStartCue = new RegExp(
 );
 
 const reasoningLeakRe =
-  /<\/?(?:think|thinking|reasoning)\b|\|begin_of_(?:thought|reasoning)\||(?:^|\n)\s*(?:thinking|thought|reasoning|analysis|scratchpad)\s*:|^\s*(?:the user\s+(?:said|asked|wants|needs|provided)|user message\b|i\s+(?:need|should|will|must|have to|am going)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b)/i;
+  /<\/?(?:think|thinking|reasoning)\b|\|begin_of_(?:thought|reasoning)\||(?:^|\n)\s*(?:thinking|thought|reasoning|analysis|scratchpad)\s*:|\b(?:the user\s+(?:said|asked|wants|needs|provided)|user message\b|i\s+(?:need|should|will|must|have to|am going)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b)/i;
+
+const leakedThoughtSentenceRe =
+  /(?:^|[\s\n])(?:[-*]\s*)?(?:the user\s+(?:said|asked|wants|needs|provided|is asking|is looking)|user message\b|i\s+(?:need|should|will|must|have to|am going)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b|(?:my|the)\s+(?:response|reply)\b|my\s+answer\b)[^.!?\n]*(?:[.!?]+|\n|$)/gi;
 
 export function hasLiteReasoningLeak(text: string): boolean {
   return reasoningLeakRe.test(text);
@@ -56,12 +59,15 @@ export function sanitizeLiteReply(text: string): string {
   }
 
   const metaLeadRe =
-    /^\s*(?:[-*]\s*)?(?:the user\s+(?:said|asked|wants|needs|provided|is asking|is looking)|user message\b|i\s+(?:need|should|will|must|have to|am going)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b|(?:my|the)\s+(?:response|reply|answer)\b)[\s\S]{0,600}?(?:[.!?]["'’\])]*\s+|:\s*|\n+)/i;
+    /^\s*(?:[-*]\s*)?(?:the user\s+(?:said|asked|wants|needs|provided|is asking|is looking)|user message\b|i\s+(?:need|should|will|must|have to|am going)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b|(?:my|the)\s+(?:response|reply)\b|my\s+answer\b)[\s\S]{0,600}?(?:[.!?]["'’\])]*\s+|:\s*|\n+)/i;
 
   let guard = 0;
   while (metaLeadRe.test(out) && guard++ < 20) {
     out = out.replace(metaLeadRe, "").replace(/^\s*["'’\])}.]+\s*/, "");
   }
+
+  out = out.replace(leakedThoughtSentenceRe, " ");
+  out = out.replace(/\s+([.,!?;:])/g, "$1").replace(/([.!?])(?=\S)/g, "$1 ");
 
   return out.trim() || LITE_FALLBACK_REPLY;
 }
