@@ -203,16 +203,15 @@ async function webSearchContext(query: string): Promise<string> {
       body: JSON.stringify({ query, limit: 5 }),
     });
     if (!res.ok) return "";
+    type Hit = { url?: string; title?: string; description?: string };
     const json = (await res.json()) as {
-      data?: {
-        web?: Array<{ url?: string; title?: string; description?: string }>;
-      } & Array<{ url?: string; title?: string; description?: string }>;
+      data?: Hit[] | { web?: Hit[] };
     };
-    const results = Array.isArray(json?.data)
+    const results: Hit[] = Array.isArray(json?.data)
       ? json.data
       : json?.data?.web ?? [];
-    if (!results || results.length === 0) return "";
-    const lines = results.slice(0, 5).map((r, i) => {
+    if (results.length === 0) return "";
+    const lines = results.slice(0, 5).map((r: Hit, i: number) => {
       const title = (r.title ?? "").trim();
       const desc = (r.description ?? "").trim().slice(0, 300);
       const url = (r.url ?? "").trim();
