@@ -601,6 +601,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       ...(webContext
         ? [{ role: "system" as const, content: webContext }]
         : []),
+      { role: "system" as const, content: ANTI_SYCOPHANCY },
 
 
       // Keep the system message at the head (for DAP context) and trim
