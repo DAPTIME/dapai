@@ -462,7 +462,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             {
               role: "system" as const,
               content:
-                "CRITICAL: Output ONLY your final reply to the user. Do NOT think out loud. Do NOT narrate what you're about to do. Do NOT reference 'the user', 'instructions', 'persona', or your own reasoning process. Do NOT produce any <think> tags, scratchpad, planning, or meta-commentary. Never start with phrases like 'The user said...', 'I need to...', 'I should...', 'I'll respond...'. Just write the answer directly, as if speaking to the user.",
+                "You are DAP AI Lite, a concise helpful assistant. Always answer correctly and directly. Do not show reasoning, planning, scratchpad, or <think> tags — just give the final answer.",
             },
           ]
         : []),
@@ -480,15 +480,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             },
           ]
         : []),
-      ...(effectiveModel === "dap-ai-lite"
-        ? [
-            {
-              role: "system" as const,
-              content:
-                "FINAL LITE MODE RULE: Reply with only the user-facing answer. Omit all reasoning, analysis, planning, and commentary about instructions. Do not mention what the user said or what you need to do.",
-            },
-          ]
-        : []),
+
       // Keep the system message at the head (for DAP context) and trim
       // the rolling history for Lite so it fits in its smaller LM Studio
       // context window.
@@ -549,14 +541,15 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             enable_thinking: false,
             include_reasoning: false,
             return_reasoning: false,
-            top_k: 1,
-            temperature: 0.2,
+            temperature: 0,
+            top_p: 1,
             chat_template_kwargs: {
               enable_thinking: false,
               thinking: false,
               no_think: true,
             },
           };
+
           const res = await fetch(backend, {
             method: "POST",
             headers: {

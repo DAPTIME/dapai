@@ -119,8 +119,8 @@ export const Route = createFileRoute("/api/chat")({
             parsed.enable_thinking = false;
             parsed.include_reasoning = false;
             parsed.return_reasoning = false;
-            parsed.top_k = 1;
-            parsed.temperature = 0.2;
+            parsed.temperature = 0;
+            parsed.top_p = 1;
             parsed.chat_template_kwargs = {
               ...(parsed.chat_template_kwargs ?? {}),
               enable_thinking: false,
@@ -131,11 +131,12 @@ export const Route = createFileRoute("/api/chat")({
               {
                 role: "system",
                 content:
-                  "CRITICAL: Output ONLY the final answer. Do not include reasoning, thinking, analysis, scratchpad, planning, or meta-commentary.",
+                  "You are DAP AI Lite, a concise helpful assistant. Always answer correctly and directly. Do not show reasoning, planning, scratchpad, or <think> tags — just give the final answer.",
               },
               ...(Array.isArray(parsed.messages) ? parsed.messages : []),
             ];
           }
+
           outgoingBody = JSON.stringify(parsed);
         } catch {
           /* keep raw */
