@@ -153,6 +153,8 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          images_generated_date: string
+          images_generated_today: number
           name: string | null
           pro_messages_used: number
           recovery_answer_hash: string | null
@@ -164,6 +166,8 @@ export type Database = {
           created_at?: string
           email?: string | null
           id: string
+          images_generated_date?: string
+          images_generated_today?: number
           name?: string | null
           pro_messages_used?: number
           recovery_answer_hash?: string | null
@@ -175,6 +179,8 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          images_generated_date?: string
+          images_generated_today?: number
           name?: string | null
           pro_messages_used?: number
           recovery_answer_hash?: string | null
