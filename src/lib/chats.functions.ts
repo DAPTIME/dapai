@@ -474,6 +474,27 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       forcedToLite = true;
     }
 
+    // Enforce per-model feature flags set in the admin console.
+    {
+      const { supabaseAdmin } = await import(
+        "@/integrations/supabase/client.server"
+      );
+      const flagId =
+        effectiveModel === "dap-ai-1.0" ? "feature_pro_model" : "feature_lite_model";
+      const { data: flag } = await supabaseAdmin
+        .from("ai_settings")
+        .select("system_prompt")
+        .eq("id", flagId)
+        .maybeSingle();
+      if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
+        throw new Error(
+          effectiveModel === "dap-ai-1.0"
+            ? "DAP AI 1.0 is currently disabled by the admin."
+            : "DAP AI Lite is currently disabled by the admin."
+        );
+      }
+    }
+
 
     const imageCount = data.images?.length ?? 0;
     const storedUserContent =

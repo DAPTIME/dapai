@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Plus, Trash2, X } from "lucide-react";
+import { Sparkles, Plus, Trash2, X, Lock } from "lucide-react";
 import { useState } from "react";
 import { DAPS } from "@/lib/daps";
 import { createChat } from "@/lib/chats.functions";
@@ -10,6 +10,7 @@ import {
   createCustomDap,
   deleteCustomDap,
 } from "@/lib/custom-daps.functions";
+import { getFeatureFlags } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -44,13 +45,19 @@ function Daps() {
   const listCustom = useServerFn(listCustomDaps);
   const createCustom = useServerFn(createCustomDap);
   const deleteCustom = useServerFn(deleteCustomDap);
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+  });
+  const dapsEnabled = flagsQuery.data?.daps !== false;
 
   const [showForm, setShowForm] = useState(false);
 
   const customQuery = useQuery({
     queryKey: ["custom-daps"],
     queryFn: () => listCustom(),
-    enabled: !!user,
+    enabled: !!user && dapsEnabled,
   });
 
   const startDap = useMutation({
@@ -77,6 +84,26 @@ function Daps() {
     }
     startDap.mutate(id);
   };
+
+  if (!dapsEnabled) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <div
+          className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-primary-foreground"
+          style={{ background: "var(--gradient-brand)" }}
+        >
+          <Lock className="h-6 w-6" />
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          DAPs are temporarily disabled
+        </h1>
+        <p className="mt-3 text-muted-foreground">
+          Custom AI assistants are turned off right now. Please check back
+          soon.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
