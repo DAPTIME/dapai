@@ -16,6 +16,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { AccountMenu } from "@/components/account-menu";
+import { AppContextMenu } from "@/components/app-context-menu";
 import { getProfile } from "@/lib/chats.functions";
 import appCss from "../styles.css?url";
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
