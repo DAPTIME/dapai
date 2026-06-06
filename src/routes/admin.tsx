@@ -20,6 +20,8 @@ import {
   adminListUsers,
   adminUpdateUser,
   adminResetPassword,
+  adminConfirmEmail,
+  adminDeleteUser,
   adminGetSystemPrompt,
   adminSetSystemPrompt,
   adminListAllChats,
