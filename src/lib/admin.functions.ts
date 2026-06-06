@@ -300,3 +300,67 @@ export const adminSetSiteStatus = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Per-feature on/off toggles. Stored as ai_settings rows with id
+ * `feature_<key>` and "on"/"off" in system_prompt. Public read.
+ */
+export const FEATURE_KEYS = [
+  "pro_model",
+  "lite_model",
+  "daps",
+  "team",
+] as const;
+export type FeatureKey = (typeof FEATURE_KEYS)[number];
+
+export const FEATURE_LABELS: Record<FeatureKey, string> = {
+  pro_model: "DAP AI 1.0 (Pro model)",
+  lite_model: "DAP AI Lite",
+  daps: "DAPs (Custom assistants)",
+  team: "Our Team page",
+};
+
+export const getFeatureFlags = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const ids = FEATURE_KEYS.map((k) => `feature_${k}`);
+    const { data } = await supabaseAdmin
+      .from("ai_settings")
+      .select("id, system_prompt")
+      .in("id", ids);
+    const flags: Record<FeatureKey, boolean> = {
+      pro_model: true,
+      lite_model: true,
+      daps: true,
+      team: true,
+    };
+    for (const row of data ?? []) {
+      const key = row.id.replace(/^feature_/, "") as FeatureKey;
+      if ((FEATURE_KEYS as readonly string[]).includes(key)) {
+        flags[key] =
+          (row.system_prompt ?? "on").trim().toLowerCase() !== "off";
+      }
+    }
+    return flags;
+  }
+);
+
+export const adminSetFeatureFlag = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        key: z.enum(FEATURE_KEYS),
+        enabled: z.boolean(),
+      })
+      .parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin.from("ai_settings").upsert({
+      id: `feature_${data.key}`,
+      system_prompt: data.enabled ? "on" : "off",
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
