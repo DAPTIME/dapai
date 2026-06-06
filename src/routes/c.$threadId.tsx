@@ -32,6 +32,13 @@ function ChatPage() {
   const send = useServerFn(sendChatMessage);
   const planSearch = useServerFn(planSearchForMessage);
   const [searchingWeb, setSearchingWeb] = useState(false);
+  const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
+    id: string;
+    role: "user";
+    content: string;
+    model: "dap-ai-1.0" | "dap-ai-lite";
+    created_at: string;
+  } | null>(null);
 
   useEffect(() => {
     if (ready && !loading && !user) navigate({ to: "/login" });
@@ -71,14 +78,15 @@ function ChatPage() {
         imageCount > 0
           ? `${text}\n\n_(📎 ${imageCount} image${imageCount > 1 ? "s" : ""} attached)_`
           : text;
+      const optimistic = {
+        id: `optimistic-${Date.now()}`,
+        role: "user" as const,
+        content: storedContent,
+        model: effective,
+        created_at: new Date().toISOString(),
+      };
+      setOptimisticUserMessage(optimistic);
       qc.setQueryData(["chat", threadId], (prev: any) => {
-        const optimistic = {
-          id: `optimistic-${Date.now()}`,
-          role: "user" as const,
-          content: storedContent,
-          model: effective,
-          created_at: new Date().toISOString(),
-        };
         if (!prev) {
           return {
             chat: { id: threadId, title: text.slice(0, 60) },
@@ -118,6 +126,11 @@ function ChatPage() {
       }
     },
     onSuccess: (result) => {
+      setOptimisticUserMessage(null);
+      qc.setQueryData(["chat", threadId], (prev: any) => ({
+        chat: prev?.chat ?? { id: threadId, title: "Chat" },
+        messages: result.messages ?? prev?.messages ?? [],
+      }));
       qc.invalidateQueries({ queryKey: ["chat", threadId] });
       qc.invalidateQueries({ queryKey: ["chats"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
@@ -127,6 +140,7 @@ function ChatPage() {
     },
     onError: (e) => {
       setSearchingWeb(false);
+      setOptimisticUserMessage(null);
       // Roll back the optimistic message on failure.
       qc.invalidateQueries({ queryKey: ["chat", threadId] });
       toast.error(e instanceof Error ? e.message : "Send failed");
@@ -163,7 +177,18 @@ function ChatPage() {
   }
 
   const messages = chatQuery.data?.messages ?? [];
-  const visible = messages.filter((m) => m.role !== "system");
+  const visible = messages
+    .filter((m) => m.role !== "system")
+    .concat(
+      optimisticUserMessage &&
+        !messages.some(
+          (m) =>
+            m.role === "user" &&
+            m.content === optimisticUserMessage.content
+        )
+        ? [optimisticUserMessage]
+        : []
+    );
   const busy = sendMut.isPending;
 
   // Detect an active DAP from the first system message ("[DAP: Name]\n...").
