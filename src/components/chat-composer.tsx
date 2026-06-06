@@ -197,9 +197,6 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
               </>
             );
           })()}
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Voice input">
-            <Mic className="h-4 w-4" />
-          </Button>
           <select
             value={model}
             onChange={(e) => {
