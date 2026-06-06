@@ -732,7 +732,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           } finally {
             clearTimeout(timer);
           }
-        });
+        }
+        return "";
+      });
     }
 
     // Insert assistant message
