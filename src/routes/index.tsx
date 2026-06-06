@@ -48,7 +48,10 @@ export const Route = createFileRoute("/")({
           "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d4ddeeda-a5fa-491c-98ac-e5bf7f678179/id-preview-60df72d6--4e5794db-69e7-4998-9ede-a9b885182642.lovable.app-1780308353128.png",
       },
     ],
-    links: [{ rel: "canonical", href: "https://dapai.lovable.app/" }],
+    links: [
+      { rel: "canonical", href: "https://dapai.lovable.app/" },
+      { rel: "preload", as: "image", href: logo.url, fetchpriority: "high" },
+    ],
     scripts: [
       {
         type: "application/ld+json",
@@ -140,6 +143,8 @@ function Home() {
             width={512}
             height={512}
             loading="eager"
+            // @ts-expect-error fetchpriority is a valid HTML attribute
+            fetchpriority="high"
             decoding="async"
             className="mb-6 h-[min(25vw,10rem)] w-[min(25vw,10rem)] object-contain home-logo-shadow"
           />
