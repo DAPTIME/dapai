@@ -201,7 +201,7 @@ function ChatPage() {
     <div className="chat-page-enter flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-          <h1 className="sr-only">
+          <h1 className="text-lg font-semibold text-foreground">
             {chatQuery.data?.chat?.title || "Chat"}
           </h1>
           {dapName && (

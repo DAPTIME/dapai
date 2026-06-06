@@ -178,7 +178,12 @@ function Home() {
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
             ) : siteEnabled ? (
-              <SuggestionChips onPick={handleSend} />
+              <section aria-labelledby="suggestions-heading">
+                <h2 id="suggestions-heading" className="sr-only">
+                  Conversation starters
+                </h2>
+                <SuggestionChips onPick={handleSend} />
+              </section>
             ) : null}
           </div>
         </div>
@@ -198,7 +203,12 @@ function Home() {
             </p>
           </div>
         ) : (
-          <ChatComposer onSend={handleSend} />
+          <section aria-labelledby="composer-heading">
+            <h2 id="composer-heading" className="sr-only">
+              Message DAP AI
+            </h2>
+            <ChatComposer onSend={handleSend} />
+          </section>
         )}
         {siteEnabled && (
           <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
