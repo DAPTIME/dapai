@@ -242,3 +242,28 @@
   will-change: transform, opacity, filter;
 }
 
+/* Home hero ambient backdrop — theme-aware. */
+.home-aurora {
+  background:
+    radial-gradient(ellipse 55% 38% at 50% 42%, color-mix(in oklab, #4285F4 22%, transparent), transparent 70%),
+    radial-gradient(ellipse 45% 32% at 30% 65%, color-mix(in oklab, #9B72CB 18%, transparent), transparent 70%),
+    radial-gradient(ellipse 45% 32% at 72% 70%, color-mix(in oklab, #D96570 16%, transparent), transparent 70%);
+  filter: blur(12px);
+  opacity: 0.85;
+}
+.dark .home-aurora {
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 50%, oklch(0.35 0.18 260 / 0.55), transparent 70%);
+  filter: none;
+  opacity: 1;
+}
+
+.home-logo-shadow {
+  filter: drop-shadow(0 14px 28px color-mix(in oklab, #4285F4 28%, transparent))
+          drop-shadow(0 6px 14px color-mix(in oklab, #9B72CB 22%, transparent));
+}
+.dark .home-logo-shadow {
+  filter: drop-shadow(0 10px 40px oklch(0.55 0.22 280 / 0.45));
+}
+
+

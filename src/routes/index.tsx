@@ -132,11 +132,7 @@ function Home() {
         <div className="relative mx-auto flex min-h-full max-w-3xl flex-col items-center justify-center px-4 py-10 text-center">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10"
-            style={{
-              background:
-                "radial-gradient(ellipse 60% 40% at 50% 50%, oklch(0.35 0.18 260 / 0.55), transparent 70%)",
-            }}
+            className="pointer-events-none absolute inset-0 -z-10 home-aurora"
           />
           <img
             src={logo.url}
@@ -145,12 +141,22 @@ function Home() {
             height={512}
             loading="eager"
             decoding="async"
-            className="mb-6 h-[min(25vw,10rem)] w-[min(25vw,10rem)] object-contain drop-shadow-[0_10px_40px_oklch(0.55_0.22_280/0.45)]"
+            className="mb-6 h-[min(25vw,10rem)] w-[min(25vw,10rem)] object-contain home-logo-shadow"
           />
 
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+
+          <h1
+            className="text-4xl font-semibold tracking-tight sm:text-5xl"
+            style={{
+              backgroundImage: "var(--gradient-text)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
             DAP AI
           </h1>
+
 
           <p className="mt-3 max-w-xl text-base text-muted-foreground">
             {greeting} DAP AI is a fast AI chatbot for answers, writing, studying,
