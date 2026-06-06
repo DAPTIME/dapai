@@ -551,7 +551,7 @@ function ResetPasswordDialog({
             <Label htmlFor="new-pw">New password</Label>
             <Input
               id="new-pw"
-              type="text"
+              type="password"
               value={pw}
               onChange={(e) => setPw(e.target.value)}
               placeholder="At least 6 characters"
