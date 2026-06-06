@@ -29,10 +29,37 @@ export const Route = createFileRoute("/team")({
 
 function TeamPage() {
   const fetchBeta = useServerFn(listBetaTesters);
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+  });
+  const teamEnabled = flagsQuery.data?.team !== false;
   const betaQuery = useQuery({
     queryKey: ["beta-testers"],
     queryFn: () => fetchBeta(),
+    enabled: teamEnabled,
   });
+
+  if (!teamEnabled) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <div
+          className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-primary-foreground"
+          style={{ background: "var(--gradient-brand)" }}
+        >
+          <Lock className="h-6 w-6" />
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Team page temporarily disabled
+        </h1>
+        <p className="mt-3 text-muted-foreground">
+          The team page is turned off right now. Please check back soon.
+        </p>
+      </div>
+    );
+  }
+
 
   const sections: { title: string; people: string[]; dynamic?: boolean }[] = [
     { title: "Website Creator", people: ["Devansh Pancholia"] },
