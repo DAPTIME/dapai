@@ -44,14 +44,18 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
   }, [createMut, navigate, user]);
 
   // Best-effort: turn inspect/source/devtools shortcuts into a new chat.
+  // Note: browsers (especially Chrome) often handle F12 at the chrome level
+  // before JS sees it, so this cannot be fully prevented from a web page.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
+      const k = (e.key || "").toLowerCase();
+      const code = e.code || "";
       const mod = e.ctrlKey || e.metaKey;
-      const devtoolsKey = k === "i" || k === "j" || k === "c" || k === "k";
+      const devtoolsLetter = k === "i" || k === "j" || k === "c" || k === "k";
+      const isF12 = k === "f12" || code === "F12" || e.keyCode === 123;
       const inspectShortcut =
-        k === "f12" ||
-        (mod && devtoolsKey && (e.shiftKey || e.altKey)) ||
+        isF12 ||
+        (mod && devtoolsLetter && (e.shiftKey || e.altKey)) ||
         (mod && (k === "i" || k === "u"));
 
       if (!inspectShortcut) return;
@@ -63,8 +67,15 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
     };
 
     window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true });
+    document.addEventListener("keydown", onKey, { capture: true });
+    window.addEventListener("keyup", onKey, { capture: true });
+    return () => {
+      window.removeEventListener("keydown", onKey, { capture: true });
+      document.removeEventListener("keydown", onKey, { capture: true });
+      window.removeEventListener("keyup", onKey, { capture: true });
+    };
   }, [onNewChat]);
+
 
   return (
     <ContextMenu>
