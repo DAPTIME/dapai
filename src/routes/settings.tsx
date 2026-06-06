@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Brain, Plus, Trash2 } from "lucide-react";
+import { Brain, Plus, Trash2, Moon, Sun } from "lucide-react";
+import { useTheme } from "@/lib/theme";
 import {
   listMemories,
   addMemory,
