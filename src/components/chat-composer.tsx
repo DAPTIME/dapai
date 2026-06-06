@@ -175,12 +175,29 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
       />
       <div className="flex items-center justify-between px-2 pb-1">
         <div className="flex items-center gap-1 text-muted-foreground">
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Attach file" onClick={() => fileInputRef.current?.click()}>
-            <Paperclip className="h-4 w-4" />
-          </Button>
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Attach image" onClick={() => fileInputRef.current?.click()}>
-            <ImageIcon className="h-4 w-4" />
-          </Button>
+          {(() => {
+            const liteSelected = model === "dap-ai-lite";
+            const imgTitle = liteSelected
+              ? "DAP AI Lite doesn't support images yet"
+              : "Attach image";
+            const onClick = () => {
+              if (liteSelected) {
+                toast.error("DAP AI Lite doesn't support images yet.");
+                return;
+              }
+              fileInputRef.current?.click();
+            };
+            return (
+              <>
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full disabled:opacity-40" aria-label={imgTitle} title={imgTitle} disabled={liteSelected} onClick={onClick}>
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full disabled:opacity-40" aria-label={imgTitle} title={imgTitle} disabled={liteSelected} onClick={onClick}>
+                  <ImageIcon className="h-4 w-4" />
+                </Button>
+              </>
+            );
+          })()}
           <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Voice input">
             <Mic className="h-4 w-4" />
           </Button>
