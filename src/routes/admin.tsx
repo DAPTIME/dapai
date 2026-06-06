@@ -900,3 +900,74 @@ function SiteTab() {
     </div>
   );
 }
+
+function FeaturesTab() {
+  const qc = useQueryClient();
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const setFlag = useServerFn(adminSetFeatureFlag);
+
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+  });
+
+  const toggle = useMutation({
+    mutationFn: (v: { key: FeatureKey; enabled: boolean }) =>
+      setFlag({ data: v }),
+    onSuccess: (_d, v) => {
+      toast.success(
+        `${FEATURE_LABELS[v.key]} ${v.enabled ? "enabled" : "disabled"}`
+      );
+      qc.invalidateQueries({ queryKey: ["feature-flags"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const flags = flagsQuery.data;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6">
+      <h2 className="text-lg font-semibold">Features & models</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Turn individual models, pages, or features on or off for everyone.
+      </p>
+
+      <ul className="mt-5 divide-y divide-border">
+        {FEATURE_KEYS.map((key) => {
+          const enabled = flags ? flags[key] : true;
+          return (
+            <li
+              key={key}
+              className="flex items-center gap-4 py-4"
+            >
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                      enabled ? "bg-emerald-500" : "bg-destructive"
+                    }`}
+                  />
+                  <span className="font-medium">{FEATURE_LABELS[key]}</span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {FEATURE_DESCRIPTIONS[key]}
+                </p>
+              </div>
+              <Button
+                onClick={() => toggle.mutate({ key, enabled: !enabled })}
+                disabled={flagsQuery.isLoading || toggle.isPending}
+                variant={enabled ? "outline" : "default"}
+                style={
+                  !enabled ? { background: "var(--gradient-brand)" } : undefined
+                }
+              >
+                <Power className="mr-2 h-4 w-4" />
+                {enabled ? "Turn OFF" : "Turn ON"}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
