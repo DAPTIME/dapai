@@ -85,6 +85,26 @@ function Daps() {
     startDap.mutate(id);
   };
 
+  if (!dapsEnabled) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <div
+          className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-primary-foreground"
+          style={{ background: "var(--gradient-brand)" }}
+        >
+          <Lock className="h-6 w-6" />
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          DAPs are temporarily disabled
+        </h1>
+        <p className="mt-3 text-muted-foreground">
+          Custom AI assistants are turned off right now. Please check back
+          soon.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       <div className="flex items-end justify-between gap-4">
