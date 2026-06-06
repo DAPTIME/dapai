@@ -255,15 +255,8 @@ function UsersTab() {
                     >
                       <KeyRound className="mr-1 h-3.5 w-3.5" /> Password
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => confirmEmailMut.mutate(u.id)}
-                      disabled={confirmEmailMut.isPending}
-                      title="Mark email as confirmed so this user can sign in"
-                    >
-                      Confirm email
-                    </Button>
+
+
                     <Button
                       size="sm"
                       variant="outline"
