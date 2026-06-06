@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import {
   Send,
   Paperclip,
-  Mic,
   Image as ImageIcon,
   Sparkles,
   Lock,
