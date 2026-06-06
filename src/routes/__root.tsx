@@ -16,6 +16,7 @@ import {
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { AccountMenu } from "@/components/account-menu";
+import { AppContextMenu } from "@/components/app-context-menu";
 import { getProfile } from "@/lib/chats.functions";
 import appCss from "../styles.css?url";
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -102,20 +103,22 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full bg-background">
-            <AppSidebar />
-            <div className="flex flex-1 flex-col">
-              <HeaderBar />
-              <main className="flex-1">
-                <RouteTransition>
-                  <Outlet />
-                </RouteTransition>
-              </main>
+        <AppContextMenu>
+          <SidebarProvider>
+            <div className="flex min-h-screen w-full bg-background">
+              <AppSidebar />
+              <div className="flex flex-1 flex-col">
+                <HeaderBar />
+                <main className="flex-1">
+                  <RouteTransition>
+                    <Outlet />
+                  </RouteTransition>
+                </main>
+              </div>
             </div>
-          </div>
-          <Toaster />
-        </SidebarProvider>
+            <Toaster />
+          </SidebarProvider>
+        </AppContextMenu>
       </AuthProvider>
     </QueryClientProvider>
   );
