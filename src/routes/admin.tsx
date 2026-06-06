@@ -163,14 +163,8 @@ function UsersTab() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  const confirmEmailMut = useMutation({
-    mutationFn: (userId: string) => confirmEmail({ data: { userId } }),
-    onSuccess: () => {
-      toast.success("Email confirmed — user can sign in now.");
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
+
+
 
   const deleteUserMut = useMutation({
     mutationFn: (userId: string) => deleteUser({ data: { userId } }),
