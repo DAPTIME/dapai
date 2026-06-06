@@ -64,6 +64,25 @@ function ChatPage() {
           : null) || "dap-ai-1.0";
       const effective = model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0";
 
+      // Optimistically show the user's message in the transcript right away
+      // so they don't stare at a blank "Thinking…" while we wait for the model.
+      const imageCount = images?.length ?? 0;
+      const storedContent =
+        imageCount > 0
+          ? `${text}\n\n_(📎 ${imageCount} image${imageCount > 1 ? "s" : ""} attached)_`
+          : text;
+      qc.setQueryData(["chat", threadId], (prev: any) => {
+        if (!prev) return prev;
+        const optimistic = {
+          id: `optimistic-${Date.now()}`,
+          role: "user" as const,
+          content: storedContent,
+          model: effective,
+          created_at: new Date().toISOString(),
+        };
+        return { ...prev, messages: [...(prev.messages ?? []), optimistic] };
+      });
+
       // Pre-flight: ask if this needs a web search so we can show
       // "Searching the web…" while the model spins up. Lite skips search.
       let searchQuery: string | undefined;
@@ -103,6 +122,8 @@ function ChatPage() {
     },
     onError: (e) => {
       setSearchingWeb(false);
+      // Roll back the optimistic message on failure.
+      qc.invalidateQueries({ queryKey: ["chat", threadId] });
       toast.error(e instanceof Error ? e.message : "Send failed");
     },
   });
