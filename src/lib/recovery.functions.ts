@@ -65,7 +65,7 @@ export const getRecoveryQuestion = createServerFn({ method: "POST" })
     const { data: row } = await supabaseAdmin
       .from("profiles")
       .select("recovery_question")
-      .ilike("email", data.email)
+      .eq("email", data.email.toLowerCase())
       .maybeSingle();
     // Don't reveal whether the email exists.
     return { question: row?.recovery_question ?? null };
@@ -87,7 +87,7 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
     const { data: row } = await supabaseAdmin
       .from("profiles")
       .select("id, recovery_answer_hash")
-      .ilike("email", data.email)
+      .eq("email", data.email.toLowerCase())
       .maybeSingle();
     if (!row?.recovery_answer_hash) {
       throw new Error("Couldn't verify your recovery answer.");

@@ -78,6 +78,34 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Require an authenticated Supabase user — this relay forwards to
+        // paid AI backends and must not be callable anonymously.
+        const authHeader = request.headers.get("authorization") ?? "";
+        if (!authHeader.startsWith("Bearer ")) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const token = authHeader.slice("Bearer ".length).trim();
+        if (!token) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        try {
+          const { createClient } = await import("@supabase/supabase-js");
+          const SUPABASE_URL = process.env.SUPABASE_URL;
+          const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+          if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+            return Response.json({ error: "Server auth not configured" }, { status: 500 });
+          }
+          const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          const { data, error } = await sb.auth.getClaims(token);
+          if (error || !data?.claims?.sub) {
+            return Response.json({ error: "Unauthorized" }, { status: 401 });
+          }
+        } catch {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const raw = await request.text();
 
         let model = "dap-ai-1.0";
