@@ -661,7 +661,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     } else {
       // Per-model queue: only one in-flight call per model at a time.
       replyText = await enqueue(`model:${effectiveModel}`, async () => {
-        try {
+        {
           const liteOptions = {
             reasoning_effort: "none",
             thinking: false,
