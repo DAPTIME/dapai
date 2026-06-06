@@ -45,13 +45,19 @@ function Daps() {
   const listCustom = useServerFn(listCustomDaps);
   const createCustom = useServerFn(createCustomDap);
   const deleteCustom = useServerFn(deleteCustomDap);
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+  });
+  const dapsEnabled = flagsQuery.data?.daps !== false;
 
   const [showForm, setShowForm] = useState(false);
 
   const customQuery = useQuery({
     queryKey: ["custom-daps"],
     queryFn: () => listCustom(),
-    enabled: !!user,
+    enabled: !!user && dapsEnabled,
   });
 
   const startDap = useMutation({
