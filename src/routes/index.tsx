@@ -178,7 +178,12 @@ function Home() {
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
             ) : siteEnabled ? (
-              <SuggestionChips onPick={handleSend} />
+              <section aria-labelledby="suggestions-heading">
+                <h2 id="suggestions-heading" className="sr-only">
+                  Conversation starters
+                </h2>
+                <SuggestionChips onPick={handleSend} />
+              </section>
             ) : null}
           </div>
         </div>
