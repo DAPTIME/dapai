@@ -30,10 +30,22 @@ import {
   adminSetSiteStatus,
   getFeatureFlags,
   adminSetFeatureFlag,
-  FEATURE_KEYS,
-  FEATURE_LABELS,
-  type FeatureKey,
 } from "@/lib/admin.functions";
+
+const FEATURE_KEYS = ["pro_model", "lite_model", "daps", "team"] as const;
+type FeatureKey = (typeof FEATURE_KEYS)[number];
+const FEATURE_LABELS: Record<FeatureKey, string> = {
+  pro_model: "DAP AI 1.0 (Pro model)",
+  lite_model: "DAP AI Lite",
+  daps: "DAPs (Custom assistants)",
+  team: "Our Team page",
+};
+const FEATURE_DESCRIPTIONS: Record<FeatureKey, string> = {
+  pro_model: "Block sending messages with the DAP AI 1.0 pro model.",
+  lite_model: "Block sending messages with the DAP AI Lite model.",
+  daps: "Hide the /daps page and disable starting custom DAP chats.",
+  team: "Hide the /team page.",
+};
 import {
   listBetaTesters,
   adminAddBetaTester,
