@@ -103,20 +103,22 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full bg-background">
-            <AppSidebar />
-            <div className="flex flex-1 flex-col">
-              <HeaderBar />
-              <main className="flex-1">
-                <RouteTransition>
-                  <Outlet />
-                </RouteTransition>
-              </main>
+        <AppContextMenu>
+          <SidebarProvider>
+            <div className="flex min-h-screen w-full bg-background">
+              <AppSidebar />
+              <div className="flex flex-1 flex-col">
+                <HeaderBar />
+                <main className="flex-1">
+                  <RouteTransition>
+                    <Outlet />
+                  </RouteTransition>
+                </main>
+              </div>
             </div>
-          </div>
-          <Toaster />
-        </SidebarProvider>
+            <Toaster />
+          </SidebarProvider>
+        </AppContextMenu>
       </AuthProvider>
     </QueryClientProvider>
   );
