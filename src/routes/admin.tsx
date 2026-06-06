@@ -135,7 +135,7 @@ function UsersTab() {
   const listUsers = useServerFn(adminListUsers);
   const updateUser = useServerFn(adminUpdateUser);
   const resetPassword = useServerFn(adminResetPassword);
-  const confirmEmail = useServerFn(adminConfirmEmail);
+  
   const deleteUser = useServerFn(adminDeleteUser);
 
   const usersQuery = useQuery({
