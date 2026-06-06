@@ -20,7 +20,7 @@ import {
   adminListUsers,
   adminUpdateUser,
   adminResetPassword,
-  adminConfirmEmail,
+  
   adminDeleteUser,
   adminGetSystemPrompt,
   adminSetSystemPrompt,
@@ -135,7 +135,7 @@ function UsersTab() {
   const listUsers = useServerFn(adminListUsers);
   const updateUser = useServerFn(adminUpdateUser);
   const resetPassword = useServerFn(adminResetPassword);
-  const confirmEmail = useServerFn(adminConfirmEmail);
+  
   const deleteUser = useServerFn(adminDeleteUser);
 
   const usersQuery = useQuery({
@@ -163,14 +163,8 @@ function UsersTab() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  const confirmEmailMut = useMutation({
-    mutationFn: (userId: string) => confirmEmail({ data: { userId } }),
-    onSuccess: () => {
-      toast.success("Email confirmed — user can sign in now.");
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
+
+
 
   const deleteUserMut = useMutation({
     mutationFn: (userId: string) => deleteUser({ data: { userId } }),
@@ -255,15 +249,8 @@ function UsersTab() {
                     >
                       <KeyRound className="mr-1 h-3.5 w-3.5" /> Password
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => confirmEmailMut.mutate(u.id)}
-                      disabled={confirmEmailMut.isPending}
-                      title="Mark email as confirmed so this user can sign in"
-                    >
-                      Confirm email
-                    </Button>
+
+
                     <Button
                       size="sm"
                       variant="outline"
