@@ -101,6 +101,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Mount the theme effect so the persisted choice is applied + synced.
+  useTheme();
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
