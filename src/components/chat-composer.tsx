@@ -118,6 +118,7 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (pending) return;
     if (!text.trim() && images.length === 0) return;
     onSend?.(text.trim() || "(image)", images.length ? images : undefined);
     setText("");
