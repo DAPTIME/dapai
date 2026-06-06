@@ -57,6 +57,8 @@ function Daps() {
     mutationFn: (dapId: string) => create({ data: { dapId } }),
     onSuccess: (chat) =>
       navigate({ to: "/c/$threadId", params: { threadId: chat.id } }),
+    onError: (e: Error) =>
+      toast.error(e?.message || "Couldn't start that DAP. Please try again."),
   });
 
   const removeCustom = useMutation({
