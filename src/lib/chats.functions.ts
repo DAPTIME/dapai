@@ -684,44 +684,55 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             },
           };
 
-          const res = await fetch(backend, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(key ? { Authorization: `Bearer ${key}` } : {}),
-            },
-            body: JSON.stringify({
-              model: upstreamModel,
-              messages,
-              stream: false,
-              // Disable model "thinking"/reasoning for the Lite model so
-              // replies are fast and don't include <think> tokens.
-              ...(effectiveModel === "dap-ai-lite" ? liteOptions : {}),
-            }),
-          });
-          const json = (await res.json()) as {
-            choices?: { message?: { content?: string } }[];
-            message?: { content?: string };
-            error?: string | { message?: string };
-          };
-          const errStr =
-            typeof json?.error === "string"
-              ? json.error
-              : json?.error?.message;
-          let out =
-            json?.choices?.[0]?.message?.content ??
-            json?.message?.content ??
-            errStr ??
-            "(empty response)";
-          if (effectiveModel === "dap-ai-lite") {
-            out = sanitizeLiteReply(out);
-            if (hasLiteReasoningLeak(out)) out = sanitizeLiteReply(out);
+          const ctrl = new AbortController();
+          const timeoutMs = 90_000;
+          const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+          try {
+            const res = await fetch(backend, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(key ? { Authorization: `Bearer ${key}` } : {}),
+              },
+              body: JSON.stringify({
+                model: upstreamModel,
+                messages,
+                stream: false,
+                // Disable model "thinking"/reasoning for the Lite model so
+                // replies are fast and don't include <think> tokens.
+                ...(effectiveModel === "dap-ai-lite" ? liteOptions : {}),
+              }),
+              signal: ctrl.signal,
+            });
+            const json = (await res.json()) as {
+              choices?: { message?: { content?: string } }[];
+              message?: { content?: string };
+              error?: string | { message?: string };
+            };
+            const errStr =
+              typeof json?.error === "string"
+                ? json.error
+                : json?.error?.message;
+            let out =
+              json?.choices?.[0]?.message?.content ??
+              json?.message?.content ??
+              errStr ??
+              "(empty response)";
+            if (effectiveModel === "dap-ai-lite") {
+              out = sanitizeLiteReply(out);
+              if (hasLiteReasoningLeak(out)) out = sanitizeLiteReply(out);
+            }
+            return out;
+          } catch (e) {
+            const err = e as Error;
+            if (err.name === "AbortError") {
+              return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${effectiveModel === "dap-ai-lite" ? "LITE" : "PRO"} points to the current tunnel), or the model is too slow for this prompt.`;
+            }
+            return `Couldn't reach AI backend: ${err.message}`;
+          } finally {
+            clearTimeout(timer);
           }
-          return out;
-        } catch (e) {
-          return `Couldn't reach AI backend: ${(e as Error).message}`;
-        }
-      });
+        });
     }
 
     // Insert assistant message
