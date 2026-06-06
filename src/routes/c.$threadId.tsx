@@ -69,7 +69,8 @@ function ChatPage() {
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
           : null) || "dap-ai-1.0";
-      const effective = model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0";
+      const effective: "dap-ai-1.0" | "dap-ai-lite" =
+        model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0";
 
       // Optimistically show the user's message in the transcript right away
       // so they don't stare at a blank "Thinking…" while we wait for the model.
