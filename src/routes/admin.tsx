@@ -115,6 +115,9 @@ function Admin() {
             <TabsTrigger value="site">
               <Power className="mr-2 h-4 w-4" /> Site
             </TabsTrigger>
+            <TabsTrigger value="features">
+              <Cpu className="mr-2 h-4 w-4" /> Features
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="mt-6">
@@ -131,6 +134,9 @@ function Admin() {
           </TabsContent>
           <TabsContent value="site" className="mt-6">
             <SiteTab />
+          </TabsContent>
+          <TabsContent value="features" className="mt-6">
+            <FeaturesTab />
           </TabsContent>
         </Tabs>
       )}
