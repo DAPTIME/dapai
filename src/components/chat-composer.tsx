@@ -118,6 +118,7 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (pending) return;
     if (!text.trim() && images.length === 0) return;
     onSend?.(text.trim() || "(image)", images.length ? images : undefined);
     setText("");
@@ -158,7 +159,10 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
         rows={2}
         className="w-full resize-none bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) submit(e);
+          if (e.key === "Enter" && !e.shiftKey) {
+            if (pending) { e.preventDefault(); return; }
+            submit(e);
+          }
         }}
       />
       <input
