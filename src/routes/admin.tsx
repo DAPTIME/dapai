@@ -135,6 +135,8 @@ function UsersTab() {
   const listUsers = useServerFn(adminListUsers);
   const updateUser = useServerFn(adminUpdateUser);
   const resetPassword = useServerFn(adminResetPassword);
+  const confirmEmail = useServerFn(adminConfirmEmail);
+  const deleteUser = useServerFn(adminDeleteUser);
 
   const usersQuery = useQuery({
     queryKey: ["admin", "users"],
@@ -156,6 +158,24 @@ function UsersTab() {
       }),
     onSuccess: () => {
       toast.success("Tier updated");
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const confirmEmailMut = useMutation({
+    mutationFn: (userId: string) => confirmEmail({ data: { userId } }),
+    onSuccess: () => {
+      toast.success("Email confirmed — user can sign in now.");
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const deleteUserMut = useMutation({
+    mutationFn: (userId: string) => deleteUser({ data: { userId } }),
+    onSuccess: () => {
+      toast.success("Account deleted.");
       qc.invalidateQueries({ queryKey: ["admin", "users"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
