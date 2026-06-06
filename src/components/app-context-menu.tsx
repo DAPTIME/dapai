@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -35,34 +35,36 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
     onError: (e: Error) => toast.error(e?.message || "Couldn't start a new chat."),
   });
 
-  // Best-effort: block F12, Ctrl/Cmd+Shift+I/J/C, Ctrl/Cmd+U.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      const mod = e.ctrlKey || e.metaKey;
-      if (k === "f12") {
-        e.preventDefault();
-        return;
-      }
-      if (mod && e.shiftKey && (k === "i" || k === "j" || k === "c")) {
-        e.preventDefault();
-        return;
-      }
-      if (mod && k === "u") {
-        e.preventDefault();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const onNewChat = () => {
+  const onNewChat = useCallback(() => {
     if (!user) {
       navigate({ to: "/login" });
       return;
     }
     createMut.mutate();
-  };
+  }, [createMut, navigate, user]);
+
+  // Best-effort: turn inspect/source/devtools shortcuts into a new chat.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      const mod = e.ctrlKey || e.metaKey;
+      const devtoolsKey = k === "i" || k === "j" || k === "c" || k === "k";
+      const inspectShortcut =
+        k === "f12" ||
+        (mod && devtoolsKey && (e.shiftKey || e.altKey)) ||
+        (mod && (k === "i" || k === "u"));
+
+      if (!inspectShortcut) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      onNewChat();
+    };
+
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
+  }, [onNewChat]);
 
   return (
     <ContextMenu>
