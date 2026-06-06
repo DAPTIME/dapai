@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Plus, Trash2, X } from "lucide-react";
+import { Sparkles, Plus, Trash2, X, Lock } from "lucide-react";
 import { useState } from "react";
 import { DAPS } from "@/lib/daps";
 import { createChat } from "@/lib/chats.functions";
@@ -10,6 +10,7 @@ import {
   createCustomDap,
   deleteCustomDap,
 } from "@/lib/custom-daps.functions";
+import { getFeatureFlags } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
