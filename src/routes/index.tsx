@@ -145,9 +145,18 @@ function Home() {
           />
 
 
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+          <h1
+            className="text-4xl font-semibold tracking-tight sm:text-5xl"
+            style={{
+              backgroundImage: "var(--gradient-text)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
             DAP AI
           </h1>
+
 
           <p className="mt-3 max-w-xl text-base text-muted-foreground">
             {greeting} DAP AI is a fast AI chatbot for answers, writing, studying,
