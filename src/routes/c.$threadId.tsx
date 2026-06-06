@@ -72,7 +72,6 @@ function ChatPage() {
           ? `${text}\n\n_(📎 ${imageCount} image${imageCount > 1 ? "s" : ""} attached)_`
           : text;
       qc.setQueryData(["chat", threadId], (prev: any) => {
-        if (!prev) return prev;
         const optimistic = {
           id: `optimistic-${Date.now()}`,
           role: "user" as const,
@@ -80,6 +79,12 @@ function ChatPage() {
           model: effective,
           created_at: new Date().toISOString(),
         };
+        if (!prev) {
+          return {
+            chat: { id: threadId, title: text.slice(0, 60) },
+            messages: [optimistic],
+          };
+        }
         return { ...prev, messages: [...(prev.messages ?? []), optimistic] };
       });
 
