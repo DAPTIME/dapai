@@ -182,6 +182,33 @@ export const adminResetPassword = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminConfirmEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(
+      data.userId,
+      { email_confirm: true }
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminDeleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    if (data.userId === context.userId) {
+      throw new Error("You can't delete your own admin account.");
+    }
+    // Delete the auth user; profile/role rows cascade via ON DELETE CASCADE.
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 
 const MODEL_IDS = ["dap-ai-1.0", "dap-ai-lite"] as const;
