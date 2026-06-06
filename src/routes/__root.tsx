@@ -25,21 +25,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "DAP AI — Your AI workspace" },
-      {
-        name: "description",
-        content:
-          "DAP AI is your personal AI workspace — fast, friendly chat with multiple models and specialized DAPs for focused tasks.",
-      },
+      { title: "DAP AI" },
       { property: "og:site_name", content: "DAP AI" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "google-site-verification", content: "ihyVMpSKja5zvyeVXgKwlPewFA3s5qzQJX9FolcYAHI" },
-      { property: "og:title", content: "DAP AI — Your AI workspace" },
-      { name: "twitter:title", content: "DAP AI — Your AI workspace" },
-      { name: "description", content: "The next step in non data center AI" },
-      { property: "og:description", content: "The next step in non data center AI" },
-      { name: "twitter:description", content: "The next step in non data center AI" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/66282eb6-e53c-4f21-9d65-92a76922cf37" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/66282eb6-e53c-4f21-9d65-92a76922cf37" },
     ],
