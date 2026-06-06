@@ -17,6 +17,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { AccountMenu } from "@/components/account-menu";
 import { AppContextMenu } from "@/components/app-context-menu";
+import { useTheme } from "@/lib/theme";
 import { getProfile } from "@/lib/chats.functions";
 import appCss from "../styles.css?url";
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -100,6 +101,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Mount the theme effect so the persisted choice is applied + synced.
+  useTheme();
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

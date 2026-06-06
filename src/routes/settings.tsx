@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Brain, Plus, Trash2 } from "lucide-react";
+import { Brain, Plus, Trash2, Moon, Sun } from "lucide-react";
+import { useTheme } from "@/lib/theme";
 import {
   listMemories,
   addMemory,
@@ -54,6 +55,7 @@ function Settings() {
     <div className="mx-auto max-w-2xl px-6 py-12">
       <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
       <div className="mt-8 space-y-6">
+        <ThemeRow />
         {rows.map((row) => (
           <div key={row.id} className="flex items-start justify-between rounded-2xl border border-border bg-card p-5">
             <div>
@@ -212,6 +214,44 @@ function MemorySection() {
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+function ThemeRow() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <div className="flex items-start justify-between rounded-2xl border border-border bg-card p-5">
+      <div>
+        <Label className="text-base">Appearance</Label>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Choose dark or light mode. Defaults to dark.
+        </p>
+      </div>
+      <div className="flex items-center gap-1 rounded-full border border-border bg-background p-1">
+        <Button
+          type="button"
+          size="sm"
+          variant={theme === "dark" ? "default" : "ghost"}
+          onClick={() => setTheme("dark")}
+          className="h-8 gap-1.5 rounded-full px-3"
+          aria-pressed={theme === "dark"}
+        >
+          <Moon className="h-4 w-4" />
+          Dark
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={theme === "light" ? "default" : "ghost"}
+          onClick={() => setTheme("light")}
+          className="h-8 gap-1.5 rounded-full px-3"
+          aria-pressed={theme === "light"}
+        >
+          <Sun className="h-4 w-4" />
+          Light
+        </Button>
+      </div>
     </div>
   );
 }
