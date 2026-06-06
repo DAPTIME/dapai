@@ -626,14 +626,18 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     // If images were attached, upgrade the LAST user message to OpenAI
     // vision "content array" format so multimodal backends can see them.
-    if (imageCount > 0) {
+    // Lite (Gemma E2B) is text-only — drop images to avoid hanging the
+    // backend with a payload it can't process.
+    const visionImages =
+      effectiveModel === "dap-ai-lite" ? [] : (data.images ?? []);
+    if (visionImages.length > 0) {
       for (let i = messages.length - 1; i >= 0; i--) {
         if (messages[i].role === "user") {
           messages[i] = {
             role: "user",
             content: [
               { type: "text", text: data.text },
-              ...(data.images ?? []).map((url) => ({
+              ...visionImages.map((url) => ({
                 type: "image_url",
                 image_url: { url },
               })),
