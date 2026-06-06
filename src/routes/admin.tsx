@@ -255,6 +255,32 @@ function UsersTab() {
                     >
                       <KeyRound className="mr-1 h-3.5 w-3.5" /> Password
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => confirmEmailMut.mutate(u.id)}
+                      disabled={confirmEmailMut.isPending}
+                      title="Mark email as confirmed so this user can sign in"
+                    >
+                      Confirm email
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Delete ${u.email || "this user"}? They'll be able to sign up again with the same email.`
+                          )
+                        ) {
+                          deleteUserMut.mutate(u.id);
+                        }
+                      }}
+                      disabled={deleteUserMut.isPending}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                    </Button>
                     {u.tier === "free" ? (
                       <Button
                         size="sm"
