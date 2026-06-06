@@ -14,6 +14,13 @@ export const Route = createFileRoute("/login")({
         name: "description",
         content: "Sign in to your DAP AI account to continue your chats.",
       },
+      { property: "og:title", content: "Sign in to DAP AI" },
+      {
+        property: "og:description",
+        content:
+          "Log in to DAP AI to pick up your conversations, access saved chats, and use your DAPs.",
+      },
+      { property: "og:url", content: "https://dapai.lovable.app/login" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
