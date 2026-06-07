@@ -18,46 +18,13 @@ const LITE_NO_THINK_PROMPT =
  * Rate limit: 5 words per second per client IP (token bucket).
  */
 
-const RATE_WORDS_PER_SEC = 5;
-const BUCKET_CAPACITY = 5;
+/**
+ * No artificial words-per-second rate limit — concurrency is bounded
+ * solely by the per-model FIFO queue below (one request in flight per
+ * model on the local GPU at a time). Users can submit as many words
+ * as they like; they just wait their turn in line.
+ */
 
-type Bucket = { tokens: number; updated: number };
-const buckets = new Map<string, Bucket>();
-
-function takeTokens(
-  ip: string,
-  cost: number
-): { ok: true } | { ok: false; retryAfter: number } {
-  const now = Date.now();
-  const b = buckets.get(ip) ?? { tokens: BUCKET_CAPACITY, updated: now };
-  const elapsedSec = (now - b.updated) / 1000;
-  b.tokens = Math.min(BUCKET_CAPACITY, b.tokens + elapsedSec * RATE_WORDS_PER_SEC);
-  b.updated = now;
-  if (b.tokens >= cost) {
-    b.tokens -= cost;
-    buckets.set(ip, b);
-    return { ok: true };
-  }
-  const retryAfter = Math.ceil((cost - b.tokens) / RATE_WORDS_PER_SEC);
-  buckets.set(ip, b);
-  return { ok: false, retryAfter };
-}
-
-function countWords(s: unknown): number {
-  if (typeof s !== "string") return 0;
-  const m = s.trim().match(/\S+/g);
-  return m ? m.length : 0;
-}
-
-function clientIp(request: Request): string {
-  const h = request.headers;
-  return (
-    h.get("cf-connecting-ip") ||
-    h.get("x-real-ip") ||
-    (h.get("x-forwarded-for") ?? "").split(",")[0].trim() ||
-    "unknown"
-  );
-}
 
 function backendFor(model: string): { url?: string; key?: string; upstreamModel?: string } {
   if (model === "dap-ai-lite") {
