@@ -22,6 +22,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiPublicHooksCleanupOldChatsRouteImport } from './routes/api/public/hooks/cleanup-old-chats'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -88,6 +89,12 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksCleanupOldChatsRoute =
+  ApiPublicHooksCleanupOldChatsRouteImport.update({
+    id: '/api/public/hooks/cleanup-old-chats',
+    path: '/api/public/hooks/cleanup-old-chats',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +126,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +143,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/chat'
     | '/c/$threadId'
+    | '/api/public/hooks/cleanup-old-chats'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/chat'
     | '/c/$threadId'
+    | '/api/public/hooks/cleanup-old-chats'
   id:
     | '__root__'
     | '/'
@@ -181,6 +193,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/chat'
     | '/c/$threadId'
+    | '/api/public/hooks/cleanup-old-chats'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,6 +210,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
   CThreadIdRoute: typeof CThreadIdRoute
+  ApiPublicHooksCleanupOldChatsRoute: typeof ApiPublicHooksCleanupOldChatsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -292,6 +306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/cleanup-old-chats': {
+      id: '/api/public/hooks/cleanup-old-chats'
+      path: '/api/public/hooks/cleanup-old-chats'
+      fullPath: '/api/public/hooks/cleanup-old-chats'
+      preLoaderRoute: typeof ApiPublicHooksCleanupOldChatsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -309,7 +330,18 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
   CThreadIdRoute: CThreadIdRoute,
+  ApiPublicHooksCleanupOldChatsRoute: ApiPublicHooksCleanupOldChatsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
