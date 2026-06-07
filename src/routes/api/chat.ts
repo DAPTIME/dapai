@@ -141,16 +141,8 @@ export const Route = createFileRoute("/api/chat")({
           /* keep raw */
         }
 
-        const ip = clientIp(request);
-        const gate = takeTokens(ip, cost);
-        if (!gate.ok) {
-          return Response.json(
-            {
-              error: `Rate limit: max ${RATE_WORDS_PER_SEC} words/sec per user. Try again in ${gate.retryAfter}s.`,
-            },
-            { status: 429, headers: { "Retry-After": String(gate.retryAfter) } }
-          );
-        }
+
+
 
         // Per-model queue: one request at a time per model.
         return enqueue(`model:${model}`, async () => {
