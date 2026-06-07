@@ -1,10 +1,51 @@
+import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 
+// Wraps every word in the rendered tree with a span that fades in with
+// a tiny staggered delay. Reset the counter per render so each new
+// message starts its animation from the first word.
+function useWordFader() {
+  const counter = { i: 0 };
+  const MAX_DELAY_MS = 1200;
+  const STEP_MS = 18;
+
+  const wrap = (node: React.ReactNode, keyPrefix = "w"): React.ReactNode => {
+    if (node == null || typeof node === "boolean") return node;
+    if (typeof node === "number") return wrap(String(node), keyPrefix);
+    if (typeof node === "string") {
+      const parts = node.split(/(\s+)/);
+      return parts.map((part, idx) => {
+        if (!part) return null;
+        if (/^\s+$/.test(part)) return part;
+        const delay = Math.min(counter.i * STEP_MS, MAX_DELAY_MS);
+        counter.i += 1;
+        return (
+          <span
+            key={`${keyPrefix}-${idx}`}
+            className="word-fade"
+            style={{ animationDelay: `${delay}ms` }}
+          >
+            {part}
+          </span>
+        );
+      });
+    }
+    if (Array.isArray(node)) {
+      return node.map((child, idx) => (
+        <React.Fragment key={`${keyPrefix}-${idx}`}>{wrap(child, `${keyPrefix}-${idx}`)}</React.Fragment>
+      ));
+    }
+    return node;
+  };
+  return wrap;
+}
+
 export function MarkdownMessage({ content }: { content: string }) {
+  const wrap = useWordFader();
   return (
     <div className="markdown-body max-w-none break-words text-foreground text-[15px] leading-relaxed">
       <ReactMarkdown
@@ -12,24 +53,24 @@ export function MarkdownMessage({ content }: { content: string }) {
         rehypePlugins={[rehypeKatex]}
         components={{
           h1: ({ children }) => (
-            <h1 className="mt-4 mb-2 text-2xl font-semibold tracking-tight">{children}</h1>
+            <h1 className="mt-4 mb-2 text-2xl font-semibold tracking-tight">{wrap(children)}</h1>
           ),
           h2: ({ children }) => (
-            <h2 className="mt-4 mb-2 text-xl font-semibold tracking-tight">{children}</h2>
+            <h2 className="mt-4 mb-2 text-xl font-semibold tracking-tight">{wrap(children)}</h2>
           ),
           h3: ({ children }) => (
-            <h3 className="mt-3 mb-1.5 text-lg font-semibold">{children}</h3>
+            <h3 className="mt-3 mb-1.5 text-lg font-semibold">{wrap(children)}</h3>
           ),
-          p: ({ children }) => <p className="my-2 leading-relaxed">{children}</p>,
+          p: ({ children }) => <p className="my-2 leading-relaxed">{wrap(children)}</p>,
           ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-6">{children}</ul>,
           ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-6">{children}</ol>,
-          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-          em: ({ children }) => <em className="italic">{children}</em>,
+          li: ({ children }) => <li className="leading-relaxed">{wrap(children)}</li>,
+          strong: ({ children }) => <strong className="font-semibold text-foreground">{wrap(children)}</strong>,
+          em: ({ children }) => <em className="italic">{wrap(children)}</em>,
           hr: () => <hr className="my-4 border-border" />,
           blockquote: ({ children }) => (
             <blockquote className="my-3 border-l-2 border-border pl-3 text-muted-foreground italic">
-              {children}
+              {wrap(children)}
             </blockquote>
           ),
           code: ({ className, children, ...props }) => {
@@ -49,7 +90,7 @@ export function MarkdownMessage({ content }: { content: string }) {
           },
           a: ({ children, ...props }) => (
             <a className="text-primary underline underline-offset-2" target="_blank" rel="noreferrer" {...props}>
-              {children}
+              {wrap(children)}
             </a>
           ),
           table: ({ children }) => (
@@ -61,10 +102,10 @@ export function MarkdownMessage({ content }: { content: string }) {
           tbody: ({ children }) => <tbody>{children}</tbody>,
           tr: ({ children }) => <tr className="border-b border-border last:border-0">{children}</tr>,
           th: ({ children, style }) => (
-            <th style={style} className="px-3 py-2 text-left font-semibold">{children}</th>
+            <th style={style} className="px-3 py-2 text-left font-semibold">{wrap(children)}</th>
           ),
           td: ({ children, style }) => (
-            <td style={style} className="px-3 py-2 align-top">{children}</td>
+            <td style={style} className="px-3 py-2 align-top">{wrap(children)}</td>
           ),
         }}
       >
