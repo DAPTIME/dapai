@@ -76,20 +76,13 @@ export const Route = createFileRoute("/api/chat")({
         const raw = await request.text();
 
         let model = "dap-ai-1.0";
-        let cost = 1;
         try {
-          const parsed = JSON.parse(raw) as {
-            model?: string;
-            messages?: { role?: string; content?: string }[];
-          };
+          const parsed = JSON.parse(raw) as { model?: string };
           if (parsed.model === "dap-ai-lite") model = "dap-ai-lite";
-          const lastUser = [...(parsed.messages ?? [])]
-            .reverse()
-            .find((m) => m.role === "user");
-          cost = Math.max(1, countWords(lastUser?.content));
         } catch {
           /* upstream will surface the parse error */
         }
+
 
         const { url: backend, key, upstreamModel } = backendFor(model);
         if (!backend) {
