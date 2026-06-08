@@ -185,8 +185,7 @@ function Home() {
             width={512}
             height={512}
             loading="eager"
-            // @ts-expect-error fetchpriority is a valid HTML attribute
-            fetchpriority="high"
+            fetchPriority="high"
             decoding="async"
             className="mb-3 h-[min(18vh,7rem)] w-[min(18vh,7rem)] rounded-3xl bg-card/40 p-2 ring-1 ring-border/60 object-contain home-logo-shadow home-logo-float"
           />
