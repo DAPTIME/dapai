@@ -289,7 +289,7 @@ function Home() {
             <h2 id="composer-heading" className="sr-only">
               Message DAP AI
             </h2>
-            <ChatComposer onSend={handleSend} />
+            <ChatComposer onSend={handleSend} pending={trialPending} />
           </section>
         )}
         {siteEnabled && (
