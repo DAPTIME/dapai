@@ -148,21 +148,6 @@ function Home() {
             decoding="async"
             className="mb-3 h-[min(18vh,7rem)] w-[min(18vh,7rem)] object-contain home-logo-shadow"
           />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10 home-aurora"
-          />
-          <img
-            src={logo.url}
-            alt="DAP AI"
-            width={512}
-            height={512}
-            loading="eager"
-            // @ts-expect-error fetchpriority is a valid HTML attribute
-            fetchpriority="high"
-            decoding="async"
-            className="mb-6 h-[min(25vw,10rem)] w-[min(25vw,10rem)] object-contain home-logo-shadow"
-          />
 
 
           <h1
