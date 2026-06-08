@@ -163,13 +163,13 @@ function Home() {
           </h1>
 
 
-          <p className="mt-3 max-w-xl text-base text-muted-foreground">
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
             {greeting} DAP AI is a fast AI chatbot for answers, writing, studying,
             coding, and custom AI assistants.
           </p>
 
           {!user && ready && (
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground">
               <Link to="/signup" className="font-medium text-foreground underline">
                 Create an account
               </Link>{" "}
@@ -177,7 +177,7 @@ function Home() {
             </p>
           )}
 
-          <div className="mt-10 w-full">
+          <div className="mt-4 w-full">
             {!ready ? (
               <div className="flex justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -193,7 +193,8 @@ function Home() {
           </div>
         </div>
       </div>
-      <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
+      <div className="border-t border-border bg-background/60 px-4 py-2 backdrop-blur">
+
         {!ready || siteStatus.isLoading ? (
           <div className="mx-auto flex max-w-3xl justify-center py-2">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
