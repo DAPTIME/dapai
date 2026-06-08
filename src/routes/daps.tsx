@@ -1,10 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Plus, Trash2, X, Lock } from "lucide-react";
+import { Sparkles, Plus, Trash2, X, Lock, Crown } from "lucide-react";
 import { useState } from "react";
 import { DAPS } from "@/lib/daps";
-import { createChat } from "@/lib/chats.functions";
+import { createChat, getProfile } from "@/lib/chats.functions";
 import {
   listCustomDaps,
   createCustomDap,
