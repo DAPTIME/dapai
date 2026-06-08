@@ -28,7 +28,7 @@ function directReplyIndex(text: string): number {
 
 export function sanitizeLiteReply(text: string): string {
   let out = String(text ?? "")
-    .replace(/```(?:analysis|reasoning|thinking)[\s\S]*?```/gi, "")
+    .replace(/```(?:analysis|reasoning|thinking|system)[\s\S]*?```/gi, "")
     .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, "")
     .replace(/<think\b[^>]*>[\s\S]*$/gi, "")
     .replace(/<thinking\b[^>]*>[\s\S]*?<\/thinking>/gi, "")
@@ -38,7 +38,17 @@ export function sanitizeLiteReply(text: string): string {
     .replace(/<\|begin_of_thought\|>[\s\S]*?<\|end_of_thought\|>/gi, "")
     .replace(/\|begin_of_thought\|[\s\S]*?\|end_of_thought\|/gi, "")
     .replace(/<\|begin_of_reasoning\|>[\s\S]*?<\|end_of_reasoning\|>/gi, "")
-    .replace(/\|begin_of_reasoning\|[\s\S]*?\|end_of_reasoning\|/gi, "");
+    .replace(/\|begin_of_reasoning\|[\s\S]*?\|end_of_reasoning\|/gi, "")
+    // Strip echoed system-prompt blocks. If the model repeats one of our
+    // internal system tags or rule headers, drop everything up through
+    // the end of that block.
+    .replace(/\[Auto-tuned prompt[\s\S]*?\][\s\S]*?(?:\n\n|$)/gi, "")
+    .replace(/^[\s\S]*?Accuracy rules:[\s\S]*?(?:\n\n|$)/i, "")
+    .replace(/^[\s\S]*?What you remember about this user[\s\S]*?(?:\n\n|$)/i, "")
+    .replace(/^[\s\S]*?You are DAP AI[\s\S]*?(?:\n\n|$)/i, "")
+    .replace(/^[\s\S]*?\[DAP:[^\]]*\][\s\S]*?(?:\n\n|$)/i, "");
+
+
 
   const finalMarkers = Array.from(
     out.matchAll(/(?:^|\n)\s*(?:final(?: answer)?|answer|response)\s*:\s*/gi)
