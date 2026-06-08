@@ -48,10 +48,7 @@ export function sanitizeLiteReply(text: string): string {
     .replace(/^[\s\S]*?You are DAP AI[\s\S]*?(?:\n\n|$)/i, "")
     .replace(/^[\s\S]*?\[DAP:[^\]]*\][\s\S]*?(?:\n\n|$)/i, "");
 
-    .replace(/<\|begin_of_thought\|>[\s\S]*?<\|end_of_thought\|>/gi, "")
-    .replace(/\|begin_of_thought\|[\s\S]*?\|end_of_thought\|/gi, "")
-    .replace(/<\|begin_of_reasoning\|>[\s\S]*?<\|end_of_reasoning\|>/gi, "")
-    .replace(/\|begin_of_reasoning\|[\s\S]*?\|end_of_reasoning\|/gi, "");
+
 
   const finalMarkers = Array.from(
     out.matchAll(/(?:^|\n)\s*(?:final(?: answer)?|answer|response)\s*:\s*/gi)
