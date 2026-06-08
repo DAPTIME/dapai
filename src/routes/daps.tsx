@@ -115,7 +115,7 @@ function Daps() {
     );
   }
 
-  if (user && !isPro) {
+  if (!user || !isPro) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">
         <div
@@ -129,12 +129,25 @@ function Daps() {
         </h1>
         <p className="mt-3 text-muted-foreground">
           Build your own assistants with custom instructions and personas.
-          Upgrade to Pro to create and chat with Custom AI's.
+          {user
+            ? " Upgrade to Pro to create and chat with Custom AI's."
+            : " Sign in with a Pro account to create and chat with Custom AI's."}
         </p>
-        <div className="mt-6">
-          <Button asChild>
-            <Link to="/settings">Upgrade to Pro</Link>
-          </Button>
+        <div className="mt-6 flex justify-center gap-2">
+          {user ? (
+            <Button asChild>
+              <Link to="/settings">Upgrade to Pro</Link>
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" asChild>
+                <Link to="/login">Log in</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/signup">Create account</Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
     );
