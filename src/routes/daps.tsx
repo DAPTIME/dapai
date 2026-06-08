@@ -165,7 +165,7 @@ function Daps() {
               await createCustom({ data: values });
               qc.invalidateQueries({ queryKey: ["custom-daps"] });
               setShowForm(false);
-              toast.success("Custom DAP created.");
+              toast.success("Custom AI created.");
             } catch (e) {
               toast.error((e as Error).message);
             }
@@ -176,7 +176,7 @@ function Daps() {
       {user && customQuery.data && customQuery.data.length > 0 && (
         <section className="mt-10">
           <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            Your custom DAPs
+            Your Custom AI's
           </h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             {customQuery.data.map((c) => (
@@ -205,7 +205,7 @@ function Daps() {
                     if (confirm(`Delete "${c.name}"?`)) removeCustom.mutate(c.id);
                   }}
                   className="absolute right-3 top-3 rounded-md p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100"
-                  aria-label="Delete custom DAP"
+                  aria-label="Delete Custom AI"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -217,7 +217,7 @@ function Daps() {
 
       <section className="mt-10">
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Built-in DAPs
+          Built-in Custom AI's
         </h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           {DAPS.map((g) => (
