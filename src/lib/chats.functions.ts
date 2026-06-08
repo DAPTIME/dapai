@@ -518,7 +518,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
         throw new Error(
           effectiveModel === "dap-ai-1.0"
-            ? "DAP AI 1.0 is currently disabled by the admin."
+            ? "DAP AI 3.2 is currently disabled by the admin."
             : "DAP AI Lite is currently disabled by the admin."
         );
       }
