@@ -739,11 +739,25 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             }),
             signal: ctrl.signal,
           });
-          const json = (await res.json()) as {
+          const raw = await res.text();
+          let json: {
             choices?: { message?: { content?: string } }[];
             message?: { content?: string };
             error?: string | { message?: string };
-          };
+          } = {};
+          try {
+            json = JSON.parse(raw);
+          } catch {
+            // Upstream returned non-JSON (HTML/text). Usually means the
+            // ngrok tunnel URL expired or LM Studio isn't running.
+            const snippet = raw.replace(/\s+/g, " ").trim().slice(0, 120);
+            const tunnelHint = /ngrok|endpoint (is )?offline|tunnel/i.test(raw)
+              ? " The ngrok tunnel URL looks offline or expired — restart `ngrok http 1234` and update AI_BACKEND_URL_" +
+                (effectiveModel === "dap-ai-lite" ? "LITE" : "PRO") +
+                " to the new https URL."
+              : "";
+            return `AI backend is offline (HTTP ${res.status}). ${snippet}${tunnelHint}`;
+          }
           const errStr =
             typeof json?.error === "string"
               ? json.error
