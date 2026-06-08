@@ -130,9 +130,24 @@ function Home() {
 
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      <div className="flex-1 overflow-y-auto">
-        <div className="relative mx-auto flex min-h-full max-w-3xl flex-col items-center justify-center px-4 py-10 text-center">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden">
+      <div className="flex-1 overflow-hidden">
+        <div className="relative mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-4 py-4 text-center">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-10 home-aurora"
+          />
+          <img
+            src={logo.url}
+            alt="DAP AI"
+            width={512}
+            height={512}
+            loading="eager"
+            // @ts-expect-error fetchpriority is a valid HTML attribute
+            fetchpriority="high"
+            decoding="async"
+            className="mb-3 h-[min(18vh,7rem)] w-[min(18vh,7rem)] object-contain home-logo-shadow"
+          />
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 -z-10 home-aurora"
