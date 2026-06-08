@@ -10,10 +10,25 @@ const DapInput = z.object({
   opener: z.string().max(1000).optional().default(""),
 });
 
+async function requirePro(
+  supabase: { from: (t: string) => any },
+  userId: string
+) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("tier")
+    .eq("id", userId)
+    .single();
+  if ((profile?.tier as string) !== "pro") {
+    throw new Error("Custom AI's are a Pro feature. Upgrade to create or use them.");
+  }
+}
+
 export const listCustomDaps = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+    await requirePro(supabase, userId);
     const { data, error } = await supabase
       .from("custom_daps")
       .select("id, name, description, emoji, system_prompt, opener, created_at")
@@ -27,6 +42,7 @@ export const createCustomDap = createServerFn({ method: "POST" })
   .inputValidator((i) => DapInput.parse(i))
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    await requirePro(supabase, userId);
     const { data: row, error } = await supabase
       .from("custom_daps")
       .insert({
