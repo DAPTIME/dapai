@@ -105,7 +105,8 @@ function Home() {
 
   const startChat = useMutation({
     mutationFn: async (payload: { text: string; images?: string[] }) => {
-      const chat = await create();
+      const incognito = typeof window !== "undefined" && localStorage.getItem("dap.incognito") === "1";
+      const chat = await create({ data: { incognito } });
       // Stash pending message so the chat route auto-sends after navigation.
       if (typeof window !== "undefined") {
         sessionStorage.setItem(
