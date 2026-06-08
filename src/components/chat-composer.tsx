@@ -86,12 +86,20 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
     const saved =
       typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
     const target = saved && MODELS.some((m) => m.id === saved) ? saved : null;
+    let resolved: string;
     if (target) {
       const m = MODELS.find((mm) => mm.id === target)!;
       const allow = !m.requiresPro || canUsePro;
-      setModel(allow ? target : "dap-ai-lite");
-    } else if (!canUsePro) {
-      setModel("dap-ai-lite");
+      resolved = allow ? target : "dap-ai-lite";
+    } else {
+      resolved = canUsePro ? "dap-ai-1.0" : "dap-ai-lite";
+    }
+    setModel(resolved);
+    // Persist the resolved choice so other surfaces (chat page, home page)
+    // that read `dap.model` from localStorage see the actual selection,
+    // not the stale pro default.
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dap.model", resolved);
     }
   }, [canUsePro]);
 
