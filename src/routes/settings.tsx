@@ -78,7 +78,6 @@ function Settings() {
               id={row.id}
               checked={row.checked}
               onCheckedChange={row.onChange}
-              disabled={!row.onChange}
             />
           </div>
         ))}
