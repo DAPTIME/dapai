@@ -80,11 +80,15 @@ const GREETINGS = (name: string) => [
   `Ask me anything, ${name}.`,
 ];
 
+type TrialExchange = { userText: string; reply?: string; error?: string };
+
 function Home() {
   const navigate = useNavigate();
   const { user, ready } = useAuth();
   const [greeting, setGreeting] = useState<string>("");
   const [signupOpen, setSignupOpen] = useState(false);
+  const [trial, setTrial] = useState<TrialExchange | null>(null);
+  const [trialPending, setTrialPending] = useState(false);
   const create = useServerFn(createChat);
   const fetchSiteStatus = useServerFn(getSiteStatus);
   const siteStatus = useQuery({
