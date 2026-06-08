@@ -23,6 +23,7 @@ import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiPublicLiteTryRouteImport } from './routes/api/public/lite-try'
 import { Route as ApiPublicHooksCleanupOldChatsRouteImport } from './routes/api/public/hooks/cleanup-old-chats'
 
 const TermsRoute = TermsRouteImport.update({
@@ -95,6 +96,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicLiteTryRoute = ApiPublicLiteTryRouteImport.update({
+  id: '/api/public/lite-try',
+  path: '/api/public/lite-try',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksCleanupOldChatsRoute =
   ApiPublicHooksCleanupOldChatsRouteImport.update({
     id: '/api/public/hooks/cleanup-old-chats',
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
 }
 export interface FileRoutesByTo {
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
 }
 export interface FileRoutesById {
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
 }
 export interface FileRouteTypes {
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/chat'
     | '/c/$threadId'
+    | '/api/public/lite-try'
     | '/api/public/hooks/cleanup-old-chats'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/chat'
     | '/c/$threadId'
+    | '/api/public/lite-try'
     | '/api/public/hooks/cleanup-old-chats'
   id:
     | '__root__'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/api/chat'
     | '/c/$threadId'
+    | '/api/public/lite-try'
     | '/api/public/hooks/cleanup-old-chats'
   fileRoutesById: FileRoutesById
 }
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiChatRoute: typeof ApiChatRoute
   CThreadIdRoute: typeof CThreadIdRoute
+  ApiPublicLiteTryRoute: typeof ApiPublicLiteTryRoute
   ApiPublicHooksCleanupOldChatsRoute: typeof ApiPublicHooksCleanupOldChatsRoute
 }
 
@@ -326,6 +339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/lite-try': {
+      id: '/api/public/lite-try'
+      path: '/api/public/lite-try'
+      fullPath: '/api/public/lite-try'
+      preLoaderRoute: typeof ApiPublicLiteTryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/cleanup-old-chats': {
       id: '/api/public/hooks/cleanup-old-chats'
       path: '/api/public/hooks/cleanup-old-chats'
@@ -351,8 +371,19 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiChatRoute: ApiChatRoute,
   CThreadIdRoute: CThreadIdRoute,
+  ApiPublicLiteTryRoute: ApiPublicLiteTryRoute,
   ApiPublicHooksCleanupOldChatsRoute: ApiPublicHooksCleanupOldChatsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
