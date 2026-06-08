@@ -105,7 +105,8 @@ function Home() {
 
   const startChat = useMutation({
     mutationFn: async (payload: { text: string; images?: string[] }) => {
-      const chat = await create();
+      const incognito = typeof window !== "undefined" && localStorage.getItem("dap.incognito") === "1";
+      const chat = await create({ data: { incognito } });
       // Stash pending message so the chat route auto-sends after navigation.
       if (typeof window !== "undefined") {
         sessionStorage.setItem(
@@ -146,7 +147,7 @@ function Home() {
             // @ts-expect-error fetchpriority is a valid HTML attribute
             fetchpriority="high"
             decoding="async"
-            className="mb-3 h-[min(18vh,7rem)] w-[min(18vh,7rem)] object-contain home-logo-shadow"
+            className="mb-3 h-[min(18vh,7rem)] w-[min(18vh,7rem)] rounded-3xl bg-card/40 p-2 ring-1 ring-border/60 object-contain home-logo-shadow home-logo-float"
           />
 
 

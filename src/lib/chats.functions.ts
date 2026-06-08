@@ -280,6 +280,7 @@ export const listChats = createServerFn({ method: "GET" })
     const { data, error } = await supabase
       .from("chats")
       .select("id, title, created_at, updated_at")
+      .eq("is_incognito", false)
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data;
@@ -289,7 +290,10 @@ export const createChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
     z
-      .object({ dapId: z.string().min(1).max(128).optional() })
+      .object({
+        dapId: z.string().min(1).max(128).optional(),
+        incognito: z.boolean().optional(),
+      })
       .optional()
       .parse(i ?? {})
   )
@@ -369,6 +373,7 @@ export const createChat = createServerFn({ method: "POST" })
       .insert({
         user_id: userId,
         title: dap ? `${dap.name} chat` : "New chat",
+        is_incognito: !!data?.incognito,
       })
       .select("id, title, created_at, updated_at")
       .single();

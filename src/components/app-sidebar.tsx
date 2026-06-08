@@ -34,6 +34,7 @@ import {
   createChat,
   deleteChat,
 } from "@/lib/chats.functions";
+import { useIncognito, isIncognitoNow } from "@/lib/use-incognito";
 
 const main = [
   { title: "Custom AI's", url: "/daps", icon: Sparkles },
@@ -46,6 +47,7 @@ export function AppSidebar() {
   const { user } = useAuth();
   const { isMobile, setOpenMobile } = useSidebar();
   const qc = useQueryClient();
+  const incognito = useIncognito();
   const list = useServerFn(listChats);
   const create = useServerFn(createChat);
   const remove = useServerFn(deleteChat);
@@ -53,11 +55,11 @@ export function AppSidebar() {
   const chatsQuery = useQuery({
     queryKey: ["chats", user?.id ?? "anon"],
     queryFn: () => list(),
-    enabled: !!user,
+    enabled: !!user && !incognito,
   });
 
   const createMut = useMutation({
-    mutationFn: () => create(),
+    mutationFn: () => create({ data: { incognito: isIncognitoNow() } }),
     onSuccess: (chat) => {
       qc.invalidateQueries({ queryKey: ["chats"] });
       navigate({ to: "/c/$threadId", params: { threadId: chat.id } });
@@ -122,7 +124,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {user && (
+        {user && !incognito && (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel>
               <History className="mr-1.5 h-3.5 w-3.5" /> Chats
