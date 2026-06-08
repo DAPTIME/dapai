@@ -5,33 +5,33 @@ export const Route = createFileRoute("/about-dap-ai")({
     meta: [
       {
         title:
-          "DAP AI — Free AI Chatbot, AI Assistant & DAP AI 3.2 Pro Model",
+          "About DAP AI — A Small Language Model You Can Actually Run",
       },
       {
         name: "description",
         content:
-          "DAP AI is a free AI chatbot and AI assistant. Chat with DAP AI Lite for free or upgrade to DAP AI 3.2 Pro for advanced reasoning, web search, vision, custom DAPs, and AI memory.",
+          "DAP AI is a ~100M parameter small language model, roughly as capable as Gemma E2B, that runs on a single RTX 5060 Ti and two Jetson Orin Nanos — no datacenter required.",
       },
       {
         name: "keywords",
         content:
-          "DAP AI, DAP AI chatbot, DAP AI 3.2, DAP AI Pro, DAP AI Lite, dapai, dap ai assistant, free AI chatbot, AI chat, AI assistant, custom AI personas, DAPs, AI memory, chat GPT alternative, free chatbot, AI search, web search AI, vision AI, image chat, ai for students, online ai chatbot, dapai lovable app",
+          "DAP AI, dap ai, dapai, DAP AI 3.2, DAP AI Pro, DAP AI Lite, small language model, SLM, 100M parameter model, Gemma E2B alternative, edge AI, Jetson Orin Nano, RTX 5060 Ti, on-device AI, self-hosted AI, free AI chatbot",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "DAP AI — Free AI Chatbot & Assistant" },
+      { property: "og:title", content: "About DAP AI — Small Language Model" },
       {
         property: "og:description",
         content:
-          "Meet DAP AI: a free AI chatbot with a Pro tier (DAP AI 3.2), custom personas (DAPs), AI memory, web search, and vision. Try it free.",
+          "A ~100M parameter small language model that runs on consumer hardware. No datacenter, no cloud GPU bill.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://dapai.lovable.app/about-dap-ai" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "DAP AI — Free AI Chatbot & Assistant" },
+      { name: "twitter:title", content: "About DAP AI — Small Language Model" },
       {
         name: "twitter:description",
         content:
-          "Free AI chatbot with Pro reasoning model DAP AI 3.2, custom DAPs, memory, web search, and vision.",
+          "A ~100M parameter SLM running on one 5060 Ti and two Jetson Orin Nanos.",
       },
     ],
     links: [
@@ -49,53 +49,8 @@ export const Route = createFileRoute("/about-dap-ai")({
           operatingSystem: "Web",
           url: "https://dapai.lovable.app",
           description:
-            "DAP AI is a free AI chatbot and AI assistant with a Pro tier (DAP AI 3.2) offering advanced reasoning, web search, vision, custom DAPs, and AI memory.",
-          offers: {
-            "@type": "Offer",
-            price: "0",
-            priceCurrency: "USD",
-          },
-        }),
-      },
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          mainEntity: [
-            {
-              "@type": "Question",
-              name: "What is DAP AI?",
-              acceptedAnswer: {
-                "@type": "Answer",
-                text: "DAP AI is a free AI chatbot and AI assistant available at dapai.lovable.app. It includes DAP AI Lite (free) and DAP AI 3.2 Pro for advanced reasoning, web search, vision and custom AI personas (DAPs).",
-              },
-            },
-            {
-              "@type": "Question",
-              name: "Is DAP AI free?",
-              acceptedAnswer: {
-                "@type": "Answer",
-                text: "Yes. DAP AI Lite is free. DAP AI 3.2 Pro is available on the Pro plan and unlocks the smarter model, custom DAPs, AI memory and other features.",
-              },
-            },
-            {
-              "@type": "Question",
-              name: "What is DAP AI 3.2?",
-              acceptedAnswer: {
-                "@type": "Answer",
-                text: "DAP AI 3.2 is the Pro model in DAP AI. It uses a larger reasoning model with web search, vision (image input) and longer chat memory.",
-              },
-            },
-            {
-              "@type": "Question",
-              name: "What are DAPs?",
-              acceptedAnswer: {
-                "@type": "Answer",
-                text: "DAPs are custom AI personas inside DAP AI. Pro users can create their own DAPs with a name, emoji, opener and system prompt to specialize the assistant for any task.",
-              },
-            },
-          ],
+            "DAP AI is a ~100M parameter small language model, comparable to Gemma E2B, running on consumer hardware (one RTX 5060 Ti and two Jetson Orin Nanos) — no datacenter required.",
+          offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
         }),
       },
     ],
@@ -106,87 +61,125 @@ export const Route = createFileRoute("/about-dap-ai")({
 function AboutDapAi() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-4xl font-semibold tracking-tight">
-        DAP AI — Free AI Chatbot & AI Assistant
-      </h1>
+      <div className="mb-6 text-sm text-muted-foreground">
+        <Link to="/terms" className="underline hover:text-foreground">
+          ← Back to Terms
+        </Link>
+      </div>
+
+      <h1 className="text-4xl font-semibold tracking-tight">About DAP AI</h1>
       <p className="mt-4 text-lg text-muted-foreground">
-        DAP AI is a free online AI chatbot and AI assistant. Chat with{" "}
-        <strong>DAP AI Lite</strong> for free or upgrade to{" "}
-        <strong>DAP AI 3.2 Pro</strong> for advanced reasoning, live web
-        search, image (vision) input, custom AI personas (DAPs), and AI
-        memory across conversations.
+        DAP AI is a <strong>small language model</strong> — around{" "}
+        <strong>100 million parameters</strong> — designed to be roughly as
+        capable as models like <strong>Gemma E2B</strong>, while running
+        entirely on consumer hardware. No datacenter, no cloud GPU bill, no
+        racks of H100s.
       </p>
 
-      <h2 className="mt-10 text-2xl font-semibold">What is DAP AI?</h2>
-      <p className="mt-3 text-muted-foreground">
-        DAP AI (sometimes written “dap ai” or “dapai”) is a conversational
-        AI built for fast, helpful answers — coding help, writing,
-        brainstorming, research, study help, and everyday questions. It
-        runs in your browser at{" "}
-        <a className="underline" href="https://dapai.lovable.app">
-          dapai.lovable.app
-        </a>{" "}
-        — no install required.
-      </p>
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">What DAP AI is</h2>
+        <p className="mt-3 text-muted-foreground">
+          DAP AI is a compact, efficient language model built for everyday
+          chat, coding help, writing, and study questions. It belongs to the
+          new wave of <em>small language models</em> (SLMs) — models that
+          deliberately trade raw size for speed, cost, and the ability to run
+          on hardware you can actually buy at a store.
+        </p>
+        <p className="mt-3 text-muted-foreground">
+          At ~100M parameters, DAP AI is dramatically smaller than frontier
+          models like GPT-4 or Claude (often hundreds of billions of
+          parameters), but punches well above its weight thanks to careful
+          training and tuning. Its target quality bar is{" "}
+          <strong>Gemma E2B</strong>-class — meaning useful, coherent answers
+          for the kinds of questions people actually ask a chatbot.
+        </p>
+      </section>
 
-      <h2 className="mt-10 text-2xl font-semibold">DAP AI models</h2>
-      <ul className="mt-3 list-disc space-y-2 pl-6 text-muted-foreground">
-        <li>
-          <strong>DAP AI Lite</strong> — free, fast, great for quick
-          questions and chat.
-        </li>
-        <li>
-          <strong>DAP AI 3.2 (Pro)</strong> — the smarter reasoning model
-          with web search, image vision, longer memory and custom DAPs.
-        </li>
-      </ul>
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">The hardware it runs on</h2>
+        <p className="mt-3 text-muted-foreground">
+          The entire DAP AI service runs on:
+        </p>
+        <ul className="mt-3 list-disc space-y-2 pl-6 text-muted-foreground">
+          <li>
+            <strong>1× NVIDIA GeForce RTX 5060 Ti</strong> — a consumer gaming
+            GPU, not a datacenter card.
+          </li>
+          <li>
+            <strong>2× NVIDIA Jetson Orin Nano</strong> — small edge devices
+            roughly the size of a paperback book.
+          </li>
+        </ul>
+        <p className="mt-3 text-muted-foreground">
+          That's it. No datacenter, no server farm, no enterprise contract.
+          The whole stack fits on a desk and draws less power than a hair
+          dryer.
+        </p>
+      </section>
 
-      <h2 className="mt-10 text-2xl font-semibold">Features</h2>
-      <ul className="mt-3 list-disc space-y-2 pl-6 text-muted-foreground">
-        <li>Free AI chatbot — no credit card required.</li>
-        <li>Live web search powered by Firecrawl for up-to-date answers.</li>
-        <li>Image / vision input (Pro) — chat about screenshots and photos.</li>
-        <li>Custom DAPs — build your own AI personas with custom prompts.</li>
-        <li>AI memory — DAP AI remembers facts about you across chats.</li>
-        <li>Incognito mode — chat without saving history to your sidebar.</li>
-        <li>Dark and light themes, mobile-friendly, fast loading.</li>
-      </ul>
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">Why a small model?</h2>
+        <ul className="mt-3 list-disc space-y-2 pl-6 text-muted-foreground">
+          <li>
+            <strong>It's fast.</strong> Small models respond quickly because
+            there's less math to do per token.
+          </li>
+          <li>
+            <strong>It's cheap to run.</strong> No $20k GPUs, no per-token
+            cloud bills. That's why DAP AI Lite can be free.
+          </li>
+          <li>
+            <strong>It's private.</strong> Your messages never leave hardware
+            we control — they're not handed off to OpenAI, Anthropic, or
+            Google.
+          </li>
+          <li>
+            <strong>It's proof that you don't need a datacenter.</strong>{" "}
+            Useful AI does not have to be exclusive to billion-dollar
+            companies.
+          </li>
+        </ul>
+      </section>
 
-      <h2 className="mt-10 text-2xl font-semibold">FAQ</h2>
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">Tiers</h2>
+        <ul className="mt-3 list-disc space-y-2 pl-6 text-muted-foreground">
+          <li>
+            <strong>DAP AI Lite</strong> — free. Fast replies for quick
+            questions and chat.
+          </li>
+          <li>
+            <strong>DAP AI 3.2 (Pro)</strong> — the smarter tuned variant
+            with longer memory, custom DAPs (personas), web search, and
+            image input.
+          </li>
+        </ul>
+      </section>
 
-      <h3 className="mt-6 text-lg font-semibold">Is DAP AI free?</h3>
-      <p className="mt-2 text-muted-foreground">
-        Yes — DAP AI Lite is free. DAP AI 3.2 Pro unlocks the larger
-        reasoning model, custom DAPs, AI memory and more.
-      </p>
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">The bigger idea</h2>
+        <p className="mt-3 text-muted-foreground">
+          Most AI you use today is rented from a handful of giant cloud
+          providers. DAP AI is a small experiment in the opposite direction:
+          a useful chatbot, served from a few small machines, that proves
+          you don't need a hyperscaler to make AI happen.
+        </p>
+      </section>
 
-      <h3 className="mt-6 text-lg font-semibold">Is DAP AI like ChatGPT?</h3>
-      <p className="mt-2 text-muted-foreground">
-        DAP AI is a chatbot in the same family of tools as ChatGPT,
-        Claude, Gemini and Perplexity. It’s a free ChatGPT alternative
-        with its own Pro model (DAP AI 3.2), custom personas and live web
-        search.
-      </p>
-
-      <h3 className="mt-6 text-lg font-semibold">How do I try DAP AI?</h3>
-      <p className="mt-2 text-muted-foreground">
-        Open the{" "}
-        <Link to="/" className="underline">
-          DAP AI home page
-        </Link>{" "}
-        and start typing. Sign up for a free account to save your chats,
-        or upgrade to Pro for DAP AI 3.2.
-      </p>
-
-      <h2 className="mt-10 text-2xl font-semibold">Keywords</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        DAP AI, dap ai, dapai, DAP AI chatbot, DAP AI assistant, DAP AI
-        3.2, DAP AI Pro, DAP AI Lite, DAP AI free, DAP AI online, DAP AI
-        login, DAP AI sign up, free AI chatbot, AI assistant, custom AI
-        personas, DAPs, AI memory, web search AI, vision AI, ChatGPT
-        alternative, free chatbot online, AI for students, AI for coding,
-        AI for writing, dapai lovable app.
-      </p>
+      <div className="mt-12 flex flex-wrap gap-3">
+        <Link
+          to="/"
+          className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Try DAP AI
+        </Link>
+        <Link
+          to="/terms"
+          className="inline-flex items-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+        >
+          Back to Terms
+        </Link>
+      </div>
     </div>
   );
 }
