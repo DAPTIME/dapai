@@ -14,7 +14,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, UserMinus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   adminAmIAdmin,
   adminListUsers,
@@ -37,15 +44,16 @@ type FeatureKey = (typeof FEATURE_KEYS)[number];
 const FEATURE_LABELS: Record<FeatureKey, string> = {
   pro_model: "DAP AI 1.0 (Pro model)",
   lite_model: "DAP AI Lite",
-  daps: "DAPs (Custom assistants)",
+  daps: "Custom AI's",
   team: "Our Team page",
 };
 const FEATURE_DESCRIPTIONS: Record<FeatureKey, string> = {
   pro_model: "Block sending messages with the DAP AI 1.0 pro model.",
   lite_model: "Block sending messages with the DAP AI Lite model.",
-  daps: "Hide the /daps page and disable starting custom DAP chats.",
+  daps: "Hide the /daps page and disable starting Custom AI chats.",
   team: "Hide the /team page.",
 };
+
 import {
   listBetaTesters,
   adminAddBetaTester,
