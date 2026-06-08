@@ -346,7 +346,7 @@ function CustomDapForm({
       </label>
       <div className="flex justify-end">
         <Button type="submit" disabled={busy}>
-          {busy ? "Creating…" : "Create DAP"}
+          {busy ? "Creating…" : "Create Custom AI"}
         </Button>
       </div>
     </form>
