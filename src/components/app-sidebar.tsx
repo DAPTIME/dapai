@@ -36,7 +36,7 @@ import {
 } from "@/lib/chats.functions";
 
 const main = [
-  { title: "DAPs", url: "/daps", icon: Sparkles },
+  { title: "Custom AI's", url: "/daps", icon: Sparkles },
   { title: "Our Team", url: "/team", icon: Users },
 ] as const;
 
