@@ -224,6 +224,40 @@ function Home() {
               <div className="flex justify-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
+            ) : trial ? (
+              <div className="mx-auto w-full max-w-2xl space-y-3 text-left">
+                <div className="ml-auto max-w-[85%] rounded-2xl bg-primary px-4 py-2 text-sm text-primary-foreground">
+                  {trial.userText}
+                </div>
+                <div className="mr-auto max-w-[95%] rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground whitespace-pre-wrap">
+                  {trialPending && !trial.reply ? (
+                    <span className="inline-flex items-center gap-2 text-muted-foreground">
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      Thinking…
+                    </span>
+                  ) : trial.error ? (
+                    <span className="text-destructive">{trial.error}</span>
+                  ) : (
+                    trial.reply
+                  )}
+                </div>
+                {!trialPending && (trial.reply || trial.error) && (
+                  <div className="rounded-2xl border border-border bg-card/60 p-4 text-center">
+                    <p className="text-sm text-foreground">
+                      That was your free trial message. Create an account to keep
+                      chatting with DAP AI.
+                    </p>
+                    <div className="mt-3 flex justify-center gap-2">
+                      <Button variant="outline" asChild>
+                        <Link to="/login">Log in</Link>
+                      </Button>
+                      <Button asChild>
+                        <Link to="/signup">Create account</Link>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : siteEnabled ? (
               <section aria-labelledby="suggestions-heading">
                 <h2 id="suggestions-heading" className="sr-only">
