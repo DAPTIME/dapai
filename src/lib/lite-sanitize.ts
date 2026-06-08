@@ -59,7 +59,7 @@ export function sanitizeLiteReply(text: string): string {
   }
 
   const metaLeadRe =
-    /^\s*(?:[-*]\s*)?(?:the user\s+(?:said|asked|wants|needs|provided|is asking|is looking)|user message\b|i\s+(?:need|should|will|must|have to|am going)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b|(?:my|the)\s+(?:response|reply)\b|my\s+answer\b)[\s\S]{0,600}?(?:[.!?]["'’\])]*\s+|:\s*|\n+)/i;
+    /^\s*(?:[-*]\s*)?(?:the user\s+(?:said|asked|wants|needs|provided|sent|input|is\s+(?:asking|saying|sending|looking))|user (?:message|input|said|sent|asked)\b|this (?:is\s+)?(?:likely|probably|appears|seems|looks like)\b|i\s+(?:need|should|will|must|have to|am going)\b|i['’]ll\b|(?:as per|per|according to|based on|following)\b|(?:my|the)\s+(?:response|reply)\b|my\s+answer\b)[\s\S]{0,600}?(?:[.!?]["'’\])]*\s+|:\s*|\n+)/i;
 
   let guard = 0;
   while (metaLeadRe.test(out) && guard++ < 20) {
