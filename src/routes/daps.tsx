@@ -18,17 +18,17 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/daps")({
   head: () => ({
     meta: [
-      { title: "Custom AI Assistants — DAP AI" },
+      { title: "Custom AI's — DAP AI" },
       {
         name: "description",
         content:
-          "Explore DAP AI's custom AI assistants for coding, studying, writing, planning, and focused tasks.",
+          "Build and chat with your own Custom AI's — Pro-only assistants for coding, studying, writing, planning, and focused tasks.",
       },
-      { property: "og:title", content: "Custom AI Assistants — DAP AI" },
+      { property: "og:title", content: "Custom AI's — DAP AI" },
       {
         property: "og:description",
         content:
-          "Explore specialized DAP AI assistants for coding, studying, writing, planning, and focused tasks.",
+          "Pro-only Custom AI's: tailor your own assistant for coding, studying, writing, planning, and focused tasks.",
       },
       { property: "og:url", content: "https://dapai.lovable.app/daps" },
     ],
