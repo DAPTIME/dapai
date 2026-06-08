@@ -125,9 +125,46 @@ function Home() {
     },
   });
 
-  const handleSend = (text: string, images?: string[]) => {
+  const handleSend = async (text: string, images?: string[]) => {
     if (!user) {
-      setSignupOpen(true);
+      const used =
+        typeof window !== "undefined" &&
+        localStorage.getItem("dap.anonUsed") === "1";
+      if (used) {
+        setSignupOpen(true);
+        return;
+      }
+      if (images && images.length > 0) {
+        // Image attachments aren't allowed for the anonymous trial — Lite is text-only.
+      }
+      setTrial({ userText: text });
+      setTrialPending(true);
+      try {
+        const res = await fetch("/api/public/lite-try", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const json = (await res.json().catch(() => ({}))) as {
+          reply?: string;
+          error?: string;
+        };
+        if (!res.ok) {
+          setTrial({ userText: text, error: json.error ?? "Something went wrong." });
+        } else {
+          setTrial({ userText: text, reply: json.reply ?? "" });
+          if (typeof window !== "undefined") {
+            localStorage.setItem("dap.anonUsed", "1");
+          }
+        }
+      } catch (e) {
+        setTrial({
+          userText: text,
+          error: (e as Error).message || "Network error.",
+        });
+      } finally {
+        setTrialPending(false);
+      }
       return;
     }
     startChat.mutate({ text, images });
