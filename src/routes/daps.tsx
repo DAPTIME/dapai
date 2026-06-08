@@ -1,10 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Plus, Trash2, X, Lock } from "lucide-react";
+import { Sparkles, Plus, Trash2, X, Lock, Crown } from "lucide-react";
 import { useState } from "react";
 import { DAPS } from "@/lib/daps";
-import { createChat } from "@/lib/chats.functions";
+import { createChat, getProfile } from "@/lib/chats.functions";
 import {
   listCustomDaps,
   createCustomDap,
@@ -18,17 +18,17 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/daps")({
   head: () => ({
     meta: [
-      { title: "Custom AI Assistants — DAP AI" },
+      { title: "Custom AI's — DAP AI" },
       {
         name: "description",
         content:
-          "Explore DAP AI's custom AI assistants for coding, studying, writing, planning, and focused tasks.",
+          "Build and chat with your own Custom AI's — Pro-only assistants for coding, studying, writing, planning, and focused tasks.",
       },
-      { property: "og:title", content: "Custom AI Assistants — DAP AI" },
+      { property: "og:title", content: "Custom AI's — DAP AI" },
       {
         property: "og:description",
         content:
-          "Explore specialized DAP AI assistants for coding, studying, writing, planning, and focused tasks.",
+          "Pro-only Custom AI's: tailor your own assistant for coding, studying, writing, planning, and focused tasks.",
       },
       { property: "og:url", content: "https://dapai.lovable.app/daps" },
     ],
@@ -46,18 +46,25 @@ function Daps() {
   const createCustom = useServerFn(createCustomDap);
   const deleteCustom = useServerFn(deleteCustomDap);
   const fetchFlags = useServerFn(getFeatureFlags);
+  const fetchProfile = useServerFn(getProfile);
   const flagsQuery = useQuery({
     queryKey: ["feature-flags"],
     queryFn: () => fetchFlags(),
   });
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(),
+    enabled: !!user,
+  });
   const dapsEnabled = flagsQuery.data?.daps !== false;
+  const isPro = profileQuery.data?.tier === "pro";
 
   const [showForm, setShowForm] = useState(false);
 
   const customQuery = useQuery({
     queryKey: ["custom-daps"],
     queryFn: () => listCustom(),
-    enabled: !!user && dapsEnabled,
+    enabled: !!user && dapsEnabled && isPro,
   });
 
   const startDap = useMutation({
@@ -65,14 +72,14 @@ function Daps() {
     onSuccess: (chat) =>
       navigate({ to: "/c/$threadId", params: { threadId: chat.id } }),
     onError: (e: Error) =>
-      toast.error(e?.message || "Couldn't start that DAP. Please try again."),
+      toast.error(e?.message || "Couldn't start that Custom AI. Please try again."),
   });
 
   const removeCustom = useMutation({
     mutationFn: (id: string) => deleteCustom({ data: { id } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["custom-daps"] });
-      toast.success("Custom DAP deleted.");
+      toast.success("Custom AI deleted.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -80,6 +87,10 @@ function Daps() {
   const launch = (id: string) => {
     if (!user) {
       navigate({ to: "/login" });
+      return;
+    }
+    if (!isPro) {
+      toast.error("Custom AI's are a Pro feature. Upgrade in Settings to unlock.");
       return;
     }
     startDap.mutate(id);
@@ -95,12 +106,36 @@ function Daps() {
           <Lock className="h-6 w-6" />
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">
-          DAPs are temporarily disabled
+          Custom AI's are temporarily disabled
         </h1>
         <p className="mt-3 text-muted-foreground">
-          Custom AI assistants are turned off right now. Please check back
-          soon.
+          Custom AI's are turned off right now. Please check back soon.
         </p>
+      </div>
+    );
+  }
+
+  if (user && !isPro) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <div
+          className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-primary-foreground"
+          style={{ background: "var(--gradient-brand)" }}
+        >
+          <Crown className="h-6 w-6" />
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Custom AI's are a Pro feature
+        </h1>
+        <p className="mt-3 text-muted-foreground">
+          Build your own assistants with custom instructions and personas.
+          Upgrade to Pro to create and chat with Custom AI's.
+        </p>
+        <div className="mt-6">
+          <Button asChild>
+            <Link to="/settings">Upgrade to Pro</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -109,16 +144,16 @@ function Daps() {
     <div className="mx-auto max-w-5xl px-6 py-12">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">DAPs</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Custom AI's</h1>
           <p className="mt-2 text-muted-foreground">
-            Specialized AI personas. Each DAP adds its own system prompt on top
+            Specialized AI personas. Each Custom AI adds its own system prompt on top
             of the base DAP AI prompt.
           </p>
         </div>
         {user && (
           <Button onClick={() => setShowForm((s) => !s)} className="gap-2">
             {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showForm ? "Cancel" : "New custom DAP"}
+            {showForm ? "Cancel" : "New Custom AI"}
           </Button>
         )}
       </div>
@@ -130,7 +165,7 @@ function Daps() {
               await createCustom({ data: values });
               qc.invalidateQueries({ queryKey: ["custom-daps"] });
               setShowForm(false);
-              toast.success("Custom DAP created.");
+              toast.success("Custom AI created.");
             } catch (e) {
               toast.error((e as Error).message);
             }
@@ -141,7 +176,7 @@ function Daps() {
       {user && customQuery.data && customQuery.data.length > 0 && (
         <section className="mt-10">
           <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            Your custom DAPs
+            Your Custom AI's
           </h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             {customQuery.data.map((c) => (
@@ -170,7 +205,7 @@ function Daps() {
                     if (confirm(`Delete "${c.name}"?`)) removeCustom.mutate(c.id);
                   }}
                   className="absolute right-3 top-3 rounded-md p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100"
-                  aria-label="Delete custom DAP"
+                  aria-label="Delete Custom AI"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -182,7 +217,7 @@ function Daps() {
 
       <section className="mt-10">
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Built-in DAPs
+          Built-in Custom AI's
         </h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           {DAPS.map((g) => (
@@ -311,7 +346,7 @@ function CustomDapForm({
       </label>
       <div className="flex justify-end">
         <Button type="submit" disabled={busy}>
-          {busy ? "Creating…" : "Create DAP"}
+          {busy ? "Creating…" : "Create Custom AI"}
         </Button>
       </div>
     </form>

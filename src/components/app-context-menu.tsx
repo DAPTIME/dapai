@@ -92,7 +92,7 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
           className="gap-2"
         >
           <Sparkles className="h-4 w-4" />
-          New DAP
+          New Custom AI
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem

@@ -296,6 +296,18 @@ export const createChat = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
 
+    // Custom AI's (built-in or user-made) are a Pro-only feature.
+    if (data?.dapId) {
+      const { data: gateProfile } = await supabase
+        .from("profiles")
+        .select("tier")
+        .eq("id", userId)
+        .single();
+      if ((gateProfile?.tier as string) !== "pro") {
+        throw new Error("Custom AI's are a Pro feature. Upgrade to use them.");
+      }
+    }
+
     // Resolve built-in or custom DAP. Custom IDs are prefixed "custom:<uuid>".
     let dap:
       | { name: string; emoji: string; systemPrompt: string; opener: string }
