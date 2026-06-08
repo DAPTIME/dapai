@@ -373,6 +373,7 @@ export const createChat = createServerFn({ method: "POST" })
       .insert({
         user_id: userId,
         title: dap ? `${dap.name} chat` : "New chat",
+        is_incognito: !!data?.incognito,
       })
       .select("id, title, created_at, updated_at")
       .single();
