@@ -32,23 +32,35 @@ export const Route = createFileRoute("/settings")({
   component: Settings,
 });
 
-function Settings() {
-  const [beta, setBeta] = useState(false);
+function useLocalToggle(key: string, defaultValue: boolean) {
+  const [value, setValue] = useState(defaultValue);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setBeta(localStorage.getItem("dap.beta") === "1");
-  }, []);
-  const toggleBeta = (v: boolean) => {
-    setBeta(v);
+    const raw = localStorage.getItem(key);
+    if (raw === "1") setValue(true);
+    else if (raw === "0") setValue(false);
+    else setValue(defaultValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const update = (v: boolean) => {
+    setValue(v);
     if (typeof window !== "undefined") {
-      localStorage.setItem("dap.beta", v ? "1" : "0");
+      localStorage.setItem(key, v ? "1" : "0");
+      window.dispatchEvent(new CustomEvent("dap.setting", { detail: { key, value: v } }));
     }
   };
+  return [value, update] as const;
+}
+
+function Settings() {
+  const [history, setHistory] = useLocalToggle("dap.history", true);
+  const [sounds, setSounds] = useLocalToggle("dap.sounds", false);
+  const [beta, setBeta] = useLocalToggle("dap.beta", false);
 
   const rows = [
-    { id: "history", label: "Save chat history", desc: "Keep recent conversations in the sidebar.", checked: true, onChange: undefined as ((v: boolean) => void) | undefined },
-    { id: "sounds", label: "Sound effects", desc: "Play subtle sounds on send/receive.", checked: false, onChange: undefined },
-    { id: "beta", label: "Beta features", desc: "Try experimental tools early, including AI Memory.", checked: beta, onChange: toggleBeta },
+    { id: "history", label: "Save chat history", desc: "Keep recent conversations in the sidebar.", checked: history, onChange: setHistory },
+    { id: "sounds", label: "Sound effects", desc: "Play subtle sounds on send/receive.", checked: sounds, onChange: setSounds },
+    { id: "beta", label: "Beta features", desc: "Try experimental tools early, including AI Memory.", checked: beta, onChange: setBeta },
   ];
 
   return (
@@ -66,7 +78,6 @@ function Settings() {
               id={row.id}
               checked={row.checked}
               onCheckedChange={row.onChange}
-              disabled={!row.onChange}
             />
           </div>
         ))}
