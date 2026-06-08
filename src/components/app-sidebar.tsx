@@ -34,6 +34,7 @@ import {
   createChat,
   deleteChat,
 } from "@/lib/chats.functions";
+import { useIncognito, isIncognitoNow } from "@/lib/use-incognito";
 
 const main = [
   { title: "Custom AI's", url: "/daps", icon: Sparkles },
