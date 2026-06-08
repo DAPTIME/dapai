@@ -167,6 +167,50 @@ function HeaderBar() {
   );
 }
 
+function IncognitoToggle() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setOn(localStorage.getItem("dap.incognito") === "1");
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { key: string; value: boolean } | undefined;
+      if (detail?.key === "dap.incognito") setOn(!!detail.value);
+    };
+    window.addEventListener("dap.setting", handler);
+    return () => window.removeEventListener("dap.setting", handler);
+  }, []);
+  const toggle = () => {
+    const next = !on;
+    setOn(next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("dap.incognito", next ? "1" : "0");
+      window.dispatchEvent(new CustomEvent("dap.setting", { detail: { key: "dap.incognito", value: next } }));
+      document.documentElement.classList.toggle("incognito", next);
+    }
+  };
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={on ? "default" : "ghost"}
+            size="sm"
+            onClick={toggle}
+            className="gap-1.5"
+            aria-pressed={on}
+            aria-label={on ? "Incognito mode on" : "Incognito mode off"}
+          >
+            {on ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <span className="hidden sm:inline">{on ? "Incognito" : "Incognito"}</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{on ? "Incognito on — chats won't be saved" : "Turn on incognito"}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+
 function RouteTransition({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
