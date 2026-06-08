@@ -68,7 +68,7 @@ function Daps() {
   });
 
   const startDap = useMutation({
-    mutationFn: (dapId: string) => create({ data: { dapId } }),
+    mutationFn: (dapId: string) => create({ data: { dapId, incognito: typeof window !== "undefined" && localStorage.getItem("dap.incognito") === "1" } }),
     onSuccess: (chat) =>
       navigate({ to: "/c/$threadId", params: { threadId: chat.id } }),
     onError: (e: Error) =>
