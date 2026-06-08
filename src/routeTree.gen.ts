@@ -19,6 +19,7 @@ import { Route as HelpRouteImport } from './routes/help'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DapsRouteImport } from './routes/daps'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -74,6 +75,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AboutDapAiRoute = AboutDapAiRouteImport.update({
+  id: '/about-dap-ai',
+  path: '/about-dap-ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -98,6 +104,7 @@ const ApiPublicHooksCleanupOldChatsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about-dap-ai': typeof AboutDapAiRoute
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about-dap-ai': typeof AboutDapAiRoute
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -131,6 +139,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about-dap-ai': typeof AboutDapAiRoute
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about-dap-ai'
     | '/admin'
     | '/daps'
     | '/forgot-password'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about-dap-ai'
     | '/admin'
     | '/daps'
     | '/forgot-password'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/about-dap-ai'
     | '/admin'
     | '/daps'
     | '/forgot-password'
@@ -198,6 +210,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutDapAiRoute: typeof AboutDapAiRoute
   AdminRoute: typeof AdminRoute
   DapsRoute: typeof DapsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/about-dap-ai': {
+      id: '/about-dap-ai'
+      path: '/about-dap-ai'
+      fullPath: '/about-dap-ai'
+      preLoaderRoute: typeof AboutDapAiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -318,6 +338,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutDapAiRoute: AboutDapAiRoute,
   AdminRoute: AdminRoute,
   DapsRoute: DapsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
