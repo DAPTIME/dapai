@@ -1,0 +1,1 @@
+ALTER TABLE public.chats ADD COLUMN IF NOT EXISTS is_incognito boolean NOT NULL DEFAULT false;
