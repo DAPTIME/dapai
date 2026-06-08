@@ -137,6 +137,7 @@ function HeaderBar() {
         <span className="text-sm font-medium text-muted-foreground">DAP AI</span>
       </div>
       <div className="flex items-center gap-2">
+        <IncognitoToggle />
         {!isPro && (
           <Dialog>
             <DialogTrigger asChild>
