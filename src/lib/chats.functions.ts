@@ -146,6 +146,23 @@ async function extractMemories(
  * null when no. Best-effort — returns null on failure.
  */
 async function planWebSearch(userText: string): Promise<string | null> {
+  // Hard override: if the user explicitly asks to search/look up/google
+  // something, skip the classifier and search directly. This guarantees
+  // that "search the web for X" always triggers Firecrawl even if the
+  // classifier model is unavailable.
+  const explicit =
+    /\b(search (the )?(web|internet|online)|look (this |that |it )?up|google( it| this| that)?|browse the web|find (online|on the web)|web search|fact[- ]?check)\b/i;
+  if (explicit.test(userText)) {
+    // Strip the instruction phrase to make a tighter query.
+    const cleaned = userText
+      .replace(explicit, "")
+      .replace(/\b(please|for me|can you|could you|i want you to|tell me)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    const q = (cleaned.length > 0 ? cleaned : userText).slice(0, 200);
+    return q;
+  }
+
   const key = process.env.LOVABLE_API_KEY;
   if (!key) return null;
   try {
@@ -158,12 +175,12 @@ async function planWebSearch(userText: string): Promise<string | null> {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3.1-flash-lite-preview",
+          model: "google/gemini-3-flash-preview",
           messages: [
             {
               role: "system",
               content:
-                "Decide if answering the user's message correctly REQUIRES fresh internet information (current events, 'latest' / 'newest' / 'recent', live scores, today's prices, recent releases, news, who currently holds X, real-time facts). If yes, produce a short Google-style search query. If the answer is timeless general knowledge, math, coding, opinions, or the model can answer from training, say no. Return STRICT JSON: {\"search\": boolean, \"query\": string}.",
+                "Decide if answering the user's message correctly REQUIRES fresh internet information (current events, 'latest' / 'newest' / 'recent', live scores, today's prices, recent releases, news, who currently holds X, real-time facts), OR the user explicitly asks to search/look up/google something. If yes, produce a short Google-style search query. If the answer is timeless general knowledge, math, coding, opinions, or the model can answer from training, say no. Return STRICT JSON: {\"search\": boolean, \"query\": string}.",
             },
             { role: "user", content: userText },
           ],
