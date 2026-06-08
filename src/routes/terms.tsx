@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
@@ -27,17 +27,6 @@ function Terms() {
       <h1 className="text-3xl font-semibold tracking-tight">Terms of Service</h1>
       <p className="mt-2 text-sm text-muted-foreground">Last updated: June 3, 2026</p>
 
-      <div className="mt-6 rounded-lg border bg-card p-4 text-sm">
-        <p className="text-muted-foreground">
-          Curious what DAP AI actually is, and what hardware it runs on?
-        </p>
-        <Link
-          to="/about-dap-ai"
-          className="mt-2 inline-block font-medium text-primary underline-offset-4 hover:underline"
-        >
-          Read: About DAP AI →
-        </Link>
-      </div>
 
 
       <section className="mt-8 space-y-6 text-sm leading-relaxed text-muted-foreground">

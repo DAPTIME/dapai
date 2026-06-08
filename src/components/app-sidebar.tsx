@@ -10,7 +10,9 @@ import {
   Cpu,
   Trash2,
   Scale,
+  Info,
   Users,
+
 } from "lucide-react";
 
 const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
@@ -217,6 +219,15 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === "/about-dap-ai"}>
+              <Link to="/about-dap-ai">
+                <Info />
+                <span>About DAP AI</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
