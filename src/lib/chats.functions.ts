@@ -784,10 +784,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             json?.message?.content ??
             errStr ??
             "(empty response)";
-          if (effectiveModel === "dap-ai-lite") {
-            out = sanitizeLiteReply(out);
-            if (hasLiteReasoningLeak(out)) out = sanitizeLiteReply(out);
-          }
+          // Always strip <think>/reasoning blocks and system-prompt
+          // echoes — Pro can leak them too depending on which checkpoint
+          // is loaded in LM Studio.
+          out = sanitizeLiteReply(out);
+          if (hasLiteReasoningLeak(out)) out = sanitizeLiteReply(out);
           return out;
         } catch (e) {
           const err = e as Error;
