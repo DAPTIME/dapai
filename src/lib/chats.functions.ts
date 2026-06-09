@@ -745,7 +745,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         try {
           const resolvedModel =
             effectiveModel === "dap-ai-lite"
-              ? await resolveOllamaModel(backend, key, upstreamModel, ctrl.signal)
+              ? await resolveOllamaModel(backend, key, upstreamModel)
               : upstreamModel;
           const res = await fetch(backend, {
             method: "POST",

@@ -51,8 +51,7 @@ export const Route = createFileRoute("/api/public/lite-try")({
           const resolvedModel = await resolveOllamaModel(
             backend,
             key,
-            upstreamModel,
-            ctrl.signal
+            upstreamModel
           );
           const res = await fetch(backend, {
             method: "POST",
