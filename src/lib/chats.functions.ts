@@ -18,6 +18,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enqueue } from "@/lib/ai-queue";
 import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
+import { resolveOllamaModel } from "@/lib/ollama-models.server";
 
 const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 
@@ -742,6 +743,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         const timeoutMs = 90_000;
         const timer = setTimeout(() => ctrl.abort(), timeoutMs);
         try {
+          const resolvedModel =
+            effectiveModel === "dap-ai-lite"
+              ? await resolveOllamaModel(backend, key, upstreamModel, ctrl.signal)
+              : upstreamModel;
           const res = await fetch(backend, {
             method: "POST",
             headers: {
@@ -749,7 +754,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               ...(key ? { Authorization: `Bearer ${key}` } : {}),
             },
             body: JSON.stringify({
-              model: upstreamModel,
+              model: resolvedModel,
               messages,
               stream: false,
               ...(effectiveModel === "dap-ai-lite" ? liteOptions : {}),
