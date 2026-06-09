@@ -69,25 +69,39 @@ function pickBestModel(configuredModel: string, models: ListedModel[]): string |
   return models[0].name;
 }
 
-export async function resolveOllamaModel(
+export async function listOllamaModels(
   backend: string,
-  key: string | undefined,
-  configuredModel: string
-): Promise<string> {
+  key: string | undefined
+): Promise<ListedModel[] | undefined> {
   const endpoints = [
     endpointFromChatUrl(backend, "/api/tags"),
     endpointFromChatUrl(backend, "/v1/models"),
   ].filter((url): url is string => Boolean(url));
 
+  let reachable = false;
   for (const endpoint of endpoints) {
     try {
       const payload = await fetchJson(endpoint, key);
-      const picked = pickBestModel(configuredModel, parseModelList(payload));
-      if (picked) return picked;
+      if (payload === undefined) continue;
+      reachable = true;
+      const models = parseModelList(payload);
+      if (models.length > 0) return models;
     } catch {
-      // Keep the configured value if the backend doesn't expose model listing.
+      // try next endpoint
     }
   }
+  return reachable ? [] : undefined;
+}
 
-  return configuredModel;
+export async function resolveOllamaModel(
+  backend: string,
+  key: string | undefined,
+  configuredModel: string
+): Promise<{ model: string; installed: ListedModel[] | undefined }> {
+  const installed = await listOllamaModels(backend, key);
+  if (!installed || installed.length === 0) {
+    return { model: configuredModel, installed };
+  }
+  const picked = pickBestModel(configuredModel, installed) ?? configuredModel;
+  return { model: picked, installed };
 }
