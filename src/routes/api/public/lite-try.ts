@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
+import { resolveOllamaModel } from "@/lib/ollama-models.server";
 
 const Body = z.object({
   text: z.string().min(1).max(2000),
@@ -47,6 +48,11 @@ export const Route = createFileRoute("/api/public/lite-try")({
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 60_000);
         try {
+          const resolvedModel = await resolveOllamaModel(
+            backend,
+            key,
+            upstreamModel
+          );
           const res = await fetch(backend, {
             method: "POST",
             headers: {
@@ -54,7 +60,7 @@ export const Route = createFileRoute("/api/public/lite-try")({
               ...(key ? { Authorization: `Bearer ${key}` } : {}),
             },
             body: JSON.stringify({
-              model: upstreamModel,
+              model: resolvedModel,
               stream: false,
               temperature: 0,
               top_p: 1,
