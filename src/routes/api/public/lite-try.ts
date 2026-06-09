@@ -48,11 +48,17 @@ export const Route = createFileRoute("/api/public/lite-try")({
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 60_000);
         try {
-          const resolvedModel = await resolveOllamaModel(
-            backend,
-            key,
-            upstreamModel
-          );
+          const resolved = await resolveOllamaModel(backend, key, upstreamModel);
+          if (resolved.installed && resolved.installed.length === 0) {
+            return new Response(
+              JSON.stringify({
+                error:
+                  "DAP AI Lite is unreachable: the Ollama server has no models installed.",
+              }),
+              { status: 503, headers: { "Content-Type": "application/json" } }
+            );
+          }
+          const resolvedModel = resolved.model;
           const res = await fetch(backend, {
             method: "POST",
             headers: {
