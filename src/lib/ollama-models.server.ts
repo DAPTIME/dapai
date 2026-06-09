@@ -15,13 +15,19 @@ function endpointFromChatUrl(chatUrl: string, pathname: string): string | undefi
   }
 }
 
-async function fetchJson(url: string, key?: string, signal?: AbortSignal) {
-  const res = await fetch(url, {
-    headers: key ? { Authorization: `Bearer ${key}` } : undefined,
-    signal,
-  });
-  if (!res.ok) return undefined;
-  return res.json() as Promise<unknown>;
+async function fetchJson(url: string, key?: string) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2_500);
+  try {
+    const res = await fetch(url, {
+      headers: key ? { Authorization: `Bearer ${key}` } : undefined,
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return undefined;
+    return res.json() as Promise<unknown>;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function parseModelList(payload: unknown): ListedModel[] {
@@ -66,8 +72,7 @@ function pickBestModel(configuredModel: string, models: ListedModel[]): string |
 export async function resolveOllamaModel(
   backend: string,
   key: string | undefined,
-  configuredModel: string,
-  signal?: AbortSignal
+  configuredModel: string
 ): Promise<string> {
   const endpoints = [
     endpointFromChatUrl(backend, "/api/tags"),
@@ -76,7 +81,7 @@ export async function resolveOllamaModel(
 
   for (const endpoint of endpoints) {
     try {
-      const payload = await fetchJson(endpoint, key, signal);
+      const payload = await fetchJson(endpoint, key);
       const picked = pickBestModel(configuredModel, parseModelList(payload));
       if (picked) return picked;
     } catch {
