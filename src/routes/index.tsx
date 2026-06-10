@@ -4,8 +4,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 
 import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
-import { createChat } from "@/lib/chats.functions";
-import { getSiteStatus } from "@/lib/admin.functions";
+import { createChat, getProfile } from "@/lib/chats.functions";
+import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -97,6 +97,27 @@ function Home() {
     refetchInterval: 30_000,
   });
   const siteEnabled = siteStatus.data?.enabled !== false;
+
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+    refetchInterval: 30_000,
+  });
+  const proEnabled = flagsQuery.data?.pro_model !== false;
+  const liteEnabled = flagsQuery.data?.lite_model !== false;
+
+  const fetchProfile = useServerFn(getProfile);
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(),
+    enabled: !!user,
+  });
+  const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
+  // Free users / anon only have access to Lite. Pro users can use either.
+  const maintenance = user && tier === "pro"
+    ? !proEnabled && !liteEnabled
+    : !liteEnabled;
 
 
 
@@ -257,7 +278,7 @@ function Home() {
                   </div>
                 )}
               </div>
-            ) : siteEnabled ? (
+            ) : siteEnabled && !maintenance ? (
               <section aria-labelledby="suggestions-heading">
                 <h2 id="suggestions-heading" className="sr-only">
                   Conversation starters
@@ -274,7 +295,7 @@ function Home() {
           <div className="mx-auto flex max-w-3xl justify-center py-2">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
-        ) : !siteEnabled ? (
+        ) : !siteEnabled || maintenance ? (
           <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
             <h2 className="text-lg font-semibold text-foreground">
               DAP AI is undergoing major reworks
@@ -291,12 +312,13 @@ function Home() {
             <ChatComposer onSend={handleSend} pending={trialPending} />
           </section>
         )}
-        {siteEnabled && (
+        {siteEnabled && !maintenance && (
           <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
             DAP AI may produce inaccurate info.
           </p>
         )}
       </div>
+
 
       <Dialog open={signupOpen} onOpenChange={setSignupOpen}>
         <DialogContent className="sm:max-w-sm">

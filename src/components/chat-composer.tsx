@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile } from "@/lib/chats.functions";
+import { getFeatureFlags } from "@/lib/admin.functions";
 
 
 export interface QuotaInfo {
@@ -65,6 +66,15 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const isPro = tier === "pro";
   const canUsePro = !!user && isPro;
 
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+    refetchInterval: 30_000,
+  });
+  const proEnabled = flagsQuery.data?.pro_model !== false;
+  const liteEnabled = flagsQuery.data?.lite_model !== false;
+
 
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
@@ -85,23 +95,26 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   useEffect(() => {
     const saved =
       typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
-    const target = saved && MODELS.some((m) => m.id === saved) ? saved : null;
+    const isAllowed = (id: string) => {
+      const m = MODELS.find((mm) => mm.id === id);
+      if (!m) return false;
+      if (m.requiresPro && !canUsePro) return false;
+      if (m.id === "dap-ai-1.0" && !proEnabled) return false;
+      if (m.id === "dap-ai-lite" && !liteEnabled) return false;
+      return true;
+    };
+    const preferred = canUsePro && proEnabled ? "dap-ai-1.0" : "dap-ai-lite";
     let resolved: string;
-    if (target) {
-      const m = MODELS.find((mm) => mm.id === target)!;
-      const allow = !m.requiresPro || canUsePro;
-      resolved = allow ? target : "dap-ai-lite";
-    } else {
-      resolved = canUsePro ? "dap-ai-1.0" : "dap-ai-lite";
-    }
+    if (saved && isAllowed(saved)) resolved = saved;
+    else if (isAllowed(preferred)) resolved = preferred;
+    else if (isAllowed("dap-ai-lite")) resolved = "dap-ai-lite";
+    else if (isAllowed("dap-ai-1.0")) resolved = "dap-ai-1.0";
+    else resolved = preferred;
     setModel(resolved);
-    // Persist the resolved choice so other surfaces (chat page, home page)
-    // that read `dap.model` from localStorage see the actual selection,
-    // not the stale pro default.
     if (typeof window !== "undefined") {
       localStorage.setItem("dap.model", resolved);
     }
-  }, [canUsePro]);
+  }, [canUsePro, proEnabled, liteEnabled]);
 
   const handlePickImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -214,7 +227,10 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
             onChange={(e) => {
               const next = e.target.value;
               const m = MODELS.find((mm) => mm.id === next);
-              if (m?.requiresPro && !canUsePro) return;
+              if (!m) return;
+              if (m.requiresPro && !canUsePro) return;
+              if (m.id === "dap-ai-1.0" && !proEnabled) return;
+              if (m.id === "dap-ai-lite" && !liteEnabled) return;
               setModel(next);
               if (typeof window !== "undefined") localStorage.setItem("dap.model", next);
             }}
@@ -223,17 +239,28 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
             title={activeModel.description}
           >
             {MODELS.map((m) => {
-              const locked = m.requiresPro && !canUsePro;
+              const proLock = m.requiresPro && !canUsePro;
+              const offline =
+                (m.id === "dap-ai-1.0" && !proEnabled) ||
+                (m.id === "dap-ai-lite" && !liteEnabled);
+              const disabled = proLock || offline;
+              const suffix = offline
+                ? " — offline for maintenance"
+                : proLock
+                  ? !user
+                    ? " — sign in required"
+                    : " — Pro only"
+                  : "";
               return (
                 <option
                   key={m.id}
                   value={m.id}
-                  disabled={locked}
+                  disabled={disabled}
                   className="bg-card text-foreground"
-                  title={m.description}
+                  title={offline ? "Disabled by admin" : m.description}
                 >
                   {m.label}
-                  {locked ? (!user ? " — sign in required" : " — Pro only") : ""}
+                  {suffix}
                 </option>
               );
             })}

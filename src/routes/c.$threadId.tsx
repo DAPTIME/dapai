@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
-import { getSiteStatus } from "@/lib/admin.functions";
+import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
@@ -62,6 +62,18 @@ function ChatPage() {
     refetchInterval: 30_000,
   });
   const siteEnabled = siteStatus.data?.enabled !== false;
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+    refetchInterval: 30_000,
+  });
+  const proEnabled = flagsQuery.data?.pro_model !== false;
+  const liteEnabled = flagsQuery.data?.lite_model !== false;
+  const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
+  const maintenance = tier === "pro"
+    ? !proEnabled && !liteEnabled
+    : !liteEnabled;
 
   const sendMut = useMutation({
     mutationFn: async ({ text, images }: { text: string; images?: string[] }) => {
@@ -283,7 +295,7 @@ function ChatPage() {
         </div>
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
-        {!siteEnabled ? (
+        {!siteEnabled || maintenance ? (
           <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
             <h2 className="text-lg font-semibold text-foreground">
               DAP AI is undergoing major reworks
