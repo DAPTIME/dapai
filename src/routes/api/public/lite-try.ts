@@ -28,6 +28,26 @@ export const Route = createFileRoute("/api/public/lite-try")({
           });
         }
 
+        // Honor the admin maintenance flag for DAP AI Lite.
+        try {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { data: flag } = await supabaseAdmin
+            .from("ai_settings")
+            .select("system_prompt")
+            .eq("id", "feature_lite_model")
+            .maybeSingle();
+          if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
+            return new Response(
+              JSON.stringify({
+                error: "DAP AI is undergoing major reworks. Please try again later.",
+              }),
+              { status: 503, headers: { "Content-Type": "application/json" } }
+            );
+          }
+        } catch {
+          /* if the check fails, fall through and let upstream handle */
+        }
+
         const backend =
           process.env.AI_BACKEND_URL_LITE ?? process.env.AI_BACKEND_URL;
         const key =
