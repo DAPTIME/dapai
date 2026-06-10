@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 
 import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
-import { createChat } from "@/lib/chats.functions";
+import { createChat, getProfile } from "@/lib/chats.functions";
 import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 
 import { useAuth } from "@/lib/auth";
