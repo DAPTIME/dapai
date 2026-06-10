@@ -98,6 +98,27 @@ function Home() {
   });
   const siteEnabled = siteStatus.data?.enabled !== false;
 
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+    refetchInterval: 30_000,
+  });
+  const proEnabled = flagsQuery.data?.pro_model !== false;
+  const liteEnabled = flagsQuery.data?.lite_model !== false;
+
+  const fetchProfile = useServerFn(getProfile);
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(),
+    enabled: !!user,
+  });
+  const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
+  // Free users / anon only have access to Lite. Pro users can use either.
+  const maintenance = user && tier === "pro"
+    ? !proEnabled && !liteEnabled
+    : !liteEnabled;
+
 
 
 
