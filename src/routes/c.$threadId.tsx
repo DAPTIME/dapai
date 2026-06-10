@@ -62,6 +62,18 @@ function ChatPage() {
     refetchInterval: 30_000,
   });
   const siteEnabled = siteStatus.data?.enabled !== false;
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+    refetchInterval: 30_000,
+  });
+  const proEnabled = flagsQuery.data?.pro_model !== false;
+  const liteEnabled = flagsQuery.data?.lite_model !== false;
+  const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
+  const maintenance = tier === "pro"
+    ? !proEnabled && !liteEnabled
+    : !liteEnabled;
 
   const sendMut = useMutation({
     mutationFn: async ({ text, images }: { text: string; images?: string[] }) => {
