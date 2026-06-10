@@ -66,6 +66,15 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const isPro = tier === "pro";
   const canUsePro = !!user && isPro;
 
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+    refetchInterval: 30_000,
+  });
+  const proEnabled = flagsQuery.data?.pro_model !== false;
+  const liteEnabled = flagsQuery.data?.lite_model !== false;
+
 
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
