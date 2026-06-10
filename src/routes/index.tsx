@@ -278,7 +278,7 @@ function Home() {
                   </div>
                 )}
               </div>
-            ) : siteEnabled ? (
+            ) : siteEnabled && !maintenance ? (
               <section aria-labelledby="suggestions-heading">
                 <h2 id="suggestions-heading" className="sr-only">
                   Conversation starters
@@ -295,7 +295,7 @@ function Home() {
           <div className="mx-auto flex max-w-3xl justify-center py-2">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
-        ) : !siteEnabled ? (
+        ) : !siteEnabled || maintenance ? (
           <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
             <h2 className="text-lg font-semibold text-foreground">
               DAP AI is undergoing major reworks
@@ -312,12 +312,13 @@ function Home() {
             <ChatComposer onSend={handleSend} pending={trialPending} />
           </section>
         )}
-        {siteEnabled && (
+        {siteEnabled && !maintenance && (
           <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
             DAP AI may produce inaccurate info.
           </p>
         )}
       </div>
+
 
       <Dialog open={signupOpen} onOpenChange={setSignupOpen}>
         <DialogContent className="sm:max-w-sm">
