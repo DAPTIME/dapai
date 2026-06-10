@@ -295,7 +295,7 @@ function ChatPage() {
         </div>
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
-        {!siteEnabled ? (
+        {!siteEnabled || maintenance ? (
           <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
             <h2 className="text-lg font-semibold text-foreground">
               DAP AI is undergoing major reworks
