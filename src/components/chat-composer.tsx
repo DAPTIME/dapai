@@ -227,7 +227,10 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
             onChange={(e) => {
               const next = e.target.value;
               const m = MODELS.find((mm) => mm.id === next);
-              if (m?.requiresPro && !canUsePro) return;
+              if (!m) return;
+              if (m.requiresPro && !canUsePro) return;
+              if (m.id === "dap-ai-1.0" && !proEnabled) return;
+              if (m.id === "dap-ai-lite" && !liteEnabled) return;
               setModel(next);
               if (typeof window !== "undefined") localStorage.setItem("dap.model", next);
             }}
@@ -236,17 +239,28 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
             title={activeModel.description}
           >
             {MODELS.map((m) => {
-              const locked = m.requiresPro && !canUsePro;
+              const proLock = m.requiresPro && !canUsePro;
+              const offline =
+                (m.id === "dap-ai-1.0" && !proEnabled) ||
+                (m.id === "dap-ai-lite" && !liteEnabled);
+              const disabled = proLock || offline;
+              const suffix = offline
+                ? " — offline for maintenance"
+                : proLock
+                  ? !user
+                    ? " — sign in required"
+                    : " — Pro only"
+                  : "";
               return (
                 <option
                   key={m.id}
                   value={m.id}
-                  disabled={locked}
+                  disabled={disabled}
                   className="bg-card text-foreground"
-                  title={m.description}
+                  title={offline ? "Disabled by admin" : m.description}
                 >
                   {m.label}
-                  {locked ? (!user ? " — sign in required" : " — Pro only") : ""}
+                  {suffix}
                 </option>
               );
             })}
