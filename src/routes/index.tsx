@@ -94,15 +94,20 @@ function Home() {
   const siteStatus = useQuery({
     queryKey: ["site-status"],
     queryFn: () => fetchSiteStatus(),
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
   });
+  // Optimistic: assume enabled until we explicitly hear otherwise.
   const siteEnabled = siteStatus.data?.enabled !== false;
 
   const fetchFlags = useServerFn(getFeatureFlags);
   const flagsQuery = useQuery({
     queryKey: ["feature-flags"],
     queryFn: () => fetchFlags(),
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
   });
   const proEnabled = flagsQuery.data?.pro_model !== false;
   const liteEnabled = flagsQuery.data?.lite_model !== false;
@@ -112,6 +117,8 @@ function Home() {
     queryKey: ["profile", user?.id],
     queryFn: () => fetchProfile(),
     enabled: !!user,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
   const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
   // Free users / anon only have access to Lite. Pro users can use either.
