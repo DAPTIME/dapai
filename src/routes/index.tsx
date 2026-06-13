@@ -94,15 +94,20 @@ function Home() {
   const siteStatus = useQuery({
     queryKey: ["site-status"],
     queryFn: () => fetchSiteStatus(),
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
   });
+  // Optimistic: assume enabled until we explicitly hear otherwise.
   const siteEnabled = siteStatus.data?.enabled !== false;
 
   const fetchFlags = useServerFn(getFeatureFlags);
   const flagsQuery = useQuery({
     queryKey: ["feature-flags"],
     queryFn: () => fetchFlags(),
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
   });
   const proEnabled = flagsQuery.data?.pro_model !== false;
   const liteEnabled = flagsQuery.data?.lite_model !== false;
@@ -112,6 +117,8 @@ function Home() {
     queryKey: ["profile", user?.id],
     queryFn: () => fetchProfile(),
     enabled: !!user,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
   const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
   // Free users / anon only have access to Lite. Pro users can use either.
@@ -240,11 +247,7 @@ function Home() {
           )}
 
           <div className="mt-4 w-full">
-            {!ready ? (
-              <div className="flex justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              </div>
-            ) : trial ? (
+            {trial ? (
               <div className="mx-auto w-full max-w-2xl space-y-3 text-left">
                 <div className="ml-auto max-w-[85%] rounded-2xl bg-primary px-4 py-2 text-sm text-primary-foreground">
                   {trial.userText}
@@ -291,11 +294,7 @@ function Home() {
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-2 backdrop-blur">
 
-        {!ready || siteStatus.isLoading ? (
-          <div className="mx-auto flex max-w-3xl justify-center py-2">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-        ) : !siteEnabled || maintenance ? (
+        {!siteEnabled || maintenance ? (
           <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
             <h2 className="text-lg font-semibold text-foreground">
               DAP AI is undergoing major reworks
