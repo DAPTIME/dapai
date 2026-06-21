@@ -330,7 +330,10 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function SuggestionChips({ onPick }: { onPick?: (s: string) => void }) {
-  const items = shuffle(SUGGESTION_POOL).slice(0, 4);
+  const [items, setItems] = React.useState(() => SUGGESTION_POOL.slice(0, 4));
+  React.useEffect(() => {
+    setItems(shuffle(SUGGESTION_POOL).slice(0, 4));
+  }, []);
   return (
     <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
       {items.map((it) => (
