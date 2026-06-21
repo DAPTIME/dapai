@@ -330,8 +330,8 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function SuggestionChips({ onPick }: { onPick?: (s: string) => void }) {
-  const [items, setItems] = React.useState(() => SUGGESTION_POOL.slice(0, 4));
-  React.useEffect(() => {
+  const [items, setItems] = useState(() => SUGGESTION_POOL.slice(0, 4));
+  useEffect(() => {
     setItems(shuffle(SUGGESTION_POOL).slice(0, 4));
   }, []);
   return (
