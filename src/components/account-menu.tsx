@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/lib/auth";
 import { adminAmIAdmin } from "@/lib/admin.functions";
+import { useMyProfile } from "@/lib/use-my-profile";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,7 +13,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Settings as SettingsIcon, User as UserIcon } from "lucide-react";
+import {
+  LogOut,
+  Settings as SettingsIcon,
+  User as UserIcon,
+  ShieldCheck,
+} from "lucide-react";
 
 export function AccountMenu() {
   const { user, signOut, ready } = useAuth();
@@ -23,6 +29,7 @@ export function AccountMenu() {
     enabled: !!user,
   });
   const isAdmin = adminQuery.data?.isAdmin === true;
+  const profile = useMyProfile();
   const navigate = useNavigate();
 
   if (!ready) {
@@ -46,31 +53,59 @@ export function AccountMenu() {
     );
   }
 
-  const initials = (user.name || user.email).slice(0, 1).toUpperCase();
+  const displayName = profile.data?.name || user.name || user.email;
+  const initials = displayName.slice(0, 1).toUpperCase();
+  const avatarUrl = profile.data?.avatarUrl;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Account"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold text-primary-foreground"
-          style={{ background: "var(--gradient-brand)" }}
+          className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-primary-foreground"
+          style={
+            avatarUrl ? undefined : { background: "var(--gradient-brand)" }
+          }
         >
-          {initials}
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initials
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="flex flex-col">
-          <span className="truncate">{user.name}</span>
-          <span className="truncate text-xs font-normal text-muted-foreground">{user.email}</span>
+          <span className="truncate">{displayName}</span>
+          <span className="truncate text-xs font-normal text-muted-foreground">
+            {user.email}
+          </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to="/settings"><UserIcon className="mr-2 h-4 w-4" /> Account</Link>
+          <Link to="/account">
+            <UserIcon className="mr-2 h-4 w-4" /> Account details
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/security">
+            <ShieldCheck className="mr-2 h-4 w-4" /> Security
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/settings">
+            <SettingsIcon className="mr-2 h-4 w-4" /> Settings
+          </Link>
         </DropdownMenuItem>
         {isAdmin && (
           <DropdownMenuItem asChild>
-            <Link to="/admin"><SettingsIcon className="mr-2 h-4 w-4" /> Admin</Link>
+            <Link to="/admin">
+              <SettingsIcon className="mr-2 h-4 w-4" /> Admin
+            </Link>
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
