@@ -14,6 +14,7 @@ import { Route as TeamRouteImport } from './routes/team'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SecurityRouteImport } from './routes/security'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HelpRouteImport } from './routes/help'
@@ -54,6 +55,11 @@ const SignupRoute = SignupRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -223,6 +232,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/login'
     | '/mcp'
+    | '/security'
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/login'
     | '/mcp'
+    | '/security'
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
@@ -269,6 +280,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/login'
     | '/mcp'
+    | '/security'
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
@@ -293,6 +305,7 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
+  SecurityRoute: typeof SecurityRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -342,6 +355,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -469,6 +489,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
+  SecurityRoute: SecurityRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
