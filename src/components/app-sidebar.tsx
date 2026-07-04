@@ -83,7 +83,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-4">
-        <Link to="/" className="group/logo flex items-center gap-2">
+        <Link to="/" onClick={closeIfMobile} className="group/logo flex items-center gap-2">
           <img
             src={logo.url}
             alt="DAP AI"
