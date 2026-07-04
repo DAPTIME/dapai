@@ -5,33 +5,33 @@ export const Route = createFileRoute("/about-dap-ai")({
     meta: [
       {
         title:
-          "About DAP AI — A Small Language Model You Can Actually Run",
+          "DAP AI — Free AI Chatbot & Small Language Model | Ask Anything: Weather, Code, Study, Recipes",
       },
       {
         name: "description",
         content:
-          "DAP AI is a ~100M parameter small language model, roughly as capable as Gemma E2B, that runs on a single RTX 5060 Ti and two Jetson Orin Nanos — no datacenter required.",
+          "DAP AI is a free AI chatbot powered by a ~100M parameter small language model (Gemma E2B-class) running on consumer hardware. Ask about the weather, news, coding, math, study help, writing, recipes, travel, career advice, and more.",
       },
       {
         name: "keywords",
         content:
-          "DAP AI, dap ai, dapai, DAP AI 3.2, DAP AI Pro, DAP AI Lite, small language model, SLM, 100M parameter model, Gemma E2B alternative, edge AI, Jetson Orin Nano, RTX 5060 Ti, on-device AI, self-hosted AI, free AI chatbot",
+          "DAP AI, dap ai, dapai, DAP, DAP AI 3.2, DAP AI Pro, DAP AI Lite, DAP AI chatbot, DAP AI assistant, free AI chatbot, free AI assistant, free chatbot online, small language model, SLM, 100M parameter model, tiny LLM, Gemma E2B alternative, edge AI, on-device AI, self-hosted AI, private AI, local AI, Jetson Orin Nano AI, RTX 5060 Ti AI, ChatGPT alternative, Claude alternative, Gemini alternative, Copilot alternative, AI for coding, AI code reviewer, AI study buddy, AI career coach, AI trip planner, AI writing assistant, AI homework help, AI math solver, AI essay writer, AI translator, AI summarizer, AI email writer, AI resume builder, AI recipe generator, AI weather assistant, weather today, what is the weather, ask AI anything, chat with AI, talk to AI, best free AI, fastest AI chatbot, no signup AI, AI without login, AI for students, AI for developers, AI for writers, AI for business, AI for teachers, small AI model, cheap AI, low cost AI, offline capable AI, open AI alternative, Devansh AI, DAP AI Dubai, DAP AI UAE, how does AI work, what is a language model, what is an SLM, run AI at home, AI on Jetson, AI on gaming GPU",
       },
       { name: "robots", content: "index, follow" },
-      { property: "og:title", content: "About DAP AI — Small Language Model" },
+      { property: "og:title", content: "DAP AI — Free AI Chatbot & Small Language Model" },
       {
         property: "og:description",
         content:
-          "A ~100M parameter small language model that runs on consumer hardware. No datacenter, no cloud GPU bill.",
+          "A free ~100M parameter AI chatbot running on consumer hardware. Answers weather, news, code, study, writing, recipes, travel, and everyday questions. No datacenter, no cloud GPU bill.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://dapai.lovable.app/about-dap-ai" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "About DAP AI — Small Language Model" },
+      { name: "twitter:title", content: "DAP AI — Free AI Chatbot & Small Language Model" },
       {
         name: "twitter:description",
         content:
-          "A ~100M parameter SLM running on one 5060 Ti and two Jetson Orin Nanos.",
+          "Free chatbot for weather, code, study, writing, recipes, travel, and more. A ~100M param SLM on one 5060 Ti and two Jetson Orin Nanos.",
       },
     ],
     links: [
@@ -42,18 +42,68 @@ export const Route = createFileRoute("/about-dap-ai")({
         type: "application/ld+json",
         children: JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "SoftwareApplication",
-          name: "DAP AI",
-          alternateName: ["DAP AI 3.2", "DAP AI Pro", "DAP AI Lite", "dapai"],
-          applicationCategory: "Chatbot",
-          operatingSystem: "Web",
-          url: "https://dapai.lovable.app",
-          description:
-            "DAP AI is a ~100M parameter small language model, comparable to Gemma E2B, running on consumer hardware (one RTX 5060 Ti and two Jetson Orin Nanos) — no datacenter required.",
-          offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+          "@graph": [
+            {
+              "@type": "SoftwareApplication",
+              name: "DAP AI",
+              alternateName: ["DAP AI 3.2", "DAP AI Pro", "DAP AI Lite", "dapai", "DAP"],
+              applicationCategory: "Chatbot",
+              operatingSystem: "Web",
+              url: "https://dapai.lovable.app",
+              description:
+                "DAP AI is a free ~100M parameter small language model chatbot, comparable to Gemma E2B, running on consumer hardware (one RTX 5060 Ti and two Jetson Orin Nanos).",
+              offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+            },
+            {
+              "@type": "FAQPage",
+              mainEntity: [
+                {
+                  "@type": "Question",
+                  name: "What is DAP AI?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "DAP AI is a free AI chatbot powered by a ~100M parameter small language model. It runs on consumer hardware — one RTX 5060 Ti and two Jetson Orin Nanos — with no datacenter required.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Can DAP AI tell me the weather?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "You can ask DAP AI about the weather, news, sports, recipes, travel plans, homework, coding help, and just about anything else you'd ask a chatbot.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Is DAP AI free?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Yes. DAP AI Lite is free forever. DAP AI 3.2 (Pro) unlocks longer memory, custom personas (Gems), web search, and image input.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Is DAP AI a ChatGPT, Claude, or Gemini alternative?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Yes — DAP AI is a lightweight alternative to ChatGPT, Claude, Gemini, and Copilot. It's smaller and faster, designed to run on consumer hardware instead of hyperscaler datacenters.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "What can I use DAP AI for?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Coding help, code review, studying, homework, math, essay writing, email drafting, resume writing, trip planning, recipes, translation, summarization, career coaching, and everyday questions.",
+                  },
+                },
+              ],
+            },
+          ],
         }),
       },
     ],
+
   }),
   component: AboutDapAi,
 });
@@ -157,6 +207,69 @@ function AboutDapAi() {
       </section>
 
       <section className="mt-10">
+        <h2 className="text-2xl font-semibold">Ask DAP AI anything</h2>
+        <p className="mt-3 text-muted-foreground">
+          DAP AI is a general-purpose chatbot. People use it to ask questions like:
+        </p>
+        <ul className="mt-3 grid list-disc grid-cols-1 gap-x-6 gap-y-2 pl-6 text-muted-foreground sm:grid-cols-2">
+          <li>What's the weather today?</li>
+          <li>What's the weather tomorrow in Dubai?</li>
+          <li>Latest news headlines</li>
+          <li>Explain quantum physics simply</li>
+          <li>Write a Python function to sort a list</li>
+          <li>Review my JavaScript code</li>
+          <li>Help me with my math homework</li>
+          <li>Solve this algebra problem</li>
+          <li>Write an essay about climate change</li>
+          <li>Draft a professional email</li>
+          <li>Fix the grammar in this paragraph</li>
+          <li>Translate this sentence to Spanish</li>
+          <li>Summarize this article for me</li>
+          <li>Give me a recipe for chicken curry</li>
+          <li>Plan a 3-day trip to Tokyo</li>
+          <li>Build me a workout routine</li>
+          <li>Help me write my resume</li>
+          <li>Career advice for a software engineer</li>
+          <li>What should I learn next in web development?</li>
+          <li>Explain this error message</li>
+          <li>Generate startup ideas</li>
+          <li>Write a poem about the ocean</li>
+          <li>What is a small language model?</li>
+          <li>Best free ChatGPT alternative</li>
+        </ul>
+        <p className="mt-4 text-muted-foreground">
+          Weather, news, code, homework, recipes, travel, writing — if you'd
+          ask ChatGPT, Claude, Gemini, or Copilot, you can ask DAP AI.
+        </p>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">Frequently asked questions</h2>
+        <div className="mt-4 space-y-4 text-muted-foreground">
+          <div>
+            <h3 className="font-medium text-foreground">Is DAP AI free?</h3>
+            <p>Yes. DAP AI Lite is free forever. Pro unlocks longer memory, custom personas, web search, and image input.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Can DAP AI tell me the weather?</h3>
+            <p>Yes — ask about the weather, news, sports scores, recipes, travel, homework, coding, and just about anything else.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Is DAP AI a ChatGPT alternative?</h3>
+            <p>Yes. It's a lightweight alternative to ChatGPT, Claude, Gemini, and Copilot, designed to run on consumer hardware rather than a hyperscaler datacenter.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Do I need to sign up?</h3>
+            <p>You can try DAP AI Lite without an account. Sign up to save chats and unlock Pro features.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Is my data private?</h3>
+            <p>Your messages stay on hardware we control — they aren't forwarded to OpenAI, Anthropic, or Google.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-10">
         <h2 className="text-2xl font-semibold">The bigger idea</h2>
         <p className="mt-3 text-muted-foreground">
           Most AI you use today is rented from a handful of giant cloud
@@ -165,6 +278,7 @@ function AboutDapAi() {
           you don't need a hyperscaler to make AI happen.
         </p>
       </section>
+
 
       <div className="mt-12 flex flex-wrap gap-3">
         <Link
