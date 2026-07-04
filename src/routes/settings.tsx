@@ -56,10 +56,18 @@ function Settings() {
   const [history, setHistory] = useLocalToggle("dap.history", true);
   const [sounds, setSounds] = useLocalToggle("dap.sounds", false);
   const [beta, setBeta] = useLocalToggle("dap.beta", false);
+  const [glass, setGlassRaw] = useLocalToggle("dap.glass", false);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("liquid-glass", glass);
+    }
+  }, [glass]);
 
   const rows = [
     { id: "history", label: "Save chat history", desc: "Keep recent conversations in the sidebar.", checked: history, onChange: setHistory },
     { id: "sounds", label: "Sound effects", desc: "Play subtle sounds on send/receive.", checked: sounds, onChange: setSounds },
+    { id: "glass", label: "Liquid Glass", desc: "Frosted, translucent surfaces across the app.", checked: glass, onChange: setGlassRaw },
     { id: "beta", label: "Beta features", desc: "Try experimental tools early, including AI Memory.", checked: beta, onChange: setBeta },
   ];
 
