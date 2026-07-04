@@ -78,6 +78,7 @@ export function AppSidebar() {
   });
 
   const threads = chatsQuery.data ?? [];
+  const closeIfMobile = () => { if (isMobile) setOpenMobile(false); };
 
   return (
     <Sidebar collapsible="icon">
