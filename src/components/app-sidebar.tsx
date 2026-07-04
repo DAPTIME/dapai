@@ -102,6 +102,7 @@ export function AppSidebar() {
               <SidebarMenuItem className="animate-fade-in" style={{ animationDelay: "0ms" }}>
                 <SidebarMenuButton
                   onClick={() => {
+                    closeIfMobile();
                     if (!user) {
                       navigate({ to: "/login" });
                       return;
