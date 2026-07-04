@@ -207,6 +207,69 @@ function AboutDapAi() {
       </section>
 
       <section className="mt-10">
+        <h2 className="text-2xl font-semibold">Ask DAP AI anything</h2>
+        <p className="mt-3 text-muted-foreground">
+          DAP AI is a general-purpose chatbot. People use it to ask questions like:
+        </p>
+        <ul className="mt-3 grid list-disc grid-cols-1 gap-x-6 gap-y-2 pl-6 text-muted-foreground sm:grid-cols-2">
+          <li>What's the weather today?</li>
+          <li>What's the weather tomorrow in Dubai?</li>
+          <li>Latest news headlines</li>
+          <li>Explain quantum physics simply</li>
+          <li>Write a Python function to sort a list</li>
+          <li>Review my JavaScript code</li>
+          <li>Help me with my math homework</li>
+          <li>Solve this algebra problem</li>
+          <li>Write an essay about climate change</li>
+          <li>Draft a professional email</li>
+          <li>Fix the grammar in this paragraph</li>
+          <li>Translate this sentence to Spanish</li>
+          <li>Summarize this article for me</li>
+          <li>Give me a recipe for chicken curry</li>
+          <li>Plan a 3-day trip to Tokyo</li>
+          <li>Build me a workout routine</li>
+          <li>Help me write my resume</li>
+          <li>Career advice for a software engineer</li>
+          <li>What should I learn next in web development?</li>
+          <li>Explain this error message</li>
+          <li>Generate startup ideas</li>
+          <li>Write a poem about the ocean</li>
+          <li>What is a small language model?</li>
+          <li>Best free ChatGPT alternative</li>
+        </ul>
+        <p className="mt-4 text-muted-foreground">
+          Weather, news, code, homework, recipes, travel, writing — if you'd
+          ask ChatGPT, Claude, Gemini, or Copilot, you can ask DAP AI.
+        </p>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">Frequently asked questions</h2>
+        <div className="mt-4 space-y-4 text-muted-foreground">
+          <div>
+            <h3 className="font-medium text-foreground">Is DAP AI free?</h3>
+            <p>Yes. DAP AI Lite is free forever. Pro unlocks longer memory, custom personas, web search, and image input.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Can DAP AI tell me the weather?</h3>
+            <p>Yes — ask about the weather, news, sports scores, recipes, travel, homework, coding, and just about anything else.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Is DAP AI a ChatGPT alternative?</h3>
+            <p>Yes. It's a lightweight alternative to ChatGPT, Claude, Gemini, and Copilot, designed to run on consumer hardware rather than a hyperscaler datacenter.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Do I need to sign up?</h3>
+            <p>You can try DAP AI Lite without an account. Sign up to save chats and unlock Pro features.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Is my data private?</h3>
+            <p>Your messages stay on hardware we control — they aren't forwarded to OpenAI, Anthropic, or Google.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-10">
         <h2 className="text-2xl font-semibold">The bigger idea</h2>
         <p className="mt-3 text-muted-foreground">
           Most AI you use today is rented from a handful of giant cloud
@@ -215,6 +278,7 @@ function AboutDapAi() {
           you don't need a hyperscaler to make AI happen.
         </p>
       </section>
+
 
       <div className="mt-12 flex flex-wrap gap-3">
         <Link
