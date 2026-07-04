@@ -51,14 +51,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
             {
               "@type": "Organization",
               name: "DAP AI",
+              alternateName: ["DAP", "DAP AI Chatbot", "dapai"],
               url: "https://dapai.lovable.app",
+              logo: "https://dapai.lovable.app/favicon.ico",
             },
             {
               "@type": "WebSite",
               name: "DAP AI",
+              alternateName: ["DAP", "DAP AI Chatbot", "dapai"],
               url: "https://dapai.lovable.app",
             },
           ],
+
         }),
       },
     ],
