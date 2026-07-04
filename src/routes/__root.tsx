@@ -108,6 +108,17 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   // Mount the theme effect so the persisted choice is applied + synced.
   useTheme();
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const apply = () => document.documentElement.classList.toggle("liquid-glass", localStorage.getItem("dap.glass") === "1");
+    apply();
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { key: string; value: boolean } | undefined;
+      if (d?.key === "dap.glass") document.documentElement.classList.toggle("liquid-glass", !!d.value);
+    };
+    window.addEventListener("dap.setting", handler);
+    return () => window.removeEventListener("dap.setting", handler);
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
