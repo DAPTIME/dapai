@@ -191,6 +191,7 @@ function ChangeRecoveryCard({
 }) {
   const qc = useQueryClient();
   const change = useServerFn(changeRecoveryQuestion);
+  const setQ = useServerFn(setRecoveryQuestion);
 
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [newQuestion, setNewQuestion] = useState("");
@@ -198,7 +199,10 @@ function ChangeRecoveryCard({
 
   const mut = useMutation({
     mutationFn: () =>
-      change({ data: { currentAnswer, newQuestion, newAnswer } }),
+      hasQuestion
+        ? change({ data: { currentAnswer, newQuestion, newAnswer } })
+        : setQ({ data: { question: newQuestion, answer: newAnswer } }),
+
     onSuccess: () => {
       toast.success("Recovery question updated.");
       setCurrentAnswer("");
