@@ -101,3 +101,90 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/** Signed-in: verify the current recovery answer, then update to a new question+answer. */
+export const changeRecoveryQuestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        currentAnswer: z.string().trim().min(1).max(200),
+        newQuestion: z.string().trim().min(3).max(200),
+        newAnswer: z.string().trim().min(2).max(200),
+      })
+      .parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("profiles")
+      .select("recovery_answer_hash")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!row?.recovery_answer_hash) {
+      throw new Error("No recovery question is set on your account yet.");
+    }
+    if (!verifyStored(row.recovery_answer_hash, data.currentAnswer)) {
+      throw new Error("That answer doesn't match your current recovery answer.");
+    }
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        recovery_question: data.newQuestion,
+        recovery_answer_hash: makeStored(data.newAnswer),
+      })
+      .eq("id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Signed-in: change your password by re-verifying your recovery answer. */
+export const changePasswordWithAnswer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        answer: z.string().trim().min(1).max(200),
+        newPassword: z.string().min(6).max(200),
+      })
+      .parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("profiles")
+      .select("recovery_answer_hash")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!row?.recovery_answer_hash) {
+      throw new Error("No recovery question is set on your account.");
+    }
+    if (!verifyStored(row.recovery_answer_hash, data.answer)) {
+      throw new Error("That answer doesn't match. Please try again.");
+    }
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: data.newPassword,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Returns whether the current user has a recovery question set (and the question text). */
+export const getMyRecoveryQuestion = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("profiles")
+      .select("recovery_question, recovery_answer_hash")
+      .eq("id", userId)
+      .maybeSingle();
+    return {
+      question: row?.recovery_question ?? null,
+      hasAnswer: !!row?.recovery_answer_hash,
+    };
+  });
+
