@@ -286,3 +286,18 @@
   animation: home-logo-float 4.5s ease-in-out infinite;
 }
 
+
+/* Liquid Glass effect (toggle in Settings) */
+.liquid-glass header,
+.liquid-glass [data-sidebar="sidebar"],
+.liquid-glass [data-slot="dialog-content"],
+.liquid-glass [data-slot="popover-content"],
+.liquid-glass [data-slot="dropdown-menu-content"] {
+  background-color: color-mix(in oklab, var(--background) 55%, transparent) !important;
+  backdrop-filter: blur(18px) saturate(160%);
+  border-color: color-mix(in oklab, var(--foreground) 12%, transparent);
+}
+.liquid-glass .bg-card {
+  background-color: color-mix(in oklab, var(--card) 65%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+}
