@@ -14,12 +14,14 @@ import { Route as TeamRouteImport } from './routes/team'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SecurityRouteImport } from './routes/security'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DapsRouteImport } from './routes/daps'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
@@ -55,6 +57,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
@@ -83,6 +90,11 @@ const DapsRoute = DapsRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutDapAiRoute = AboutDapAiRouteImport.update({
@@ -138,12 +150,14 @@ const ApiPublicHooksCleanupOldChatsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about-dap-ai': typeof AboutDapAiRoute
+  '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -160,12 +174,14 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about-dap-ai': typeof AboutDapAiRoute
+  '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -183,12 +199,14 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about-dap-ai': typeof AboutDapAiRoute
+  '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -207,12 +225,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about-dap-ai'
+    | '/account'
     | '/admin'
     | '/daps'
     | '/forgot-password'
     | '/help'
     | '/login'
     | '/mcp'
+    | '/security'
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
@@ -229,12 +249,14 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about-dap-ai'
+    | '/account'
     | '/admin'
     | '/daps'
     | '/forgot-password'
     | '/help'
     | '/login'
     | '/mcp'
+    | '/security'
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
@@ -251,12 +273,14 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about-dap-ai'
+    | '/account'
     | '/admin'
     | '/daps'
     | '/forgot-password'
     | '/help'
     | '/login'
     | '/mcp'
+    | '/security'
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
@@ -274,12 +298,14 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutDapAiRoute: typeof AboutDapAiRoute
+  AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
   DapsRoute: typeof DapsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
+  SecurityRoute: typeof SecurityRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -331,6 +357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mcp': {
       id: '/mcp'
       path: '/mcp'
@@ -371,6 +404,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about-dap-ai': {
@@ -442,12 +482,14 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutDapAiRoute: AboutDapAiRoute,
+  AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
   DapsRoute: DapsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
+  SecurityRoute: SecurityRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
