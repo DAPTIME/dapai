@@ -126,7 +126,7 @@ export function AppSidebar() {
                     isActive={pathname === item.url}
                     className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
                   >
-                    <Link to={item.url}>
+                    <Link to={item.url} onClick={closeIfMobile}>
                       <item.icon />
                       <span>{item.title}</span>
                     </Link>
@@ -167,6 +167,7 @@ export function AppSidebar() {
                           <Link
                             to="/c/$threadId"
                             params={{ threadId: t.id }}
+                            onClick={closeIfMobile}
                             className="text-sm"
                           >
                             <span className="truncate">{t.title}</span>
@@ -204,7 +205,7 @@ export function AppSidebar() {
                 isActive={pathname === "/admin"}
                 className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
               >
-                <Link to="/admin">
+                <Link to="/admin" onClick={closeIfMobile}>
                   <Cpu />
                   <span>Admin</span>
                 </Link>
@@ -217,7 +218,7 @@ export function AppSidebar() {
               isActive={pathname === "/settings"}
               className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:rotate-45"
             >
-              <Link to="/settings">
+              <Link to="/settings" onClick={closeIfMobile}>
                 <Settings />
                 <span>Settings</span>
               </Link>
@@ -228,7 +229,7 @@ export function AppSidebar() {
               asChild
               className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
             >
-              <Link to="/help">
+              <Link to="/help" onClick={closeIfMobile}>
                 <HelpCircle />
                 <span>Help</span>
               </Link>
@@ -240,7 +241,7 @@ export function AppSidebar() {
               isActive={pathname === "/terms"}
               className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
             >
-              <Link to="/terms">
+              <Link to="/terms" onClick={closeIfMobile}>
                 <Scale />
                 <span>Terms</span>
               </Link>
@@ -252,7 +253,7 @@ export function AppSidebar() {
               isActive={pathname === "/about-dap-ai"}
               className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
             >
-              <Link to="/about-dap-ai">
+              <Link to="/about-dap-ai" onClick={closeIfMobile}>
                 <Info />
                 <span>About DAP AI</span>
               </Link>
