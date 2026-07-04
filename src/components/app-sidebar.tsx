@@ -82,13 +82,13 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-4">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/" className="group/logo flex items-center gap-2">
           <img
             src={logo.url}
             alt="DAP AI"
-            className="h-[3.03rem] w-[3.03rem] rounded-xl object-contain"
+            className="h-[3.03rem] w-[3.03rem] rounded-xl object-contain transition-transform duration-300 ease-out group-hover/logo:scale-110 group-hover/logo:rotate-3"
           />
-          <span className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+          <span className="text-lg font-semibold tracking-tight transition-colors group-hover/logo:text-primary group-data-[collapsible=icon]:hidden">
             DAP AI
           </span>
         </Link>
@@ -98,7 +98,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
+              <SidebarMenuItem className="animate-fade-in" style={{ animationDelay: "0ms" }}>
                 <SidebarMenuButton
                   onClick={() => {
                     if (!user) {
@@ -107,14 +107,23 @@ export function AppSidebar() {
                     }
                     createMut.mutate();
                   }}
+                  className="group/item transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
                 >
                   <MessageSquarePlus />
                   <span>New chat</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {main.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
+              {main.map((item, i) => (
+                <SidebarMenuItem
+                  key={item.url}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${(i + 1) * 60}ms` }}
+                >
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.url}
+                    className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
+                  >
                     <Link to={item.url}>
                       <item.icon />
                       <span>{item.title}</span>
@@ -125,6 +134,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
 
         {user && !incognito && (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
@@ -187,7 +197,11 @@ export function AppSidebar() {
         <SidebarMenu>
           {user?.email?.toLowerCase() === ADMIN_EMAIL && (
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/admin"}>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === "/admin"}
+                className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
+              >
                 <Link to="/admin">
                   <Cpu />
                   <span>Admin</span>
@@ -196,7 +210,11 @@ export function AppSidebar() {
             </SidebarMenuItem>
           )}
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === "/settings"}>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === "/settings"}
+              className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:rotate-45"
+            >
               <Link to="/settings">
                 <Settings />
                 <span>Settings</span>
@@ -204,7 +222,10 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
+            <SidebarMenuButton
+              asChild
+              className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
+            >
               <Link to="/help">
                 <HelpCircle />
                 <span>Help</span>
@@ -212,7 +233,11 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === "/terms"}>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === "/terms"}
+              className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
+            >
               <Link to="/terms">
                 <Scale />
                 <span>Terms</span>
@@ -220,7 +245,11 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={pathname === "/about-dap-ai"}>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === "/about-dap-ai"}
+              className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
+            >
               <Link to="/about-dap-ai">
                 <Info />
                 <span>About DAP AI</span>
@@ -230,6 +259,7 @@ export function AppSidebar() {
 
         </SidebarMenu>
       </SidebarFooter>
+
     </Sidebar>
   );
 }
