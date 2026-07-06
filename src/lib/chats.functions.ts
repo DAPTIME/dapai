@@ -280,7 +280,7 @@ export const listChats = createServerFn({ method: "GET" })
     const { supabase } = context;
     const { data, error } = await supabase
       .from("chats")
-      .select("id, title, created_at, updated_at")
+      .select("id, title, slug, created_at, updated_at")
       .eq("is_incognito", false)
       .order("updated_at", { ascending: false });
     if (error) throw new Error(error.message);
