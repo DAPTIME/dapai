@@ -77,7 +77,10 @@ export function sanitizeLiteReply(text: string): string {
   }
 
   out = out.replace(leakedThoughtSentenceRe, " ");
-  out = out.replace(/\s+([.,!?;:])/g, "$1").replace(/([.!?])(?=\S)/g, "$1 ");
+  out = out
+    .replace(/\s+([,;:])/g, "$1")
+    .replace(/([a-zA-Z])\s+([.!?])(?=\s|$)/g, "$1$2")
+    .replace(/([a-z])([.!?])([A-Z])/g, "$1$2 $3");
 
   return out.trim() || LITE_FALLBACK_REPLY;
 }
