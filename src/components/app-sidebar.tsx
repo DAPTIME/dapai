@@ -64,7 +64,7 @@ export function AppSidebar() {
     mutationFn: () => create({ data: { incognito: isIncognitoNow() } }),
     onSuccess: (chat) => {
       qc.invalidateQueries({ queryKey: ["chats"] });
-      navigate({ to: "/c/$threadId", params: { threadId: chat.id } });
+      navigate({ to: "/c/$slug", params: { slug: chat.slug ?? chat.id } });
     },
   });
 
@@ -73,7 +73,8 @@ export function AppSidebar() {
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: ["chats"] });
       if (isMobile) setOpenMobile(false);
-      if (pathname === `/c/${id}`) navigate({ to: "/" });
+      const t = threads.find((c) => c.id === id);
+      if (t && pathname === `/c/${t.slug ?? id}`) navigate({ to: "/" });
     },
   });
 
@@ -151,7 +152,8 @@ export function AppSidebar() {
                   </div>
                 )}
                 {threads.map((t) => {
-                  const active = pathname === `/c/${t.id}`;
+                  const tSlug = t.slug ?? t.id;
+                  const active = pathname === `/c/${tSlug}`;
                   return (
                     <SidebarMenuItem key={t.id}>
                       <div
@@ -165,8 +167,8 @@ export function AppSidebar() {
                           className="flex-1"
                         >
                           <Link
-                            to="/c/$threadId"
-                            params={{ threadId: t.id }}
+                            to="/c/$slug"
+                            params={{ slug: tSlug }}
                             onClick={closeIfMobile}
                             className="text-sm"
                           >
