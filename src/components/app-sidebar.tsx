@@ -152,7 +152,8 @@ export function AppSidebar() {
                   </div>
                 )}
                 {threads.map((t) => {
-                  const active = pathname === `/c/${t.id}`;
+                  const tSlug = t.slug ?? t.id;
+                  const active = pathname === `/c/${tSlug}`;
                   return (
                     <SidebarMenuItem key={t.id}>
                       <div
@@ -166,8 +167,8 @@ export function AppSidebar() {
                           className="flex-1"
                         >
                           <Link
-                            to="/c/$threadId"
-                            params={{ threadId: t.id }}
+                            to="/c/$slug"
+                            params={{ slug: tSlug }}
                             onClick={closeIfMobile}
                             className="text-sm"
                           >
