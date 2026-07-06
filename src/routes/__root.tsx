@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-quer
 import { useServerFn } from "@tanstack/react-start";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarSwipeGestures } from "@/components/sidebar-swipe-gestures";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -124,6 +125,7 @@ function RootComponent() {
       <AuthProvider>
         <AppContextMenu>
           <SidebarProvider>
+            <SidebarSwipeGestures />
             <div className="flex min-h-screen w-full bg-background">
               <AppSidebar />
               <div className="flex flex-1 flex-col">
