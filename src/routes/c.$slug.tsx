@@ -142,9 +142,10 @@ function ChatPage() {
       }
 
       try {
+        if (!chatId) throw new Error("Chat not loaded yet");
         return await send({
           data: {
-            chatId: slug,
+            chatId,
             text,
             images,
             model: effective,
