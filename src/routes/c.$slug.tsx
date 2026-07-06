@@ -28,6 +28,7 @@ function ChatPage() {
   const { user, loading, ready } = useAuth();
   const qc = useQueryClient();
   const fetchChat = useServerFn(getChat);
+  const fetchChatBySlug = useServerFn(getChatBySlug);
   const fetchProfile = useServerFn(getProfile);
   const send = useServerFn(sendChatMessage);
   const planSearch = useServerFn(planSearchForMessage);
@@ -44,11 +45,27 @@ function ChatPage() {
     if (ready && !loading && !user) navigate({ to: "/login" });
   }, [ready, loading, user, navigate]);
 
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const isUuid = uuidRe.test(slug);
+
   const chatQuery = useQuery({
     queryKey: ["chat", slug],
-    queryFn: () => fetchChat({ data: { chatId: slug } }),
+    queryFn: async () => {
+      if (isUuid) return fetchChat({ data: { chatId: slug } });
+      return fetchChatBySlug({ data: { slug } });
+    },
     enabled: !!user,
   });
+
+  // If the URL used the raw UUID, redirect to the canonical slug URL.
+  useEffect(() => {
+    const canonical = chatQuery.data?.chat?.slug;
+    if (isUuid && canonical && canonical !== slug) {
+      navigate({ to: "/c/$slug", params: { slug: canonical }, replace: true });
+    }
+  }, [isUuid, chatQuery.data, slug, navigate]);
+
+  const chatId = chatQuery.data?.chat?.id ?? (isUuid ? slug : "");
 
   const profileQuery = useQuery({
     queryKey: ["profile", user?.id],
