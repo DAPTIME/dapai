@@ -146,10 +146,10 @@ function Home() {
           JSON.stringify(payload)
         );
       }
-      return chat.id;
+      return chat.slug ?? chat.id;
     },
-    onSuccess: (chatId) => {
-      navigate({ to: "/c/$threadId", params: { threadId: chatId } });
+    onSuccess: (slug) => {
+      navigate({ to: "/c/$slug", params: { slug } });
     },
   });
 
