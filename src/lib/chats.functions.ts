@@ -376,7 +376,7 @@ export const createChat = createServerFn({ method: "POST" })
         title: dap ? `${dap.name} chat` : "New chat",
         is_incognito: !!data?.incognito,
       })
-      .select("id, title, created_at, updated_at")
+      .select("id, title, slug, created_at, updated_at")
       .single();
     if (error) throw new Error(error.message);
 
