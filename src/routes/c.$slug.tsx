@@ -182,9 +182,9 @@ function ChatPage() {
   // Auto-send any pending message stashed from the homepage navigation.
   const pendingFired = useRef(false);
   useEffect(() => {
-    if (!user || pendingFired.current) return;
+    if (!user || !chatId || pendingFired.current) return;
     if (typeof window === "undefined") return;
-    const key = `dap.pending.${slug}`;
+    const key = `dap.pending.${chatId}`;
     const raw = sessionStorage.getItem(key);
     if (!raw) return;
     pendingFired.current = true;
@@ -195,7 +195,7 @@ function ChatPage() {
     } catch {
       /* ignore */
     }
-  }, [user, slug, sendMut]);
+  }, [user, chatId, sendMut]);
 
 
 
