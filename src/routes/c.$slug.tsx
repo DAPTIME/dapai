@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
 
-export const Route = createFileRoute("/c/$threadId")({
+export const Route = createFileRoute("/c/$slug")({
   head: () => ({
     meta: [
       { title: "Chat — DAP AI" },
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/c/$threadId")({
 });
 
 function ChatPage() {
-  const { threadId } = Route.useParams();
+  const { slug } = Route.useParams();
   const navigate = useNavigate();
   const { user, loading, ready } = useAuth();
   const qc = useQueryClient();
@@ -45,8 +45,8 @@ function ChatPage() {
   }, [ready, loading, user, navigate]);
 
   const chatQuery = useQuery({
-    queryKey: ["chat", threadId],
-    queryFn: () => fetchChat({ data: { chatId: threadId } }),
+    queryKey: ["chat", slug],
+    queryFn: () => fetchChat({ data: { chatId: slug } }),
     enabled: !!user,
   });
 
@@ -99,10 +99,10 @@ function ChatPage() {
         created_at: new Date().toISOString(),
       };
       setOptimisticUserMessage(optimistic);
-      qc.setQueryData(["chat", threadId], (prev: any) => {
+      qc.setQueryData(["chat", slug], (prev: any) => {
         if (!prev) {
           return {
-            chat: { id: threadId, title: text.slice(0, 60) },
+            chat: { id: slug, title: text.slice(0, 60) },
             messages: [optimistic],
           };
         }
@@ -127,7 +127,7 @@ function ChatPage() {
       try {
         return await send({
           data: {
-            chatId: threadId,
+            chatId: slug,
             text,
             images,
             model: effective,
@@ -140,11 +140,11 @@ function ChatPage() {
     },
     onSuccess: (result) => {
       setOptimisticUserMessage(null);
-      qc.setQueryData(["chat", threadId], (prev: any) => ({
-        chat: prev?.chat ?? { id: threadId, title: "Chat" },
+      qc.setQueryData(["chat", slug], (prev: any) => ({
+        chat: prev?.chat ?? { id: slug, title: "Chat" },
         messages: result.messages ?? prev?.messages ?? [],
       }));
-      qc.invalidateQueries({ queryKey: ["chat", threadId] });
+      qc.invalidateQueries({ queryKey: ["chat", slug] });
       qc.invalidateQueries({ queryKey: ["chats"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
       if (result.forcedToLite) {
@@ -155,7 +155,7 @@ function ChatPage() {
       setSearchingWeb(false);
       setOptimisticUserMessage(null);
       // Roll back the optimistic message on failure.
-      qc.invalidateQueries({ queryKey: ["chat", threadId] });
+      qc.invalidateQueries({ queryKey: ["chat", slug] });
       toast.error(e instanceof Error ? e.message : "Send failed");
     },
   });
@@ -166,7 +166,7 @@ function ChatPage() {
   useEffect(() => {
     if (!user || pendingFired.current) return;
     if (typeof window === "undefined") return;
-    const key = `dap.pending.${threadId}`;
+    const key = `dap.pending.${slug}`;
     const raw = sessionStorage.getItem(key);
     if (!raw) return;
     pendingFired.current = true;
@@ -177,7 +177,7 @@ function ChatPage() {
     } catch {
       /* ignore */
     }
-  }, [user, threadId, sendMut]);
+  }, [user, slug, sendMut]);
 
 
 
