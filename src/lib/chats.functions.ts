@@ -421,7 +421,7 @@ export const getChat = createServerFn({ method: "GET" })
       await Promise.all([
         supabase
           .from("chats")
-          .select("id, title, created_at, updated_at")
+          .select("id, title, slug, created_at, updated_at")
           .eq("id", data.chatId)
           .single(),
         supabase
@@ -431,6 +431,30 @@ export const getChat = createServerFn({ method: "GET" })
           .order("created_at", { ascending: true }),
       ]);
     if (cErr) throw new Error(cErr.message);
+    if (mErr) throw new Error(mErr.message);
+    return { chat, messages: messages ?? [] };
+  });
+
+export const getChatBySlug = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ slug: z.string().min(1).max(80) }).parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: chat, error: cErr } = await supabase
+      .from("chats")
+      .select("id, title, slug, created_at, updated_at")
+      .eq("user_id", userId)
+      .eq("slug", data.slug)
+      .maybeSingle();
+    if (cErr) throw new Error(cErr.message);
+    if (!chat) return { chat: null, messages: [] as const };
+    const { data: messages, error: mErr } = await supabase
+      .from("chat_messages")
+      .select("id, role, content, model, created_at")
+      .eq("chat_id", chat.id)
+      .order("created_at", { ascending: true });
     if (mErr) throw new Error(mErr.message);
     return { chat, messages: messages ?? [] };
   });
