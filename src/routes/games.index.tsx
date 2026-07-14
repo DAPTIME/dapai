@@ -5,10 +5,10 @@ export const Route = createFileRoute("/games/")({
 });
 
 const GAMES = [
-  { slug: "2048", label: "2048", emoji: "🟨", desc: "Slide, merge, chase 2048." },
-  { slug: "snake", label: "Snake", emoji: "🐍", desc: "Classic — don't bite yourself." },
-  { slug: "spacewar", label: "Spacewar", emoji: "🚀", desc: "Dodge asteroids, blast rocks." },
-  { slug: "polytrack", label: "Poly Racer", emoji: "🏎️", desc: "Zip around a low-poly track." },
+  { to: "/games/2048" as const, label: "2048", emoji: "🟨", desc: "Slide, merge, chase 2048." },
+  { to: "/games/snake" as const, label: "Snake", emoji: "🐍", desc: "Classic — don't bite yourself." },
+  { to: "/games/spacewar" as const, label: "Spacewar", emoji: "🚀", desc: "Dodge asteroids, blast rocks." },
+  { to: "/games/polytrack" as const, label: "Poly Racer", emoji: "🏎️", desc: "Zip around a low-poly track." },
 ];
 
 function GamesHome() {
@@ -23,8 +23,8 @@ function GamesHome() {
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {GAMES.map((g, i) => (
           <Link
-            key={g.slug}
-            to={`/games/${g.slug}`}
+            key={g.to}
+            to={g.to}
             style={{ animationDelay: `${i * 60}ms` }}
             className="group animate-fade-in rounded-2xl border border-border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg"
           >
