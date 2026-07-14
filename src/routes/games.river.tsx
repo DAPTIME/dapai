@@ -211,7 +211,7 @@ function RiverGame() {
   });
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-md animate-fade-in">
       <h1 className="text-2xl font-bold">River Crosser 🐸</h1>
       <div className="mt-2 flex items-center justify-between text-sm">
         <div>Score: <span className="font-semibold">{score}</span> · Best: {best}</div>
@@ -223,7 +223,7 @@ function RiverGame() {
         ref={canvasRef}
         width={COLS * CELL}
         height={ROWS * CELL}
-        className="mt-4 w-full rounded-xl border border-border"
+        className="mt-4 w-full rounded-xl border border-border transition-shadow hover:shadow-lg"
       />
       <div className="mt-4 grid grid-cols-3 gap-2">
         <div />
