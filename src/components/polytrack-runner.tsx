@@ -198,12 +198,12 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     return () => cancelAnimationFrame(handle);
   }, [running, params, season, goal, title, onFinish]);
 
-  const touchBtn = (k: string) => ({
-    onTouchStart: () => { stateRef.current.keys[k] = true; },
-    onTouchEnd: () => { stateRef.current.keys[k] = false; },
-    onMouseDown: () => { stateRef.current.keys[k] = true; },
-    onMouseUp: () => { stateRef.current.keys[k] = false; },
-    onMouseLeave: () => { stateRef.current.keys[k] = false; },
+  const touchBtn = (a: PolyAction) => ({
+    onTouchStart: () => controls.press(a, true),
+    onTouchEnd: () => controls.press(a, false),
+    onMouseDown: () => controls.press(a, true),
+    onMouseUp: () => controls.press(a, false),
+    onMouseLeave: () => controls.press(a, false),
   });
 
   return (
@@ -237,12 +237,14 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
         )}
       </div>
       <div className="mt-4 grid grid-cols-4 gap-2 md:hidden">
-        <Button variant="secondary" {...touchBtn("ArrowLeft")}>←</Button>
-        <Button variant="secondary" {...touchBtn("ArrowUp")}>Gas</Button>
-        <Button variant="secondary" {...touchBtn("ArrowDown")}>Brake</Button>
-        <Button variant="secondary" {...touchBtn("ArrowRight")}>→</Button>
+        <Button variant="secondary" {...touchBtn("left")}>←</Button>
+        <Button variant="secondary" {...touchBtn("gas")}>Gas</Button>
+        <Button variant="secondary" {...touchBtn("brake")}>Brake</Button>
+        <Button variant="secondary" {...touchBtn("right")}>→</Button>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">Steer with ← →, Gas ↑, Brake ↓. Timer starts on your first move.</p>
+      <KeybindEditor controls={controls} labels={POLY_LABELS} />
+      <p className="mt-3 text-xs text-muted-foreground hidden md:block">Timer starts on your first move.</p>
+      <p className="mt-3 text-xs text-muted-foreground md:hidden">Use the on-screen buttons. Timer starts on your first move.</p>
     </div>
   );
 }
