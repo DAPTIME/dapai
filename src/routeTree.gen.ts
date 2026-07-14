@@ -38,8 +38,11 @@ import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as GamesPolytrackEditorRouteImport } from './routes/games.polytrack.editor'
+import { Route as GamesPolytrackBrowseRouteImport } from './routes/games.polytrack.browse'
 import { Route as ApiPublicLiteTryRouteImport } from './routes/api/public/lite-try'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as GamesPolytrackTrackIdRouteImport } from './routes/games.polytrack.track.$id'
 import { Route as ApiPublicHooksCleanupOldChatsRouteImport } from './routes/api/public/hooks/cleanup-old-chats'
 
 const TermsRoute = TermsRouteImport.update({
@@ -189,6 +192,16 @@ const Char91DotmcpChar93ListToolsRoute =
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
   } as any)
+const GamesPolytrackEditorRoute = GamesPolytrackEditorRouteImport.update({
+  id: '/editor',
+  path: '/editor',
+  getParentRoute: () => GamesPolytrackRoute,
+} as any)
+const GamesPolytrackBrowseRoute = GamesPolytrackBrowseRouteImport.update({
+  id: '/browse',
+  path: '/browse',
+  getParentRoute: () => GamesPolytrackRoute,
+} as any)
 const ApiPublicLiteTryRoute = ApiPublicLiteTryRouteImport.update({
   id: '/api/public/lite-try',
   path: '/api/public/lite-try',
@@ -200,6 +213,11 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const GamesPolytrackTrackIdRoute = GamesPolytrackTrackIdRouteImport.update({
+  id: '/track/$id',
+  path: '/track/$id',
+  getParentRoute: () => GamesPolytrackRoute,
+} as any)
 const ApiPublicHooksCleanupOldChatsRoute =
   ApiPublicHooksCleanupOldChatsRouteImport.update({
     id: '/api/public/hooks/cleanup-old-chats',
@@ -232,14 +250,17 @@ export interface FileRoutesByFullPath {
   '/games/2048': typeof Games2048Route
   '/games/breakout': typeof GamesBreakoutRoute
   '/games/flappy': typeof GamesFlappyRoute
-  '/games/polytrack': typeof GamesPolytrackRoute
+  '/games/polytrack': typeof GamesPolytrackRouteWithChildren
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
   '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
+  '/games/polytrack/browse': typeof GamesPolytrackBrowseRoute
+  '/games/polytrack/editor': typeof GamesPolytrackEditorRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
+  '/games/polytrack/track/$id': typeof GamesPolytrackTrackIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -265,14 +286,17 @@ export interface FileRoutesByTo {
   '/games/2048': typeof Games2048Route
   '/games/breakout': typeof GamesBreakoutRoute
   '/games/flappy': typeof GamesFlappyRoute
-  '/games/polytrack': typeof GamesPolytrackRoute
+  '/games/polytrack': typeof GamesPolytrackRouteWithChildren
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
   '/games': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
+  '/games/polytrack/browse': typeof GamesPolytrackBrowseRoute
+  '/games/polytrack/editor': typeof GamesPolytrackEditorRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
+  '/games/polytrack/track/$id': typeof GamesPolytrackTrackIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -300,14 +324,17 @@ export interface FileRoutesById {
   '/games/2048': typeof Games2048Route
   '/games/breakout': typeof GamesBreakoutRoute
   '/games/flappy': typeof GamesFlappyRoute
-  '/games/polytrack': typeof GamesPolytrackRoute
+  '/games/polytrack': typeof GamesPolytrackRouteWithChildren
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
   '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
+  '/games/polytrack/browse': typeof GamesPolytrackBrowseRoute
+  '/games/polytrack/editor': typeof GamesPolytrackEditorRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
+  '/games/polytrack/track/$id': typeof GamesPolytrackTrackIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -343,7 +370,10 @@ export interface FileRouteTypes {
     | '/games/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
+    | '/games/polytrack/browse'
+    | '/games/polytrack/editor'
     | '/api/public/hooks/cleanup-old-chats'
+    | '/games/polytrack/track/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -376,7 +406,10 @@ export interface FileRouteTypes {
     | '/games'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
+    | '/games/polytrack/browse'
+    | '/games/polytrack/editor'
     | '/api/public/hooks/cleanup-old-chats'
+    | '/games/polytrack/track/$id'
   id:
     | '__root__'
     | '/'
@@ -410,7 +443,10 @@ export interface FileRouteTypes {
     | '/games/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
+    | '/games/polytrack/browse'
+    | '/games/polytrack/editor'
     | '/api/public/hooks/cleanup-old-chats'
+    | '/games/polytrack/track/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -645,6 +681,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/games/polytrack/editor': {
+      id: '/games/polytrack/editor'
+      path: '/editor'
+      fullPath: '/games/polytrack/editor'
+      preLoaderRoute: typeof GamesPolytrackEditorRouteImport
+      parentRoute: typeof GamesPolytrackRoute
+    }
+    '/games/polytrack/browse': {
+      id: '/games/polytrack/browse'
+      path: '/browse'
+      fullPath: '/games/polytrack/browse'
+      preLoaderRoute: typeof GamesPolytrackBrowseRouteImport
+      parentRoute: typeof GamesPolytrackRoute
+    }
     '/api/public/lite-try': {
       id: '/api/public/lite-try'
       path: '/api/public/lite-try'
@@ -659,6 +709,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/games/polytrack/track/$id': {
+      id: '/games/polytrack/track/$id'
+      path: '/track/$id'
+      fullPath: '/games/polytrack/track/$id'
+      preLoaderRoute: typeof GamesPolytrackTrackIdRouteImport
+      parentRoute: typeof GamesPolytrackRoute
+    }
     '/api/public/hooks/cleanup-old-chats': {
       id: '/api/public/hooks/cleanup-old-chats'
       path: '/api/public/hooks/cleanup-old-chats'
@@ -669,11 +726,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface GamesPolytrackRouteChildren {
+  GamesPolytrackBrowseRoute: typeof GamesPolytrackBrowseRoute
+  GamesPolytrackEditorRoute: typeof GamesPolytrackEditorRoute
+  GamesPolytrackTrackIdRoute: typeof GamesPolytrackTrackIdRoute
+}
+
+const GamesPolytrackRouteChildren: GamesPolytrackRouteChildren = {
+  GamesPolytrackBrowseRoute: GamesPolytrackBrowseRoute,
+  GamesPolytrackEditorRoute: GamesPolytrackEditorRoute,
+  GamesPolytrackTrackIdRoute: GamesPolytrackTrackIdRoute,
+}
+
+const GamesPolytrackRouteWithChildren = GamesPolytrackRoute._addFileChildren(
+  GamesPolytrackRouteChildren,
+)
+
 interface GamesRouteChildren {
   Games2048Route: typeof Games2048Route
   GamesBreakoutRoute: typeof GamesBreakoutRoute
   GamesFlappyRoute: typeof GamesFlappyRoute
-  GamesPolytrackRoute: typeof GamesPolytrackRoute
+  GamesPolytrackRoute: typeof GamesPolytrackRouteWithChildren
   GamesRiverRoute: typeof GamesRiverRoute
   GamesSnakeRoute: typeof GamesSnakeRoute
   GamesSpacewarRoute: typeof GamesSpacewarRoute
@@ -684,7 +757,7 @@ const GamesRouteChildren: GamesRouteChildren = {
   Games2048Route: Games2048Route,
   GamesBreakoutRoute: GamesBreakoutRoute,
   GamesFlappyRoute: GamesFlappyRoute,
-  GamesPolytrackRoute: GamesPolytrackRoute,
+  GamesPolytrackRoute: GamesPolytrackRouteWithChildren,
   GamesRiverRoute: GamesRiverRoute,
   GamesSnakeRoute: GamesSnakeRoute,
   GamesSpacewarRoute: GamesSpacewarRoute,

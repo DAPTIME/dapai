@@ -154,6 +154,45 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_tracks: {
+        Row: {
+          created_at: string
+          goal: number
+          id: string
+          is_public: boolean
+          name: string
+          owner_id: string
+          params: Json
+          play_count: number
+          season: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          goal: number
+          id?: string
+          is_public?: boolean
+          name: string
+          owner_id: string
+          params: Json
+          play_count?: number
+          season: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          goal?: number
+          id?: string
+          is_public?: boolean
+          name?: string
+          owner_id?: string
+          params?: Json
+          play_count?: number
+          season?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -190,6 +229,33 @@ export type Database = {
           recovery_question?: string | null
           tier?: Database["public"]["Enums"]["account_tier"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      track_scores: {
+        Row: {
+          best_time_ms: number
+          created_at: string
+          id: string
+          track_ref: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_time_ms: number
+          created_at?: string
+          id?: string
+          track_ref: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_time_ms?: number
+          created_at?: string
+          id?: string
+          track_ref?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -243,6 +309,15 @@ export type Database = {
       assign_chat_slug: {
         Args: { _self_id: string; _title: string; _user_id: string }
         Returns: string
+      }
+      get_track_leaderboard: {
+        Args: { _limit?: number; _track_ref: string }
+        Returns: {
+          achieved_at: string
+          best_time_ms: number
+          name: string
+          rank: number
+        }[]
       }
       has_role: {
         Args: {
