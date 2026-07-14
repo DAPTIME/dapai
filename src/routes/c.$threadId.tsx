@@ -11,6 +11,7 @@ import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { trackAiReply } from "@/lib/ai-reply-notifier";
 
 export const Route = createFileRoute("/c/$threadId")({
   head: () => ({
