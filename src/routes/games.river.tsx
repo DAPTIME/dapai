@@ -1,10 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/river")({
   component: RiverGame,
 });
+
+type RiverAction = "up" | "down" | "left" | "right";
+const RIVER_DEFAULTS: Record<RiverAction, string[]> = {
+  up: ["ArrowUp", "w"],
+  down: ["ArrowDown", "s"],
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+};
+const RIVER_LABELS: Record<RiverAction, string> = {
+  up: "Hop up",
+  down: "Hop down",
+  left: "Hop left",
+  right: "Hop right",
+};
 
 const COLS = 11;
 const ROWS = 14;
