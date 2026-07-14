@@ -18,6 +18,7 @@ import { Route as SecurityRouteImport } from './routes/security'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HelpRouteImport } from './routes/help'
+import { Route as GamesRouteImport } from './routes/games'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DapsRouteImport } from './routes/daps'
 import { Route as ChatNRouteImport } from './routes/chat-$n'
@@ -76,6 +77,11 @@ const LoginRoute = LoginRouteImport.update({
 const HelpRoute = HelpRouteImport.update({
   id: '/help',
   path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GamesRoute = GamesRouteImport.update({
+  id: '/games',
+  path: '/games',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -161,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/chat-$n': typeof ChatNRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/games': typeof GamesRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/chat-$n': typeof ChatNRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/games': typeof GamesRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -212,6 +220,7 @@ export interface FileRoutesById {
   '/chat-$n': typeof ChatNRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/games': typeof GamesRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/chat-$n'
     | '/daps'
     | '/forgot-password'
+    | '/games'
     | '/help'
     | '/login'
     | '/mcp'
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/chat-$n'
     | '/daps'
     | '/forgot-password'
+    | '/games'
     | '/help'
     | '/login'
     | '/mcp'
@@ -289,6 +300,7 @@ export interface FileRouteTypes {
     | '/chat-$n'
     | '/daps'
     | '/forgot-password'
+    | '/games'
     | '/help'
     | '/login'
     | '/mcp'
@@ -315,6 +327,7 @@ export interface RootRouteChildren {
   ChatNRoute: typeof ChatNRoute
   DapsRoute: typeof DapsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  GamesRoute: typeof GamesRoute
   HelpRoute: typeof HelpRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
@@ -396,6 +409,13 @@ declare module '@tanstack/react-router' {
       path: '/help'
       fullPath: '/help'
       preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/games': {
+      id: '/games'
+      path: '/games'
+      fullPath: '/games'
+      preLoaderRoute: typeof GamesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -507,6 +527,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatNRoute: ChatNRoute,
   DapsRoute: DapsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  GamesRoute: GamesRoute,
   HelpRoute: HelpRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
