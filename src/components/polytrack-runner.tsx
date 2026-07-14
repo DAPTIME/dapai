@@ -203,11 +203,21 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     body.position.y = 0.5;
     car.add(body);
     const cabin = new THREE.Mesh(
-      new THREE.BoxGeometry(1.1, 0.5, 1.2),
+      new THREE.BoxGeometry(1.1, 0.5, 1.1),
       new THREE.MeshLambertMaterial({ color: 0x111111 }),
     );
-    cabin.position.set(0, 0.95, -0.1);
+    // Forward is -Z, so the cabin sits toward +Z (behind the hood).
+    cabin.position.set(0, 0.95, 0.35);
     car.add(cabin);
+    // Small headlights on the front (-Z) so the facing direction is obvious.
+    for (const hx of [-0.45, 0.45]) {
+      const light = new THREE.Mesh(
+        new THREE.BoxGeometry(0.25, 0.15, 0.1),
+        new THREE.MeshBasicMaterial({ color: 0xfff2a8 }),
+      );
+      light.position.set(hx, 0.55, -1.28);
+      car.add(light);
+    }
     for (const [x, z] of [[-0.7, 0.9], [0.7, 0.9], [-0.7, -0.9], [0.7, -0.9]]) {
       const w = new THREE.Mesh(
         new THREE.CylinderGeometry(0.3, 0.3, 0.25, 12),
