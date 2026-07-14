@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listPublicTracks } from "@/lib/tracks.functions";
 import { THEMES, type Season } from "@/lib/polytrack-engine";
+import { TrackThumbnail } from "@/components/track-thumbnail";
+import type { TrackParams } from "@/lib/track-validation";
 
 export const Route = createFileRoute("/games/polytrack/browse")({
   head: () => ({ meta: [{ title: "User Tracks — Poly Racer" }] }),
