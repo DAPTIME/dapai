@@ -4,6 +4,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { W, H, THEMES, centerAt, formatMs, type Season } from "@/lib/polytrack-engine";
 import type { TrackParams } from "@/lib/track-validation";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
+
+type PolyAction = "left" | "right" | "gas" | "brake";
+const POLY_DEFAULTS: Record<PolyAction, string[]> = {
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+  gas: ["ArrowUp", "w"],
+  brake: ["ArrowDown", "s"],
+};
+const POLY_LABELS: Record<PolyAction, string> = {
+  left: "Steer left",
+  right: "Steer right",
+  gas: "Gas",
+  brake: "Brake",
+};
 
 type Props = {
   params: TrackParams;
