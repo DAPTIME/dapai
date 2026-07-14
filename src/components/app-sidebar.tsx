@@ -12,7 +12,7 @@ import {
   Scale,
   Info,
   Users,
-
+  Gamepad2,
 } from "lucide-react";
 
 const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
