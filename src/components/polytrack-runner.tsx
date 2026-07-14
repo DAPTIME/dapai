@@ -40,11 +40,12 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
 
   const stateRef = useRef({
     car: { x: W / 2, y: H - 100, vx: 0, vy: 0, ang: -Math.PI / 2 },
-    keys: {} as Record<string, boolean>,
     trackOffset: 0,
     startTs: 0,
     moved: false,
   });
+
+  const controls = useGameControls<PolyAction>("polytrack", POLY_DEFAULTS);
 
   const start = useCallback(() => {
     const spawnY = H - 100;
@@ -59,14 +60,6 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     setWon(false);
     setRunning(true);
   }, [params]);
-
-  useEffect(() => {
-    const kd = (e: KeyboardEvent) => { stateRef.current.keys[e.key] = true; };
-    const ku = (e: KeyboardEvent) => { stateRef.current.keys[e.key] = false; };
-    window.addEventListener("keydown", kd);
-    window.addEventListener("keyup", ku);
-    return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); };
-  }, []);
 
   useEffect(() => {
     if (!running) return;
@@ -85,10 +78,10 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
 
     const loop = () => {
       const s = stateRef.current;
-      const k = s.keys;
-      const turning = (k["ArrowLeft"] || k["a"] ? -1 : 0) + (k["ArrowRight"] || k["d"] ? 1 : 0);
-      const gas = (k["ArrowUp"] || k["w"]) ? 1 : 0;
-      const brake = (k["ArrowDown"] || k["s"]) ? 1 : 0;
+      const k = controls.pressed.current;
+      const turning = (k.left ? -1 : 0) + (k.right ? 1 : 0);
+      const gas = k.gas ? 1 : 0;
+      const brake = k.brake ? 1 : 0;
 
       s.car.ang += turning * 0.05;
       const accel = gas * 0.25 - brake * 0.18;
