@@ -16,6 +16,9 @@ const GAMES = [
   { to: "/games/snake" as const, label: "Snake", emoji: "🐍" },
   { to: "/games/spacewar" as const, label: "Spacewar", emoji: "🚀" },
   { to: "/games/polytrack" as const, label: "Poly Racer", emoji: "🏎️" },
+  { to: "/games/river" as const, label: "River Crosser", emoji: "🐸" },
+  { to: "/games/flappy" as const, label: "Flappy", emoji: "🐤" },
+  { to: "/games/breakout" as const, label: "Brick Breaker", emoji: "🧱" },
 ] as const;
 
 function GamesLayout() {
