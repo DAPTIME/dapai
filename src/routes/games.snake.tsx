@@ -133,6 +133,7 @@ function SnakeGame() {
         <Button variant="secondary" onClick={() => turn(1, 0)}>→</Button>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Arrow keys on desktop, buttons on mobile.</p>
+      <KeybindEditor controls={controls} labels={SNAKE_LABELS} />
     </div>
   );
 }
