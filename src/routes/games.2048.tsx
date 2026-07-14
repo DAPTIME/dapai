@@ -121,23 +121,34 @@ function Game2048() {
     return () => window.removeEventListener("keydown", onKey);
   }, [doMove]);
 
-  // Touch swipe
+  // Pointer drag / swipe (mouse + touch)
   useEffect(() => {
-    let sx = 0, sy = 0;
-    const onStart = (e: TouchEvent) => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; };
-    const onEnd = (e: TouchEvent) => {
-      const dx = e.changedTouches[0].clientX - sx;
-      const dy = e.changedTouches[0].clientY - sy;
-      if (Math.abs(dx) < 25 && Math.abs(dy) < 25) return;
+    const el = document.getElementById("g2048");
+    if (!el) return;
+    let sx = 0, sy = 0, dragging = false;
+    const THRESHOLD = 25;
+    const onDown = (e: PointerEvent) => {
+      dragging = true;
+      sx = e.clientX; sy = e.clientY;
+      (e.target as Element).setPointerCapture?.(e.pointerId);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      const dx = e.clientX - sx;
+      const dy = e.clientY - sy;
+      if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) return;
       if (Math.abs(dx) > Math.abs(dy)) doMove(dx > 0 ? "right" : "left");
       else doMove(dy > 0 ? "down" : "up");
     };
-    const el = document.getElementById("g2048");
-    el?.addEventListener("touchstart", onStart);
-    el?.addEventListener("touchend", onEnd);
+    const onCancel = () => { dragging = false; };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointerup", onUp);
+    el.addEventListener("pointercancel", onCancel);
     return () => {
-      el?.removeEventListener("touchstart", onStart);
-      el?.removeEventListener("touchend", onEnd);
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointerup", onUp);
+      el.removeEventListener("pointercancel", onCancel);
     };
   }, [doMove]);
 
@@ -151,18 +162,18 @@ function Game2048() {
         <div>Best: <span className="font-semibold">{best}</span></div>
         <Button size="sm" variant="secondary" onClick={reset}>New game</Button>
       </div>
-      <div id="g2048" className="mt-4 grid touch-none select-none grid-cols-4 gap-2 rounded-xl bg-card p-2">
+      <div id="g2048" className="mt-4 grid touch-none cursor-grab select-none grid-cols-4 gap-2 rounded-xl bg-card p-2 active:cursor-grabbing">
         {grid.flat().map((v, i) => (
           <div
             key={i}
-            className={`flex aspect-square items-center justify-center rounded-lg text-xl font-bold transition-all ${TILE_COLORS[v] ?? "bg-primary text-primary-foreground"}`}
+            className={`pointer-events-none flex aspect-square items-center justify-center rounded-lg text-xl font-bold transition-all ${TILE_COLORS[v] ?? "bg-primary text-primary-foreground"}`}
           >
             {v !== 0 ? v : ""}
           </div>
         ))}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Arrow keys or swipe. Merge tiles to reach 2048.
+        Arrow keys, click-and-drag, or swipe. Merge tiles to reach 2048.
       </p>
     </div>
   );
