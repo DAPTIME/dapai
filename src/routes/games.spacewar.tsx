@@ -38,13 +38,13 @@ function Spacewar() {
     ship: Ship;
     bullets: Bullet[];
     rocks: Rock[];
-    keys: Record<string, boolean>;
   }>({
     ship: { x: W / 2, y: H / 2, vx: 0, vy: 0, ang: -Math.PI / 2 },
     bullets: [],
     rocks: [],
-    keys: {},
   });
+
+  const controls = useGameControls<SpaceAction>("spacewar", SPACE_DEFAULTS, { preventDefault: true });
 
   const spawnRock = (): Rock => {
     const side = Math.floor(Math.random() * 4);
@@ -68,17 +68,6 @@ function Spacewar() {
   };
 
   useEffect(() => {
-    const kd = (e: KeyboardEvent) => {
-      stateRef.current.keys[e.key] = true;
-      if (e.key === " ") e.preventDefault();
-    };
-    const ku = (e: KeyboardEvent) => { stateRef.current.keys[e.key] = false; };
-    window.addEventListener("keydown", kd);
-    window.addEventListener("keyup", ku);
-    return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); };
-  }, []);
-
-  useEffect(() => {
     if (!running) return;
     const canvas = ref.current;
     if (!canvas) return;
@@ -88,14 +77,15 @@ function Spacewar() {
     let spawnCd = 0;
     const loop = () => {
       const s = stateRef.current;
+      const k = controls.pressed.current;
       // input
-      if (s.keys["ArrowLeft"] || s.keys["a"]) s.ship.ang -= 0.08;
-      if (s.keys["ArrowRight"] || s.keys["d"]) s.ship.ang += 0.08;
-      if (s.keys["ArrowUp"] || s.keys["w"]) {
+      if (k.left) s.ship.ang -= 0.08;
+      if (k.right) s.ship.ang += 0.08;
+      if (k.thrust) {
         s.ship.vx += Math.cos(s.ship.ang) * 0.15;
         s.ship.vy += Math.sin(s.ship.ang) * 0.15;
       }
-      if ((s.keys[" "] || s.keys["Enter"]) && shootCd <= 0) {
+      if (k.fire && shootCd <= 0) {
         s.bullets.push({
           x: s.ship.x, y: s.ship.y,
           vx: Math.cos(s.ship.ang) * 6 + s.ship.vx,
