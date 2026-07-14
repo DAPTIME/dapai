@@ -28,12 +28,11 @@ function GamesLayout() {
         </div>
         <nav className="flex gap-2 overflow-x-auto md:flex-col md:overflow-visible">
           {GAMES.map((g) => {
-            const to = `/games/${g.slug}`;
-            const active = pathname === to;
+            const active = pathname === g.to;
             return (
               <Link
-                key={g.slug}
-                to={to}
+                key={g.to}
+                to={g.to}
                 className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:translate-x-0.5 hover:bg-sidebar-accent ${
                   active ? "bg-sidebar-accent font-medium text-foreground" : "text-muted-foreground"
                 }`}
