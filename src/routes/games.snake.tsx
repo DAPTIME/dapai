@@ -1,10 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/snake")({
   component: SnakeGame,
 });
+
+type SnakeAction = "up" | "down" | "left" | "right";
+const SNAKE_DEFAULTS: Record<SnakeAction, string[]> = {
+  up: ["ArrowUp", "w"],
+  down: ["ArrowDown", "s"],
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+};
+const SNAKE_LABELS: Record<SnakeAction, string> = {
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right",
+};
 
 const COLS = 20;
 const ROWS = 20;
