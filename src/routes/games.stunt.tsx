@@ -8,20 +8,20 @@ export const Route = createFileRoute("/games/stunt")({
   head: () => ({
     meta: [
       { title: "Stunt Racer — DAP Arcade" },
-      { name: "description", content: "3D time-trial stunt racer with a grid-based track editor." },
+      { name: "description", content: "3D time-trial stunt racer with a grid-based track editor, loops, drift, and ghost cars." },
     ],
   }),
   component: StuntGame,
 });
 
 // ============================== TRACK MODEL ==============================
-type BlockType = "start" | "finish" | "straight" | "ramp" | "curveL" | "curveR" | "boost" | "wall" | "checkpoint";
+type BlockType = "start" | "finish" | "straight" | "ramp" | "curveL" | "curveR" | "boost" | "wall" | "checkpoint" | "loop";
 type Block = { t: BlockType; x: number; y: number; z: number; r: 0 | 1 | 2 | 3 };
 type Track = { name: string; theme: "summer" | "desert" | "winter"; blocks: Block[] };
 
 const CELL = 8; // grid size in world units
 const BLOCK_CODES: Record<BlockType, string> = {
-  start: "S", finish: "F", straight: "-", ramp: "^", curveL: "L", curveR: "R", boost: "B", wall: "W", checkpoint: "C",
+  start: "S", finish: "F", straight: "-", ramp: "^", curveL: "L", curveR: "R", boost: "B", wall: "W", checkpoint: "C", loop: "O",
 };
 const CODE_TO_BLOCK: Record<string, BlockType> = Object.fromEntries(Object.entries(BLOCK_CODES).map(([k, v]) => [v, k as BlockType]));
 
@@ -50,15 +50,17 @@ const DEFAULT_TRACK: Track = {
     { t: "straight",   x: 0, y: 0, z: 1, r: 0 },
     { t: "boost",      x: 0, y: 0, z: 2, r: 0 },
     { t: "straight",   x: 0, y: 0, z: 3, r: 0 },
-    { t: "ramp",       x: 0, y: 0, z: 4, r: 0 },
-    { t: "straight",   x: 0, y: 1, z: 5, r: 0 },
-    { t: "checkpoint", x: 0, y: 1, z: 6, r: 0 },
-    { t: "curveR",     x: 0, y: 1, z: 7, r: 0 },
-    { t: "straight",   x: 1, y: 1, z: 7, r: 1 },
-    { t: "straight",   x: 2, y: 1, z: 7, r: 1 },
-    { t: "curveR",     x: 3, y: 1, z: 7, r: 1 },
-    { t: "straight",   x: 3, y: 1, z: 6, r: 2 },
-    { t: "boost",      x: 3, y: 1, z: 5, r: 2 },
+    { t: "loop",       x: 0, y: 0, z: 5, r: 0 },
+    { t: "straight",   x: 0, y: 0, z: 7, r: 0 },
+    { t: "checkpoint", x: 0, y: 0, z: 8, r: 0 },
+    { t: "curveR",     x: 0, y: 0, z: 9, r: 0 },
+    { t: "straight",   x: 1, y: 0, z: 9, r: 1 },
+    { t: "straight",   x: 2, y: 0, z: 9, r: 1 },
+    { t: "curveR",     x: 3, y: 0, z: 9, r: 1 },
+    { t: "straight",   x: 3, y: 0, z: 8, r: 2 },
+    { t: "boost",      x: 3, y: 0, z: 7, r: 2 },
+    { t: "straight",   x: 3, y: 0, z: 6, r: 2 },
+    { t: "ramp",       x: 3, y: 0, z: 5, r: 2 },
     { t: "straight",   x: 3, y: 1, z: 4, r: 2 },
     { t: "finish",     x: 3, y: 1, z: 3, r: 2 },
   ],
@@ -67,12 +69,31 @@ const DEFAULT_TRACK: Track = {
 // ============================== THEMES ==============================
 const THEMES = {
   summer: { sky: 0x87ceeb, ground: 0x4ea84a, road: 0x2b2f36, accent: 0xfde047, fog: 0xbfe7ff, fleck: 0x84cc16 },
-  desert: { sky: 0xf5c67c, ground: 0xd9a86a, road: 0x8b6a3d, accent: 0xffe4a3, fog: 0xf5d99a, fleck: 0xe0b070 },
+  desert: { sky: 0xf5a86a, ground: 0xd9a86a, road: 0x8b6a3d, accent: 0xffe4a3, fog: 0xf5b98a, fleck: 0xa0733b },
   winter: { sky: 0xdfe9f5, ground: 0xf4f8fc, road: 0xc9d3de, accent: 0x93c5fd, fog: 0xeaf3ff, fleck: 0xffffff },
 } as const;
 
 // ============================== BUILD TRACK MESHES ==============================
 type BlockMesh = { block: Block; mesh: THREE.Object3D; drivable: THREE.Mesh[]; wall?: THREE.Mesh; checkpoint?: THREE.Mesh; boost?: THREE.Mesh; kind: BlockType };
+
+// Red/white rumble strip material factory
+function rumbleStrip(len: number): THREE.Mesh {
+  const seg = 8;
+  const grp = new THREE.Group();
+  const stripW = 0.5;
+  for (let i = 0; i < seg; i++) {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(stripW, 0.08, len / seg - 0.02),
+      new THREE.MeshLambertMaterial({ color: i % 2 === 0 ? 0xef4444 : 0xffffff }),
+    );
+    m.position.z = -len / 2 + (i + 0.5) * (len / seg);
+    grp.add(m);
+  }
+  // Wrap into a single mesh via group returned as any; cast for simplicity
+  const container = new THREE.Mesh(new THREE.BoxGeometry(0.001, 0.001, 0.001), new THREE.MeshBasicMaterial({ visible: false }));
+  container.add(grp);
+  return container;
+}
 
 function buildBlockMesh(b: Block, theme: keyof typeof THEMES): BlockMesh {
   const t = THEMES[theme];
@@ -82,18 +103,17 @@ function buildBlockMesh(b: Block, theme: keyof typeof THEMES): BlockMesh {
 
   const drivable: THREE.Mesh[] = [];
   const roadMat = new THREE.MeshLambertMaterial({ color: t.road, flatShading: true });
-  const edgeMat = new THREE.MeshLambertMaterial({ color: t.accent, flatShading: true });
   const boostMat = new THREE.MeshLambertMaterial({ color: 0xffb703, emissive: 0xffb703, emissiveIntensity: 0.6, flatShading: true });
 
-  let kind: BlockType = b.t;
+  const kind: BlockType = b.t;
 
   const addFlatRoad = () => {
     const road = new THREE.Mesh(new THREE.BoxGeometry(CELL, 0.4, CELL), roadMat);
     road.position.y = 0.2;
     grp.add(road); drivable.push(road);
-    const stripeGeo = new THREE.BoxGeometry(0.4, 0.05, CELL - 0.8);
-    for (const dx of [-CELL / 2 + 0.4, CELL / 2 - 0.4]) {
-      const s = new THREE.Mesh(stripeGeo, edgeMat); s.position.set(dx, 0.42, 0); grp.add(s);
+    // rumble strips on both edges
+    for (const dx of [-CELL / 2 + 0.25, CELL / 2 - 0.25]) {
+      const s = rumbleStrip(CELL); s.position.set(dx, 0.45, 0); grp.add(s);
     }
   };
 
@@ -102,7 +122,6 @@ function buildBlockMesh(b: Block, theme: keyof typeof THEMES): BlockMesh {
     if (b.t === "start" || b.t === "finish") {
       const gate = new THREE.Mesh(new THREE.BoxGeometry(CELL, 0.2, 0.6), new THREE.MeshLambertMaterial({ color: b.t === "start" ? 0x22c55e : 0xef4444 }));
       gate.position.set(0, 0.45, 0); grp.add(gate);
-      // checkered posts
       for (const dx of [-CELL / 2, CELL / 2]) {
         const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3, 0.4), new THREE.MeshLambertMaterial({ color: 0xffffff }));
         post.position.set(dx, 1.5, 0); grp.add(post);
@@ -123,14 +142,12 @@ function buildBlockMesh(b: Block, theme: keyof typeof THEMES): BlockMesh {
     cp.position.set(0, 2, 0); grp.add(cp);
     return { block: b, mesh: grp, drivable, checkpoint: cp, kind };
   } else if (b.t === "ramp") {
-    // A ramp rising from y=0 to y=+CELL*0.4 across +Z
     const geo = new THREE.BufferGeometry();
     const H = CELL * 0.4;
     const w = CELL / 2, l = CELL / 2;
     const verts = new Float32Array([
       -w, 0, -l,   w, 0, -l,   w, H, l,
       -w, 0, -l,   w, H, l,  -w, H, l,
-      // sides + bottom (simple)
       -w, 0, -l,  -w, H, l,  -w, 0, l,
        w, 0, -l,   w, 0, l,   w, H, l,
     ]);
@@ -140,10 +157,32 @@ function buildBlockMesh(b: Block, theme: keyof typeof THEMES): BlockMesh {
     grp.add(ramp); drivable.push(ramp);
   } else if (b.t === "curveL" || b.t === "curveR") {
     addFlatRoad();
-    // arrow marker
-    const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.4, 4), edgeMat);
+    const arrowMat = new THREE.MeshLambertMaterial({ color: t.accent, flatShading: true });
+    const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.4, 4), arrowMat);
     arrow.rotation.z = b.t === "curveL" ? Math.PI / 2 : -Math.PI / 2;
     arrow.position.set(0, 0.6, 0); grp.add(arrow);
+  } else if (b.t === "loop") {
+    // Vertical loop-de-loop: torus lying in the XY plane, drivable inner surface.
+    // Build as a tube of segments to allow raycasting on surface.
+    const R = CELL * 0.9;   // loop radius
+    const tube = CELL * 0.45;
+    const segs = 28;
+    const grpLoop = new THREE.Group();
+    // full torus visual + collision (drivable): the ray-down check will hit outer top,
+    // but we align to face normals so the car sticks on inside.
+    const torusGeo = new THREE.TorusGeometry(R, tube, 10, segs);
+    // Rotate torus so its "hole" faces along Z (car drives through the hole)
+    torusGeo.rotateY(Math.PI / 2);
+    const loopMesh = new THREE.Mesh(torusGeo, roadMat);
+    loopMesh.position.set(0, R, 0);
+    grpLoop.add(loopMesh);
+    drivable.push(loopMesh);
+    // stripes on outer rim for visual
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(R + tube + 0.02, 0.12, 6, segs), new THREE.MeshLambertMaterial({ color: 0xef4444 }));
+    rim.rotateY(Math.PI / 2); rim.position.set(0, R, 0); grpLoop.add(rim);
+    const rim2 = new THREE.Mesh(new THREE.TorusGeometry(R + tube + 0.02, 0.12, 6, segs), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    rim2.rotateY(Math.PI / 2); rim2.position.set(0.4, R, 0); grpLoop.add(rim2);
+    grp.add(grpLoop);
   } else if (b.t === "wall") {
     addFlatRoad();
     const w = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3, CELL), new THREE.MeshLambertMaterial({ color: 0x64748b }));
@@ -164,7 +203,7 @@ function buildCar(colors: CarColors): THREE.Group {
   const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 3.0), new THREE.MeshLambertMaterial({ color: colors.primary, flatShading: true }));
   body.position.y = 0.55; g.add(body);
   const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.5, 1.4), new THREE.MeshLambertMaterial({ color: colors.secondary, flatShading: true }));
-  cabin.position.set(0, 0.95, 0.35); g.add(cabin);
+  cabin.position.set(0, 0.95, -0.2); g.add(cabin);
   const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.2, 3.1), new THREE.MeshLambertMaterial({ color: colors.chassis, flatShading: true }));
   chassis.position.y = 0.3; g.add(chassis);
   const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.3, 10);
@@ -173,10 +212,61 @@ function buildCar(colors: CarColors): THREE.Group {
   for (const [x, y, z] of positions) {
     const w = new THREE.Mesh(wheelGeo, wheelMat); w.rotation.z = Math.PI / 2; w.position.set(x, y, z); g.add(w);
   }
-  // headlight marker
+  // headlights (front = +Z)
   const hl = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.15, 0.1), new THREE.MeshBasicMaterial({ color: 0xfff8b4 }));
   hl.position.set(0, 0.6, 1.5); g.add(hl);
   return g;
+}
+
+// ============================== AUDIO ==============================
+class Audio {
+  ctx: AudioContext | null = null;
+  engineOsc: OscillatorNode | null = null;
+  engineGain: GainNode | null = null;
+  screechNode: AudioBufferSourceNode | null = null;
+  screechGain: GainNode | null = null;
+  ensure() {
+    if (this.ctx) return;
+    try {
+      const C = (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
+      this.ctx = new C();
+      // engine hum
+      const osc = this.ctx.createOscillator();
+      osc.type = "sawtooth"; osc.frequency.value = 70;
+      const g = this.ctx.createGain(); g.gain.value = 0;
+      osc.connect(g).connect(this.ctx.destination);
+      osc.start();
+      this.engineOsc = osc; this.engineGain = g;
+      // white noise loop for screech
+      const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 1, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+      const src = this.ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      const filt = this.ctx.createBiquadFilter(); filt.type = "highpass"; filt.frequency.value = 2000;
+      const sg = this.ctx.createGain(); sg.gain.value = 0;
+      src.connect(filt).connect(sg).connect(this.ctx.destination);
+      src.start();
+      this.screechNode = src; this.screechGain = sg;
+    } catch { /* audio blocked */ }
+  }
+  updateEngine(speed: number, muted: boolean) {
+    if (!this.engineOsc || !this.engineGain) return;
+    const s = Math.abs(speed);
+    this.engineOsc.frequency.setTargetAtTime(60 + s * 6, this.ctx!.currentTime, 0.05);
+    this.engineGain.gain.setTargetAtTime(muted ? 0 : Math.min(0.06, 0.02 + s * 0.001), this.ctx!.currentTime, 0.1);
+  }
+  setScreech(amt: number, muted: boolean) {
+    if (!this.screechGain) return;
+    this.screechGain.gain.setTargetAtTime(muted ? 0 : Math.min(0.08, amt * 0.08), this.ctx!.currentTime, 0.05);
+  }
+  thud() {
+    if (!this.ctx) return;
+    const o = this.ctx.createOscillator(); o.type = "sine"; o.frequency.value = 90;
+    const g = this.ctx.createGain(); g.gain.value = 0.25;
+    o.connect(g).connect(this.ctx.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+    o.stop(this.ctx.currentTime + 0.26);
+  }
 }
 
 // ============================== MAIN GAME ==============================
@@ -191,6 +281,7 @@ function formatTime(ms: number): string {
 
 const LS_TRACK = "dap.stunt.track";
 const LS_COLORS = "dap.stunt.colors";
+const LS_MUTE = "dap.stunt.mute";
 const LS_GHOST = (name: string) => `dap.stunt.ghost.${name}`;
 const LS_BEST = (name: string) => `dap.stunt.best.${name}`;
 
@@ -207,13 +298,15 @@ function StuntGame() {
   });
   const [timeMs, setTimeMs] = useState(0);
   const [best, setBest] = useState<number | null>(null);
-  const [checkpoints, setCheckpoints] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
+  const [cpState, setCpState] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [garageOpen, setGarageOpen] = useState(false);
   const [importStr, setImportStr] = useState("");
   const [selectedTool, setSelectedTool] = useState<BlockType>("straight");
   const [placeY, setPlaceY] = useState(0);
   const [placeRot, setPlaceRot] = useState<0 | 1 | 2 | 3>(0);
   const [status, setStatus] = useState<string>("Ready");
+  const [paused, setPaused] = useState(false);
+  const [muted, setMuted] = useState<boolean>(() => { try { return localStorage.getItem(LS_MUTE) === "1"; } catch { return false; } });
 
   // refs mirror state for the animation loop
   const trackRef = useRef(track); trackRef.current = track;
@@ -222,12 +315,15 @@ function StuntGame() {
   const toolRef = useRef(selectedTool); toolRef.current = selectedTool;
   const placeYRef = useRef(placeY); placeYRef.current = placeY;
   const placeRotRef = useRef(placeRot); placeRotRef.current = placeRot;
+  const pausedRef = useRef(paused); pausedRef.current = paused;
+  const mutedRef = useRef(muted); mutedRef.current = muted;
 
   useEffect(() => {
     try { localStorage.setItem(LS_TRACK, encodeTrack(track)); } catch { /* ignore */ }
     try { const b = localStorage.getItem(LS_BEST(track.name)); setBest(b ? Number(b) : null); } catch { /* ignore */ }
   }, [track]);
   useEffect(() => { try { localStorage.setItem(LS_COLORS, JSON.stringify(colors)); } catch { /* ignore */ } }, [colors]);
+  useEffect(() => { try { localStorage.setItem(LS_MUTE, muted ? "1" : "0"); } catch { /* ignore */ } }, [muted]);
 
   // ============ Three.js setup ============
   useEffect(() => {
@@ -241,6 +337,8 @@ function StuntGame() {
 
     const camera = new THREE.PerspectiveCamera(65, 1, 0.1, 500);
     camera.position.set(0, 8, -14);
+    let camMode: "chase" | "cockpit" = "chase";
+    const baseFov = 65;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -290,11 +388,14 @@ function StuntGame() {
     let carGroup = buildCar(colorsRef.current); scene.add(carGroup);
     const carState = {
       pos: new THREE.Vector3(),
-      vel: new THREE.Vector3(),
+      vel: new THREE.Vector3(),     // full 3D velocity
       up: new THREE.Vector3(0, 1, 0),
+      forward: new THREE.Vector3(0, 0, 1),
       yaw: 0,
       speed: 0,
+      grounded: false,
       quat: new THREE.Quaternion(),
+      slip: 0,
     };
     const ghostCar = buildCar({ ...colorsRef.current, primary: "#a1a1aa", secondary: "#71717a" });
     ghostCar.traverse(o => {
@@ -306,22 +407,55 @@ function StuntGame() {
     });
     ghostCar.visible = false; scene.add(ghostCar);
 
+    // Skid marks group
+    const skidGroup = new THREE.Group(); scene.add(skidGroup);
+    const skidMat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.55 });
+    const skidGeo = new THREE.PlaneGeometry(0.25, 0.35);
+    const MAX_SKIDS = 400;
+    const addSkid = (pos: THREE.Vector3, up: THREE.Vector3, yaw: number) => {
+      if (skidGroup.children.length > MAX_SKIDS) skidGroup.remove(skidGroup.children[0]);
+      for (const dx of [-0.8, 0.8]) {
+        const m = new THREE.Mesh(skidGeo, skidMat);
+        const right = new THREE.Vector3().crossVectors(up, new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw))).normalize();
+        m.position.copy(pos).add(right.multiplyScalar(dx)).add(up.clone().multiplyScalar(0.02));
+        const upQ = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), up);
+        const yQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+        m.quaternion.copy(upQ).multiply(yQ).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2));
+        skidGroup.add(m);
+      }
+    };
+
+    // Audio
+    const audio = new Audio();
+
     // Editor cursor
     const cursor = new THREE.Mesh(
       new THREE.BoxGeometry(CELL, 0.3, CELL),
-      new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.45, wireframe: false }),
+      new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.45 }),
     );
     cursor.visible = false; scene.add(cursor);
 
-    const resetCar = () => {
-      // find start block
+    // Editor camera state (orbit)
+    const editorCam = { target: new THREE.Vector3(0, 4, 0), yaw: Math.PI / 4, pitch: 0.9, dist: 45 };
+
+    const lastCheckpointRef = { current: { pos: new THREE.Vector3(), yaw: 0, up: new THREE.Vector3(0, 1, 0) } };
+    const checkpointsHitRef = { current: new Set<number>() };
+    const runStartRef = { current: null as number | null };
+    const recordRef = { current: [] as Array<{ t: number; p: [number, number, number]; q: [number, number, number, number] }> };
+    const ghostRef = { current: null as null | Array<{ t: number; p: [number, number, number]; q: [number, number, number, number] }> };
+    try {
+      const raw = localStorage.getItem(LS_GHOST(track.name));
+      if (raw) ghostRef.current = JSON.parse(raw);
+    } catch { /* ignore */ }
+
+    const resetToStart = () => {
       const start = trackRef.current.blocks.find(b => b.t === "start") ?? trackRef.current.blocks[0];
       carState.pos.set(start.x * CELL, start.y * CELL * 0.4 + 1.5, start.z * CELL);
       carState.vel.set(0, 0, 0);
       carState.up.set(0, 1, 0);
       carState.yaw = -start.r * Math.PI / 2;
       carState.speed = 0;
-      lastCheckpointRef.current = { pos: carState.pos.clone(), yaw: carState.yaw };
+      lastCheckpointRef.current = { pos: carState.pos.clone(), yaw: carState.yaw, up: carState.up.clone() };
       checkpointsHitRef.current.clear();
       runStartRef.current = null;
       setTimeMs(0);
@@ -329,15 +463,25 @@ function StuntGame() {
       setStatus("Ready");
     };
 
+    const resetToCheckpoint = () => {
+      carState.pos.copy(lastCheckpointRef.current.pos);
+      carState.yaw = lastCheckpointRef.current.yaw;
+      carState.up.copy(lastCheckpointRef.current.up);
+      carState.vel.set(0, 0, 0); carState.speed = 0;
+      setStatus("Checkpoint reset");
+    };
+
     // ============ Input ============
     const keys = new Set<string>();
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       keys.add(k);
-      if (k === "r" || k === "enter") { e.preventDefault(); if (modeRef.current === "race") resetCar(); else setPlaceRot(r => ((r + 1) % 4) as 0|1|2|3); }
-      if (k === "t") { setMode(m => m === "race" ? "edit" : "race"); }
-      if (k === "x" && modeRef.current === "edit") { /* handled on click */ }
-      if (k === " " && modeRef.current === "edit") { e.preventDefault(); setPlaceRot(r => ((r + 1) % 4) as 0|1|2|3); }
+      audio.ensure();
+      if (k === "t") { e.preventDefault(); if (modeRef.current === "race") resetToStart(); else setMode("race"); }
+      else if (k === "r" || k === "enter") { e.preventDefault(); if (modeRef.current === "race") resetToCheckpoint(); else setPlaceRot(r => ((r + 1) % 4) as 0|1|2|3); }
+      else if (k === " ") { e.preventDefault(); if (modeRef.current === "race") setPaused(p => !p); else setPlaceRot(r => ((r + 1) % 4) as 0|1|2|3); }
+      else if (k === "c" && modeRef.current === "race") { camMode = camMode === "chase" ? "cockpit" : "chase"; setStatus(camMode === "chase" ? "Chase cam" : "Cockpit cam"); }
+      else if (k === "escape" && modeRef.current === "race") { setMode("edit"); }
     };
     const onKeyUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase());
     window.addEventListener("keydown", onKeyDown);
@@ -347,12 +491,26 @@ function StuntGame() {
     const raycaster = new THREE.Raycaster();
     const mouseNdc = new THREE.Vector2();
     let hoverCell: { x: number; z: number } | null = null;
+    let panDrag: { x: number; y: number } | null = null;
+    let orbitDrag: { x: number; y: number } | null = null;
 
     const onPointerMove = (e: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
       mouseNdc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouseNdc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       if (modeRef.current !== "edit") return;
+      if (panDrag) {
+        const dx = e.clientX - panDrag.x, dy = e.clientY - panDrag.y;
+        panDrag = { x: e.clientX, y: e.clientY };
+        const right = new THREE.Vector3(Math.cos(editorCam.yaw), 0, -Math.sin(editorCam.yaw));
+        const fwd = new THREE.Vector3(Math.sin(editorCam.yaw), 0, Math.cos(editorCam.yaw));
+        editorCam.target.addScaledVector(right, -dx * 0.08).addScaledVector(fwd, dy * 0.08);
+      } else if (orbitDrag) {
+        const dx = e.clientX - orbitDrag.x, dy = e.clientY - orbitDrag.y;
+        orbitDrag = { x: e.clientX, y: e.clientY };
+        editorCam.yaw -= dx * 0.005;
+        editorCam.pitch = Math.max(0.2, Math.min(1.4, editorCam.pitch - dy * 0.005));
+      }
       raycaster.setFromCamera(mouseNdc, camera);
       const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -placeYRef.current * CELL * 0.4);
       const hit = new THREE.Vector3();
@@ -367,67 +525,67 @@ function StuntGame() {
       }
     };
     const onPointerDown = (e: PointerEvent) => {
-      if (modeRef.current !== "edit" || !hoverCell) return;
-      const y = placeYRef.current;
-      if (e.button === 2 || keys.has("x")) {
-        setTrack(prev => ({ ...prev, blocks: prev.blocks.filter(b => !(b.x === hoverCell!.x && b.z === hoverCell!.z && b.y === y)) }));
-      } else if (e.button === 0) {
-        setTrack(prev => {
-          const filtered = prev.blocks.filter(b => !(b.x === hoverCell!.x && b.z === hoverCell!.z && b.y === y));
-          return { ...prev, blocks: [...filtered, { t: toolRef.current, x: hoverCell!.x, y, z: hoverCell!.z, r: placeRotRef.current }] };
-        });
+      if (modeRef.current !== "edit") return;
+      if (e.button === 2) { panDrag = { x: e.clientX, y: e.clientY }; return; }
+      if (e.button === 1) { orbitDrag = { x: e.clientX, y: e.clientY }; e.preventDefault(); return; }
+      if (e.button === 0 && hoverCell) {
+        const y = placeYRef.current;
+        if (keys.has("shift")) {
+          setTrack(prev => ({ ...prev, blocks: prev.blocks.filter(b => !(b.x === hoverCell!.x && b.z === hoverCell!.z && b.y === y)) }));
+        } else {
+          setTrack(prev => {
+            const filtered = prev.blocks.filter(b => !(b.x === hoverCell!.x && b.z === hoverCell!.z && b.y === y));
+            return { ...prev, blocks: [...filtered, { t: toolRef.current, x: hoverCell!.x, y, z: hoverCell!.z, r: placeRotRef.current }] };
+          });
+        }
       }
     };
+    const onPointerUp = () => { panDrag = null; orbitDrag = null; };
     const onWheel = (e: WheelEvent) => {
-      if (modeRef.current !== "edit" || !e.shiftKey) return;
+      if (modeRef.current !== "edit") return;
       e.preventDefault();
-      setPlaceY(v => Math.max(-2, Math.min(6, v + (e.deltaY > 0 ? -1 : 1))));
+      if (e.shiftKey) {
+        setPlaceY(v => Math.max(-2, Math.min(6, v + (e.deltaY > 0 ? -1 : 1))));
+      } else {
+        editorCam.dist = Math.max(15, Math.min(120, editorCam.dist + e.deltaY * 0.05));
+      }
     };
     const onCtx = (e: Event) => { if (modeRef.current === "edit") e.preventDefault(); };
     renderer.domElement.addEventListener("pointermove", onPointerMove);
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    renderer.domElement.addEventListener("pointerup", onPointerUp);
+    renderer.domElement.addEventListener("pointerleave", onPointerUp);
     renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
     renderer.domElement.addEventListener("contextmenu", onCtx);
 
-    // ============ Physics & camera ============
-    const lastCheckpointRef = { current: { pos: new THREE.Vector3(), yaw: 0 } };
-    const checkpointsHitRef = { current: new Set<number>() };
-    const runStartRef = { current: null as number | null };
-    const recordRef = { current: [] as Array<{ t: number; p: [number, number, number]; q: [number, number, number, number] }> };
-    const ghostRef = { current: null as null | Array<{ t: number; p: [number, number, number]; q: [number, number, number, number] }> };
-    try {
-      const raw = localStorage.getItem(LS_GHOST(track.name));
-      if (raw) ghostRef.current = JSON.parse(raw);
-    } catch { /* ignore */ }
-
-    resetCar();
+    resetToStart();
 
     let lastTs = performance.now();
     let rafId = 0;
-    const tmpDown = new THREE.Vector3();
     const tmpForward = new THREE.Vector3();
+    const tmpVec = new THREE.Vector3();
+    let skidTimer = 0;
 
     const step = (now: number) => {
       rafId = requestAnimationFrame(step);
       const dt = Math.min((now - lastTs) / 1000, 1 / 30);
       lastTs = now;
 
-      // rebuild track if changed (compare block count crude)
       if (blockMeshes.length !== trackRef.current.blocks.length) rebuildTrack();
 
       cursor.visible = modeRef.current === "edit";
-      if (modeRef.current === "race") {
+      if (modeRef.current === "race" && !pausedRef.current) {
         // controls
         const accel = keys.has("w") || keys.has("arrowup") ? 1 : 0;
         const brake = keys.has("s") || keys.has("arrowdown") ? 1 : 0;
         const left = keys.has("a") || keys.has("arrowleft") ? 1 : 0;
         const right = keys.has("d") || keys.has("arrowright") ? 1 : 0;
 
-        const maxSpeed = 45;
-        const accelRate = 22;
-        const brakeRate = 30;
-        const friction = 4;
-        const steerRate = 2.4;
+        const maxSpeed = 48;
+        const accelRate = 26;
+        const brakeRate = 34;
+        const friction = 5;
+        const baseSteer = 3.0;
 
         // longitudinal
         if (accel) carState.speed += accelRate * dt;
@@ -435,58 +593,93 @@ function StuntGame() {
         if (!accel && !brake) {
           carState.speed -= Math.sign(carState.speed) * Math.min(Math.abs(carState.speed), friction * dt);
         }
-        carState.speed = Math.max(-15, Math.min(maxSpeed, carState.speed));
+        carState.speed = Math.max(-16, Math.min(maxSpeed, carState.speed));
 
-        // steering (scaled by speed)
-        const steerAmt = (left - right) * steerRate * dt * Math.min(1, Math.abs(carState.speed) / 8);
+        // High-speed understeer: steer authority drops with speed
+        const speedFrac = Math.min(1, Math.abs(carState.speed) / maxSpeed);
+        const understeer = 1 - 0.55 * speedFrac * speedFrac;
+        const steerAuthority = Math.min(1, Math.abs(carState.speed) / 6);
+        const steerAmt = (left - right) * baseSteer * understeer * steerAuthority * dt;
         carState.yaw += steerAmt * Math.sign(carState.speed || 1);
 
-        // integrate along forward
-        tmpForward.set(Math.sin(carState.yaw), 0, Math.cos(carState.yaw));
-        carState.pos.addScaledVector(tmpForward, carState.speed * dt);
-        // gravity
-        carState.vel.y -= 30 * dt;
-        carState.pos.y += carState.vel.y * dt;
+        // Drift detection: hard turn at high speed or hard brake at high speed
+        const turnInput = left - right;
+        carState.slip = Math.min(1, Math.max(0,
+          Math.abs(turnInput) * speedFrac * 1.2 + (brake && speedFrac > 0.5 ? 0.7 : 0) - 0.3
+        ));
 
-        // ground raycast
-        raycaster.set(carState.pos.clone().add(new THREE.Vector3(0, 4, 0)), new THREE.Vector3(0, -1, 0));
-        const allDrivable = blockMeshes.flatMap(b => b.drivable);
-        const hits = raycaster.intersectObjects(allDrivable, false);
-        if (hits.length > 0) {
-          const h = hits[0];
-          if (carState.pos.y - h.point.y < 0.7) {
-            carState.pos.y = h.point.y + 0.5;
-            carState.vel.y = Math.max(0, carState.vel.y);
-            // align car up to ground normal (partial)
-            if (h.face) {
-              const nrm = h.face.normal.clone().transformDirection(h.object.matrixWorld);
-              carState.up.lerp(nrm, 0.2).normalize();
-            }
-          }
-        } else if (carState.pos.y < -20) {
-          // fell off
-          carState.pos.copy(lastCheckpointRef.current.pos);
-          carState.yaw = lastCheckpointRef.current.yaw;
-          carState.vel.set(0, 0, 0); carState.speed = 0;
+        // Build forward vector in world using yaw + up
+        // First a baseline forward in car's yaw frame, then reorient by up:
+        const upQuatBase = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), carState.up);
+        tmpForward.set(Math.sin(carState.yaw), 0, Math.cos(carState.yaw)).applyQuaternion(upQuatBase);
+        carState.forward.copy(tmpForward);
+
+        // Move along forward
+        carState.pos.addScaledVector(tmpForward, carState.speed * dt);
+
+        // Gravity along -up (magnetic to surface). Bias with world gravity when airborne.
+        const grav = 42;
+        // apply gravity to velocity vector (world)
+        if (carState.grounded) {
+          carState.vel.copy(carState.up).multiplyScalar(-grav * 0.02); // small residual
+        } else {
+          carState.vel.y -= grav * dt;
+          carState.pos.addScaledVector(carState.vel, dt);
         }
 
-        // checkpoint / start / finish detection (simple XZ box)
+        // Surface probe: raycast along -up first, then along world -Y as fallback
+        const allDrivable = blockMeshes.flatMap(b => b.drivable);
+        const probeOrigin = carState.pos.clone().add(carState.up.clone().multiplyScalar(3));
+        raycaster.set(probeOrigin, carState.up.clone().multiplyScalar(-1));
+        let hits = raycaster.intersectObjects(allDrivable, false);
+        if (hits.length === 0) {
+          raycaster.set(carState.pos.clone().add(new THREE.Vector3(0, 4, 0)), new THREE.Vector3(0, -1, 0));
+          hits = raycaster.intersectObjects(allDrivable, false);
+        }
+        if (hits.length > 0) {
+          const h = hits[0];
+          const dist = probeOrigin.distanceTo(h.point);
+          if (dist < 3.6) {
+            // snap to surface
+            const nrm = h.face
+              ? h.face.normal.clone().transformDirection(h.object.matrixWorld).normalize()
+              : carState.up.clone();
+            carState.pos.copy(h.point).addScaledVector(nrm, 0.5);
+            carState.up.lerp(nrm, 0.4).normalize();
+            carState.vel.set(0, 0, 0);
+            carState.grounded = true;
+            // downforce: when going fast, extra pull to surface (loops)
+            if (speedFrac > 0.55) {
+              carState.pos.addScaledVector(nrm, -0.05 * speedFrac);
+            }
+          } else {
+            carState.grounded = false;
+          }
+        } else {
+          carState.grounded = false;
+          // in air, gradually re-orient up to world up
+          carState.up.lerp(new THREE.Vector3(0, 1, 0), 0.02).normalize();
+          if (carState.pos.y < -30) resetToCheckpoint();
+        }
+
+        // checkpoint / start / finish detection
         for (let i = 0; i < trackRef.current.blocks.length; i++) {
           const b = trackRef.current.blocks[i];
           const cx = b.x * CELL, cz = b.z * CELL, cy = b.y * CELL * 0.4;
           const dx = carState.pos.x - cx, dz = carState.pos.z - cz, dy = carState.pos.y - cy;
-          if (Math.abs(dx) < CELL / 2 && Math.abs(dz) < CELL / 2 && Math.abs(dy) < 3) {
+          if (Math.abs(dx) < CELL / 2 && Math.abs(dz) < CELL / 2 && Math.abs(dy) < 4) {
             if (b.t === "start" && runStartRef.current === null && carState.speed > 2) {
               runStartRef.current = now;
               recordRef.current = [];
               setStatus("Racing");
             }
             if (b.t === "boost" && carState.speed > 0) {
-              carState.speed = Math.min(maxSpeed * 1.4, carState.speed + 30 * dt);
+              carState.speed = Math.min(maxSpeed * 1.5, carState.speed + 40 * dt);
             }
             if (b.t === "checkpoint" && !checkpointsHitRef.current.has(i)) {
               checkpointsHitRef.current.add(i);
-              lastCheckpointRef.current = { pos: carState.pos.clone(), yaw: carState.yaw };
+              lastCheckpointRef.current = { pos: carState.pos.clone(), yaw: carState.yaw, up: carState.up.clone() };
+              setCpState(cs => ({ ...cs, done: checkpointsHitRef.current.size }));
               setStatus(`Checkpoint ${checkpointsHitRef.current.size}`);
             }
             if (b.t === "finish" && runStartRef.current !== null) {
@@ -507,6 +700,15 @@ function StuntGame() {
           }
         }
 
+        // Skid marks + audio
+        skidTimer -= dt;
+        if (carState.grounded && carState.slip > 0.35 && Math.abs(carState.speed) > 8 && skidTimer <= 0) {
+          addSkid(carState.pos, carState.up, carState.yaw);
+          skidTimer = 0.04;
+        }
+        audio.updateEngine(carState.speed, mutedRef.current);
+        audio.setScreech(carState.grounded ? carState.slip : 0, mutedRef.current);
+
         // update car transform
         const upQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), carState.up);
         const yawQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), carState.yaw);
@@ -517,7 +719,9 @@ function StuntGame() {
         // record
         if (runStartRef.current !== null) {
           const t = now - runStartRef.current;
-          recordRef.current.push({ t, p: [carState.pos.x, carState.pos.y, carState.pos.z], q: [carState.quat.x, carState.quat.y, carState.quat.z, carState.quat.w] });
+          if (recordRef.current.length === 0 || t - recordRef.current[recordRef.current.length - 1].t > 30) {
+            recordRef.current.push({ t, p: [carState.pos.x, carState.pos.y, carState.pos.z], q: [carState.quat.x, carState.quat.y, carState.quat.z, carState.quat.w] });
+          }
           setTimeMs(t);
         }
 
@@ -534,24 +738,47 @@ function StuntGame() {
           ghostCar.visible = false;
         }
 
-        // chase camera
-        tmpDown.copy(tmpForward).multiplyScalar(-12).add(new THREE.Vector3(0, 6, 0));
-        const desired = carState.pos.clone().add(tmpDown);
-        camera.position.lerp(desired, 0.12);
-        camera.lookAt(carState.pos.x + tmpForward.x * 4, carState.pos.y + 1, carState.pos.z + tmpForward.z * 4);
+        // Camera
+        const targetFov = baseFov + speedFrac * 18;
+        camera.fov += (targetFov - camera.fov) * 0.08;
+        camera.updateProjectionMatrix();
+
+        if (camMode === "chase") {
+          const back = carState.forward.clone().multiplyScalar(-11);
+          const upOff = carState.up.clone().multiplyScalar(5);
+          const desired = carState.pos.clone().add(back).add(upOff);
+          camera.position.lerp(desired, 0.12);
+          const look = carState.pos.clone().addScaledVector(carState.forward, 4).addScaledVector(carState.up, 1.2);
+          camera.lookAt(look);
+          camera.up.copy(carState.up);
+        } else {
+          // cockpit
+          tmpVec.copy(carState.pos).addScaledVector(carState.forward, 0.8).addScaledVector(carState.up, 1.4);
+          camera.position.copy(tmpVec);
+          const look = carState.pos.clone().addScaledVector(carState.forward, 10).addScaledVector(carState.up, 1.2);
+          camera.lookAt(look);
+          camera.up.copy(carState.up);
+        }
+      } else if (modeRef.current === "edit") {
+        // edit mode: orbit camera around target
+        const cx = editorCam.target.x + Math.cos(editorCam.yaw) * Math.cos(editorCam.pitch) * editorCam.dist;
+        const cz = editorCam.target.z + Math.sin(editorCam.yaw) * Math.cos(editorCam.pitch) * editorCam.dist;
+        const cy = editorCam.target.y + Math.sin(editorCam.pitch) * editorCam.dist;
+        camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.15);
+        camera.up.set(0, 1, 0);
+        camera.lookAt(editorCam.target);
+        audio.updateEngine(0, true);
+        audio.setScreech(0, true);
       } else {
-        // edit mode: orbit camera around origin
-        const target = new THREE.Vector3(0, 4, 0);
-        const t = now * 0.0002;
-        camera.position.lerp(new THREE.Vector3(Math.cos(t) * 40, 30, Math.sin(t) * 40), 0.02);
-        camera.lookAt(target);
+        // paused
+        audio.updateEngine(0, true);
+        audio.setScreech(0, true);
       }
 
       renderer.render(scene, camera);
     };
     rafId = requestAnimationFrame(step);
 
-    // rebuild car if colors change
     const carRebuildInterval = setInterval(() => {
       const cur = colorsRef.current;
       if (JSON.stringify(cur) !== JSON.stringify(colors)) {
@@ -569,18 +796,19 @@ function StuntGame() {
       window.removeEventListener("keyup", onKeyUp);
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      renderer.domElement.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointerleave", onPointerUp);
       renderer.domElement.removeEventListener("wheel", onWheel);
       renderer.domElement.removeEventListener("contextmenu", onCtx);
       renderer.dispose();
       if (renderer.domElement.parentElement) renderer.domElement.parentElement.removeChild(renderer.domElement);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [track.theme]); // rebuild scene when theme changes
+  }, [track.theme]);
 
-  // ============ track meta ============
   useEffect(() => {
     const total = track.blocks.filter(b => b.t === "checkpoint").length;
-    setCheckpoints({ done: 0, total });
+    setCpState({ done: 0, total });
   }, [track]);
 
   const exportCode = useCallback(() => {
@@ -595,16 +823,24 @@ function StuntGame() {
     setTrack(t); setImportStr(""); setStatus(`Loaded: ${t.name}`);
   }, [importStr]);
 
-  const TOOLS: BlockType[] = ["start", "finish", "straight", "ramp", "curveL", "curveR", "boost", "wall", "checkpoint"];
+  const TOOLS: BlockType[] = ["start", "finish", "straight", "ramp", "curveL", "curveR", "loop", "boost", "wall", "checkpoint"];
 
   return (
     <div className="mx-auto max-w-6xl">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">🏁 Stunt Racer</h1>
-          <p className="text-xs text-muted-foreground">WASD/Arrows to drive · R to reset · T to toggle editor</p>
+          <p className="text-xs text-muted-foreground">
+            WASD/Arrows drive · T reset start · R/Enter checkpoint · Space pause · C camera · Esc editor
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMuted(m => !m)}
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm hover:border-primary"
+          >
+            {muted ? "🔇 Muted" : "🔊 Sound"}
+          </button>
           <button
             onClick={() => setMode(m => m === "race" ? "edit" : "race")}
             className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm hover:border-primary"
@@ -623,13 +859,13 @@ function StuntGame() {
       <div className="relative overflow-hidden rounded-2xl border border-border bg-black" style={{ height: "min(70vh, 620px)" }}>
         <div ref={mountRef} className="h-full w-full" />
 
-        {/* HUD */}
         {mode === "race" && (
           <div className="pointer-events-none absolute inset-x-0 top-2 flex flex-col items-center gap-1 font-mono text-white drop-shadow">
             <div className="rounded-md bg-black/50 px-3 py-1 text-2xl tabular-nums">{formatTime(timeMs)}</div>
             <div className="text-xs opacity-80">
-              {status} · Best: {best != null ? formatTime(best) : "—"} · CP {checkpointsHitRef_static(checkpoints)}
+              {status} · Best: {best != null ? formatTime(best) : "—"} · CP {cpState.done}/{cpState.total}
             </div>
+            {paused && <div className="mt-2 rounded bg-black/70 px-4 py-2 text-lg">PAUSED — press Space</div>}
           </div>
         )}
 
@@ -647,13 +883,12 @@ function StuntGame() {
             <div className="ml-2 flex items-center gap-2 border-l border-white/20 pl-2">
               <span>Y:{placeY}</span>
               <span>Rot:{placeRot * 90}°</span>
-              <span className="opacity-70">(Space=rot, Shift+Wheel=height, Right-click=del)</span>
+              <span className="opacity-70">(Space/R=rot · Shift+Wheel=height · Shift+Click=del · Right-drag=pan · Middle-drag=orbit)</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Controls row */}
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-3">
           <div className="mb-2 flex items-center justify-between">
@@ -721,8 +956,4 @@ function StuntGame() {
       </div>
     </div>
   );
-}
-
-function checkpointsHitRef_static(cp: { done: number; total: number }) {
-  return `${cp.done}/${cp.total}`;
 }
