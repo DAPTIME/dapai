@@ -11,6 +11,7 @@ import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { trackAiReply } from "@/lib/ai-reply-notifier";
 
 export const Route = createFileRoute("/c/$threadId")({
   head: () => ({
@@ -125,7 +126,7 @@ function ChatPage() {
       }
 
       try {
-        return await send({
+        const sendPromise = send({
           data: {
             chatId: threadId,
             text,
@@ -134,6 +135,12 @@ function ChatPage() {
             searchQuery,
           },
         });
+        // Fire a module-level notifier so the top-of-screen toast still
+        // appears if the user navigated away from this chat before the
+        // reply arrived (component onSuccess would not run in that case).
+        const title = chatQuery.data?.chat?.title || text.slice(0, 60) || "New reply";
+        trackAiReply(threadId, title, sendPromise);
+        return await sendPromise;
       } finally {
         setSearchingWeb(false);
       }

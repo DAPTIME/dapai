@@ -12,7 +12,7 @@ import {
   Scale,
   Info,
   Users,
-
+  Gamepad2,
 } from "lucide-react";
 
 const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
@@ -40,6 +40,7 @@ import { useIncognito, isIncognitoNow } from "@/lib/use-incognito";
 
 const main = [
   { title: "Custom AI's", url: "/daps", icon: Sparkles },
+  { title: "Games", url: "/games", icon: Gamepad2 },
   { title: "Our Team", url: "/team", icon: Users },
 ] as const;
 
