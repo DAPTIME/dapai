@@ -1,10 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/breakout")({
   component: BreakoutGame,
 });
+
+type BreakAction = "left" | "right" | "launch";
+const BREAK_DEFAULTS: Record<BreakAction, string[]> = {
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+  launch: [" ", "Enter"],
+};
+const BREAK_LABELS: Record<BreakAction, string> = {
+  left: "Nudge left",
+  right: "Nudge right",
+  launch: "Launch ball",
+};
 
 const W = 480;
 const H = 560;
