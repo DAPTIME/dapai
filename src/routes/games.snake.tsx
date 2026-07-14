@@ -102,7 +102,7 @@ function SnakeGame() {
     s.nextDir = { x: dx, y: dy };
   };
 
-  useGameControls<SnakeAction>("snake", SNAKE_DEFAULTS, {
+  const controls = useGameControls<SnakeAction>("snake", SNAKE_DEFAULTS, {
     onKeyDown: (action) => {
       if (action === "up") turn(0, -1);
       else if (action === "down") turn(0, 1);
@@ -110,15 +110,6 @@ function SnakeGame() {
       else if (action === "right") turn(1, 0);
     },
   });
-  // Keep a separate hook instance for the editor UI on desktop.
-  const controls = useGameControls<SnakeAction>("snake", SNAKE_DEFAULTS);
-
-  const turn = (dx: number, dy: number) => {
-    const s = stateRef.current;
-    if (dx && s.dir.x === -dx) return;
-    if (dy && s.dir.y === -dy) return;
-    s.nextDir = { x: dx, y: dy };
-  };
 
   return (
     <div className="mx-auto max-w-md animate-fade-in">
