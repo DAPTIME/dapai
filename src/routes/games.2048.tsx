@@ -1,75 +1,133 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/games/2048")({
   component: Game2048,
 });
 
-type Grid = number[][];
-
 const SIZE = 4;
 
-function empty(): Grid {
-  return Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+type Tile = {
+  id: number;
+  value: number;
+  row: number;
+  col: number;
+  isNew?: boolean;
+  isMerged?: boolean;
+};
+
+type Board = (Tile | null)[][];
+
+let TILE_ID = 1;
+
+function emptyBoard(): Board {
+  return Array.from({ length: SIZE }, () => Array<Tile | null>(SIZE).fill(null));
 }
 
-function addRandom(g: Grid): Grid {
+function addRandom(board: Board): Board {
   const spots: [number, number][] = [];
   for (let r = 0; r < SIZE; r++)
-    for (let c = 0; c < SIZE; c++) if (g[r][c] === 0) spots.push([r, c]);
-  if (!spots.length) return g;
+    for (let c = 0; c < SIZE; c++) if (!board[r][c]) spots.push([r, c]);
+  if (!spots.length) return board;
   const [r, c] = spots[Math.floor(Math.random() * spots.length)];
-  const ng = g.map((row) => row.slice());
-  ng[r][c] = Math.random() < 0.9 ? 2 : 4;
-  return ng;
+  const nb = board.map((row) => row.slice());
+  nb[r][c] = {
+    id: TILE_ID++,
+    value: Math.random() < 0.9 ? 2 : 4,
+    row: r,
+    col: c,
+    isNew: true,
+  };
+  return nb;
 }
 
-function slide(row: number[]): { row: number[]; gained: number } {
-  const arr = row.filter((n) => n !== 0);
+/**
+ * Slide one line (array of tiles or nulls, length SIZE) toward index 0.
+ * Returns the new line plus gained score. Preserves tile ids so we can
+ * animate movement; merged tiles keep the destination tile's id and mark
+ * isMerged for a pop animation.
+ */
+function slideLine(line: (Tile | null)[]): { line: (Tile | null)[]; gained: number } {
+  const compact = line.filter((t): t is Tile => t !== null);
+  const out: (Tile | null)[] = [];
   let gained = 0;
-  for (let i = 0; i < arr.length - 1; i++) {
-    if (arr[i] === arr[i + 1]) {
-      arr[i] *= 2;
-      gained += arr[i];
-      arr.splice(i + 1, 1);
+  let i = 0;
+  while (i < compact.length) {
+    const a = compact[i];
+    const b = compact[i + 1];
+    if (b && a.value === b.value) {
+      const merged: Tile = { ...a, value: a.value * 2, isMerged: true, isNew: false };
+      gained += merged.value;
+      out.push(merged);
+      i += 2;
+    } else {
+      out.push({ ...a, isMerged: false, isNew: false });
+      i += 1;
     }
   }
-  while (arr.length < SIZE) arr.push(0);
-  return { row: arr, gained };
+  while (out.length < SIZE) out.push(null);
+  return { line: out, gained };
 }
 
-function rotate(g: Grid): Grid {
-  const ng = empty();
-  for (let r = 0; r < SIZE; r++)
-    for (let c = 0; c < SIZE; c++) ng[c][SIZE - 1 - r] = g[r][c];
-  return ng;
+function transpose(b: Board): Board {
+  const nb = emptyBoard();
+  for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) nb[c][r] = b[r][c];
+  return nb;
+}
+function reverseRows(b: Board): Board {
+  return b.map((row) => row.slice().reverse());
 }
 
-function move(g: Grid, dir: "left" | "right" | "up" | "down"): { grid: Grid; gained: number; moved: boolean } {
-  let rot = 0;
-  if (dir === "up") rot = 1;
-  else if (dir === "right") rot = 2;
-  else if (dir === "down") rot = 3;
-  let ng = g;
-  for (let i = 0; i < rot; i++) ng = rotate(ng);
+function move(
+  board: Board,
+  dir: "left" | "right" | "up" | "down",
+): { board: Board; gained: number; moved: boolean } {
+  let b = board.map((row) => row.slice());
+  if (dir === "up") b = transpose(b);
+  else if (dir === "down") b = reverseRows(transpose(b));
+  else if (dir === "right") b = reverseRows(b);
+
   let gained = 0;
-  const next = ng.map((row) => {
-    const { row: nr, gained: gg } = slide(row);
-    gained += gg;
-    return nr;
+  const next = b.map((row) => {
+    const { line, gained: g } = slideLine(row);
+    gained += g;
+    return line;
   });
-  for (let i = 0; i < (4 - rot) % 4; i++) {
-    let out = empty();
-    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) out[c][SIZE - 1 - r] = next[r][c];
-    next.splice(0, next.length, ...out);
+
+  let out = next;
+  if (dir === "up") out = transpose(out);
+  else if (dir === "down") out = transpose(reverseRows(out));
+  else if (dir === "right") out = reverseRows(out);
+
+  // Update row/col coordinates on each tile so the animated position is correct.
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const t = out[r][c];
+      if (t) {
+        t.row = r;
+        t.col = c;
+      }
+    }
   }
-  const moved = JSON.stringify(g) !== JSON.stringify(next);
-  return { grid: next, gained, moved };
+
+  const before = board.flat().map((t) => (t ? `${t.id}:${t.value}` : "_")).join(",");
+  const after = out.flat().map((t) => (t ? `${t.id}:${t.value}` : "_")).join(",");
+  return { board: out, gained, moved: before !== after };
+}
+
+function boardHasMoves(b: Board): boolean {
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++) {
+      if (!b[r][c]) return true;
+      const v = b[r][c]!.value;
+      if (r + 1 < SIZE && b[r + 1][c]?.value === v) return true;
+      if (c + 1 < SIZE && b[r][c + 1]?.value === v) return true;
+    }
+  return false;
 }
 
 const TILE_COLORS: Record<number, string> = {
-  0: "bg-muted/40",
   2: "bg-amber-100 text-amber-900",
   4: "bg-amber-200 text-amber-900",
   8: "bg-orange-300 text-orange-950",
@@ -83,8 +141,12 @@ const TILE_COLORS: Record<number, string> = {
   2048: "bg-primary text-primary-foreground",
 };
 
+function tileColor(v: number) {
+  return TILE_COLORS[v] ?? "bg-primary text-primary-foreground";
+}
+
 function Game2048() {
-  const [grid, setGrid] = useState<Grid>(() => addRandom(addRandom(empty())));
+  const [board, setBoard] = useState<Board>(() => addRandom(addRandom(emptyBoard())));
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
 
@@ -101,9 +163,9 @@ function Game2048() {
   }, [score, best]);
 
   const doMove = useCallback((dir: "left" | "right" | "up" | "down") => {
-    setGrid((g) => {
-      const { grid: next, gained, moved } = move(g, dir);
-      if (!moved) return g;
+    setBoard((b) => {
+      const { board: next, gained, moved } = move(b, dir);
+      if (!moved) return b;
       setScore((s) => s + gained);
       return addRandom(next);
     });
@@ -121,9 +183,10 @@ function Game2048() {
     return () => window.removeEventListener("keydown", onKey);
   }, [doMove]);
 
-  // Pointer drag / swipe (mouse + touch)
+  const boardRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    const el = document.getElementById("g2048");
+    const el = boardRef.current;
     if (!el) return;
     let sx = 0, sy = 0, dragging = false;
     const THRESHOLD = 25;
@@ -152,26 +215,77 @@ function Game2048() {
     };
   }, [doMove]);
 
-  const reset = () => { setGrid(addRandom(addRandom(empty()))); setScore(0); };
+  const reset = () => {
+    TILE_ID = 1;
+    setBoard(addRandom(addRandom(emptyBoard())));
+    setScore(0);
+  };
+
+  const tiles = useMemo(() => {
+    const list: Tile[] = [];
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++) if (board[r][c]) list.push(board[r][c]!);
+    // Sort by id so React reuses DOM nodes and CSS transitions animate movement.
+    return list.sort((a, b) => a.id - b.id);
+  }, [board]);
+
+  const gameOver = !boardHasMoves(board);
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-md animate-fade-in">
       <h1 className="text-2xl font-bold">2048</h1>
       <div className="mt-2 flex items-center justify-between text-sm">
         <div>Score: <span className="font-semibold">{score}</span></div>
         <div>Best: <span className="font-semibold">{best}</span></div>
         <Button size="sm" variant="secondary" onClick={reset}>New game</Button>
       </div>
-      <div id="g2048" className="mt-4 grid touch-none cursor-grab select-none grid-cols-4 gap-2 rounded-xl bg-card p-2 active:cursor-grabbing">
-        {grid.flat().map((v, i) => (
-          <div
-            key={i}
-            className={`pointer-events-none flex aspect-square items-center justify-center rounded-lg text-xl font-bold transition-all ${TILE_COLORS[v] ?? "bg-primary text-primary-foreground"}`}
-          >
-            {v !== 0 ? v : ""}
+
+      <div
+        ref={boardRef}
+        className="relative mt-4 aspect-square touch-none cursor-grab select-none rounded-xl bg-card p-2 active:cursor-grabbing"
+      >
+        {/* Background cells */}
+        <div className="grid h-full w-full grid-cols-4 grid-rows-4 gap-2">
+          {Array.from({ length: SIZE * SIZE }).map((_, i) => (
+            <div key={i} className="rounded-lg bg-muted/40" />
+          ))}
+        </div>
+
+        {/* Animated tiles */}
+        <div className="pointer-events-none absolute inset-0 p-2">
+          {tiles.map((t) => {
+            const pct = 100 / SIZE;
+            const left = `calc(${t.col * pct}% + ${t.col * 0.5}rem)`;
+            const top = `calc(${t.row * pct}% + ${t.row * 0.5}rem)`;
+            const size = `calc(${pct}% - ${(SIZE - 1) * 0.5 / SIZE}rem)`;
+            return (
+              <div
+                key={t.id}
+                className="absolute transition-[left,top] duration-150 ease-[cubic-bezier(0.2,0.9,0.3,1)]"
+                style={{ left, top, width: size, height: size }}
+              >
+                <div
+                  className={`flex h-full w-full items-center justify-center rounded-lg text-xl font-bold shadow-sm ${tileColor(t.value)} ${
+                    t.isNew ? "animate-tile-drop" : t.isMerged ? "animate-tile-pop" : ""
+                  }`}
+                >
+                  {t.value}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/70 backdrop-blur-sm animate-game-over-in">
+            <div className="text-center">
+              <div className="text-2xl font-bold">Game over</div>
+              <Button className="mt-3" onClick={reset}>Play again</Button>
+            </div>
           </div>
-        ))}
+        )}
       </div>
+
       <p className="mt-3 text-xs text-muted-foreground">
         Arrow keys, click-and-drag, or swipe. Merge tiles to reach 2048.
       </p>
