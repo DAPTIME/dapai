@@ -27,6 +27,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GamesIndexRouteImport } from './routes/games.index'
+import { Route as GamesSnakeRouteImport } from './routes/games.snake'
 import { Route as Games2048RouteImport } from './routes/games.2048'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -126,6 +127,11 @@ const GamesIndexRoute = GamesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => GamesRoute,
 } as any)
+const GamesSnakeRoute = GamesSnakeRouteImport.update({
+  id: '/snake',
+  path: '/snake',
+  getParentRoute: () => GamesRoute,
+} as any)
 const Games2048Route = Games2048RouteImport.update({
   id: '/2048',
   path: '/2048',
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/games/2048': typeof Games2048Route
+  '/games/snake': typeof GamesSnakeRoute
   '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/games/2048': typeof Games2048Route
+  '/games/snake': typeof GamesSnakeRoute
   '/games': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/games/2048': typeof Games2048Route
+  '/games/snake': typeof GamesSnakeRoute
   '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
@@ -280,6 +289,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/c/$threadId'
     | '/games/2048'
+    | '/games/snake'
     | '/games/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/c/$threadId'
     | '/games/2048'
+    | '/games/snake'
     | '/games'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/c/$threadId'
     | '/games/2048'
+    | '/games/snake'
     | '/games/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
@@ -496,6 +508,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamesIndexRouteImport
       parentRoute: typeof GamesRoute
     }
+    '/games/snake': {
+      id: '/games/snake'
+      path: '/snake'
+      fullPath: '/games/snake'
+      preLoaderRoute: typeof GamesSnakeRouteImport
+      parentRoute: typeof GamesRoute
+    }
     '/games/2048': {
       id: '/games/2048'
       path: '/2048'
@@ -557,11 +576,13 @@ declare module '@tanstack/react-router' {
 
 interface GamesRouteChildren {
   Games2048Route: typeof Games2048Route
+  GamesSnakeRoute: typeof GamesSnakeRoute
   GamesIndexRoute: typeof GamesIndexRoute
 }
 
 const GamesRouteChildren: GamesRouteChildren = {
   Games2048Route: Games2048Route,
+  GamesSnakeRoute: GamesSnakeRoute,
   GamesIndexRoute: GamesIndexRoute,
 }
 
