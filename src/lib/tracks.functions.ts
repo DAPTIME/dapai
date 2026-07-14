@@ -48,7 +48,7 @@ export const listPublicTracks = createServerFn({ method: "GET" }).handler(async 
   const supabase = publicClient();
   const { data, error } = await supabase
     .from("custom_tracks")
-    .select("id, name, season, goal, play_count, created_at, owner_id")
+    .select("id, name, season, goal, play_count, created_at, owner_id, params")
     .eq("is_public", true)
     .order("created_at", { ascending: false })
     .limit(100);
