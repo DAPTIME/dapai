@@ -153,12 +153,12 @@ function Spacewar() {
     return () => cancelAnimationFrame(handle);
   }, [running]);
 
-  const touchBtn = (k: string) => ({
-    onTouchStart: () => { stateRef.current.keys[k] = true; },
-    onTouchEnd: () => { stateRef.current.keys[k] = false; },
-    onMouseDown: () => { stateRef.current.keys[k] = true; },
-    onMouseUp: () => { stateRef.current.keys[k] = false; },
-    onMouseLeave: () => { stateRef.current.keys[k] = false; },
+  const touchBtn = (a: SpaceAction) => ({
+    onTouchStart: () => controls.press(a, true),
+    onTouchEnd: () => controls.press(a, false),
+    onMouseDown: () => controls.press(a, true),
+    onMouseUp: () => controls.press(a, false),
+    onMouseLeave: () => controls.press(a, false),
   });
 
   return (
@@ -170,14 +170,15 @@ function Spacewar() {
       </div>
       <canvas ref={ref} width={W} height={H} className="mt-4 w-full rounded-xl border border-border transition-shadow hover:shadow-lg" />
       <div className="mt-4 grid grid-cols-4 gap-2 md:hidden">
-        <Button variant="secondary" {...touchBtn("ArrowLeft")}>←</Button>
-        <Button variant="secondary" {...touchBtn("ArrowUp")}>Thrust</Button>
-        <Button variant="secondary" {...touchBtn("ArrowRight")}>→</Button>
-        <Button variant="secondary" {...touchBtn(" ")}>Fire</Button>
+        <Button variant="secondary" {...touchBtn("left")}>←</Button>
+        <Button variant="secondary" {...touchBtn("thrust")}>Thrust</Button>
+        <Button variant="secondary" {...touchBtn("right")}>→</Button>
+        <Button variant="secondary" {...touchBtn("fire")}>Fire</Button>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Arrow keys to steer & thrust. Space to shoot. Screen wraps.
+        Steer, thrust, and fire. Screen wraps.
       </p>
+      <KeybindEditor controls={controls} labels={SPACE_LABELS} />
     </div>
   );
 }
