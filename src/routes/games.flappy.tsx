@@ -144,7 +144,7 @@ function FlappyGame() {
   });
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-md animate-fade-in">
       <h1 className="text-2xl font-bold">Flappy 🐤</h1>
       <div className="mt-2 flex items-center justify-between text-sm">
         <div>Score: <span className="font-semibold">{score}</span> · Best: {best}</div>

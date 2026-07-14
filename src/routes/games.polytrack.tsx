@@ -290,7 +290,7 @@ function PolyTrack() {
   // Level select screen
   if (level == null) {
     return (
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl animate-fade-in">
         <h1 className="text-2xl font-bold">Poly Racer 🏎️</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           20 levels across four seasons. Same physics — new scenery. Reach the finish line to unlock the next.
@@ -328,7 +328,7 @@ function PolyTrack() {
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-md animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{THEMES[level.season].emoji} {level.name}</h1>
         <Button size="sm" variant="ghost" onClick={() => { setRunning(false); setLevelIdx(null); setDead(false); setWon(false); }}>
@@ -344,7 +344,7 @@ function PolyTrack() {
       <div className="relative">
         <canvas ref={ref} width={W} height={H} className="mt-4 w-full rounded-xl border border-border" />
         {won && !running && (
-          <div className="absolute inset-0 mt-4 flex flex-col items-center justify-center rounded-xl bg-black/60 text-center">
+          <div className="absolute inset-0 mt-4 flex flex-col items-center justify-center rounded-xl bg-black/60 text-center animate-game-over-in">
             <div className="text-2xl font-bold text-white">Level Complete! 🏁</div>
             <p className="mt-1 text-sm text-white/80">Next level unlocked.</p>
             <div className="mt-3 flex gap-2">
@@ -356,7 +356,7 @@ function PolyTrack() {
           </div>
         )}
         {dead && !running && (
-          <div className="absolute inset-0 mt-4 flex flex-col items-center justify-center rounded-xl bg-black/60 text-center">
+          <div className="absolute inset-0 mt-4 flex flex-col items-center justify-center rounded-xl bg-black/60 text-center animate-game-over-in">
             <div className="text-2xl font-bold text-white">Off the road!</div>
             <Button size="sm" className="mt-3" onClick={() => start(level.id - 1)}>Try again</Button>
           </div>

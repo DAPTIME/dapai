@@ -157,13 +157,13 @@ function Spacewar() {
   });
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-md animate-fade-in">
       <h1 className="text-2xl font-bold">Spacewar 🚀</h1>
       <div className="mt-2 flex items-center justify-between text-sm">
         <div>Score: <span className="font-semibold">{score}</span></div>
         <Button size="sm" variant="secondary" onClick={start}>{running ? "Restart" : dead ? "Play again" : "Start"}</Button>
       </div>
-      <canvas ref={ref} width={W} height={H} className="mt-4 w-full rounded-xl border border-border" />
+      <canvas ref={ref} width={W} height={H} className="mt-4 w-full rounded-xl border border-border transition-shadow hover:shadow-lg" />
       <div className="mt-4 grid grid-cols-4 gap-2 md:hidden">
         <Button variant="secondary" {...touchBtn("ArrowLeft")}>←</Button>
         <Button variant="secondary" {...touchBtn("ArrowUp")}>Thrust</Button>
