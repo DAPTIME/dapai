@@ -23,9 +23,12 @@ function GamesLayout() {
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col md:flex-row">
       <aside className="w-full shrink-0 border-b border-border bg-card/40 p-3 md:w-56 md:border-b-0 md:border-r">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+        <Link
+          to="/games"
+          className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground hover:text-primary"
+        >
           <Gamepad2 className="h-4 w-4 text-primary" /> Arcade
-        </div>
+        </Link>
         <nav className="flex gap-2 overflow-x-auto md:flex-col md:overflow-visible">
           {GAMES.map((g) => {
             const active = pathname === g.to;
