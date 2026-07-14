@@ -129,7 +129,7 @@ function PolyTrack() {
           return (
             <div key={season} className="mt-5">
               <div className="mb-2 text-sm font-semibold">{t.emoji} {t.label}</div>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
                 {LEVELS.filter((l) => l.season === season).map((l) => {
                   const isUnlocked = unlocked.has(l.id);
                   return (
@@ -137,14 +137,25 @@ function PolyTrack() {
                       key={l.id}
                       disabled={!isUnlocked}
                       onClick={() => setLevelIdx(l.id - 1)}
-                      className={`aspect-square rounded-lg border text-sm font-semibold transition-all ${
+                      className={`group relative overflow-hidden rounded-lg border text-sm font-semibold transition-all ${
                         isUnlocked
                           ? "border-primary/40 bg-card hover:-translate-y-0.5 hover:border-primary"
-                          : "cursor-not-allowed border-border bg-muted/40 text-muted-foreground opacity-60"
+                          : "cursor-not-allowed border-border bg-muted/40 text-muted-foreground"
                       }`}
-                      style={isUnlocked ? { boxShadow: `inset 0 -14px 0 ${t.ground}22` } : undefined}
                     >
-                      {isUnlocked ? l.id : "🔒"}
+                      <div className={isUnlocked ? "" : "opacity-40 blur-[1px]"}>
+                        <TrackThumbnail
+                          params={l.params}
+                          season={l.season}
+                          goal={l.goal}
+                          width={140}
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/55 px-2 py-1 text-[11px] text-white">
+                        <span>{isUnlocked ? `#${l.id}` : "🔒"}</span>
+                        <span className="opacity-80">{t.emoji}</span>
+                      </div>
                     </button>
                   );
                 })}
