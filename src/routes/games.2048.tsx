@@ -162,18 +162,18 @@ function Game2048() {
         <div>Best: <span className="font-semibold">{best}</span></div>
         <Button size="sm" variant="secondary" onClick={reset}>New game</Button>
       </div>
-      <div id="g2048" className="mt-4 grid touch-none select-none grid-cols-4 gap-2 rounded-xl bg-card p-2">
+      <div id="g2048" className="mt-4 grid touch-none cursor-grab select-none grid-cols-4 gap-2 rounded-xl bg-card p-2 active:cursor-grabbing">
         {grid.flat().map((v, i) => (
           <div
             key={i}
-            className={`flex aspect-square items-center justify-center rounded-lg text-xl font-bold transition-all ${TILE_COLORS[v] ?? "bg-primary text-primary-foreground"}`}
+            className={`pointer-events-none flex aspect-square items-center justify-center rounded-lg text-xl font-bold transition-all ${TILE_COLORS[v] ?? "bg-primary text-primary-foreground"}`}
           >
             {v !== 0 ? v : ""}
           </div>
         ))}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Arrow keys or swipe. Merge tiles to reach 2048.
+        Arrow keys, click-and-drag, or swipe. Merge tiles to reach 2048.
       </p>
     </div>
   );
