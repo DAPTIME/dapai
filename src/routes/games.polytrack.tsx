@@ -17,27 +17,39 @@ export const Route = createFileRoute("/games/polytrack")({
 
 type Level = { id: number; season: Season; name: string; goal: number; params: TrackParams };
 
-const LEVELS: Level[] = Array.from({ length: 20 }, (_, i) => {
-  const seasons: Season[] = ["spring", "summer", "fall", "winter"];
-  const season = seasons[Math.floor(i / 5)];
-  const within = i % 5;
-  const num = within + 1;
-  const seasonPhase = { spring: 0, summer: 1.3, fall: 2.7, winter: 0.6 }[season];
-  return {
-    id: i + 1,
-    season,
-    name: `${THEMES[season].label} ${num}`,
-    goal: 600 + num * 250,
-    params: {
-      amp1: 55 + within * 12,
-      freq1: 0.0055 + within * 0.0012,
-      amp2: 18 + within * 6,
-      freq2: 0.016 + within * 0.0025,
-      half: 96 - within * 6,
-      phase: seasonPhase + (i + 1) * 0.41,
-    },
-  };
-});
+// Hand-tuned original layouts. Each level has a distinct "shape identity"
+// (gentle sweeper / chicane / slalom / wide arc / tight technical) so no two
+// tracks feel the same. Difficulty rises within each season: wider road +
+// gentler curves early, narrower road + higher-frequency wiggles late.
+const LEVELS: Level[] = [
+  // ---------- SPRING (1-5): learning curve, wide and forgiving ----------
+  { id: 1,  season: "spring", name: "First Bloom",     goal:  750, params: { amp1:  30, freq1: 0.0045, amp2:  6,  freq2: 0.014, half: 108, phase: 0.10 } },
+  { id: 2,  season: "spring", name: "Meadow Sweep",    goal:  900, params: { amp1:  60, freq1: 0.0055, amp2: 10,  freq2: 0.016, half: 102, phase: 0.90 } },
+  { id: 3,  season: "spring", name: "Creekside Bend",  goal: 1050, params: { amp1:  75, freq1: 0.0070, amp2: 18,  freq2: 0.020, half:  96, phase: 1.70 } },
+  { id: 4,  season: "spring", name: "Willow Chicane",  goal: 1200, params: { amp1:  50, freq1: 0.0110, amp2: 26,  freq2: 0.024, half:  92, phase: 2.30 } },
+  { id: 5,  season: "spring", name: "Blossom Rush",    goal: 1400, params: { amp1:  85, freq1: 0.0095, amp2: 32,  freq2: 0.028, half:  86, phase: 3.10 } },
+
+  // ---------- SUMMER (6-10): faster, wider arcs and long carries ----------
+  { id: 6,  season: "summer", name: "Coast Cruise",    goal:  900, params: { amp1:  95, freq1: 0.0050, amp2:  8,  freq2: 0.012, half: 100, phase: 0.30 } },
+  { id: 7,  season: "summer", name: "Dune Waves",      goal: 1100, params: { amp1: 110, freq1: 0.0060, amp2: 14,  freq2: 0.018, half:  94, phase: 1.10 } },
+  { id: 8,  season: "summer", name: "Beachfront S",    goal: 1300, params: { amp1:  70, freq1: 0.0130, amp2: 22,  freq2: 0.022, half:  90, phase: 2.00 } },
+  { id: 9,  season: "summer", name: "Palm Slalom",     goal: 1500, params: { amp1:  45, freq1: 0.0180, amp2: 28,  freq2: 0.030, half:  82, phase: 2.80 } },
+  { id: 10, season: "summer", name: "Sunset Sprint",   goal: 1750, params: { amp1: 100, freq1: 0.0110, amp2: 40,  freq2: 0.026, half:  78, phase: 3.60 } },
+
+  // ---------- FALL (11-15): trickier rhythm, mixed frequencies ----------
+  { id: 11, season: "fall",   name: "Amber Drift",     goal: 1000, params: { amp1:  80, freq1: 0.0065, amp2: 16,  freq2: 0.015, half:  98, phase: 0.50 } },
+  { id: 12, season: "fall",   name: "Maple Twist",     goal: 1250, params: { amp1: 105, freq1: 0.0085, amp2: 20,  freq2: 0.021, half:  90, phase: 1.40 } },
+  { id: 13, season: "fall",   name: "Harvest Weave",   goal: 1500, params: { amp1:  60, freq1: 0.0160, amp2: 30,  freq2: 0.028, half:  84, phase: 2.20 } },
+  { id: 14, season: "fall",   name: "Foliage Flick",   goal: 1750, params: { amp1: 115, freq1: 0.0120, amp2: 34,  freq2: 0.032, half:  76, phase: 3.00 } },
+  { id: 15, season: "fall",   name: "October Gauntlet",goal: 2050, params: { amp1:  55, freq1: 0.0210, amp2: 42,  freq2: 0.034, half:  70, phase: 3.90 } },
+
+  // ---------- WINTER (16-20): narrow, technical, high-frequency ----------
+  { id: 16, season: "winter", name: "Frost Glide",     goal: 1100, params: { amp1:  90, freq1: 0.0075, amp2: 18,  freq2: 0.018, half:  92, phase: 0.20 } },
+  { id: 17, season: "winter", name: "Glacier Bend",    goal: 1400, params: { amp1: 120, freq1: 0.0095, amp2: 24,  freq2: 0.023, half:  84, phase: 1.20 } },
+  { id: 18, season: "winter", name: "Blizzard Slalom", goal: 1700, params: { amp1:  50, freq1: 0.0230, amp2: 36,  freq2: 0.030, half:  74, phase: 2.10 } },
+  { id: 19, season: "winter", name: "Aurora Twist",    goal: 2000, params: { amp1: 110, freq1: 0.0150, amp2: 44,  freq2: 0.034, half:  68, phase: 3.20 } },
+  { id: 20, season: "winter", name: "Ice Peak Finale", goal: 2400, params: { amp1:  75, freq1: 0.0260, amp2: 52,  freq2: 0.038, half:  60, phase: 4.30 } },
+];
 
 const DEFAULT_UNLOCKED = new Set<number>([1, 6, 11, 16]);
 
