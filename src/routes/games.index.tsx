@@ -47,7 +47,6 @@ function GamesHome() {
           <div className="text-sm text-muted-foreground">Build, share, and publish your own tracks.</div>
         </Link>
       </div>
-      </div>
     </div>
   );
 }
