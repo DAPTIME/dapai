@@ -1,10 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/snake")({
   component: SnakeGame,
 });
+
+type SnakeAction = "up" | "down" | "left" | "right";
+const SNAKE_DEFAULTS: Record<SnakeAction, string[]> = {
+  up: ["ArrowUp", "w"],
+  down: ["ArrowDown", "s"],
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+};
+const SNAKE_LABELS: Record<SnakeAction, string> = {
+  up: "Up",
+  down: "Down",
+  left: "Left",
+  right: "Right",
+};
 
 const COLS = 20;
 const ROWS = 20;
@@ -80,24 +95,21 @@ function SnakeGame() {
     return () => cancelAnimationFrame(handle);
   }, [running]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const s = stateRef.current;
-      if (e.key === "ArrowUp" && s.dir.y !== 1) s.nextDir = { x: 0, y: -1 };
-      else if (e.key === "ArrowDown" && s.dir.y !== -1) s.nextDir = { x: 0, y: 1 };
-      else if (e.key === "ArrowLeft" && s.dir.x !== 1) s.nextDir = { x: -1, y: 0 };
-      else if (e.key === "ArrowRight" && s.dir.x !== -1) s.nextDir = { x: 1, y: 0 };
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
   const turn = (dx: number, dy: number) => {
     const s = stateRef.current;
     if (dx && s.dir.x === -dx) return;
     if (dy && s.dir.y === -dy) return;
     s.nextDir = { x: dx, y: dy };
   };
+
+  const controls = useGameControls<SnakeAction>("snake", SNAKE_DEFAULTS, {
+    onKeyDown: (action) => {
+      if (action === "up") turn(0, -1);
+      else if (action === "down") turn(0, 1);
+      else if (action === "left") turn(-1, 0);
+      else if (action === "right") turn(1, 0);
+    },
+  });
 
   return (
     <div className="mx-auto max-w-md animate-fade-in">
@@ -121,6 +133,7 @@ function SnakeGame() {
         <Button variant="secondary" onClick={() => turn(1, 0)}>→</Button>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">Arrow keys on desktop, buttons on mobile.</p>
+      <KeybindEditor controls={controls} labels={SNAKE_LABELS} />
     </div>
   );
 }

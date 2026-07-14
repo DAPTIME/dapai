@@ -1,6 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
+
+type SpaceAction = "left" | "right" | "thrust" | "fire";
+const SPACE_DEFAULTS: Record<SpaceAction, string[]> = {
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+  thrust: ["ArrowUp", "w"],
+  fire: [" ", "Enter"],
+};
+const SPACE_LABELS: Record<SpaceAction, string> = {
+  left: "Rotate left",
+  right: "Rotate right",
+  thrust: "Thrust",
+  fire: "Fire",
+};
 
 export const Route = createFileRoute("/games/spacewar")({
   component: Spacewar,
@@ -23,13 +38,13 @@ function Spacewar() {
     ship: Ship;
     bullets: Bullet[];
     rocks: Rock[];
-    keys: Record<string, boolean>;
   }>({
     ship: { x: W / 2, y: H / 2, vx: 0, vy: 0, ang: -Math.PI / 2 },
     bullets: [],
     rocks: [],
-    keys: {},
   });
+
+  const controls = useGameControls<SpaceAction>("spacewar", SPACE_DEFAULTS, { preventDefault: true });
 
   const spawnRock = (): Rock => {
     const side = Math.floor(Math.random() * 4);
@@ -53,17 +68,6 @@ function Spacewar() {
   };
 
   useEffect(() => {
-    const kd = (e: KeyboardEvent) => {
-      stateRef.current.keys[e.key] = true;
-      if (e.key === " ") e.preventDefault();
-    };
-    const ku = (e: KeyboardEvent) => { stateRef.current.keys[e.key] = false; };
-    window.addEventListener("keydown", kd);
-    window.addEventListener("keyup", ku);
-    return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); };
-  }, []);
-
-  useEffect(() => {
     if (!running) return;
     const canvas = ref.current;
     if (!canvas) return;
@@ -73,14 +77,15 @@ function Spacewar() {
     let spawnCd = 0;
     const loop = () => {
       const s = stateRef.current;
+      const k = controls.pressed.current;
       // input
-      if (s.keys["ArrowLeft"] || s.keys["a"]) s.ship.ang -= 0.08;
-      if (s.keys["ArrowRight"] || s.keys["d"]) s.ship.ang += 0.08;
-      if (s.keys["ArrowUp"] || s.keys["w"]) {
+      if (k.left) s.ship.ang -= 0.08;
+      if (k.right) s.ship.ang += 0.08;
+      if (k.thrust) {
         s.ship.vx += Math.cos(s.ship.ang) * 0.15;
         s.ship.vy += Math.sin(s.ship.ang) * 0.15;
       }
-      if ((s.keys[" "] || s.keys["Enter"]) && shootCd <= 0) {
+      if (k.fire && shootCd <= 0) {
         s.bullets.push({
           x: s.ship.x, y: s.ship.y,
           vx: Math.cos(s.ship.ang) * 6 + s.ship.vx,
@@ -148,12 +153,12 @@ function Spacewar() {
     return () => cancelAnimationFrame(handle);
   }, [running]);
 
-  const touchBtn = (k: string) => ({
-    onTouchStart: () => { stateRef.current.keys[k] = true; },
-    onTouchEnd: () => { stateRef.current.keys[k] = false; },
-    onMouseDown: () => { stateRef.current.keys[k] = true; },
-    onMouseUp: () => { stateRef.current.keys[k] = false; },
-    onMouseLeave: () => { stateRef.current.keys[k] = false; },
+  const touchBtn = (a: SpaceAction) => ({
+    onTouchStart: () => controls.press(a, true),
+    onTouchEnd: () => controls.press(a, false),
+    onMouseDown: () => controls.press(a, true),
+    onMouseUp: () => controls.press(a, false),
+    onMouseLeave: () => controls.press(a, false),
   });
 
   return (
@@ -165,14 +170,15 @@ function Spacewar() {
       </div>
       <canvas ref={ref} width={W} height={H} className="mt-4 w-full rounded-xl border border-border transition-shadow hover:shadow-lg" />
       <div className="mt-4 grid grid-cols-4 gap-2 md:hidden">
-        <Button variant="secondary" {...touchBtn("ArrowLeft")}>←</Button>
-        <Button variant="secondary" {...touchBtn("ArrowUp")}>Thrust</Button>
-        <Button variant="secondary" {...touchBtn("ArrowRight")}>→</Button>
-        <Button variant="secondary" {...touchBtn(" ")}>Fire</Button>
+        <Button variant="secondary" {...touchBtn("left")}>←</Button>
+        <Button variant="secondary" {...touchBtn("thrust")}>Thrust</Button>
+        <Button variant="secondary" {...touchBtn("right")}>→</Button>
+        <Button variant="secondary" {...touchBtn("fire")}>Fire</Button>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Arrow keys to steer & thrust. Space to shoot. Screen wraps.
+        Steer, thrust, and fire. Screen wraps.
       </p>
+      <KeybindEditor controls={controls} labels={SPACE_LABELS} />
     </div>
   );
 }

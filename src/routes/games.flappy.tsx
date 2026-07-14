@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/flappy")({
   component: FlappyGame,
 });
+
+type FlapAction = "flap";
+const FLAP_DEFAULTS: Record<FlapAction, string[]> = {
+  flap: [" ", "ArrowUp", "w"],
+};
+const FLAP_LABELS: Record<FlapAction, string> = { flap: "Flap" };
 
 const W = 400;
 const H = 560;
@@ -132,15 +139,11 @@ function FlappyGame() {
     return () => cancelAnimationFrame(handle);
   }, [running]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === " " || e.key === "ArrowUp" || e.key === "w") {
-        e.preventDefault();
-        flap();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+  const controls = useGameControls<FlapAction>("flappy", FLAP_DEFAULTS, {
+    preventDefault: true,
+    onKeyDown: (action) => {
+      if (action === "flap") flap();
+    },
   });
 
   return (
@@ -159,9 +162,13 @@ function FlappyGame() {
         onPointerDown={flap}
         className="mt-4 w-full cursor-pointer touch-none rounded-xl border border-border"
       />
+      <div className="mt-4 md:hidden">
+        <Button variant="secondary" className="w-full" onClick={flap}>Flap</Button>
+      </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Tap, click, or press space to flap.
+        Tap, click, or press the flap key to fly.
       </p>
+      <KeybindEditor controls={controls} labels={FLAP_LABELS} />
     </div>
   );
 }

@@ -1,10 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/breakout")({
   component: BreakoutGame,
 });
+
+type BreakAction = "left" | "right" | "launch";
+const BREAK_DEFAULTS: Record<BreakAction, string[]> = {
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+  launch: [" ", "Enter"],
+};
+const BREAK_LABELS: Record<BreakAction, string> = {
+  left: "Nudge left",
+  right: "Nudge right",
+  launch: "Launch ball",
+};
 
 const W = 480;
 const H = 560;
@@ -158,6 +171,17 @@ function BreakoutGame() {
     return () => cancelAnimationFrame(handle);
   }, [running]);
 
+  const controls = useGameControls<BreakAction>("breakout", BREAK_DEFAULTS, {
+    preventDefault: true,
+    onKeyDown: (action) => {
+      if (action === "launch") stateRef.current.launched = true;
+      else if (action === "left")
+        stateRef.current.px = Math.max(PADDLE_W / 2, stateRef.current.px - 24);
+      else if (action === "right")
+        stateRef.current.px = Math.min(W - PADDLE_W / 2, stateRef.current.px + 24);
+    },
+  });
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -170,18 +194,14 @@ function BreakoutGame() {
     const onClick = () => { stateRef.current.launched = true; };
     canvas.addEventListener("pointermove", onPointer);
     canvas.addEventListener("pointerdown", onClick);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === " ") stateRef.current.launched = true;
-      else if (e.key === "ArrowLeft") stateRef.current.px = Math.max(PADDLE_W / 2, stateRef.current.px - 24);
-      else if (e.key === "ArrowRight") stateRef.current.px = Math.min(W - PADDLE_W / 2, stateRef.current.px + 24);
-    };
-    window.addEventListener("keydown", onKey);
     return () => {
       canvas.removeEventListener("pointermove", onPointer);
       canvas.removeEventListener("pointerdown", onClick);
-      window.removeEventListener("keydown", onKey);
     };
   }, [running]);
+
+
+
 
   return (
     <div className="mx-auto max-w-md animate-fade-in">
@@ -203,9 +223,15 @@ function BreakoutGame() {
         height={H}
         className="mt-4 w-full touch-none rounded-xl border border-border"
       />
+      <div className="mt-4 grid grid-cols-3 gap-2 md:hidden">
+        <Button variant="secondary" onClick={() => { stateRef.current.px = Math.max(PADDLE_W / 2, stateRef.current.px - 32); }}>←</Button>
+        <Button variant="secondary" onClick={() => { stateRef.current.launched = true; }}>Launch</Button>
+        <Button variant="secondary" onClick={() => { stateRef.current.px = Math.min(W - PADDLE_W / 2, stateRef.current.px + 32); }}>→</Button>
+      </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Move: mouse / arrow keys. Launch: click or space.
+        Drag or use keys to move. Tap Launch or press Space to release the ball.
       </p>
+      <KeybindEditor controls={controls} labels={BREAK_LABELS} />
     </div>
   );
 }

@@ -4,6 +4,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { W, H, THEMES, centerAt, formatMs, type Season } from "@/lib/polytrack-engine";
 import type { TrackParams } from "@/lib/track-validation";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
+
+type PolyAction = "left" | "right" | "gas" | "brake";
+const POLY_DEFAULTS: Record<PolyAction, string[]> = {
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+  gas: ["ArrowUp", "w"],
+  brake: ["ArrowDown", "s"],
+};
+const POLY_LABELS: Record<PolyAction, string> = {
+  left: "Steer left",
+  right: "Steer right",
+  gas: "Gas",
+  brake: "Brake",
+};
 
 type Props = {
   params: TrackParams;
@@ -25,11 +40,12 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
 
   const stateRef = useRef({
     car: { x: W / 2, y: H - 100, vx: 0, vy: 0, ang: -Math.PI / 2 },
-    keys: {} as Record<string, boolean>,
     trackOffset: 0,
     startTs: 0,
     moved: false,
   });
+
+  const controls = useGameControls<PolyAction>("polytrack", POLY_DEFAULTS);
 
   const start = useCallback(() => {
     const spawnY = H - 100;
@@ -44,14 +60,6 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     setWon(false);
     setRunning(true);
   }, [params]);
-
-  useEffect(() => {
-    const kd = (e: KeyboardEvent) => { stateRef.current.keys[e.key] = true; };
-    const ku = (e: KeyboardEvent) => { stateRef.current.keys[e.key] = false; };
-    window.addEventListener("keydown", kd);
-    window.addEventListener("keyup", ku);
-    return () => { window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); };
-  }, []);
 
   useEffect(() => {
     if (!running) return;
@@ -70,10 +78,10 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
 
     const loop = () => {
       const s = stateRef.current;
-      const k = s.keys;
-      const turning = (k["ArrowLeft"] || k["a"] ? -1 : 0) + (k["ArrowRight"] || k["d"] ? 1 : 0);
-      const gas = (k["ArrowUp"] || k["w"]) ? 1 : 0;
-      const brake = (k["ArrowDown"] || k["s"]) ? 1 : 0;
+      const k = controls.pressed.current;
+      const turning = (k.left ? -1 : 0) + (k.right ? 1 : 0);
+      const gas = k.gas ? 1 : 0;
+      const brake = k.brake ? 1 : 0;
 
       s.car.ang += turning * 0.05;
       const accel = gas * 0.25 - brake * 0.18;
@@ -190,12 +198,12 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     return () => cancelAnimationFrame(handle);
   }, [running, params, season, goal, title, onFinish]);
 
-  const touchBtn = (k: string) => ({
-    onTouchStart: () => { stateRef.current.keys[k] = true; },
-    onTouchEnd: () => { stateRef.current.keys[k] = false; },
-    onMouseDown: () => { stateRef.current.keys[k] = true; },
-    onMouseUp: () => { stateRef.current.keys[k] = false; },
-    onMouseLeave: () => { stateRef.current.keys[k] = false; },
+  const touchBtn = (a: PolyAction) => ({
+    onTouchStart: () => controls.press(a, true),
+    onTouchEnd: () => controls.press(a, false),
+    onMouseDown: () => controls.press(a, true),
+    onMouseUp: () => controls.press(a, false),
+    onMouseLeave: () => controls.press(a, false),
   });
 
   return (
@@ -229,12 +237,14 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
         )}
       </div>
       <div className="mt-4 grid grid-cols-4 gap-2 md:hidden">
-        <Button variant="secondary" {...touchBtn("ArrowLeft")}>←</Button>
-        <Button variant="secondary" {...touchBtn("ArrowUp")}>Gas</Button>
-        <Button variant="secondary" {...touchBtn("ArrowDown")}>Brake</Button>
-        <Button variant="secondary" {...touchBtn("ArrowRight")}>→</Button>
+        <Button variant="secondary" {...touchBtn("left")}>←</Button>
+        <Button variant="secondary" {...touchBtn("gas")}>Gas</Button>
+        <Button variant="secondary" {...touchBtn("brake")}>Brake</Button>
+        <Button variant="secondary" {...touchBtn("right")}>→</Button>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">Steer with ← →, Gas ↑, Brake ↓. Timer starts on your first move.</p>
+      <KeybindEditor controls={controls} labels={POLY_LABELS} />
+      <p className="mt-3 text-xs text-muted-foreground hidden md:block">Timer starts on your first move.</p>
+      <p className="mt-3 text-xs text-muted-foreground md:hidden">Use the on-screen buttons. Timer starts on your first move.</p>
     </div>
   );
 }
