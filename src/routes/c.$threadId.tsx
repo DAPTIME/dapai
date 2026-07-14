@@ -126,7 +126,7 @@ function ChatPage() {
       }
 
       try {
-        return await send({
+        const sendPromise = send({
           data: {
             chatId: threadId,
             text,
@@ -135,6 +135,12 @@ function ChatPage() {
             searchQuery,
           },
         });
+        // Fire a module-level notifier so the top-of-screen toast still
+        // appears if the user navigated away from this chat before the
+        // reply arrived (component onSuccess would not run in that case).
+        const title = chatQuery.data?.chat?.title || text.slice(0, 60) || "New reply";
+        trackAiReply(threadId, title, sendPromise);
+        return await sendPromise;
       } finally {
         setSearchingWeb(false);
       }
