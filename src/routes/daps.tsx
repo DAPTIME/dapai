@@ -70,7 +70,7 @@ function Daps() {
   const startDap = useMutation({
     mutationFn: (dapId: string) => create({ data: { dapId, incognito: typeof window !== "undefined" && localStorage.getItem("dap.incognito") === "1" } }),
     onSuccess: (chat) =>
-      navigate({ to: "/c/$slug", params: { slug: chat.slug ?? chat.id } }),
+      navigate({ to: "/c/$threadId", params: { threadId: chat.id } }),
     onError: (e: Error) =>
       toast.error(e?.message || "Couldn't start that Custom AI. Please try again."),
   });

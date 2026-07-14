@@ -1,31 +1,47 @@
+# Use one LM Studio server for both AIs
 
-# Human-readable chat URLs
+You only need **one** LM Studio server and **one** ngrok tunnel. LM Studio can hold multiple models in memory at once and pick which one to use based on the `model` field in each request. The relay already sends that field per chat.
 
-Today every chat lives at `/c/<uuid>` — safe, but ugly and not shareable in a meaningful way. This plan makes each chat's URL match its name, scoped per account, with numeric suffixes for duplicates (e.g. `work`, `work-2`, `work-3`).
+## Setup steps (LM Studio side)
 
-## What changes for you
+1. Open LM Studio → **Developer** tab.
+2. Load **both** models you want to use:
+   - The bigger/smarter one → this will be **DAP AI 3.2** (Pro).
+   - A smaller/faster one → this will be **DAP AI Lite**.
+   Both appear in the loaded-models list at the top.
+3. Click **Start Server** (one server, port `1234` by default).
+4. Note the exact model identifiers LM Studio shows for each (e.g. `meta-llama-3.1-8b-instruct`, `qwen2.5-3b-instruct`). You'll paste these into the website.
+5. Run **one** tunnel: `ngrok http 1234`. Copy the HTTPS URL.
 
-- A chat titled "Work" for your account opens at `/c/work`.
-- Create a second chat also titled "Work" → it opens at `/c/work-2`.
-- Another account can also have `/c/work` — it points to their own chat, never yours.
-- Renaming a chat updates the URL. Old UUID links still work (they redirect to the current slug).
+## Setup steps (website side)
 
-## Technical outline
+Currently the relay uses two separate URL secrets (`AI_BACKEND_URL_PRO` and `AI_BACKEND_URL_LITE`). With one LM Studio, they should both point at the same tunnel URL — but the relay also needs to translate the app's model names (`dap-ai-1.0`, `dap-ai-lite`) into the actual LM Studio model identifiers, otherwise LM Studio won't know which loaded model to use.
 
-1. **DB migration** — add `slug text` to `public.chats`, unique per `(user_id, slug)`. Backfill existing rows from their title (or first message), disambiguating collisions with `-2`, `-3`, etc. Add an update trigger so a title change regenerates the slug (only if the user hasn't manually set one).
-2. **Slug helper** — small pure function `toSlug(title)` (lowercase, strip punctuation, spaces → `-`, trim to ~60 chars, fallback to `chat`). Duplicate resolution runs server-side inside a transaction.
-3. **Server functions** (`src/lib/chats.functions.ts`)
-   - `createChat` returns `{ id, slug }`; the mutation now assigns and returns the slug.
-   - New `getChatBySlug({ slug })` — RLS already scopes to the caller.
-   - `getChat` keeps working by UUID (used as fallback for old links).
-4. **Route rename** — replace `src/routes/c.$threadId.tsx` with `src/routes/c.$slug.tsx`. Loader tries slug first; if it looks like a UUID and no slug matches, falls back to `getChat` and then redirects to the canonical slug URL.
-5. **All navigation call sites** — sidebar, "new chat", post-send navigation, share buttons, etc. switch from `params={{ threadId }}` to `params={{ slug }}`. The chat object already carries both fields, so components just read `chat.slug`.
-6. **Sitemap / SEO** — chats are `noindex` so no sitemap change needed.
+Plan:
 
-## Out of scope
+1. **Secrets**: set/update three secrets via the agent:
+   - `AI_BACKEND_URL_PRO` = `https://<your-ngrok>.ngrok-free.app/v1/chat/completions`
+   - `AI_BACKEND_URL_LITE` = same URL as above
+   - `AI_BACKEND_MODEL_PRO` = the LM Studio identifier of the big model (e.g. `meta-llama-3.1-8b-instruct`)
+   - `AI_BACKEND_MODEL_LITE` = the LM Studio identifier of the small model (e.g. `qwen2.5-3b-instruct`)
 
-- Custom user-editable slugs (could add a "rename URL" field later).
-- Changing the `/c/` prefix or dropping it entirely.
-- Username prefixes like `/devansh/work` — the RLS scoping already makes URLs account-private.
+2. **Update `src/routes/api/chat.ts`**: before forwarding, rewrite the `model` field in the request body from `dap-ai-1.0` → `process.env.AI_BACKEND_MODEL_PRO` and `dap-ai-lite` → `process.env.AI_BACKEND_MODEL_LITE`. Keep the existing per-model rate limit and queue logic (the queue key stays `dap-ai-1.0` / `dap-ai-lite` so each app-side model still gets its own slot).
 
-Approve and I'll ship it in one pass (migration first, then the code changes once the migration is applied).
+3. **Update `src/lib/chats.functions.ts`**: if it sends requests directly (not through the relay), apply the same rename there. Otherwise leave it.
+
+4. **Update `server/README.md`**: replace the "two tunnels" guidance for the multi-AI section with the "load both models in LM Studio, one tunnel, set `AI_BACKEND_MODEL_*` to the LM Studio model IDs" instructions.
+
+That's it — admin per-model system prompts already work and don't need changes.
+
+## Notes on running both models
+
+- LM Studio loads both into VRAM at once. If they don't fit, lower the quant of one (Q4 instead of Q5/Q6), or pick a smaller Lite model (3B–4B is fine).
+- LM Studio serializes requests per model, so the Pro queue and Lite queue still don't block each other on the GPU side — they just share VRAM.
+- No second ngrok account, no second port, no second tunnel.
+
+## Files touched
+
+- `src/routes/api/chat.ts` — translate `model` field before forwarding.
+- `src/lib/chats.functions.ts` — same translation if it bypasses the relay.
+- `server/README.md` — rewrite the multi-AI section.
+- Secrets (no code): `AI_BACKEND_URL_LITE`, `AI_BACKEND_MODEL_PRO`, `AI_BACKEND_MODEL_LITE`.

@@ -30,7 +30,7 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
     mutationFn: () => create(),
     onSuccess: (chat) => {
       qc.invalidateQueries({ queryKey: ["chats"] });
-      navigate({ to: "/c/$slug", params: { slug: chat.slug ?? chat.id } });
+      navigate({ to: "/c/$threadId", params: { threadId: chat.id } });
     },
     onError: (e: Error) => toast.error(e?.message || "Couldn't start a new chat."),
   });
