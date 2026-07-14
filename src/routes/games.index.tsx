@@ -37,6 +37,17 @@ function GamesHome() {
           </Link>
         ))}
       </div>
+      <div className="mt-6 grid gap-2 sm:grid-cols-2">
+        <Link to="/games/polytrack/browse" className="rounded-xl border border-border bg-card p-4 hover:border-primary">
+          <div className="font-semibold">🌐 User Poly Racer Tracks</div>
+          <div className="text-sm text-muted-foreground">Play levels built by the community.</div>
+        </Link>
+        <Link to="/games/polytrack/editor" className="rounded-xl border border-border bg-card p-4 hover:border-primary">
+          <div className="font-semibold">✏️ Poly Racer Editor</div>
+          <div className="text-sm text-muted-foreground">Build, share, and publish your own tracks.</div>
+        </Link>
+      </div>
+      </div>
     </div>
   );
 }
