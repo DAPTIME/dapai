@@ -48,16 +48,25 @@ function BrowsePage() {
               key={t.id}
               to="/games/polytrack/track/$id"
               params={{ id: t.id }}
-              className="group rounded-xl border border-border bg-card/40 p-4 transition-all hover:-translate-y-0.5 hover:border-primary"
+              className="group overflow-hidden rounded-xl border border-border bg-card/40 transition-all hover:-translate-y-0.5 hover:border-primary"
               style={{ boxShadow: `inset 0 -3px 0 ${theme.ground}` }}
             >
-              <div className="flex items-center justify-between">
-                <div className="text-lg font-semibold">{theme.emoji} {t.name}</div>
-                <span className="text-xs text-muted-foreground">{theme.label}</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span>Goal {t.goal}</span>
-                <span>▶ {t.play_count}</span>
+              <TrackThumbnail
+                params={t.params as unknown as TrackParams}
+                season={t.season as Season}
+                goal={t.goal}
+                width={320}
+                className="w-full border-b border-border"
+              />
+              <div className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-base font-semibold">{theme.emoji} {t.name}</div>
+                  <span className="text-xs text-muted-foreground">{theme.label}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Goal {t.goal}</span>
+                  <span>▶ {t.play_count}</span>
+                </div>
               </div>
             </Link>
           );
