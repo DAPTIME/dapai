@@ -11,12 +11,15 @@ export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refres
 
   useEffect(() => {
     let cancelled = false;
-    setRows(null);
-    setError(null);
-    fetchLb({ data: { trackRef, limit: 10 } })
-      .then((r) => { if (!cancelled) setRows(r); })
-      .catch((e: Error) => { if (!cancelled) setError(e.message); });
-    return () => { cancelled = true; };
+    const load = (initial: boolean) => {
+      if (initial) { setRows(null); setError(null); }
+      fetchLb({ data: { trackRef, limit: 10 } })
+        .then((r) => { if (!cancelled) setRows(r); })
+        .catch((e: Error) => { if (!cancelled) setError(e.message); });
+    };
+    load(true);
+    const iv = setInterval(() => load(false), 5 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(iv); };
   }, [trackRef, refreshKey, fetchLb]);
 
   return (
