@@ -26,6 +26,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as GamesIndexRouteImport } from './routes/games.index'
+import { Route as GamesStuntRouteImport } from './routes/games.stunt'
 import { Route as GamesSpacewarRouteImport } from './routes/games.spacewar'
 import { Route as GamesSnakeRouteImport } from './routes/games.snake'
 import { Route as GamesRiverRouteImport } from './routes/games.river'
@@ -128,6 +129,11 @@ const IndexRoute = IndexRouteImport.update({
 const GamesIndexRoute = GamesIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => GamesRoute,
+} as any)
+const GamesStuntRoute = GamesStuntRouteImport.update({
+  id: '/stunt',
+  path: '/stunt',
   getParentRoute: () => GamesRoute,
 } as any)
 const GamesSpacewarRoute = GamesSpacewarRouteImport.update({
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
+  '/games/stunt': typeof GamesStuntRoute
   '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
@@ -290,6 +297,7 @@ export interface FileRoutesByTo {
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
+  '/games/stunt': typeof GamesStuntRoute
   '/games': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
@@ -328,6 +336,7 @@ export interface FileRoutesById {
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
+  '/games/stunt': typeof GamesStuntRoute
   '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
@@ -367,6 +376,7 @@ export interface FileRouteTypes {
     | '/games/river'
     | '/games/snake'
     | '/games/spacewar'
+    | '/games/stunt'
     | '/games/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
@@ -403,6 +413,7 @@ export interface FileRouteTypes {
     | '/games/river'
     | '/games/snake'
     | '/games/spacewar'
+    | '/games/stunt'
     | '/games'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
@@ -440,6 +451,7 @@ export interface FileRouteTypes {
     | '/games/river'
     | '/games/snake'
     | '/games/spacewar'
+    | '/games/stunt'
     | '/games/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
@@ -597,6 +609,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamesIndexRouteImport
       parentRoute: typeof GamesRoute
     }
+    '/games/stunt': {
+      id: '/games/stunt'
+      path: '/stunt'
+      fullPath: '/games/stunt'
+      preLoaderRoute: typeof GamesStuntRouteImport
+      parentRoute: typeof GamesRoute
+    }
     '/games/spacewar': {
       id: '/games/spacewar'
       path: '/spacewar'
@@ -750,6 +769,7 @@ interface GamesRouteChildren {
   GamesRiverRoute: typeof GamesRiverRoute
   GamesSnakeRoute: typeof GamesSnakeRoute
   GamesSpacewarRoute: typeof GamesSpacewarRoute
+  GamesStuntRoute: typeof GamesStuntRoute
   GamesIndexRoute: typeof GamesIndexRoute
 }
 
@@ -761,6 +781,7 @@ const GamesRouteChildren: GamesRouteChildren = {
   GamesRiverRoute: GamesRiverRoute,
   GamesSnakeRoute: GamesSnakeRoute,
   GamesSpacewarRoute: GamesSpacewarRoute,
+  GamesStuntRoute: GamesStuntRoute,
   GamesIndexRoute: GamesIndexRoute,
 }
 
