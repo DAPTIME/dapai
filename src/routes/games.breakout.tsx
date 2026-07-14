@@ -228,9 +228,15 @@ function BreakoutGame() {
         height={H}
         className="mt-4 w-full touch-none rounded-xl border border-border"
       />
+      <div className="mt-4 grid grid-cols-3 gap-2 md:hidden">
+        <Button variant="secondary" onClick={() => controls.press("left", true)}>←</Button>
+        <Button variant="secondary" {...touchBtn("launch")}>Launch</Button>
+        <Button variant="secondary" onClick={() => controls.press("right", true)}>→</Button>
+      </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Move: mouse / arrow keys. Launch: click or space.
+        Drag or use keys to move. Tap Launch or press Space to release the ball.
       </p>
+      <KeybindEditor controls={controls} labels={BREAK_LABELS} />
     </div>
   );
 }
