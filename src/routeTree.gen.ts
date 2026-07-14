@@ -21,7 +21,6 @@ import { Route as HelpRouteImport } from './routes/help'
 import { Route as GamesRouteImport } from './routes/games'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DapsRouteImport } from './routes/daps'
-import { Route as ChatNRouteImport } from './routes/chat-$n'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
@@ -31,6 +30,7 @@ import { Route as GamesSpacewarRouteImport } from './routes/games.spacewar'
 import { Route as GamesSnakeRouteImport } from './routes/games.snake'
 import { Route as GamesPolytrackRouteImport } from './routes/games.polytrack'
 import { Route as Games2048RouteImport } from './routes/games.2048'
+import { Route as ChatNRouteImport } from './routes/chat.$n'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -99,11 +99,6 @@ const DapsRoute = DapsRouteImport.update({
   path: '/daps',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ChatNRoute = ChatNRouteImport.update({
-  id: '/chat-$n',
-  path: '/chat-$n',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -148,6 +143,11 @@ const Games2048Route = Games2048RouteImport.update({
   id: '/2048',
   path: '/2048',
   getParentRoute: () => GamesRoute,
+} as any)
+const ChatNRoute = ChatNRouteImport.update({
+  id: '/chat/$n',
+  path: '/chat/$n',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CThreadIdRoute = CThreadIdRouteImport.update({
   id: '/c/$threadId',
@@ -194,7 +194,6 @@ export interface FileRoutesByFullPath {
   '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
-  '/chat-$n': typeof ChatNRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/games': typeof GamesRouteWithChildren
@@ -211,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
   '/games/polytrack': typeof GamesPolytrackRoute
   '/games/snake': typeof GamesSnakeRoute
@@ -225,7 +225,6 @@ export interface FileRoutesByTo {
   '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
-  '/chat-$n': typeof ChatNRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
@@ -241,6 +240,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
   '/games/polytrack': typeof GamesPolytrackRoute
   '/games/snake': typeof GamesSnakeRoute
@@ -256,7 +256,6 @@ export interface FileRoutesById {
   '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
-  '/chat-$n': typeof ChatNRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/games': typeof GamesRouteWithChildren
@@ -273,6 +272,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
   '/c/$threadId': typeof CThreadIdRoute
+  '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
   '/games/polytrack': typeof GamesPolytrackRoute
   '/games/snake': typeof GamesSnakeRoute
@@ -289,7 +289,6 @@ export interface FileRouteTypes {
     | '/about-dap-ai'
     | '/account'
     | '/admin'
-    | '/chat-$n'
     | '/daps'
     | '/forgot-password'
     | '/games'
@@ -306,6 +305,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
     | '/c/$threadId'
+    | '/chat/$n'
     | '/games/2048'
     | '/games/polytrack'
     | '/games/snake'
@@ -320,7 +320,6 @@ export interface FileRouteTypes {
     | '/about-dap-ai'
     | '/account'
     | '/admin'
-    | '/chat-$n'
     | '/daps'
     | '/forgot-password'
     | '/help'
@@ -336,6 +335,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
     | '/c/$threadId'
+    | '/chat/$n'
     | '/games/2048'
     | '/games/polytrack'
     | '/games/snake'
@@ -350,7 +350,6 @@ export interface FileRouteTypes {
     | '/about-dap-ai'
     | '/account'
     | '/admin'
-    | '/chat-$n'
     | '/daps'
     | '/forgot-password'
     | '/games'
@@ -367,6 +366,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
     | '/c/$threadId'
+    | '/chat/$n'
     | '/games/2048'
     | '/games/polytrack'
     | '/games/snake'
@@ -382,7 +382,6 @@ export interface RootRouteChildren {
   AboutDapAiRoute: typeof AboutDapAiRoute
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
-  ChatNRoute: typeof ChatNRoute
   DapsRoute: typeof DapsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   GamesRoute: typeof GamesRouteWithChildren
@@ -399,6 +398,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiChatRoute: typeof ApiChatRoute
   CThreadIdRoute: typeof CThreadIdRoute
+  ChatNRoute: typeof ChatNRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicLiteTryRoute: typeof ApiPublicLiteTryRoute
   ApiPublicHooksCleanupOldChatsRoute: typeof ApiPublicHooksCleanupOldChatsRoute
@@ -490,13 +490,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DapsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/chat-$n': {
-      id: '/chat-$n'
-      path: '/chat-$n'
-      fullPath: '/chat-$n'
-      preLoaderRoute: typeof ChatNRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -559,6 +552,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/games/2048'
       preLoaderRoute: typeof Games2048RouteImport
       parentRoute: typeof GamesRoute
+    }
+    '/chat/$n': {
+      id: '/chat/$n'
+      path: '/chat/$n'
+      fullPath: '/chat/$n'
+      preLoaderRoute: typeof ChatNRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/c/$threadId': {
       id: '/c/$threadId'
@@ -635,7 +635,6 @@ const rootRouteChildren: RootRouteChildren = {
   AboutDapAiRoute: AboutDapAiRoute,
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
-  ChatNRoute: ChatNRoute,
   DapsRoute: DapsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   GamesRoute: GamesRouteWithChildren,
@@ -653,6 +652,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiChatRoute: ApiChatRoute,
   CThreadIdRoute: CThreadIdRoute,
+  ChatNRoute: ChatNRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicLiteTryRoute: ApiPublicLiteTryRoute,
   ApiPublicHooksCleanupOldChatsRoute: ApiPublicHooksCleanupOldChatsRoute,

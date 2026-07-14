@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 // Per-account short URL: /chat-1, /chat-2, ... resolves to the N-th most
 // recently updated chat of the signed-in user. Different accounts see
 // different chats at the same URL.
-export const Route = createFileRoute("/chat-$n")({
+export const Route = createFileRoute("/chat/$n")({
   head: () => ({
     meta: [
       { title: "Chat — DAP AI" },
