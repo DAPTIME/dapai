@@ -9,6 +9,9 @@ const GAMES = [
   { to: "/games/snake" as const, label: "Snake", emoji: "🐍", desc: "Classic — don't bite yourself." },
   { to: "/games/spacewar" as const, label: "Spacewar", emoji: "🚀", desc: "Dodge asteroids, blast rocks." },
   { to: "/games/polytrack" as const, label: "Poly Racer", emoji: "🏎️", desc: "Zip around a low-poly track." },
+  { to: "/games/river" as const, label: "River Crosser", emoji: "🐸", desc: "Hop cars and logs — don't drown." },
+  { to: "/games/flappy" as const, label: "Flappy", emoji: "🐤", desc: "Tap to flap between pipes." },
+  { to: "/games/breakout" as const, label: "Brick Breaker", emoji: "🧱", desc: "Bounce, smash, clear the wall." },
 ];
 
 function GamesHome() {

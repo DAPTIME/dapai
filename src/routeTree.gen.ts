@@ -28,7 +28,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as GamesIndexRouteImport } from './routes/games.index'
 import { Route as GamesSpacewarRouteImport } from './routes/games.spacewar'
 import { Route as GamesSnakeRouteImport } from './routes/games.snake'
+import { Route as GamesRiverRouteImport } from './routes/games.river'
 import { Route as GamesPolytrackRouteImport } from './routes/games.polytrack'
+import { Route as GamesFlappyRouteImport } from './routes/games.flappy'
+import { Route as GamesBreakoutRouteImport } from './routes/games.breakout'
 import { Route as Games2048RouteImport } from './routes/games.2048'
 import { Route as ChatNRouteImport } from './routes/chat.$n'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
@@ -134,9 +137,24 @@ const GamesSnakeRoute = GamesSnakeRouteImport.update({
   path: '/snake',
   getParentRoute: () => GamesRoute,
 } as any)
+const GamesRiverRoute = GamesRiverRouteImport.update({
+  id: '/river',
+  path: '/river',
+  getParentRoute: () => GamesRoute,
+} as any)
 const GamesPolytrackRoute = GamesPolytrackRouteImport.update({
   id: '/polytrack',
   path: '/polytrack',
+  getParentRoute: () => GamesRoute,
+} as any)
+const GamesFlappyRoute = GamesFlappyRouteImport.update({
+  id: '/flappy',
+  path: '/flappy',
+  getParentRoute: () => GamesRoute,
+} as any)
+const GamesBreakoutRoute = GamesBreakoutRouteImport.update({
+  id: '/breakout',
+  path: '/breakout',
   getParentRoute: () => GamesRoute,
 } as any)
 const Games2048Route = Games2048RouteImport.update({
@@ -212,7 +230,10 @@ export interface FileRoutesByFullPath {
   '/c/$threadId': typeof CThreadIdRoute
   '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
+  '/games/breakout': typeof GamesBreakoutRoute
+  '/games/flappy': typeof GamesFlappyRoute
   '/games/polytrack': typeof GamesPolytrackRoute
+  '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
   '/games/': typeof GamesIndexRoute
@@ -242,7 +263,10 @@ export interface FileRoutesByTo {
   '/c/$threadId': typeof CThreadIdRoute
   '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
+  '/games/breakout': typeof GamesBreakoutRoute
+  '/games/flappy': typeof GamesFlappyRoute
   '/games/polytrack': typeof GamesPolytrackRoute
+  '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
   '/games': typeof GamesIndexRoute
@@ -274,7 +298,10 @@ export interface FileRoutesById {
   '/c/$threadId': typeof CThreadIdRoute
   '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
+  '/games/breakout': typeof GamesBreakoutRoute
+  '/games/flappy': typeof GamesFlappyRoute
   '/games/polytrack': typeof GamesPolytrackRoute
+  '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
   '/games/': typeof GamesIndexRoute
@@ -307,7 +334,10 @@ export interface FileRouteTypes {
     | '/c/$threadId'
     | '/chat/$n'
     | '/games/2048'
+    | '/games/breakout'
+    | '/games/flappy'
     | '/games/polytrack'
+    | '/games/river'
     | '/games/snake'
     | '/games/spacewar'
     | '/games/'
@@ -337,7 +367,10 @@ export interface FileRouteTypes {
     | '/c/$threadId'
     | '/chat/$n'
     | '/games/2048'
+    | '/games/breakout'
+    | '/games/flappy'
     | '/games/polytrack'
+    | '/games/river'
     | '/games/snake'
     | '/games/spacewar'
     | '/games'
@@ -368,7 +401,10 @@ export interface FileRouteTypes {
     | '/c/$threadId'
     | '/chat/$n'
     | '/games/2048'
+    | '/games/breakout'
+    | '/games/flappy'
     | '/games/polytrack'
+    | '/games/river'
     | '/games/snake'
     | '/games/spacewar'
     | '/games/'
@@ -539,11 +575,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamesSnakeRouteImport
       parentRoute: typeof GamesRoute
     }
+    '/games/river': {
+      id: '/games/river'
+      path: '/river'
+      fullPath: '/games/river'
+      preLoaderRoute: typeof GamesRiverRouteImport
+      parentRoute: typeof GamesRoute
+    }
     '/games/polytrack': {
       id: '/games/polytrack'
       path: '/polytrack'
       fullPath: '/games/polytrack'
       preLoaderRoute: typeof GamesPolytrackRouteImport
+      parentRoute: typeof GamesRoute
+    }
+    '/games/flappy': {
+      id: '/games/flappy'
+      path: '/flappy'
+      fullPath: '/games/flappy'
+      preLoaderRoute: typeof GamesFlappyRouteImport
+      parentRoute: typeof GamesRoute
+    }
+    '/games/breakout': {
+      id: '/games/breakout'
+      path: '/breakout'
+      fullPath: '/games/breakout'
+      preLoaderRoute: typeof GamesBreakoutRouteImport
       parentRoute: typeof GamesRoute
     }
     '/games/2048': {
@@ -614,7 +671,10 @@ declare module '@tanstack/react-router' {
 
 interface GamesRouteChildren {
   Games2048Route: typeof Games2048Route
+  GamesBreakoutRoute: typeof GamesBreakoutRoute
+  GamesFlappyRoute: typeof GamesFlappyRoute
   GamesPolytrackRoute: typeof GamesPolytrackRoute
+  GamesRiverRoute: typeof GamesRiverRoute
   GamesSnakeRoute: typeof GamesSnakeRoute
   GamesSpacewarRoute: typeof GamesSpacewarRoute
   GamesIndexRoute: typeof GamesIndexRoute
@@ -622,7 +682,10 @@ interface GamesRouteChildren {
 
 const GamesRouteChildren: GamesRouteChildren = {
   Games2048Route: Games2048Route,
+  GamesBreakoutRoute: GamesBreakoutRoute,
+  GamesFlappyRoute: GamesFlappyRoute,
   GamesPolytrackRoute: GamesPolytrackRoute,
+  GamesRiverRoute: GamesRiverRoute,
   GamesSnakeRoute: GamesSnakeRoute,
   GamesSpacewarRoute: GamesSpacewarRoute,
   GamesIndexRoute: GamesIndexRoute,
