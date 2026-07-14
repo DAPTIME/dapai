@@ -95,7 +95,7 @@ function EditorPage() {
       <div className="mx-auto max-w-md rounded-xl border border-border bg-card/40 p-6 text-center">
         <h1 className="text-xl font-bold">Sign in to build tracks</h1>
         <p className="mt-2 text-sm text-muted-foreground">The editor saves your levels to your account.</p>
-        <Link to="/auth" className="mt-4 inline-block rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground">Sign in</Link>
+        <Link to="/login" className="mt-4 inline-block rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground">Sign in</Link>
       </div>
     );
   }
