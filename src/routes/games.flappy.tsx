@@ -1,10 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/flappy")({
   component: FlappyGame,
 });
+
+type FlapAction = "flap";
+const FLAP_DEFAULTS: Record<FlapAction, string[]> = {
+  flap: [" ", "ArrowUp", "w"],
+};
+const FLAP_LABELS: Record<FlapAction, string> = { flap: "Flap" };
 
 const W = 400;
 const H = 560;
