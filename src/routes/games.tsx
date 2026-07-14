@@ -12,10 +12,10 @@ export const Route = createFileRoute("/games")({
 });
 
 const GAMES = [
-  { slug: "2048", label: "2048", emoji: "🟨" },
-  { slug: "snake", label: "Snake", emoji: "🐍" },
-  { slug: "spacewar", label: "Spacewar", emoji: "🚀" },
-  { slug: "polytrack", label: "Poly Racer", emoji: "🏎️" },
+  { to: "/games/2048" as const, label: "2048", emoji: "🟨" },
+  { to: "/games/snake" as const, label: "Snake", emoji: "🐍" },
+  { to: "/games/spacewar" as const, label: "Spacewar", emoji: "🚀" },
+  { to: "/games/polytrack" as const, label: "Poly Racer", emoji: "🏎️" },
 ] as const;
 
 function GamesLayout() {
