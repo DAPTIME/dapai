@@ -200,13 +200,8 @@ function BreakoutGame() {
     };
   }, [running]);
 
-  const touchBtn = (a: BreakAction) => ({
-    onTouchStart: () => controls.press(a, true),
-    onTouchEnd: () => controls.press(a, false),
-    onMouseDown: () => controls.press(a, true),
-    onMouseUp: () => controls.press(a, false),
-    onMouseLeave: () => controls.press(a, false),
-  });
+
+
 
   return (
     <div className="mx-auto max-w-md animate-fade-in">
