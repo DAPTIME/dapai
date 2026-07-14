@@ -1,47 +1,70 @@
-# Use one LM Studio server for both AIs
+# Poly Racer: editor, sharing, browse, leaderboards
 
-You only need **one** LM Studio server and **one** ngrok tunnel. LM Studio can hold multiple models in memory at once and pick which one to use based on the `model` field in each request. The relay already sends that field per chat.
+## What you'll get
 
-## Setup steps (LM Studio side)
+- A **Level Editor** at `/games/polytrack/editor` with live preview. You tweak the road, save drafts to your account, and publish qualifying levels publicly.
+- **Sharable links** like `/games/polytrack/track/<id>` that anyone can open and play.
+- A **User Tracks** browser at `/games/polytrack/browse` listing published community tracks, sorted by newest and most-played.
+- **Leaderboards** on every track (built-in and user-made) with top times and player names.
+- Progress and scores saved per-account in the database (with an anon fallback for the built-in tracks only).
 
-1. Open LM Studio → **Developer** tab.
-2. Load **both** models you want to use:
-   - The bigger/smarter one → this will be **DAP AI 3.2** (Pro).
-   - A smaller/faster one → this will be **DAP AI Lite**.
-   Both appear in the loaded-models list at the top.
-3. Click **Start Server** (one server, port `1234` by default).
-4. Note the exact model identifiers LM Studio shows for each (e.g. `meta-llama-3.1-8b-instruct`, `qwen2.5-3b-instruct`). You'll paste these into the website.
-5. Run **one** tunnel: `ngrok http 1234`. Copy the HTTPS URL.
+## Data model (new tables)
 
-## Setup steps (website side)
+- `custom_tracks` — one row per track a user builds.
+  - `owner_id`, `name`, `season` (spring/summer/fall/winter), `params` (jsonb: amp1, freq1, amp2, freq2, half, phase), `goal`, `is_public`, timestamps.
+- `track_scores` — best time per player per track.
+  - `user_id`, `track_ref` (`builtin:1..20` or `custom:<uuid>`), `best_time_ms`, timestamps.
+  - Unique on `(user_id, track_ref)`; only upsert when the new time is lower.
 
-Currently the relay uses two separate URL secrets (`AI_BACKEND_URL_PRO` and `AI_BACKEND_URL_LITE`). With one LM Studio, they should both point at the same tunnel URL — but the relay also needs to translate the app's model names (`dap-ai-1.0`, `dap-ai-lite`) into the actual LM Studio model identifiers, otherwise LM Studio won't know which loaded model to use.
+RLS:
+- `custom_tracks`: owner can read/write anything they own; anyone signed in can read `is_public = true`.
+- `track_scores`: any signed-in user can read (needed for leaderboard); insert/update only their own row.
 
-Plan:
+A `get_track_leaderboard(track_ref, limit)` SQL function joins scores → profiles and returns `{ name, best_time_ms, rank }` so the client doesn't need broad access to profiles.
 
-1. **Secrets**: set/update three secrets via the agent:
-   - `AI_BACKEND_URL_PRO` = `https://<your-ngrok>.ngrok-free.app/v1/chat/completions`
-   - `AI_BACKEND_URL_LITE` = same URL as above
-   - `AI_BACKEND_MODEL_PRO` = the LM Studio identifier of the big model (e.g. `meta-llama-3.1-8b-instruct`)
-   - `AI_BACKEND_MODEL_LITE` = the LM Studio identifier of the small model (e.g. `qwen2.5-3b-instruct`)
+## Editor
 
-2. **Update `src/routes/api/chat.ts`**: before forwarding, rewrite the `model` field in the request body from `dap-ai-1.0` → `process.env.AI_BACKEND_MODEL_PRO` and `dap-ai-lite` → `process.env.AI_BACKEND_MODEL_LITE`. Keep the existing per-model rate limit and queue logic (the queue key stays `dap-ai-1.0` / `dap-ai-lite` so each app-side model still gets its own slot).
+Controls (sliders + inputs):
+- Season, name, road width (`half`), curve amplitude/frequency ×2, phase, goal length.
+- Live canvas preview of the same renderer the game uses.
+- Save Draft / Update / Delete / Publish buttons.
 
-3. **Update `src/lib/chats.functions.ts`**: if it sends requests directly (not through the relay), apply the same rename there. Otherwise leave it.
+Publish criteria (enforced server-side, mirrored client-side for instant feedback):
+- Name: 3–40 chars, letters/numbers/space/`- _ ' .`; blocked against a profanity wordlist; no repeated character runs > 4.
+- Goal: 400–3000.
+- Road width `half`: 55–110.
+- `amp1 + amp2` ≤ `(W/2 − half − 20)` so the track never leaves the canvas (this is exactly what makes the level "possible").
 
-4. **Update `server/README.md`**: replace the "two tunnels" guidance for the multi-AI section with the "load both models in LM Studio, one tunnel, set `AI_BACKEND_MODEL_*` to the LM Studio model IDs" instructions.
+If any check fails, publishing returns a clear error and the track stays private.
 
-That's it — admin per-model system prompts already work and don't need changes.
+## Play + timer
 
-## Notes on running both models
+- Refactor the game so it accepts either a built-in level or a custom track (same physics, same renderer).
+- Start a millisecond timer on the first movement; stop it on the finish line.
+- On win, submit `best_time_ms` via a server fn; leaderboard refreshes.
 
-- LM Studio loads both into VRAM at once. If they don't fit, lower the quant of one (Q4 instead of Q5/Q6), or pick a smaller Lite model (3B–4B is fine).
-- LM Studio serializes requests per model, so the Pro queue and Lite queue still don't block each other on the GPU side — they just share VRAM.
-- No second ngrok account, no second port, no second tunnel.
+## Sharing
+
+- Track detail route: `/games/polytrack/track/$id` → play + leaderboard + owner name + "Open in editor" (owner only) + Copy Link button.
+- Owners of a private track can share the link with themselves and playtest before publishing.
 
 ## Files touched
 
-- `src/routes/api/chat.ts` — translate `model` field before forwarding.
-- `src/lib/chats.functions.ts` — same translation if it bypasses the relay.
-- `server/README.md` — rewrite the multi-AI section.
-- Secrets (no code): `AI_BACKEND_URL_LITE`, `AI_BACKEND_MODEL_PRO`, `AI_BACKEND_MODEL_LITE`.
+New:
+- Migration: `custom_tracks`, `track_scores`, RLS + grants, `get_track_leaderboard` function.
+- `src/lib/tracks.functions.ts` — server fns: list mine, list public, get by id, create, update, delete, publish/unpublish, submit_score, get_leaderboard.
+- `src/lib/track-validation.ts` — shared validate + profanity list (used by client + server fn).
+- `src/routes/games.polytrack.editor.tsx` — editor (new + edit via `?id=` search param).
+- `src/routes/games.polytrack.browse.tsx` — public tracks browser.
+- `src/routes/games.polytrack.track.$id.tsx` — play + leaderboard for one custom track.
+
+Modified:
+- `src/routes/games.polytrack.tsx` — shared renderer/params extracted; timer; server-fn score submit; per-account unlocks now saved server-side with localStorage fallback.
+- `src/routes/games.tsx` — sidebar links to Editor and Browse.
+- `src/routes/games.index.tsx` — mention the new sections.
+
+## Notes for you
+
+- Anonymous visitors can play built-in tracks and see leaderboards but can't save scores, save drafts, or publish. The editor page prompts them to sign in.
+- The profanity list is a starter list; you can extend it later without a migration.
+- Deleting a track deletes its scores (foreign key cascade).
