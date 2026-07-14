@@ -17,7 +17,15 @@ function BrowsePage() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchList({}).then(setRows).catch((e: Error) => setErr(e.message));
+    let cancelled = false;
+    const load = () => {
+      fetchList({})
+        .then((r) => { if (!cancelled) setRows(r); })
+        .catch((e: Error) => { if (!cancelled) setErr(e.message); });
+    };
+    load();
+    const iv = setInterval(load, 5 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(iv); };
   }, [fetchList]);
 
   return (
