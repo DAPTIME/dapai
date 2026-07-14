@@ -229,9 +229,9 @@ function BreakoutGame() {
         className="mt-4 w-full touch-none rounded-xl border border-border"
       />
       <div className="mt-4 grid grid-cols-3 gap-2 md:hidden">
-        <Button variant="secondary" onClick={() => controls.press("left", true)}>←</Button>
-        <Button variant="secondary" {...touchBtn("launch")}>Launch</Button>
-        <Button variant="secondary" onClick={() => controls.press("right", true)}>→</Button>
+        <Button variant="secondary" onClick={() => { stateRef.current.px = Math.max(PADDLE_W / 2, stateRef.current.px - 32); }}>←</Button>
+        <Button variant="secondary" onClick={() => { stateRef.current.launched = true; }}>Launch</Button>
+        <Button variant="secondary" onClick={() => { stateRef.current.px = Math.min(W - PADDLE_W / 2, stateRef.current.px + 32); }}>→</Button>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
         Drag or use keys to move. Tap Launch or press Space to release the ball.
