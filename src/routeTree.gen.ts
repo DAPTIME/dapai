@@ -30,6 +30,7 @@ import { Route as GamesSpacewarRouteImport } from './routes/games.spacewar'
 import { Route as GamesSnakeRouteImport } from './routes/games.snake'
 import { Route as GamesRiverRouteImport } from './routes/games.river'
 import { Route as GamesPolytrackRouteImport } from './routes/games.polytrack'
+import { Route as GamesFlappyRouteImport } from './routes/games.flappy'
 import { Route as Games2048RouteImport } from './routes/games.2048'
 import { Route as ChatNRouteImport } from './routes/chat.$n'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
@@ -145,6 +146,11 @@ const GamesPolytrackRoute = GamesPolytrackRouteImport.update({
   path: '/polytrack',
   getParentRoute: () => GamesRoute,
 } as any)
+const GamesFlappyRoute = GamesFlappyRouteImport.update({
+  id: '/flappy',
+  path: '/flappy',
+  getParentRoute: () => GamesRoute,
+} as any)
 const Games2048Route = Games2048RouteImport.update({
   id: '/2048',
   path: '/2048',
@@ -218,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/c/$threadId': typeof CThreadIdRoute
   '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
+  '/games/flappy': typeof GamesFlappyRoute
   '/games/polytrack': typeof GamesPolytrackRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/c/$threadId': typeof CThreadIdRoute
   '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
+  '/games/flappy': typeof GamesFlappyRoute
   '/games/polytrack': typeof GamesPolytrackRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
@@ -282,6 +290,7 @@ export interface FileRoutesById {
   '/c/$threadId': typeof CThreadIdRoute
   '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
+  '/games/flappy': typeof GamesFlappyRoute
   '/games/polytrack': typeof GamesPolytrackRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
@@ -316,6 +325,7 @@ export interface FileRouteTypes {
     | '/c/$threadId'
     | '/chat/$n'
     | '/games/2048'
+    | '/games/flappy'
     | '/games/polytrack'
     | '/games/river'
     | '/games/snake'
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
     | '/c/$threadId'
     | '/chat/$n'
     | '/games/2048'
+    | '/games/flappy'
     | '/games/polytrack'
     | '/games/river'
     | '/games/snake'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/c/$threadId'
     | '/chat/$n'
     | '/games/2048'
+    | '/games/flappy'
     | '/games/polytrack'
     | '/games/river'
     | '/games/snake'
@@ -565,6 +577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamesPolytrackRouteImport
       parentRoute: typeof GamesRoute
     }
+    '/games/flappy': {
+      id: '/games/flappy'
+      path: '/flappy'
+      fullPath: '/games/flappy'
+      preLoaderRoute: typeof GamesFlappyRouteImport
+      parentRoute: typeof GamesRoute
+    }
     '/games/2048': {
       id: '/games/2048'
       path: '/2048'
@@ -633,6 +652,7 @@ declare module '@tanstack/react-router' {
 
 interface GamesRouteChildren {
   Games2048Route: typeof Games2048Route
+  GamesFlappyRoute: typeof GamesFlappyRoute
   GamesPolytrackRoute: typeof GamesPolytrackRoute
   GamesRiverRoute: typeof GamesRiverRoute
   GamesSnakeRoute: typeof GamesSnakeRoute
@@ -642,6 +662,7 @@ interface GamesRouteChildren {
 
 const GamesRouteChildren: GamesRouteChildren = {
   Games2048Route: Games2048Route,
+  GamesFlappyRoute: GamesFlappyRoute,
   GamesPolytrackRoute: GamesPolytrackRoute,
   GamesRiverRoute: GamesRiverRoute,
   GamesSnakeRoute: GamesSnakeRoute,
