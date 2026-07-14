@@ -171,6 +171,17 @@ function BreakoutGame() {
     return () => cancelAnimationFrame(handle);
   }, [running]);
 
+  const controls = useGameControls<BreakAction>("breakout", BREAK_DEFAULTS, {
+    preventDefault: true,
+    onKeyDown: (action) => {
+      if (action === "launch") stateRef.current.launched = true;
+      else if (action === "left")
+        stateRef.current.px = Math.max(PADDLE_W / 2, stateRef.current.px - 24);
+      else if (action === "right")
+        stateRef.current.px = Math.min(W - PADDLE_W / 2, stateRef.current.px + 24);
+    },
+  });
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -183,18 +194,19 @@ function BreakoutGame() {
     const onClick = () => { stateRef.current.launched = true; };
     canvas.addEventListener("pointermove", onPointer);
     canvas.addEventListener("pointerdown", onClick);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === " ") stateRef.current.launched = true;
-      else if (e.key === "ArrowLeft") stateRef.current.px = Math.max(PADDLE_W / 2, stateRef.current.px - 24);
-      else if (e.key === "ArrowRight") stateRef.current.px = Math.min(W - PADDLE_W / 2, stateRef.current.px + 24);
-    };
-    window.addEventListener("keydown", onKey);
     return () => {
       canvas.removeEventListener("pointermove", onPointer);
       canvas.removeEventListener("pointerdown", onClick);
-      window.removeEventListener("keydown", onKey);
     };
   }, [running]);
+
+  const touchBtn = (a: BreakAction) => ({
+    onTouchStart: () => controls.press(a, true),
+    onTouchEnd: () => controls.press(a, false),
+    onMouseDown: () => controls.press(a, true),
+    onMouseUp: () => controls.press(a, false),
+    onMouseLeave: () => controls.press(a, false),
+  });
 
   return (
     <div className="mx-auto max-w-md animate-fade-in">
