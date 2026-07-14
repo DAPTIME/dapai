@@ -20,6 +20,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DapsRouteImport } from './routes/daps'
+import { Route as ChatNRouteImport } from './routes/chat-$n'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
@@ -87,6 +88,11 @@ const DapsRoute = DapsRouteImport.update({
   path: '/daps',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatNRoute = ChatNRouteImport.update({
+  id: '/chat-$n',
+  path: '/chat-$n',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/chat-$n': typeof ChatNRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/chat-$n': typeof ChatNRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/chat-$n': typeof ChatNRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
@@ -227,6 +236,7 @@ export interface FileRouteTypes {
     | '/about-dap-ai'
     | '/account'
     | '/admin'
+    | '/chat-$n'
     | '/daps'
     | '/forgot-password'
     | '/help'
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/about-dap-ai'
     | '/account'
     | '/admin'
+    | '/chat-$n'
     | '/daps'
     | '/forgot-password'
     | '/help'
@@ -275,6 +286,7 @@ export interface FileRouteTypes {
     | '/about-dap-ai'
     | '/account'
     | '/admin'
+    | '/chat-$n'
     | '/daps'
     | '/forgot-password'
     | '/help'
@@ -300,6 +312,7 @@ export interface RootRouteChildren {
   AboutDapAiRoute: typeof AboutDapAiRoute
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
+  ChatNRoute: typeof ChatNRoute
   DapsRoute: typeof DapsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   HelpRoute: typeof HelpRoute
@@ -399,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DapsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat-$n': {
+      id: '/chat-$n'
+      path: '/chat-$n'
+      fullPath: '/chat-$n'
+      preLoaderRoute: typeof ChatNRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -484,6 +504,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutDapAiRoute: AboutDapAiRoute,
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
+  ChatNRoute: ChatNRoute,
   DapsRoute: DapsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   HelpRoute: HelpRoute,
