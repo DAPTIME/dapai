@@ -214,15 +214,13 @@ function RiverGame() {
     }
   };
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp" || e.key === "w") move(0, -1);
-      else if (e.key === "ArrowDown" || e.key === "s") move(0, 1);
-      else if (e.key === "ArrowLeft" || e.key === "a") move(-1, 0);
-      else if (e.key === "ArrowRight" || e.key === "d") move(1, 0);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+  const controls = useGameControls<RiverAction>("river", RIVER_DEFAULTS, {
+    onKeyDown: (action) => {
+      if (action === "up") move(0, -1);
+      else if (action === "down") move(0, 1);
+      else if (action === "left") move(-1, 0);
+      else if (action === "right") move(1, 0);
+    },
   });
 
   return (
@@ -240,7 +238,7 @@ function RiverGame() {
         height={ROWS * CELL}
         className="mt-4 w-full rounded-xl border border-border transition-shadow hover:shadow-lg"
       />
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-4 grid grid-cols-3 gap-2 md:hidden">
         <div />
         <Button variant="secondary" onClick={() => move(0, -1)}>↑</Button>
         <div />
@@ -249,8 +247,9 @@ function RiverGame() {
         <Button variant="secondary" onClick={() => move(1, 0)}>→</Button>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Hop across roads and rivers. Ride logs, dodge cars. Arrow keys or WASD.
+        Hop across roads and rivers. Ride logs, dodge cars.
       </p>
+      <KeybindEditor controls={controls} labels={RIVER_LABELS} />
     </div>
   );
 }
