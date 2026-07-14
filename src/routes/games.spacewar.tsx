@@ -1,6 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { KeybindEditor, useGameControls } from "@/lib/game-controls";
+
+type SpaceAction = "left" | "right" | "thrust" | "fire";
+const SPACE_DEFAULTS: Record<SpaceAction, string[]> = {
+  left: ["ArrowLeft", "a"],
+  right: ["ArrowRight", "d"],
+  thrust: ["ArrowUp", "w"],
+  fire: [" ", "Enter"],
+};
+const SPACE_LABELS: Record<SpaceAction, string> = {
+  left: "Rotate left",
+  right: "Rotate right",
+  thrust: "Thrust",
+  fire: "Fire",
+};
 
 export const Route = createFileRoute("/games/spacewar")({
   component: Spacewar,
