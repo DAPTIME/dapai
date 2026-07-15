@@ -104,10 +104,11 @@ function PolyTrack() {
       saveUnlocked(userId, next);
       return next;
     });
+    // Record locally so the "Your best" row updates instantly.
+    recordPersonalBest(`builtin:${level.id}`, ms);
+    setLbKey((k) => k + 1);
     if (userId) {
-      submit({ data: { trackRef: `builtin:${level.id}`, timeMs: ms } })
-        .then(() => setLbKey((k) => k + 1))
-        .catch(() => {});
+      submit({ data: { trackRef: `builtin:${level.id}`, timeMs: ms } }).catch(() => {});
     }
   };
 
