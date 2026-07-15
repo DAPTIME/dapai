@@ -1,6 +1,6 @@
-// 3D Poly Racer runner using Three.js. Low-poly third-person racer.
-// Same TrackParams interface as the 2D engine so existing levels, editor,
-// and custom tracks work unchanged.
+// Fully-3D Poly Racer runner. Rolling terrain, banked curves, ramps,
+// rumble strips, chase camera. TrackParams stays compatible with all
+// existing built-in levels, the editor, and custom tracks.
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Button } from "@/components/ui/button";
@@ -32,10 +32,30 @@ type Props = {
   exitLabel?: string;
 };
 
-// Convert design-space (2D engine) horizontal center to a world X offset.
-// The 2D engine uses W=480. We treat 1 design-unit = 0.1 world units so a
-// half-width of ~96 becomes a ~19 unit wide road (nice scale for the car).
-const UNIT = 0.1;
+const UNIT = 0.1; // 1 design-unit = 0.1 world-units
+
+// Terrain / road elevation derived from track params so every level's
+// hills feel unique but deterministic. Amplitude scales with amp1 so
+// harder (curvier) levels also get more vertical drama.
+function elevationAt(designZ: number, p: TrackParams): number {
+  const base = Math.sin(designZ * (p.freq1 * 0.6) + p.phase * 0.7) * (p.amp1 * 0.035);
+  const bump = Math.sin(designZ * 0.028 + p.phase) * 1.2;
+  return base + bump;
+}
+
+// Ramp bumps at fixed intervals — a short raised wedge the car launches off.
+// Returns extra height at designZ. Only appears on harder levels via `intensity`.
+function rampBumpAt(designZ: number, intensity: number): number {
+  if (intensity <= 0) return 0;
+  const RAMP_SPACING = 260;
+  const RAMP_LEN = 28;
+  const local = ((designZ % RAMP_SPACING) + RAMP_SPACING) % RAMP_SPACING;
+  if (local > RAMP_LEN) return 0;
+  const t = local / RAMP_LEN; // 0..1
+  // triangle wave: quick rise then quick fall
+  const shape = t < 0.6 ? t / 0.6 : (1 - t) / 0.4;
+  return Math.max(0, shape) * 1.6 * intensity;
+}
 
 export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit, exitLabel }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -46,12 +66,12 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
   const [elapsed, setElapsed] = useState(0);
 
   const stateRef = useRef({
-    // distanceZ = how far along the track we've driven (in design-space units, matches 2D engine "trackOffset")
     distanceZ: 0,
-    // lateral offset from track centerline in design-space units
     lateral: 0,
-    speed: 0,       // forward speed (design units / frame)
-    heading: 0,     // steering heading offset (radians)
+    speed: 0,
+    heading: 0,
+    airY: 0,
+    airVy: 0,
     startTs: 0,
     moved: false,
   });
@@ -60,60 +80,60 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
 
   const start = useCallback(() => {
     stateRef.current = {
-      distanceZ: 0,
-      lateral: 0,
-      speed: 0,
-      heading: 0,
-      startTs: 0,
-      moved: false,
+      distanceZ: 0, lateral: 0, speed: 0, heading: 0,
+      airY: 0, airVy: 0, startTs: 0, moved: false,
     };
-    setScore(0);
-    setElapsed(0);
-    setDead(false);
-    setWon(false);
+    setScore(0); setElapsed(0); setDead(false); setWon(false);
     setRunning(true);
   }, []);
 
-  // Build & tear down the three.js scene per run.
   useEffect(() => {
     if (!running) return;
     const mount = mountRef.current;
     if (!mount) return;
     const theme = THEMES[season];
     const p = params;
+    // Ramps only on levels with tight turns (amp1 high or freq1 high).
+    const rampIntensity = Math.min(1, Math.max(0, (p.amp1 - 60) / 80) + Math.max(0, (p.freq1 - 0.008) * 40));
 
     const width = mount.clientWidth;
     const height = mount.clientHeight;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(theme.ground);
-    scene.fog = new THREE.Fog(theme.ground, 40, 160);
+    const skyColor = new THREE.Color(theme.ground).lerp(new THREE.Color(0xffffff), 0.55);
+    scene.background = skyColor;
+    scene.fog = new THREE.Fog(skyColor, 50, 180);
 
-    const camera = new THREE.PerspectiveCamera(65, width / height, 0.1, 500);
+    const camera = new THREE.PerspectiveCamera(70, width / height, 0.1, 500);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
-    renderer.shadowMap.enabled = false;
     mount.appendChild(renderer.domElement);
 
-    // Lighting
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-    sun.position.set(30, 60, 20);
+    // Lights
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    sun.position.set(40, 80, 30);
     scene.add(sun);
+    const hemi = new THREE.HemisphereLight(skyColor.getHex(), theme.ground, 0.35);
+    scene.add(hemi);
 
-    // Ground plane (large, tiles with camera)
-    const groundMat = new THREE.MeshLambertMaterial({ color: theme.ground });
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    scene.add(ground);
+    // Terrain as a dynamic plane (subdivided) that follows the car.
+    const TERRAIN_W = 220, TERRAIN_D = 260;
+    const TERRAIN_SEG_X = 30, TERRAIN_SEG_Z = 60;
+    const terrainGeo = new THREE.PlaneGeometry(TERRAIN_W, TERRAIN_D, TERRAIN_SEG_X, TERRAIN_SEG_Z);
+    terrainGeo.rotateX(-Math.PI / 2);
+    const terrain = new THREE.Mesh(
+      terrainGeo,
+      new THREE.MeshLambertMaterial({ color: theme.ground, flatShading: true }),
+    );
+    scene.add(terrain);
 
-    // Build the road as a long ribbon of segments following centerAt().
-    // We build enough ahead of the car and recycle by shifting geometry.
-    const SEG_STEP = 2;         // design-units between samples
-    const AHEAD = 220;          // design-units of road drawn in front
-    const BEHIND = 40;          // design-units drawn behind
+    // Road ribbon
+    const SEG_STEP = 2;
+    const AHEAD = 240;
+    const BEHIND = 40;
     const totalSamples = Math.ceil((AHEAD + BEHIND) / SEG_STEP);
 
     const roadColor = new THREE.Color(theme.road);
@@ -130,8 +150,24 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     }
     roadGeom.setAttribute("position", new THREE.BufferAttribute(roadPositions, 3));
     roadGeom.setIndex(roadIndices);
-    const road = new THREE.Mesh(roadGeom, new THREE.MeshLambertMaterial({ color: roadColor, side: THREE.DoubleSide }));
+    const road = new THREE.Mesh(roadGeom, new THREE.MeshLambertMaterial({ color: roadColor, flatShading: true }));
     scene.add(road);
+
+    // Rumble strips: alternating red/white boxes along each edge.
+    const rumbleGroup = new THREE.Group();
+    scene.add(rumbleGroup);
+    const RUMBLES = 60;
+    const rumbles: { mesh: THREE.Mesh; side: number; idx: number }[] = [];
+    for (let i = 0; i < RUMBLES; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const color = (i >> 1) % 2 === 0 ? 0xef4444 : 0xffffff;
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.15, 1.6),
+        new THREE.MeshLambertMaterial({ color }),
+      );
+      rumbleGroup.add(m);
+      rumbles.push({ mesh: m, side, idx: i });
+    }
 
     // Center dash line
     const dashGeom = new THREE.BufferGeometry();
@@ -140,65 +176,72 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     const dashLine = new THREE.LineSegments(dashGeom, new THREE.LineBasicMaterial({ color: dashColor }));
     scene.add(dashLine);
 
-    // Edge lines
-    const leftEdgeGeom = new THREE.BufferGeometry();
-    const leftEdgePos = new Float32Array(totalSamples * 3);
-    leftEdgeGeom.setAttribute("position", new THREE.BufferAttribute(leftEdgePos, 3));
-    const leftEdge = new THREE.Line(leftEdgeGeom, new THREE.LineBasicMaterial({ color: edgeColor }));
-    scene.add(leftEdge);
-
-    const rightEdgeGeom = new THREE.BufferGeometry();
-    const rightEdgePos = new Float32Array(totalSamples * 3);
-    rightEdgeGeom.setAttribute("position", new THREE.BufferAttribute(rightEdgePos, 3));
-    const rightEdge = new THREE.Line(rightEdgeGeom, new THREE.LineBasicMaterial({ color: edgeColor }));
-    scene.add(rightEdge);
-
-    // Scenery: low-poly cones/pyramids scattered on either side (trees/rocks/dunes).
+    // Scenery
     const sceneryGroup = new THREE.Group();
     scene.add(sceneryGroup);
     const sceneryGeo = season === "winter"
       ? new THREE.ConeGeometry(1.1, 3.2, 5)
       : season === "summer"
-        ? new THREE.ConeGeometry(1.4, 1.8, 4)   // dunes
-        : new THREE.ConeGeometry(1.0, 3.0, 6);  // trees
-    const sceneryMat = new THREE.MeshLambertMaterial({ color: flecksColor });
-    const SCENERY_COUNT = 60;
+        ? new THREE.ConeGeometry(1.4, 1.8, 4)
+        : new THREE.ConeGeometry(1.0, 3.0, 6);
+    const sceneryMat = new THREE.MeshLambertMaterial({ color: flecksColor, flatShading: true });
+    const SCENERY_COUNT = 70;
     const sceneryInstances: { mesh: THREE.Mesh; baseZ: number; side: number; offset: number }[] = [];
     for (let i = 0; i < SCENERY_COUNT; i++) {
       const m = new THREE.Mesh(sceneryGeo, sceneryMat);
       const side = i % 2 === 0 ? -1 : 1;
-      const offset = 4 + (i * 1.37) % 14;
+      const offset = 5 + (i * 1.37) % 18;
       const baseZ = (i / SCENERY_COUNT) * (AHEAD + BEHIND);
-      m.scale.setScalar(0.6 + ((i * 13) % 10) * 0.08);
+      m.scale.setScalar(0.6 + ((i * 13) % 10) * 0.09);
       sceneryGroup.add(m);
       sceneryInstances.push({ mesh: m, baseZ, side, offset });
     }
 
-    // Finish line group (built once, positioned when in view)
+    // Ramps: raised wedge meshes placed at the same locations rampBumpAt() peaks.
+    const rampGroup = new THREE.Group();
+    scene.add(rampGroup);
+    const rampMeshes: THREE.Mesh[] = [];
+    if (rampIntensity > 0) {
+      const rampMat = new THREE.MeshLambertMaterial({ color: 0xf59e0b, flatShading: true });
+      for (let i = 0; i < 8; i++) {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(p.half * UNIT * 1.6, 1.2 * rampIntensity, 2.6), rampMat);
+        rampGroup.add(m);
+        rampMeshes.push(m);
+      }
+    }
+
+    // Finish line
     const finishGroup = new THREE.Group();
     const finishBar = new THREE.Mesh(
-      new THREE.BoxGeometry(p.half * UNIT * 2, 0.4, 0.4),
+      new THREE.BoxGeometry(p.half * UNIT * 2.2, 0.5, 0.5),
       new THREE.MeshBasicMaterial({ color: 0xffffff }),
     );
-    finishBar.position.y = 0.2;
+    finishBar.position.y = 3;
     finishGroup.add(finishBar);
-    for (let i = 0; i < 8; i++) {
+    const poleGeo = new THREE.BoxGeometry(0.2, 3, 0.2);
+    const poleMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+    for (const sx of [-1, 1]) {
+      const pole = new THREE.Mesh(poleGeo, poleMat);
+      pole.position.set(sx * p.half * UNIT * 1.05, 1.5, 0);
+      finishGroup.add(pole);
+    }
+    for (let i = 0; i < 10; i++) {
       const sq = new THREE.Mesh(
-        new THREE.BoxGeometry(((p.half * UNIT * 2) / 8), 0.05, 0.6),
+        new THREE.BoxGeometry(((p.half * UNIT * 2) / 10), 0.06, 0.7),
         new THREE.MeshBasicMaterial({ color: i % 2 ? 0x000000 : 0xffffff }),
       );
-      sq.position.x = -p.half * UNIT + ((p.half * UNIT * 2) / 8) * (i + 0.5);
-      sq.position.y = 0.03;
+      sq.position.x = -p.half * UNIT + ((p.half * UNIT * 2) / 10) * (i + 0.5);
+      sq.position.y = 0.05;
       finishGroup.add(sq);
     }
     finishGroup.visible = false;
     scene.add(finishGroup);
 
-    // Car (third-person). Low-poly boxes.
+    // Car (low-poly). Forward is -Z. Cabin toward +Z (rear), headlights at -Z.
     const car = new THREE.Group();
     const body = new THREE.Mesh(
       new THREE.BoxGeometry(1.4, 0.6, 2.6),
-      new THREE.MeshLambertMaterial({ color: 0xef4444 }),
+      new THREE.MeshLambertMaterial({ color: 0xef4444, flatShading: true }),
     );
     body.position.y = 0.5;
     car.add(body);
@@ -206,10 +249,8 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
       new THREE.BoxGeometry(1.1, 0.5, 1.1),
       new THREE.MeshLambertMaterial({ color: 0x111111 }),
     );
-    // Forward is -Z, so the cabin sits toward +Z (behind the hood).
     cabin.position.set(0, 0.95, 0.35);
     car.add(cabin);
-    // Small headlights on the front (-Z) so the facing direction is obvious.
     for (const hx of [-0.45, 0.45]) {
       const light = new THREE.Mesh(
         new THREE.BoxGeometry(0.25, 0.15, 0.1),
@@ -229,10 +270,8 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     }
     scene.add(car);
 
-    // Handle resize
     const onResize = () => {
-      const w = mount.clientWidth;
-      const h = mount.clientHeight;
+      const w = mount.clientWidth, h = mount.clientHeight;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
@@ -240,11 +279,12 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     const ro = new ResizeObserver(onResize);
     ro.observe(mount);
 
-    // Helper: world X from design-space centerAt + lateral offset.
     const worldXAt = (designZ: number, lateralOffset = 0) => {
-      const cx = centerAt(designZ, p) - 240; // 240 = W/2, so centerline hovers around x=0
+      const cx = centerAt(designZ, p) - 240;
       return (cx + lateralOffset) * UNIT;
     };
+    const roadYAt = (designZ: number) =>
+      elevationAt(designZ, p) + rampBumpAt(designZ, rampIntensity);
 
     let raf = 0;
     const clock = new THREE.Clock();
@@ -257,126 +297,169 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
       const gas = k.gas ? 1 : 0;
       const brake = k.brake ? 1 : 0;
 
-      // Acceleration model (frame-rate independent, tuned to feel like the 2D game)
-      const targetAccel = gas * 18 - brake * 14;
+      const onGround = s.airY <= 0.001;
+      const targetAccel = onGround ? gas * 20 - brake * 15 : 0;
       s.speed += targetAccel * dt;
-      s.speed *= Math.pow(0.5, dt * 0.8); // drag
-      s.speed = Math.max(0, Math.min(s.speed, 42));
+      s.speed *= Math.pow(0.5, dt * 0.75);
+      s.speed = Math.max(0, Math.min(s.speed, 46));
 
-      // Steering (only bites when moving)
-      const steerAuthority = Math.min(1, s.speed / 6);
-      s.heading += turn * 2.4 * steerAuthority * dt;
-      s.heading *= Math.pow(0.5, dt * 4); // self-center
+      const steerAuthority = Math.min(1, s.speed / 6) * (onGround ? 1 : 0.35);
+      s.heading += turn * 2.5 * steerAuthority * dt;
+      s.heading *= Math.pow(0.5, dt * 4);
 
-      // Advance along track. distanceZ matches the 2D "trackOffset" units.
-      // Speed 42 world-units/s over UNIT=0.1 → 420 design-units/s (progress ~42/frame at 100fps display)
       const advance = s.speed * dt / UNIT;
       s.distanceZ += advance;
       s.lateral += Math.sin(s.heading) * s.speed * dt / UNIT;
 
-      if (!s.moved && (gas || brake || turn)) {
-        s.moved = true;
-        s.startTs = performance.now();
+      // Vertical: hills push the car up smoothly; ramps launch it.
+      const groundY = roadYAt(s.distanceZ);
+      const prevGroundY = roadYAt(s.distanceZ - advance * 0.5);
+      const slope = (groundY - prevGroundY);
+      // Ramp launch: if we just crossed the peak of a ramp with speed, kick vertical velocity.
+      if (rampIntensity > 0 && slope < -0.05 && s.speed > 12 && onGround) {
+        s.airVy = 6 + s.speed * 0.15;
       }
+      s.airVy -= 22 * dt; // gravity
+      s.airY = Math.max(0, s.airY + s.airVy * dt);
+      if (s.airY <= 0) s.airVy = 0;
+
+      if (!s.moved && (gas || brake || turn)) { s.moved = true; s.startTs = performance.now(); }
       if (s.moved) setElapsed(performance.now() - s.startTs);
 
-      // Off-road / off-screen check (matches 2D engine semantics).
       const cxDesign = centerAt(s.distanceZ, p);
       const carDesignX = cxDesign + s.lateral;
       if (carDesignX < 0 || carDesignX > 480 || Math.abs(s.lateral) > p.half) {
-        setRunning(false);
-        setDead(true);
-        cancelAnimationFrame(raf);
-        return;
+        setRunning(false); setDead(true); cancelAnimationFrame(raf); return;
       }
 
       const progress = Math.max(0, Math.floor(s.distanceZ / 10));
       setScore(progress);
-
       if (progress >= goal) {
         const finalMs = s.moved ? performance.now() - s.startTs : 0;
-        setElapsed(finalMs);
-        setRunning(false);
-        setWon(true);
+        setElapsed(finalMs); setRunning(false); setWon(true);
         onFinish?.(Math.max(500, Math.round(finalMs)));
-        cancelAnimationFrame(raf);
-        return;
+        cancelAnimationFrame(raf); return;
       }
 
-      // Update road geometry to follow car.
+      // Update road ribbon with real Y from terrain + ramps.
       const startDesignZ = s.distanceZ - BEHIND;
       const rp = road.geometry.attributes.position as THREE.BufferAttribute;
       const dp = dashLine.geometry.attributes.position as THREE.BufferAttribute;
-      const lp = leftEdge.geometry.attributes.position as THREE.BufferAttribute;
-      const rrp = rightEdge.geometry.attributes.position as THREE.BufferAttribute;
       const dashArr = dp.array as Float32Array;
       const dashPairs: number[] = [];
       for (let i = 0; i < totalSamples; i++) {
         const dz = startDesignZ + i * SEG_STEP;
         const cx = worldXAt(dz);
-        // world Z: relative to car position (car sits at world z = 0)
         const wz = -((dz - s.distanceZ) * UNIT);
         const halfW = p.half * UNIT;
-        rp.setXYZ(i * 2, cx - halfW, 0.01, wz);
-        rp.setXYZ(i * 2 + 1, cx + halfW, 0.01, wz);
-        lp.setXYZ(i, cx - halfW, 0.02, wz);
-        rrp.setXYZ(i, cx + halfW, 0.02, wz);
-        // dash as line segments: draw every-other sample as a pair
-        if (i < totalSamples - 1 && i % 2 === 0) {
-          dashPairs.push(cx, 0.03, wz);
+        const y = roadYAt(dz) + 0.05;
+        rp.setXYZ(i * 2, cx - halfW, y, wz);
+        rp.setXYZ(i * 2 + 1, cx + halfW, y, wz);
+        if (i < totalSamples - 1 && i % 3 === 0) {
+          dashPairs.push(cx, y + 0.02, wz);
           const dz2 = startDesignZ + (i + 1) * SEG_STEP;
           const cx2 = worldXAt(dz2);
           const wz2 = -((dz2 - s.distanceZ) * UNIT);
-          dashPairs.push(cx2, 0.03, wz2);
+          dashPairs.push(cx2, roadYAt(dz2) + 0.07, wz2);
         }
       }
-      // pad the dash buffer if needed
       for (let i = 0; i < dashArr.length; i++) dashArr[i] = 0;
       for (let i = 0; i < dashPairs.length && i < dashArr.length; i++) dashArr[i] = dashPairs[i];
       rp.needsUpdate = true;
       dp.needsUpdate = true;
-      lp.needsUpdate = true;
-      rrp.needsUpdate = true;
+      road.geometry.computeVertexNormals();
       road.geometry.computeBoundingSphere();
 
-      // Reposition scenery
-      const range = AHEAD + BEHIND;
-      for (const inst of sceneryInstances) {
-        let relZ = (inst.baseZ - (s.distanceZ % range) + range) % range - BEHIND;
+      // Terrain heightmap update
+      const tp = terrain.geometry.attributes.position as THREE.BufferAttribute;
+      const carWorldX = worldXAt(s.distanceZ, s.lateral);
+      for (let iz = 0; iz <= TERRAIN_SEG_Z; iz++) {
+        for (let ix = 0; ix <= TERRAIN_SEG_X; ix++) {
+          const idx = iz * (TERRAIN_SEG_X + 1) + ix;
+          const localX = (ix / TERRAIN_SEG_X - 0.5) * TERRAIN_W;
+          const localZ = (iz / TERRAIN_SEG_Z - 0.5) * TERRAIN_D;
+          const worldZ = -localZ; // plane's local z becomes world z after rotation
+          const dz = s.distanceZ - worldZ / UNIT;
+          const baseY = roadYAt(dz);
+          // Off-road wobble
+          const wobble = Math.sin(localX * 0.15 + dz * 0.02) * 0.6 + Math.cos(localX * 0.07) * 0.4;
+          tp.setXYZ(idx, localX + carWorldX, baseY - 0.2 + wobble, localZ);
+        }
+      }
+      tp.needsUpdate = true;
+      terrain.geometry.computeVertexNormals();
+
+      // Rumble strips (short segments hugging both edges, spaced along track)
+      const halfW = p.half * UNIT;
+      for (const r of rumbles) {
+        const spacing = (AHEAD + BEHIND) / (RUMBLES / 2);
+        const relZ = ((r.idx >> 1) * spacing) - BEHIND;
         const dz = s.distanceZ + relZ;
         const cx = worldXAt(dz);
         const wz = -(relZ * UNIT);
-        const halfW = p.half * UNIT;
-        const x = cx + inst.side * (halfW + inst.offset);
-        inst.mesh.position.set(x, inst.mesh.scale.y * 0.9, wz);
+        const y = roadYAt(dz) + 0.15;
+        r.mesh.position.set(cx + r.side * (halfW + 0.4), y, wz);
       }
 
-      // Finish line
+      // Ramps: place at nearest 8 ramp-locations
+      if (rampMeshes.length) {
+        const RAMP_SPACING = 260;
+        const nearestBase = Math.floor((s.distanceZ - 60) / RAMP_SPACING) * RAMP_SPACING;
+        for (let i = 0; i < rampMeshes.length; i++) {
+          const dz = nearestBase + i * RAMP_SPACING;
+          const relZ = dz - s.distanceZ;
+          if (relZ < -40 || relZ > AHEAD) { rampMeshes[i].visible = false; continue; }
+          rampMeshes[i].visible = true;
+          const cx = worldXAt(dz + 14);
+          const wz = -(relZ + 14) * UNIT;
+          rampMeshes[i].position.set(cx, roadYAt(dz + 14) + 0.6 * rampIntensity, wz);
+        }
+      }
+
+      // Scenery reposition
+      const range = AHEAD + BEHIND;
+      for (const inst of sceneryInstances) {
+        const relZ = (inst.baseZ - (s.distanceZ % range) + range) % range - BEHIND;
+        const dz = s.distanceZ + relZ;
+        const cx = worldXAt(dz);
+        const wz = -(relZ * UNIT);
+        const x = cx + inst.side * (halfW + inst.offset);
+        inst.mesh.position.set(x, roadYAt(dz) + inst.mesh.scale.y * 0.9, wz);
+      }
+
+      // Finish
       const remaining = goal - progress;
       if (remaining < 60) {
         const finishDesignZ = goal * 10;
         const cx = worldXAt(finishDesignZ);
         const wz = -((finishDesignZ - s.distanceZ) * UNIT);
-        finishGroup.position.set(cx, 0, wz);
+        finishGroup.position.set(cx, roadYAt(finishDesignZ), wz);
         finishGroup.visible = true;
       } else {
         finishGroup.visible = false;
       }
 
-      // Position car in world (car centered laterally at car offset)
+      // Car placement + bank into turns
       const carX = worldXAt(s.distanceZ, s.lateral);
-      car.position.set(carX, 0, 0);
-      car.rotation.y = -s.heading;
+      const carY = groundY + s.airY;
+      car.position.set(carX, carY, 0);
+      car.rotation.set(0, -s.heading, 0);
+      // pitch = slope, roll = steering bank
+      const pitch = Math.atan2(-slope, SEG_STEP * UNIT);
+      car.rotation.x = pitch;
+      car.rotation.z = -turn * 0.15 * steerAuthority;
 
-      // Chase camera
-      const camBack = 6;
-      const camHeight = 3.2;
+      // Chase camera follows behind + above, looks ahead
+      const camBack = 7;
+      const camHeight = 3.6;
+      const lookAhead = 8;
+      const lookY = roadYAt(s.distanceZ + lookAhead / UNIT);
       camera.position.set(
-        carX - Math.sin(-s.heading) * camBack * 0.3,
-        camHeight,
+        carX - Math.sin(-s.heading) * 1.2,
+        carY + camHeight,
         camBack,
       );
-      camera.lookAt(carX, 1, -6);
+      camera.lookAt(worldXAt(s.distanceZ + lookAhead / UNIT), lookY + 0.8, -lookAhead);
 
       renderer.render(scene, camera);
       raf = requestAnimationFrame(loop);
@@ -387,10 +470,9 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
       cancelAnimationFrame(raf);
       ro.disconnect();
       renderer.dispose();
+      terrainGeo.dispose();
       roadGeom.dispose();
       dashGeom.dispose();
-      leftEdgeGeom.dispose();
-      rightEdgeGeom.dispose();
       sceneryGeo.dispose();
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
     };
@@ -424,7 +506,7 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
           <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-center">
             <div>
               <div className="text-lg font-semibold text-white">3D Poly Racer</div>
-              <p className="mt-1 text-sm text-white/80">Press Start to begin.</p>
+              <p className="mt-1 text-sm text-white/80">Rolling hills, rumble strips, and jump ramps on harder tracks.</p>
               <Button size="sm" className="mt-3" onClick={start}>Start</Button>
             </div>
           </div>
@@ -450,8 +532,9 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
         <Button variant="secondary" {...touchBtn("right")}>→</Button>
       </div>
       <KeybindEditor controls={controls} labels={POLY_LABELS} />
-      <p className="mt-3 text-xs text-muted-foreground hidden md:block">3D low-poly racer. Timer starts on your first move.</p>
-      <p className="mt-3 text-xs text-muted-foreground md:hidden">Use the on-screen buttons. Timer starts on your first move.</p>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Original low-poly 3D racer inspired by Kodub's PolyTrack.
+      </p>
     </div>
   );
 }
