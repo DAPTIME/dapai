@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { PolyTrackRunner } from "@/components/polytrack-runner";
-import { Leaderboard } from "@/components/track-leaderboard";
+import { Leaderboard, recordPersonalBest } from "@/components/track-leaderboard";
 import { TrackThumbnail } from "@/components/track-thumbnail";
 import { THEMES, type Season } from "@/lib/polytrack-engine";
 import type { TrackParams } from "@/lib/track-validation";
