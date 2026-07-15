@@ -47,13 +47,13 @@ function TrackPage() {
   const isOwner = userId && userId === track.owner_id;
 
   const handleFinish = (ms: number) => {
-    if (!userId) { toast.info("Sign in to save your score."); return; }
-    submit({ data: { trackRef, timeMs: ms } })
-      .then((r) => {
-        if (r.improved) toast.success("New personal best!");
-        setLbKey((k) => k + 1);
-      })
-      .catch(() => {});
+    const prev = Number(localStorage.getItem(`dap.polytrack.pb.${trackRef}`) ?? "0");
+    const improved = !prev || ms < prev;
+    recordPersonalBest(trackRef, ms);
+    setLbKey((k) => k + 1);
+    if (improved) toast.success("New personal best!");
+    if (!userId) { toast.info("Sign in to save to the site-wide leaderboard."); return; }
+    submit({ data: { trackRef, timeMs: ms } }).catch(() => {});
   };
 
   const share = async () => {
