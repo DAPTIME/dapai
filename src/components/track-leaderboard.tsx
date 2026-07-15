@@ -1,33 +1,71 @@
 // Leaderboard for a specific track_ref (builtin:N or custom:UUID).
+// Site-wide board polls every 5 minutes. The player's own best time is
+// tracked locally and shown instantly after every finished run.
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getLeaderboard } from "@/lib/tracks.functions";
 import { formatMs } from "@/lib/polytrack-engine";
 
+const pbKey = (trackRef: string) => `dap.polytrack.pb.${trackRef}`;
+
+export function readPersonalBest(trackRef: string): number | null {
+  try {
+    const raw = localStorage.getItem(pbKey(trackRef));
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  } catch { return null; }
+}
+
+/** Save a run locally. Returns the new personal best after this run. */
+export function recordPersonalBest(trackRef: string, timeMs: number): number {
+  const prev = readPersonalBest(trackRef);
+  const best = prev == null ? timeMs : Math.min(prev, timeMs);
+  try { localStorage.setItem(pbKey(trackRef), String(best)); } catch { /* ignore */ }
+  return best;
+}
+
 export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refreshKey?: number }) {
   const fetchLb = useServerFn(getLeaderboard);
   const [rows, setRows] = useState<Array<{ name: string; best_time_ms: number; rank: number }> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [personal, setPersonal] = useState<number | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<number>(() => Date.now());
 
+  // Personal best updates instantly whenever refreshKey ticks.
+  useEffect(() => {
+    setPersonal(readPersonalBest(trackRef));
+  }, [trackRef, refreshKey]);
+
+  // Global board: initial load per track, then every 5 minutes.
+  // Intentionally NOT refetched on refreshKey.
   useEffect(() => {
     let cancelled = false;
     const load = (initial: boolean) => {
       if (initial) { setRows(null); setError(null); }
       fetchLb({ data: { trackRef, limit: 10 } })
-        .then((r) => { if (!cancelled) setRows(r); })
+        .then((r) => { if (!cancelled) { setRows(r); setLastRefresh(Date.now()); } })
         .catch((e: Error) => { if (!cancelled) setError(e.message); });
     };
     load(true);
     const iv = setInterval(() => load(false), 5 * 60 * 1000);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [trackRef, refreshKey, fetchLb]);
+  }, [trackRef, fetchLb]);
+
+  const nextMin = Math.max(0, Math.ceil((5 * 60 * 1000 - (Date.now() - lastRefresh)) / 60000));
 
   return (
     <div className="mt-6 rounded-xl border border-border bg-card/40 p-4">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold">🏆 Leaderboard</h2>
-        <span className="text-xs text-muted-foreground">Top 10 · fastest first</span>
+        <span className="text-xs text-muted-foreground">Top 10 · refreshes every 5 min</span>
       </div>
+      {personal != null && (
+        <div className="mb-3 flex items-center justify-between rounded-md border border-primary/40 bg-primary/5 px-2 py-1.5 text-sm">
+          <span className="font-medium">Your best</span>
+          <span className="font-mono">{formatMs(personal)}</span>
+        </div>
+      )}
       {error && <p className="text-xs text-destructive">{error}</p>}
       {!rows && !error && <p className="text-xs text-muted-foreground">Loading…</p>}
       {rows && rows.length === 0 && (
@@ -45,6 +83,11 @@ export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refres
             </li>
           ))}
         </ol>
+      )}
+      {rows && (
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          Next site-wide refresh in ~{nextMin} min
+        </p>
       )}
     </div>
   );
