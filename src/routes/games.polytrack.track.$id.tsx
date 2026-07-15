@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PolyTrackRunner } from "@/components/polytrack-runner";
-import { Leaderboard } from "@/components/track-leaderboard";
+import { Leaderboard, recordPersonalBest } from "@/components/track-leaderboard";
 import type { Season } from "@/lib/polytrack-engine";
 import type { TrackParams } from "@/lib/track-validation";
 import { getTrack, submitScore } from "@/lib/tracks.functions";
