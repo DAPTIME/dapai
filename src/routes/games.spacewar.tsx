@@ -53,8 +53,8 @@ function Spacewar() {
     else if (side === 1) { x = W + 20; y = Math.random() * H; }
     else if (side === 2) { x = Math.random() * W; y = H + 20; }
     else { x = -20; y = Math.random() * H; }
-    const angle = Math.atan2(H / 2 - y, W / 2 - x) + (Math.random() - 0.5);
-    const sp = 0.8 + Math.random() * 1.2;
+    const angle = Math.atan2(H / 2 - y, W / 2 - x) + (Math.random() - 0.5) * 0.6;
+    const sp = 0.35 + Math.random() * 0.5;
     return { x, y, vx: Math.cos(angle) * sp, vy: Math.sin(angle) * sp, r: 14 + Math.random() * 16 };
   };
 
@@ -96,7 +96,7 @@ function Spacewar() {
       }
       shootCd--;
       spawnCd--;
-      if (spawnCd <= 0) { s.rocks.push(spawnRock()); spawnCd = 90; }
+      if (spawnCd <= 0) { s.rocks.push(spawnRock()); spawnCd = 180; }
       // physics
       s.ship.vx *= 0.99; s.ship.vy *= 0.99;
       s.ship.x = (s.ship.x + s.ship.vx + W) % W;
