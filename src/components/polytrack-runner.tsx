@@ -491,7 +491,7 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
       renderer.dispose();
       terrainGeo.dispose();
       roadGeom.dispose();
-      dashGeom.dispose();
+      roadTex.dispose();
       sceneryGeo.dispose();
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
     };
