@@ -139,16 +139,52 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
     const dashColor = new THREE.Color(theme.dash);
     const flecksColor = new THREE.Color(theme.fleck);
 
+    // Procedural asphalt texture: dark base + speckle + white edge stripes
+    // + yellow dashed center. Tiles along road length.
+    const makeRoadTexture = () => {
+      const cvs = document.createElement("canvas");
+      cvs.width = 128; cvs.height = 512;
+      const g = cvs.getContext("2d")!;
+      g.fillStyle = `#${roadColor.getHexString()}`;
+      g.fillRect(0, 0, 128, 512);
+      const speckle = season === "summer" ? "#8a6a3d" : season === "winter" ? "#aab6c4" : "#20202a";
+      for (let i = 0; i < 1200; i++) {
+        g.fillStyle = speckle;
+        g.globalAlpha = 0.1 + Math.random() * 0.4;
+        g.fillRect(Math.random() * 128, Math.random() * 512, 1 + Math.random() * 2, 1 + Math.random() * 2);
+      }
+      g.globalAlpha = 1;
+      g.fillStyle = `#${edgeColor.getHexString()}`;
+      g.fillRect(4, 0, 5, 512);
+      g.fillRect(119, 0, 5, 512);
+      g.fillStyle = `#${dashColor.getHexString()}`;
+      for (let y = 0; y < 512; y += 64) g.fillRect(60, y, 8, 40);
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.wrapS = THREE.ClampToEdgeWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(1, 24);
+      tex.anisotropy = 4;
+      return tex;
+    };
+    const roadTex = makeRoadTexture();
+
     const roadGeom = new THREE.BufferGeometry();
     const roadPositions = new Float32Array(totalSamples * 2 * 3);
+    const roadUVs = new Float32Array(totalSamples * 2 * 2);
     const roadIndices: number[] = [];
     for (let i = 0; i < totalSamples - 1; i++) {
       const a = i * 2, b = i * 2 + 1, c = (i + 1) * 2, d = (i + 1) * 2 + 1;
       roadIndices.push(a, c, b, b, c, d);
     }
+    for (let i = 0; i < totalSamples; i++) {
+      const v = i / (totalSamples - 1);
+      roadUVs[i * 4 + 0] = 0; roadUVs[i * 4 + 1] = v;
+      roadUVs[i * 4 + 2] = 1; roadUVs[i * 4 + 3] = v;
+    }
     roadGeom.setAttribute("position", new THREE.BufferAttribute(roadPositions, 3));
+    roadGeom.setAttribute("uv", new THREE.BufferAttribute(roadUVs, 2));
     roadGeom.setIndex(roadIndices);
-    const road = new THREE.Mesh(roadGeom, new THREE.MeshLambertMaterial({ color: roadColor, flatShading: true }));
+    const road = new THREE.Mesh(roadGeom, new THREE.MeshLambertMaterial({ map: roadTex }));
     scene.add(road);
 
     // Rumble strips: alternating red/white boxes along each edge.
