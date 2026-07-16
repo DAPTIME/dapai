@@ -203,12 +203,8 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
       rumbles.push({ mesh: m, side, idx: i });
     }
 
-    // Center dash line
-    const dashGeom = new THREE.BufferGeometry();
-    const dashPositions = new Float32Array(totalSamples * 3);
-    dashGeom.setAttribute("position", new THREE.BufferAttribute(dashPositions, 3));
-    const dashLine = new THREE.LineSegments(dashGeom, new THREE.LineBasicMaterial({ color: dashColor }));
-    scene.add(dashLine);
+    // Center dashes are baked into the road texture — no separate line needed.
+
 
     // Scenery
     const sceneryGroup = new THREE.Group();
