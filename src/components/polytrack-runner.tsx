@@ -34,13 +34,11 @@ type Props = {
 
 const UNIT = 0.1; // 1 design-unit = 0.1 world-units
 
-// Terrain / road elevation derived from track params so every level's
-// hills feel unique but deterministic. Amplitude scales with amp1 so
-// harder (curvier) levels also get more vertical drama.
+// Long, gentle hills only — no high-frequency ripples (looked like water).
 function elevationAt(designZ: number, p: TrackParams): number {
-  const base = Math.sin(designZ * (p.freq1 * 0.6) + p.phase * 0.7) * (p.amp1 * 0.035);
-  const bump = Math.sin(designZ * 0.028 + p.phase) * 1.2;
-  return base + bump;
+  const long = Math.sin(designZ * 0.004 + p.phase * 0.7) * 2.2;
+  const roll = Math.sin(designZ * 0.011 + p.phase) * 0.9;
+  return long + roll;
 }
 
 // Ramp bumps at fixed intervals — a short raised wedge the car launches off.
@@ -370,7 +368,7 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
       road.geometry.computeVertexNormals();
       road.geometry.computeBoundingSphere();
 
-      // Terrain heightmap update
+      // Terrain heightmap — quiet rolling ground with a berm away from the road.
       const tp = terrain.geometry.attributes.position as THREE.BufferAttribute;
       const carWorldX = worldXAt(s.distanceZ, s.lateral);
       for (let iz = 0; iz <= TERRAIN_SEG_Z; iz++) {
@@ -378,12 +376,13 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
           const idx = iz * (TERRAIN_SEG_X + 1) + ix;
           const localX = (ix / TERRAIN_SEG_X - 0.5) * TERRAIN_W;
           const localZ = (iz / TERRAIN_SEG_Z - 0.5) * TERRAIN_D;
-          const worldZ = -localZ; // plane's local z becomes world z after rotation
+          const worldZ = -localZ;
           const dz = s.distanceZ - worldZ / UNIT;
           const baseY = roadYAt(dz);
-          // Off-road wobble
-          const wobble = Math.sin(localX * 0.15 + dz * 0.02) * 0.6 + Math.cos(localX * 0.07) * 0.4;
-          tp.setXYZ(idx, localX + carWorldX, baseY - 0.2 + wobble, localZ);
+          const roadCx = worldXAt(dz);
+          const distFromRoad = Math.abs(localX + carWorldX - roadCx);
+          const berm = Math.min(1.4, Math.max(0, (distFromRoad - p.half * UNIT) * 0.25));
+          tp.setXYZ(idx, localX + carWorldX, baseY - 0.25 + berm, localZ);
         }
       }
       tp.needsUpdate = true;
