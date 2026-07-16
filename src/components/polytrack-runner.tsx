@@ -374,9 +374,6 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
       // Update road ribbon with real Y from terrain + ramps.
       const startDesignZ = s.distanceZ - BEHIND;
       const rp = road.geometry.attributes.position as THREE.BufferAttribute;
-      const dp = dashLine.geometry.attributes.position as THREE.BufferAttribute;
-      const dashArr = dp.array as Float32Array;
-      const dashPairs: number[] = [];
       for (let i = 0; i < totalSamples; i++) {
         const dz = startDesignZ + i * SEG_STEP;
         const cx = worldXAt(dz);
@@ -385,20 +382,11 @@ export function PolyTrackRunner({ params, season, goal, title, onFinish, onExit,
         const y = roadYAt(dz) + 0.05;
         rp.setXYZ(i * 2, cx - halfW, y, wz);
         rp.setXYZ(i * 2 + 1, cx + halfW, y, wz);
-        if (i < totalSamples - 1 && i % 3 === 0) {
-          dashPairs.push(cx, y + 0.02, wz);
-          const dz2 = startDesignZ + (i + 1) * SEG_STEP;
-          const cx2 = worldXAt(dz2);
-          const wz2 = -((dz2 - s.distanceZ) * UNIT);
-          dashPairs.push(cx2, roadYAt(dz2) + 0.07, wz2);
-        }
       }
-      for (let i = 0; i < dashArr.length; i++) dashArr[i] = 0;
-      for (let i = 0; i < dashPairs.length && i < dashArr.length; i++) dashArr[i] = dashPairs[i];
       rp.needsUpdate = true;
-      dp.needsUpdate = true;
       road.geometry.computeVertexNormals();
       road.geometry.computeBoundingSphere();
+
 
       // Terrain heightmap — quiet rolling ground with a berm away from the road.
       const tp = terrain.geometry.attributes.position as THREE.BufferAttribute;
