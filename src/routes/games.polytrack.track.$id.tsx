@@ -1,3 +1,4 @@
+// DAP Track custom track player.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -7,11 +8,10 @@ import { toast } from "sonner";
 import { PolyTrackRunner } from "@/components/polytrack-runner";
 import { Leaderboard, recordPersonalBest } from "@/components/track-leaderboard";
 import type { Season } from "@/lib/polytrack-engine";
-import type { TrackParams } from "@/lib/track-validation";
 import { getTrack, submitScore } from "@/lib/tracks.functions";
 
 export const Route = createFileRoute("/games/polytrack/track/$id")({
-  head: () => ({ meta: [{ title: "Custom Track — Poly Racer" }] }),
+  head: () => ({ meta: [{ title: "Custom Track — DAP Track" }] }),
   component: TrackPage,
 });
 
@@ -47,11 +47,8 @@ function TrackPage() {
   const isOwner = userId && userId === track.owner_id;
 
   const handleFinish = (ms: number) => {
-    const prev = Number(localStorage.getItem(`dap.polytrack.pb.${trackRef}`) ?? "0");
-    const improved = !prev || ms < prev;
     recordPersonalBest(trackRef, ms);
     setLbKey((k) => k + 1);
-    if (improved) toast.success("New personal best!");
     if (!userId) { toast.info("Sign in to save to the site-wide leaderboard."); return; }
     submit({ data: { trackRef, timeMs: ms } }).catch(() => {});
   };
@@ -65,10 +62,11 @@ function TrackPage() {
   return (
     <div>
       <PolyTrackRunner
-        params={track.params as unknown as TrackParams}
+        data={track.params}
         season={track.season as Season}
         goal={track.goal}
         title={track.name}
+        trackRef={trackRef}
         onFinish={handleFinish}
         onExit={() => navigate({ to: "/games/polytrack/browse" })}
         exitLabel="Browse"

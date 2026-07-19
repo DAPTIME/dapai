@@ -4,10 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { listPublicTracks } from "@/lib/tracks.functions";
 import { THEMES, type Season } from "@/lib/polytrack-engine";
 import { TrackThumbnail } from "@/components/track-thumbnail";
-import type { TrackParams } from "@/lib/track-validation";
 
 export const Route = createFileRoute("/games/polytrack/browse")({
-  head: () => ({ meta: [{ title: "User Tracks — Poly Racer" }] }),
+  head: () => ({ meta: [{ title: "Community Tracks — DAP Track" }] }),
   component: BrowsePage,
 });
 
@@ -32,11 +31,11 @@ function BrowsePage() {
     <div className="mx-auto max-w-3xl animate-fade-in">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">🌐 User-Made Tracks</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Community-built Poly Racer levels.</p>
+          <h1 className="text-2xl font-bold">🌐 Community Tracks</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Player-built DAP Track levels.</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/games/polytrack" className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-primary">← Poly Racer</Link>
+          <Link to="/games/polytrack" className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-primary">← DAP Track</Link>
           <Link to="/games/polytrack/editor" className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Build one</Link>
         </div>
       </div>
@@ -59,13 +58,7 @@ function BrowsePage() {
               className="group overflow-hidden rounded-xl border border-border bg-card/40 transition-all hover:-translate-y-0.5 hover:border-primary"
               style={{ boxShadow: `inset 0 -3px 0 ${theme.ground}` }}
             >
-              <TrackThumbnail
-                params={t.params as unknown as TrackParams}
-                season={t.season as Season}
-                goal={t.goal}
-                width={320}
-                className="w-full border-b border-border"
-              />
+              <TrackThumbnail data={t.params} season={t.season as Season} width={320} className="w-full border-b border-border" />
               <div className="p-3">
                 <div className="flex items-center justify-between">
                   <div className="text-base font-semibold">{theme.emoji} {t.name}</div>
