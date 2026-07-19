@@ -39,7 +39,7 @@ const PB_KEY = (trackRef?: string) => trackRef ? `dap.track.ghost.${trackRef}` :
 export function PolyTrackRunner(props: Props & { trackRef?: string }) {
   const { data, season, title, onFinish, onExit, exitLabel, trackRef } = props;
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const controls = useGameControls<Action>({ gameId: "dap-track", defaults: DEFAULTS });
+  const controls = useGameControls<Action>("dap-track", DEFAULTS);
   const [timeMs, setTimeMs] = useState(0);
   const [status, setStatus] = useState<"ready" | "running" | "finished" | "paused">("ready");
   const [err, setErr] = useState<string | null>(null);
@@ -520,7 +520,7 @@ export function PolyTrackRunner(props: Props & { trackRef?: string }) {
 
       <TouchPad controls={controls} />
       <div className="mt-4 hidden sm:block">
-        <KeybindEditor gameId="dap-track" defaults={DEFAULTS} labels={LABELS} controls={controls} />
+        <KeybindEditor controls={controls} labels={LABELS} />
       </div>
     </div>
   );
