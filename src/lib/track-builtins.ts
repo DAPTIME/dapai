@@ -1,4 +1,4 @@
-// Poly Racer built-in tracks.
+// DAP Track built-in tracks.
 //
 // Layouts are described as a closed route of grid cells and compiled into
 // pieces: every piece's type and rotation is derived from the way the

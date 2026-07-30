@@ -1,4 +1,4 @@
-// Poly Racer tile-grid track editor.
+// DAP Track tile-grid track editor.
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -19,9 +19,9 @@ import { createTrack, updateTrack, publishTrack, unpublishTrack, deleteTrack, ge
 
 const searchSchema = z.object({ id: z.string().uuid().optional() });
 
-export const Route = createFileRoute("/games/polytrack/editor")({
+export const Route = createFileRoute("/games/daptrack/editor")({
   validateSearch: (s) => searchSchema.parse(s),
-  head: () => ({ meta: [{ title: "Track Editor — Poly Racer" }] }),
+  head: () => ({ meta: [{ title: "Track Editor — DAP Track" }] }),
   component: EditorPage,
 });
 
@@ -64,7 +64,7 @@ const DEFAULT_DATA: TrackData = {
 };
 
 function EditorPage() {
-  const { id } = useSearch({ from: "/games/polytrack/editor" });
+  const { id } = useSearch({ from: "/games/daptrack/editor" });
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
   const [name, setName] = useState("My Track");
@@ -234,7 +234,7 @@ function EditorPage() {
       } else {
         const { id: newId } = await create({ data: { name, season, params: data, goal } });
         toast.success("Track saved.");
-        navigate({ to: "/games/polytrack/editor", search: { id: newId } });
+        navigate({ to: "/games/daptrack/editor", search: { id: newId } });
       }
     } catch (e) { toast.error((e as Error).message); }
     finally { setSaving(false); }
@@ -252,12 +252,12 @@ function EditorPage() {
     if (!id) return;
     if (!confirm("Delete this track?")) return;
     await remove({ data: { id } });
-    navigate({ to: "/games/polytrack/editor", search: {} });
+    navigate({ to: "/games/daptrack/editor", search: {} });
     setData(DEFAULT_DATA); setPast([]); setFuture([]); setName("My Track"); setIsPublic(false);
   };
   const share = async () => {
     if (!id) return;
-    const url = `${window.location.origin}/games/polytrack/track/${id}`;
+    const url = `${window.location.origin}/games/daptrack/track/${id}`;
     try { await navigator.clipboard.writeText(url); toast.success("Link copied!"); }
     catch { toast.info(url); }
   };
@@ -288,7 +288,7 @@ function EditorPage() {
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h1 className="text-2xl font-bold">✏️ Track Editor</h1>
-          <Link to="/games/polytrack" className="text-sm text-muted-foreground hover:text-foreground">← Poly Racer</Link>
+          <Link to="/games/daptrack" className="text-sm text-muted-foreground hover:text-foreground">← DAP Track</Link>
         </div>
 
         <div className="mb-2 flex flex-wrap gap-1">
@@ -427,7 +427,7 @@ function EditorPage() {
           {myTracks.length === 0 && <p className="text-xs text-muted-foreground">No tracks yet.</p>}
           <div className="space-y-1">
             {myTracks.map((t) => (
-              <button key={t.id} onClick={() => navigate({ to: "/games/polytrack/editor", search: { id: t.id } })}
+              <button key={t.id} onClick={() => navigate({ to: "/games/daptrack/editor", search: { id: t.id } })}
                 className={`flex w-full items-center justify-between rounded-md border px-2 py-1.5 text-left text-sm hover:border-primary ${t.id === id ? "border-primary bg-primary/5" : "border-border"}`}>
                 <span className="truncate">{THEMES[t.season as Season].emoji} {t.name}</span>
                 <span className="text-xs text-muted-foreground">{t.is_public ? "🌐" : "🔒"}</span>
@@ -436,7 +436,7 @@ function EditorPage() {
           </div>
           <button
             onClick={() => {
-              navigate({ to: "/games/polytrack/editor", search: {} });
+              navigate({ to: "/games/daptrack/editor", search: {} });
               setName("New Track"); setData(DEFAULT_DATA); setPast([]); setFuture([]); setIsPublic(false);
             }}
             className="mt-2 w-full rounded-md border border-dashed border-border px-2 py-1.5 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
