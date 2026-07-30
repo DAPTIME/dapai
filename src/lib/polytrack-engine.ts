@@ -31,15 +31,21 @@ export type Theme = {
 };
 
 /**
- * Flat, high-key palettes. The look is a bright day with no haze: the
- * seasons change the ground and sky, while the road stays the same grey
- * so a track reads the same way wherever it is set.
+ * Flat, high-key palettes. The look is a bright day with no haze: one
+ * solid colour per surface, nothing muddy, nothing textured.
+ *
+ * The season owns the ground and the sky — those two carry the whole
+ * identity, so each pair is pushed far from the others: vivid grass under
+ * a soft blue, gold sand under a hot azure, rust leaf-litter under an
+ * amber haze, and snow under pale ice. The tarmac stays the same grey
+ * family throughout, with only a hair of colour temperature, so a track
+ * reads the same way wherever it is set.
  */
 export const THEMES: Record<Season, Theme> = {
-  spring: { ground: "#68bf4d", sky: "#8fd3f4", road: "#7f868c", roadSide: "#565c62", roadLine: "#f4f7f8", support: "#5b6167", prop: "#3f9e52", label: "Spring", emoji: "🌱" },
-  summer: { ground: "#e0be74", sky: "#ffd9a0", road: "#868b8f", roadSide: "#5c6165", roadLine: "#fbf7ef", support: "#6a6f73", prop: "#c78a46", label: "Summer", emoji: "🏜️" },
-  fall:   { ground: "#c47b34", sky: "#ffc98d", road: "#7c8388", roadSide: "#54595e", roadLine: "#f7f2ea", support: "#5a6065", prop: "#a8421b", label: "Fall",   emoji: "🍂" },
-  winter: { ground: "#eaf2fa", sky: "#c4e6fb", road: "#8b9299", roadSide: "#626a71", roadLine: "#ffffff", support: "#6d757c", prop: "#8fb4cf", label: "Winter", emoji: "❄️" },
+  spring: { ground: "#4fc23c", sky: "#9edcf7", road: "#83898f", roadSide: "#545a60", roadLine: "#f6fafb", support: "#4c5257", prop: "#1f8e3d", label: "Spring", emoji: "🌱" },
+  summer: { ground: "#f0c552", sky: "#4dbde9", road: "#8a8f92", roadSide: "#585d60", roadLine: "#fdfaef", support: "#50555a", prop: "#d6862c", label: "Summer", emoji: "🏜️" },
+  fall:   { ground: "#d4701f", sky: "#ffbb6b", road: "#82878c", roadSide: "#53585d", roadLine: "#fbf6ec", support: "#4b5055", prop: "#9c2f14", label: "Fall",   emoji: "🍂" },
+  winter: { ground: "#eef5fd", sky: "#b6e3fb", road: "#868e96", roadSide: "#525960", roadLine: "#ffffff", support: "#4a5158", prop: "#2f7a5c", label: "Winter", emoji: "❄️" },
 };
 
 export const TILE = 10;          // world units per tile
@@ -359,6 +365,17 @@ export function writeGhost(trackRef: string, samples: GhostSample[]): void {
 
 // ── Thumbnail ───────────────────────────────────────────────────────
 
+/** Gate colours, matching the 3D track so a card previews the real thing. */
+const MARK_START = "#2fbf4a";
+const MARK_FINISH_LIGHT = "#f2f4f5";
+const MARK_FINISH_DARK = "#1c2024";
+const MARK_CHECKPOINT = "#2f80ed";
+const MARK_BOOST = "#22d3ee";
+const MARK_JUMP = "#f7c948";
+
+/** Road width in thumbnail pixels, as a fraction of one tile. */
+const THUMB_ROAD = (ROAD_HALF * 2) / TILE;
+
 /** Small top-down 2D thumbnail of a tile track. Not the 3D renderer. */
 export function drawTrackThumbnail(
   ctx: CanvasRenderingContext2D,
@@ -368,6 +385,7 @@ export function drawTrackThumbnail(
   height: number,
 ): void {
   const theme = THEMES[season];
+  ctx.save();
   ctx.fillStyle = theme.ground;
   ctx.fillRect(0, 0, width, height);
   const data = toTrackData(input);
@@ -375,6 +393,7 @@ export function drawTrackThumbnail(
     ctx.fillStyle = "rgba(0,0,0,0.4)";
     ctx.font = "12px sans-serif";
     ctx.fillText("legacy track", 8, 18);
+    ctx.restore();
     return;
   }
 
@@ -388,16 +407,51 @@ export function drawTrackThumbnail(
   const pad = 1;
   minX -= pad; maxX += pad; minZ -= pad; maxZ += pad;
   const gw = maxX - minX + 1, gh = maxZ - minZ + 1;
-  const scale = Math.min(width / gw, height / gh);
-  const ox = (width - gw * scale) / 2 - minX * scale;
-  const oy = (height - gh * scale) / 2 - minZ * scale;
+  // Keep a margin of clear ground inside the frame: a card thumbnail that
+  // runs into its own edge looks cropped even when it isn't.
+  const s = Math.min((width * 0.9) / gw, (height * 0.9) / gh);
+  const ox = (width - gw * s) / 2 - minX * s;
+  const oy = (height - gh * s) / 2 - minZ * s;
 
-  const px = (x: number) => ox + x * scale;
-  const py = (z: number) => oy + z * scale;
+  const px = (x: number) => ox + x * s;
+  const py = (z: number) => oy + z * s;
 
-  // Paint low decks first so overpasses sit on top of what they cross.
-  const sorted = [...data.tiles].sort((a, b) => a.y - b.y);
-  for (const t of sorted) drawTileTop(ctx, t, theme, px, py, scale);
+  // Three bands make the road crisp: a dark kerb, the painted edge line,
+  // then the tarmac itself. Each is one path per deck, so the seams
+  // between neighbouring pieces vanish and only the road's own outline
+  // is drawn.
+  const roadW = s * THUMB_ROAD;
+  const lineW = roadW + 2 * Math.max(1.1, s * 0.05);
+  const kerbW = Math.min(s, lineW + 2 * Math.max(1.2, s * 0.055));
+
+  const decks = new Map<number, Tile[]>();
+  for (const t of data.tiles) {
+    const deck = decks.get(t.y);
+    if (deck) deck.push(t); else decks.set(t.y, [t]);
+  }
+
+  // Low decks first, so a flyover — shadow and all — lands on top of the
+  // road it crosses.
+  for (const level of [...decks.keys()].sort((a, b) => a - b)) {
+    const deck = decks.get(level) ?? [];
+    if (level > 0) {
+      const drop = s * 0.13 * level;
+      ctx.save();
+      ctx.globalAlpha = 0.26;
+      ctx.fillStyle = "#000000";
+      ctx.translate(drop, drop);
+      fillDeck(ctx, deck, px, py, s, kerbW);
+      ctx.restore();
+    }
+    ctx.fillStyle = lift(theme.roadSide, Math.min(0.3, level * 0.1));
+    fillDeck(ctx, deck, px, py, s, kerbW);
+    ctx.fillStyle = theme.roadLine;
+    fillDeck(ctx, deck, px, py, s, lineW);
+    ctx.fillStyle = level > 0 ? lift(theme.road, Math.min(0.42, level * 0.15)) : theme.road;
+    fillDeck(ctx, deck, px, py, s, roadW);
+    for (const t of deck) drawTileMark(ctx, t, px, py, s, roadW);
+  }
+  ctx.restore();
 }
 
 /** Lighten a hex colour toward white — raised decks read brighter. */
@@ -408,70 +462,35 @@ function lift(hex: string, amount: number): string {
   return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
-function drawTileTop(
+/**
+ * Fill every piece of one deck as a single path of width `w`. Pieces
+ * never overlap within a deck, so one fill draws the whole ribbon with
+ * no seams and no doubled-up alpha.
+ */
+function fillDeck(
   ctx: CanvasRenderingContext2D,
-  t: Tile,
-  theme: Theme,
+  deck: Tile[],
   px: (x: number) => number,
   py: (z: number) => number,
   s: number,
+  w: number,
 ) {
-  const cx = px(t.x) + s / 2;
-  const cy = py(t.z) + s / 2;
-  const roadW = s * (ROAD_HALF * 2) / TILE;
-
-  ctx.save();
-  ctx.translate(cx, cy);
-  // Canvas Y grows downward, so a +rot Y-rotation is a -rot canvas turn.
-  ctx.rotate((-t.rot * Math.PI) / 2);
-
-  if (t.y > 0) {
-    // Drop shadow so height reads at a glance.
+  ctx.beginPath();
+  for (const t of deck) {
     ctx.save();
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = "#000";
-    ctx.translate(s * 0.06 * t.y, s * 0.06 * t.y);
-    paintRoad(ctx, t, roadW, s);
+    ctx.translate(px(t.x) + s / 2, py(t.z) + s / 2);
+    // Canvas Y grows downward, so a +rot Y-rotation is a -rot canvas turn.
+    ctx.rotate((-t.rot * Math.PI) / 2);
+    addRoad(ctx, t, w, s);
     ctx.restore();
   }
-
-  ctx.fillStyle = t.y > 0 ? lift(theme.road, Math.min(0.45, t.y * 0.13)) : theme.road;
-  paintRoad(ctx, t, roadW, s);
-
-  if (t.type === "start" || t.type === "finish") {
-    ctx.fillStyle = t.type === "start" ? "#22c55e" : "#ef4444";
-    ctx.fillRect(-roadW / 2, -s * 0.1, roadW, Math.max(2, s * 0.2));
-  } else if (t.type === "checkpoint") {
-    ctx.fillStyle = "#3b82f6";
-    ctx.fillRect(-roadW / 2, -Math.max(1.5, s * 0.08), roadW, Math.max(3, s * 0.16));
-  } else if (t.type === "boost") {
-    ctx.fillStyle = "#06b6d4";
-    ctx.fillRect(-roadW / 2, -s / 2, roadW, s);
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    for (const off of [-0.22, 0.1]) {
-      ctx.beginPath();
-      ctx.moveTo(-roadW / 4, s * off + s * 0.16);
-      ctx.lineTo(roadW / 4, s * off + s * 0.16);
-      ctx.lineTo(0, s * off - s * 0.02);
-      ctx.closePath();
-      ctx.fill();
-    }
-  } else if (isRamp(t.type) || t.type === "jump") {
-    ctx.fillStyle = t.type === "rampDown" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.4)";
-    ctx.beginPath();
-    ctx.moveTo(-roadW / 2, -s / 2);
-    ctx.lineTo(roadW / 2, -s / 2);
-    ctx.lineTo(0, s / 2);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
+  ctx.fill();
 }
 
-/** Paints the road surface of a tile in its local frame. */
-function paintRoad(ctx: CanvasRenderingContext2D, t: Tile, roadW: number, s: number) {
+/** Adds one piece's road band to the current path, in its local frame. */
+function addRoad(ctx: CanvasRenderingContext2D, t: Tile, w: number, s: number) {
   if (t.type !== "curveL" && t.type !== "curveR") {
-    ctx.fillRect(-roadW / 2, -s / 2, roadW, s);
+    ctx.rect(-w / 2, -s / 2, w, s);
     return;
   }
   // Quarter annulus centred on the corner the bend hugs. In local space
@@ -479,13 +498,74 @@ function paintRoad(ctx: CanvasRenderingContext2D, t: Tile, roadW: number, s: num
   const sign = curveSign(t.type);
   const ccx = sign * (s / 2), ccy = -s / 2;
   const r = s / 2;
-  const outer = r + roadW / 2;
-  const inner = Math.max(0, r - roadW / 2);
+  const outer = r + w / 2;
+  const inner = Math.max(0, r - w / 2);
   const a0 = sign > 0 ? Math.PI : 0;
   const a1 = Math.PI / 2;
-  ctx.beginPath();
+  ctx.moveTo(ccx + Math.cos(a0) * outer, ccy + Math.sin(a0) * outer);
   ctx.arc(ccx, ccy, outer, a0, a1, sign > 0);
   ctx.arc(ccx, ccy, inner, a1, a0, sign < 0);
   ctx.closePath();
-  ctx.fill();
+}
+
+/** Two forward-pointing chevrons, used for ramps, jumps and boosts. */
+function chevrons(ctx: CanvasRenderingContext2D, roadW: number, s: number, color: string) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1.1, s * 0.07);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (const off of [-0.28, 0.0]) {
+    ctx.beginPath();
+    ctx.moveTo(-roadW * 0.3, s * off);
+    ctx.lineTo(0, s * off + s * 0.2);
+    ctx.lineTo(roadW * 0.3, s * off);
+    ctx.stroke();
+  }
+}
+
+/** Gates, boost pads and ramp arrows, painted on top of the tarmac. */
+function drawTileMark(
+  ctx: CanvasRenderingContext2D,
+  t: Tile,
+  px: (x: number) => number,
+  py: (z: number) => number,
+  s: number,
+  roadW: number,
+) {
+  if (t.type === "straight" || t.type === "curveL" || t.type === "curveR") return;
+
+  ctx.save();
+  ctx.translate(px(t.x) + s / 2, py(t.z) + s / 2);
+  ctx.rotate((-t.rot * Math.PI) / 2);
+
+  if (t.type === "start") {
+    ctx.fillStyle = MARK_START;
+    ctx.fillRect(-roadW / 2, -Math.max(1.5, s * 0.09), roadW, Math.max(3, s * 0.18));
+  } else if (t.type === "finish") {
+    // Chequered band, the same flag the 3D finish gate flies.
+    const cols = 4, rows = 2;
+    const band = Math.max(3.2, s * 0.2);
+    const cw = roadW / cols, ch = band / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        ctx.fillStyle = (r + c) % 2 === 0 ? MARK_FINISH_LIGHT : MARK_FINISH_DARK;
+        ctx.fillRect(-roadW / 2 + c * cw, -band / 2 + r * ch, cw + 0.35, ch + 0.35);
+      }
+    }
+  } else if (t.type === "checkpoint") {
+    ctx.fillStyle = MARK_CHECKPOINT;
+    ctx.fillRect(-roadW / 2, -Math.max(1.2, s * 0.07), roadW, Math.max(2.4, s * 0.14));
+  } else if (t.type === "boost") {
+    ctx.fillStyle = MARK_BOOST;
+    ctx.fillRect(-roadW / 2, -s / 2, roadW, s);
+    chevrons(ctx, roadW, s, "rgba(255,255,255,0.92)");
+  } else if (t.type === "jump") {
+    ctx.fillStyle = MARK_JUMP;
+    ctx.fillRect(-roadW / 2, s * 0.2, roadW, Math.max(2.2, s * 0.16));
+    chevrons(ctx, roadW, s, "rgba(255,255,255,0.85)");
+  } else if (isRamp(t.type)) {
+    chevrons(ctx, roadW, s, t.type === "rampUp" ? "rgba(255,255,255,0.78)" : "rgba(0,0,0,0.32)");
+  }
+
+  ctx.restore();
 }
