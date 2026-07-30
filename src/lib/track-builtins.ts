@@ -1,81 +1,211 @@
-// DAP Track built-in demo tracks (tile-based v2 format).
-import type { TrackData } from "./track-validation";
-import type { Season } from "./polytrack-engine";
+// Poly Racer built-in tracks (tile-based v2 format).
+//
+// Layouts are described as a closed route of grid cells and then compiled
+// into tiles: every piece's type and rotation is derived from the way the
+// route actually turns, so built-ins are guaranteed to connect end to end.
+import {
+  autoLevel, walkTrack,
+  type Rot, type Tile, type TileType, type TrackData,
+} from "./track-validation";
+import { TILE, type Season } from "./polytrack-engine";
 
 export type BuiltinLevel = {
   id: number;
   name: string;
   season: Season;
-  goal: number;      // target time (ms) for a "gold" run
+  /** Author-medal target time, ms. */
+  goal: number;
   data: TrackData;
 };
 
-// Helper: a rectangular loop with an inner ramp. Tiles are placed on
-// integer (x,z) grid coords. rot: 0=north,1=east,2=south,3=west.
-function loop(w: number, h: number): TrackData {
-  const tiles: TrackData["tiles"] = [];
-  // bottom row going east (rot 1 = pointing east)
-  for (let i = 1; i < w - 1; i++) tiles.push({ type: "straight", x: i, z: h - 1, rot: 1 });
-  // right side going north
-  for (let j = 1; j < h - 1; j++) tiles.push({ type: "straight", x: w - 1, z: j, rot: 0 });
-  // top going west
-  for (let i = 1; i < w - 1; i++) tiles.push({ type: "straight", x: i, z: 0, rot: 1 });
-  // left side going south
-  for (let j = 1; j < h - 1; j++) tiles.push({ type: "straight", x: 0, z: j, rot: 0 });
-  // corners
-  tiles.push({ type: "curveL", x: w - 1, z: h - 1, rot: 0 });
-  tiles.push({ type: "curveL", x: w - 1, z: 0,     rot: 3 });
-  tiles.push({ type: "curveL", x: 0,     z: 0,     rot: 2 });
-  tiles.push({ type: "curveL", x: 0,     z: h - 1, rot: 1 });
-  return { version: 2, tiles };
+type Pt = [number, number];
+
+const dirIndex = (dx: number, dz: number): Rot => {
+  if (dz > 0) return 0;
+  if (dx > 0) return 1;
+  if (dz < 0) return 2;
+  return 3;
+};
+
+/** Does the route go straight through cell i (no turn)? */
+function isStraightAt(cells: Pt[], i: number): boolean {
+  const n = cells.length;
+  const [x, z] = cells[((i % n) + n) % n];
+  const [px, pz] = cells[((i - 1) % n + n) % n];
+  const [nx, nz] = cells[(i + 1) % n];
+  return dirIndex(x - px, z - pz) === dirIndex(nx - x, nz - z);
 }
 
-function withStart(base: TrackData, sx: number, sz: number, srot: 0|1|2|3, fx: number, fz: number, frot: 0|1|2|3, checkpoints: Array<{x:number;z:number;rot:0|1|2|3}> = []): TrackData {
-  const tiles = base.tiles.filter((t) => !((t.x === sx && t.z === sz) || (t.x === fx && t.z === fz)));
-  tiles.push({ type: "start", x: sx, z: sz, rot: srot });
-  tiles.push({ type: "finish", x: fx, z: fz, rot: frot });
-  for (const c of checkpoints) tiles.push({ type: "checkpoint", x: c.x, z: c.z, rot: c.rot });
-  return { version: 2, tiles };
+/**
+ * Expand axis-aligned waypoints into every grid cell along the route.
+ * `points` describes a closed circuit; the final point must repeat the
+ * first, and the duplicate is dropped.
+ *
+ * The result is rotated so index 0 is a straight preceded by a straight —
+ * the start line and the finish line right behind it both need flat road.
+ */
+function route(points: Pt[]): Pt[] {
+  const cells: Pt[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const [ax, az] = points[i];
+    const [bx, bz] = points[i + 1];
+    if (ax !== bx && az !== bz) {
+      throw new Error(`route legs must be axis-aligned (${ax},${az})→(${bx},${bz})`);
+    }
+    const sx = Math.sign(bx - ax), sz = Math.sign(bz - az);
+    let x = ax, z = az;
+    // Push the leg start plus every cell up to (not including) the next
+    // waypoint — the next leg contributes it as its own start.
+    while (x !== bx || z !== bz) {
+      cells.push([x, z]);
+      x += sx; z += sz;
+    }
+  }
+  for (let s = 0; s < cells.length; s++) {
+    if (isStraightAt(cells, s) && isStraightAt(cells, s - 1)) {
+      return [...cells.slice(s), ...cells.slice(0, s)];
+    }
+  }
+  throw new Error("route has no straight run to put the start and finish on");
 }
 
-// Track 1: gentle 6x5 loop
-const T1 = withStart(loop(6, 5), 3, 4, 1, 2, 4, 1, [
-  { x: 5, z: 2, rot: 0 }, { x: 3, z: 0, rot: 1 }, { x: 0, z: 2, rot: 0 },
+type Feature =
+  | { at: number; type: Exclude<TileType, "start" | "finish" | "curveL" | "curveR" | "straight"> };
+
+/** Compile a closed route into tiles, with features placed by route index. */
+function compile(cells: Pt[], features: Feature[] = []): TrackData {
+  const n = cells.length;
+  const tiles: Tile[] = [];
+  const straight: boolean[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const [x, z] = cells[i];
+    const [prevX, prevZ] = cells[(i - 1 + n) % n];
+    const [nextX, nextZ] = cells[(i + 1) % n];
+    const inDir = dirIndex(x - prevX, z - prevZ);
+    const outDir = dirIndex(nextX - x, nextZ - z);
+
+    let type: TileType = "straight";
+    if (outDir === (inDir + 1) % 4) type = "curveL";
+    else if (outDir === (inDir + 3) % 4) type = "curveR";
+    else if (outDir !== inDir) throw new Error(`route doubles back at ${x},${z}`);
+
+    straight.push(type === "straight");
+    tiles.push({ type, x, z, rot: inDir });
+  }
+
+  // Index 0 is the start line; the cell right before it is the finish, so
+  // a lap ends where it began.
+  const used = new Set<number>();
+  const place = (i: number, type: TileType) => {
+    const idx = ((i % n) + n) % n;
+    if (!straight[idx]) throw new Error(`cannot place ${type} on a corner (index ${idx})`);
+    if (used.has(idx)) throw new Error(`two features share route index ${idx}`);
+    used.add(idx);
+    tiles[idx] = { ...tiles[idx], type };
+  };
+  place(0, "start");
+  place(n - 1, "finish");
+  for (const f of features) place(f.at, f.type);
+
+  return autoLevel({ version: 2, tiles });
+}
+
+/** Route index of the nearest straight to `frac` of the way round. */
+function straightNear(cells: Pt[], frac: number): number {
+  const n = cells.length;
+  const target = Math.round(frac * n);
+  for (let d = 0; d < n; d++) {
+    for (const i of [target + d, target - d]) {
+      const idx = ((i % n) + n) % n;
+      if (idx !== 0 && idx !== n - 1 && isStraightAt(cells, idx)) return idx;
+    }
+  }
+  return 1;
+}
+
+/**
+ * Author-medal target: straights are taken near top speed, corners cost
+ * time, and every ramp or jump adds a beat of air.
+ */
+function targetTime(data: TrackData): number {
+  let seconds = 0;
+  for (const t of data.tiles) {
+    if (t.type === "curveL" || t.type === "curveR") seconds += TILE / 14;
+    else seconds += TILE / 30;
+    if (t.type === "rampUp" || t.type === "rampDown") seconds += 0.25;
+    if (t.type === "jump") seconds += 0.5;
+    if (t.type === "boost") seconds -= 0.15;
+  }
+  return Math.round((seconds + 1.2) * 1000);
+}
+
+function level(id: number, name: string, season: Season, cells: Pt[], features: Feature[]): BuiltinLevel {
+  const data = compile(cells, features);
+  const walk = walkTrack(data);
+  if (!walk.reachesFinish) {
+    throw new Error(`built-in "${name}" is not drivable: ${walk.problem ?? "unknown"}`);
+  }
+  return { id, name, season, goal: targetTime(data), data };
+}
+
+// ── Layouts ─────────────────────────────────────────────────────────
+
+// 1 — a plain rectangle to learn the car on.
+const SPROUT = route([[1, 1], [8, 1], [8, 6], [1, 6], [1, 1]]);
+
+// 2 — long loop with a climb onto an elevated back straight.
+const SUNBAKED = route([[1, 1], [10, 1], [10, 7], [1, 7], [1, 1]]);
+
+// 3 — two hairpins stacked into a switchback.
+const COPPER = route([
+  [2, 2], [9, 2], [9, 4], [3, 4], [3, 6], [9, 6], [9, 8], [2, 8], [2, 2],
 ]);
 
-// Track 2: 8x6 loop with a ramp on the top row
-const _t2 = loop(8, 6);
-_t2.tiles = _t2.tiles.map((t) => (t.x === 4 && t.z === 0 ? { ...t, type: "rampUp", elev: 0 } : t));
-_t2.tiles.push({ type: "rampDown", x: 5, z: 0, rot: 1, elev: 1 });
-// tighten inner spot to fit ramp — replace next tile as straight at elev 1
-_t2.tiles = _t2.tiles.map((t) => (t.x === 5 && t.z === 0 && t.type !== "rampDown" ? { ...t, elev: 1 } : t));
-const T2 = withStart(_t2, 4, 5, 1, 3, 5, 1, [
-  { x: 7, z: 3, rot: 0 }, { x: 3, z: 0, rot: 1 }, { x: 0, z: 3, rot: 0 },
+// 4 — an out-and-back with a long middle spur.
+const AMBER = route([
+  [2, 1], [11, 1], [11, 4], [6, 4], [6, 7], [11, 7], [11, 10], [2, 10], [2, 1],
 ]);
 
-// Track 3: figure-8-ish — two joined boxes
-const T3: TrackData = (() => {
-  const t: TrackData["tiles"] = [];
-  // outer 8-wide, 4-tall loop
-  for (let i = 1; i < 7; i++) { t.push({ type: "straight", x: i, z: 3, rot: 1 }); t.push({ type: "straight", x: i, z: 0, rot: 1 }); }
-  for (let j = 1; j < 3; j++) { t.push({ type: "straight", x: 0, z: j, rot: 0 }); t.push({ type: "straight", x: 7, z: j, rot: 0 }); }
-  t.push({ type: "curveL", x: 7, z: 3, rot: 0 });
-  t.push({ type: "curveL", x: 7, z: 0, rot: 3 });
-  t.push({ type: "curveL", x: 0, z: 0, rot: 2 });
-  t.push({ type: "curveL", x: 0, z: 3, rot: 1 });
-  return withStart({ version: 2, tiles: t }, 4, 3, 1, 3, 3, 1, [
-    { x: 7, z: 2, rot: 0 }, { x: 4, z: 0, rot: 1 }, { x: 0, z: 2, rot: 0 },
-  ]);
-})();
-
-// Track 4: big 10x7 loop, more curves for pacing
-const T4 = withStart(loop(10, 7), 5, 6, 1, 4, 6, 1, [
-  { x: 9, z: 3, rot: 0 }, { x: 5, z: 0, rot: 1 }, { x: 0, z: 3, rot: 0 },
+// 5 — the grand tour: elevation, boosts and a jump.
+const FROST = route([
+  [1, 1], [14, 1], [14, 5], [9, 5], [9, 9], [14, 9], [14, 13], [1, 13], [1, 1],
 ]);
 
 export const BUILTINS: BuiltinLevel[] = [
-  { id: 1, name: "Sprout Loop",     season: "spring", goal: 22000, data: T1 },
-  { id: 2, name: "Sunbaked Rise",   season: "summer", goal: 32000, data: T2 },
-  { id: 3, name: "Amber Twin",      season: "fall",   goal: 34000, data: T3 },
-  { id: 4, name: "Frost Grand Tour",season: "winter", goal: 42000, data: T4 },
+  level(1, "Sprout Loop", "spring", SPROUT, [
+    { at: straightNear(SPROUT, 0.25), type: "checkpoint" },
+    { at: straightNear(SPROUT, 0.5), type: "checkpoint" },
+    { at: straightNear(SPROUT, 0.75), type: "checkpoint" },
+  ]),
+  level(2, "Sunbaked Rise", "summer", SUNBAKED, [
+    { at: 3, type: "rampUp" },
+    { at: straightNear(SUNBAKED, 0.25), type: "checkpoint" },
+    { at: straightNear(SUNBAKED, 0.45), type: "rampDown" },
+    { at: straightNear(SUNBAKED, 0.6), type: "checkpoint" },
+    { at: straightNear(SUNBAKED, 0.78), type: "checkpoint" },
+    { at: straightNear(SUNBAKED, 0.9), type: "boost" },
+  ]),
+  level(3, "Copper Coil", "fall", COPPER, [
+    { at: straightNear(COPPER, 0.2), type: "checkpoint" },
+    { at: straightNear(COPPER, 0.45), type: "checkpoint" },
+    { at: straightNear(COPPER, 0.7), type: "checkpoint" },
+    { at: straightNear(COPPER, 0.9), type: "boost" },
+  ]),
+  level(4, "Amber Twin", "fall", AMBER, [
+    { at: 3, type: "boost" },
+    { at: straightNear(AMBER, 0.2), type: "checkpoint" },
+    { at: straightNear(AMBER, 0.4), type: "jump" },
+    { at: straightNear(AMBER, 0.55), type: "checkpoint" },
+    { at: straightNear(AMBER, 0.8), type: "checkpoint" },
+  ]),
+  level(5, "Frost Grand Tour", "winter", FROST, [
+    { at: 4, type: "rampUp" },
+    { at: straightNear(FROST, 0.15), type: "checkpoint" },
+    { at: straightNear(FROST, 0.3), type: "rampDown" },
+    { at: straightNear(FROST, 0.42), type: "checkpoint" },
+    { at: straightNear(FROST, 0.58), type: "boost" },
+    { at: straightNear(FROST, 0.68), type: "jump" },
+    { at: straightNear(FROST, 0.8), type: "checkpoint" },
+  ]),
 ];

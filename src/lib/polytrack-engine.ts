@@ -1,10 +1,12 @@
-// DAP Track shared engine constants: themes, tile sizes, top-down
-// thumbnail renderer, and time formatting. No three.js here — this
-// module is imported by the server for validation-adjacent uses and
-// must stay browser-safe & DOM-free (canvas only used from client
-// components).
-import type { TrackData, Tile } from "./track-validation";
-import { isTrackData } from "./track-validation";
+// Poly Racer shared engine: themes, tile geometry constants, the surface
+// sampler that both the physics and the camera use, and the top-down
+// thumbnail renderer.
+//
+// No three.js here — this module is imported by the server for
+// validation-adjacent uses and must stay browser-safe & DOM-free (canvas
+// is only touched from client components).
+import type { TrackData, Tile, Rot, TileType } from "./track-validation";
+import { isTrackData, rotIsForward } from "./track-validation";
 
 export type Season = "spring" | "summer" | "fall" | "winter";
 
@@ -17,18 +19,37 @@ export type Theme = {
   emoji: string;
   fleck: string;
   sky: string;
+  /** Pillars / underside of the elevated road. */
+  support: string;
+  /** Scatter props dotted around the terrain. */
+  prop: string;
 };
 
 export const THEMES: Record<Season, Theme> = {
-  spring: { ground: "#4ea862", road: "#3a3a44", roadEdge: "#e5e7eb", dash: "#fde047", label: "Spring", emoji: "🌱", fleck: "#7ed07a", sky: "#8ec9ff" },
-  summer: { ground: "#d9b26a", road: "#a88558", roadEdge: "#f4e2b8", dash: "#ffffff", label: "Summer", emoji: "🏜️", fleck: "#f5deb3", sky: "#ffd47a" },
-  fall:   { ground: "#8a5a2b", road: "#3a3a44", roadEdge: "#e5e7eb", dash: "#fde047", label: "Fall",   emoji: "🍂", fleck: "#f97316", sky: "#f4b183" },
-  winter: { ground: "#e8eef5", road: "#c9d3de", roadEdge: "#94a3b8", dash: "#64748b", label: "Winter", emoji: "❄️", fleck: "#ffffff", sky: "#cfe8f5" },
+  spring: { ground: "#4ea862", road: "#3a3a44", roadEdge: "#e5e7eb", dash: "#fde047", label: "Spring", emoji: "🌱", fleck: "#7ed07a", sky: "#8ec9ff", support: "#2f2f38", prop: "#2f8f4e" },
+  summer: { ground: "#d9b26a", road: "#a88558", roadEdge: "#f4e2b8", dash: "#ffffff", label: "Summer", emoji: "🏜️", fleck: "#f5deb3", sky: "#ffd47a", support: "#8a6a44", prop: "#c08a4a" },
+  fall:   { ground: "#8a5a2b", road: "#3a3a44", roadEdge: "#e5e7eb", dash: "#fde047", label: "Fall",   emoji: "🍂", fleck: "#f97316", sky: "#f4b183", support: "#2f2f38", prop: "#c2410c" },
+  winter: { ground: "#e8eef5", road: "#c9d3de", roadEdge: "#94a3b8", dash: "#64748b", label: "Winter", emoji: "❄️", fleck: "#ffffff", sky: "#cfe8f5", support: "#94a3b8", prop: "#7f9bb3" },
 };
 
 export const TILE = 10;          // world units per tile
 export const ROAD_HALF = 3.2;    // road half-width in world units
-export const RAMP_H = 2.2;       // world-height per elevation step
+export const RAMP_H = 3;         // world-height per elevation step
+export const JUMP_H = 1.9;       // kicker lip height on a jump tile
+export const ROAD_THICK = 0.5;   // visual slab thickness
+export const TERRAIN_Y = -0.4;   // terrain plane — off the road, but drivable
+
+/** Curve centreline radius. */
+export const CURVE_R = TILE / 2;
+
+/**
+ * Which way a bend hugs, in tile-local X. The world is right-handed with
+ * Y up, so a car facing +Z has its right hand at -X — a right-hander
+ * curls around a centre at local -X.
+ */
+export function curveSign(type: TileType): 1 | -1 {
+  return type === "curveR" ? -1 : 1;
+}
 
 export function formatMs(ms: number): string {
   const total = Math.max(0, Math.round(ms));
@@ -38,7 +59,14 @@ export function formatMs(ms: number): string {
   return `${m > 0 ? `${m}:${String(s).padStart(2, "0")}` : `${s}`}.${String(cs).padStart(2, "0")}`;
 }
 
-// Rotate a unit tile-local (dx, dz) in [-0.5..0.5] by rot*90° CW.
+/** Signed delta, e.g. "-1.24" / "+0.31". */
+export function formatDelta(ms: number): string {
+  const sign = ms < 0 ? "-" : "+";
+  return `${sign}${formatMs(Math.abs(ms))}`;
+}
+
+// Rotate a tile-local (dx, dz) by rot × 90° about Y — matching three.js'
+// Object3D.rotation.y so meshes and maths agree.
 export function rotateXZ(dx: number, dz: number, rot: number): [number, number] {
   const r = ((rot % 4) + 4) % 4;
   switch (r) {
@@ -49,7 +77,235 @@ export function rotateXZ(dx: number, dz: number, rot: number): [number, number] 
   }
 }
 
-// Small top-down 2D thumbnail of a tile track. Not the 3D renderer.
+/** Inverse of rotateXZ — world offset to tile-local. */
+export function unrotateXZ(dx: number, dz: number, rot: number): [number, number] {
+  return rotateXZ(dx, dz, (4 - (((rot % 4) + 4) % 4)) % 4);
+}
+
+// ── Medals ──────────────────────────────────────────────────────────
+// A track stores one target time; the tiers fan out from it the way
+// Poly Racer's author medals do.
+
+export type Medal = "author" | "gold" | "silver" | "bronze" | null;
+
+export const MEDAL_MULT = { author: 1, gold: 1.2, silver: 1.5, bronze: 2 } as const;
+
+export function medalFor(timeMs: number, goalMs: number): Medal {
+  if (timeMs <= goalMs * MEDAL_MULT.author) return "author";
+  if (timeMs <= goalMs * MEDAL_MULT.gold) return "gold";
+  if (timeMs <= goalMs * MEDAL_MULT.silver) return "silver";
+  if (timeMs <= goalMs * MEDAL_MULT.bronze) return "bronze";
+  return null;
+}
+
+export const MEDAL_META: Record<Exclude<Medal, null>, { label: string; emoji: string; color: string }> = {
+  author: { label: "Author", emoji: "🏆", color: "#a78bfa" },
+  gold:   { label: "Gold",   emoji: "🥇", color: "#fbbf24" },
+  silver: { label: "Silver", emoji: "🥈", color: "#cbd5e1" },
+  bronze: { label: "Bronze", emoji: "🥉", color: "#d97706" },
+};
+
+// ── Surface sampling ────────────────────────────────────────────────
+
+export type Surface = {
+  /** Whether the sample point sits on tarmac. Off road = nothing to drive on. */
+  onRoad: boolean;
+  /** Road surface height at the sample point. */
+  y: number;
+  /** Surface gradient, world space (dy/dx, dy/dz). */
+  gx: number;
+  gz: number;
+  /** Unit vector along the road centreline, pointing "forward" for the tile. */
+  dirX: number;
+  dirZ: number;
+  /** Signed distance from the centreline; |lateral| ≤ ROAD_HALF on road. */
+  lateral: number;
+  /** The tile the sample landed in, if any. */
+  tile: Tile | null;
+};
+
+const OFF: Surface = { onRoad: false, y: TERRAIN_Y, gx: 0, gz: 0, dirX: 0, dirZ: 1, lateral: Infinity, tile: null };
+
+/** Smooth 0→1 ramp used for the jump kicker. */
+function smoothstep(t: number): number {
+  const x = Math.max(0, Math.min(1, t));
+  return x * x * (3 - 2 * x);
+}
+
+/**
+ * Height profile along a tile's local Z axis, plus the local dy/dlz
+ * slope. `u` runs 0 (entry edge) → 1 (exit edge).
+ */
+function profile(type: TileType, elev: number, u: number): { y: number; slope: number } {
+  const base = elev * RAMP_H;
+  switch (type) {
+    case "rampUp":
+      return { y: base + u * RAMP_H, slope: RAMP_H / TILE };
+    case "rampDown":
+      return { y: base - u * RAMP_H, slope: -RAMP_H / TILE };
+    case "jump": {
+      const k = smoothstep((u - 0.45) / 0.55);
+      // d/du of smoothstep, converted to per-world-unit.
+      const t = Math.max(0, Math.min(1, (u - 0.45) / 0.55));
+      const dk = (6 * t * (1 - t)) / 0.55;
+      return { y: base + k * JUMP_H, slope: (dk * JUMP_H) / TILE };
+    }
+    default:
+      return { y: base, slope: 0 };
+  }
+}
+
+export type Sampler = {
+  /** World-space surface probe. */
+  at: (wx: number, wz: number) => Surface;
+  /** Grid → world helpers (the track is centred on the origin). */
+  worldX: (gx: number) => number;
+  worldZ: (gz: number) => number;
+  gridX: (wx: number) => number;
+  gridZ: (wz: number) => number;
+  tileAt: (wx: number, wz: number) => Tile | null;
+  /** Centre of a tile in world space, on the road surface. */
+  tileCenter: (t: Tile) => { x: number; y: number; z: number };
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
+};
+
+/**
+ * Build a sampler for a track. The track is re-centred on the origin so
+ * the camera and fog behave regardless of where it was drawn on the grid.
+ */
+export function makeSampler(track: TrackData): Sampler {
+  const map = new Map<string, Tile>();
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const t of track.tiles) {
+    map.set(`${t.x},${t.z}`, t);
+    if (t.x < minX) minX = t.x;
+    if (t.x > maxX) maxX = t.x;
+    if (t.z < minZ) minZ = t.z;
+    if (t.z > maxZ) maxZ = t.z;
+  }
+  if (!Number.isFinite(minX)) { minX = maxX = minZ = maxZ = 0; }
+  const cx = (minX + maxX) / 2;
+  const cz = (minZ + maxZ) / 2;
+
+  const worldX = (gx: number) => (gx - cx) * TILE;
+  const worldZ = (gz: number) => (gz - cz) * TILE;
+  const gridX = (wx: number) => wx / TILE + cx;
+  const gridZ = (wz: number) => wz / TILE + cz;
+
+  const tileAt = (wx: number, wz: number): Tile | null =>
+    map.get(`${Math.round(gridX(wx))},${Math.round(gridZ(wz))}`) ?? null;
+
+  const at = (wx: number, wz: number): Surface => {
+    const t = tileAt(wx, wz);
+    if (!t) return OFF;
+    const elev = t.elev ?? 0;
+    // World offset from the tile centre → tile-local frame.
+    const [lx, lz] = unrotateXZ(wx - worldX(t.x), wz - worldZ(t.z), t.rot);
+
+    if (t.type === "curveL" || t.type === "curveR") {
+      const sign = curveSign(t.type);
+      const ccx = sign * (TILE / 2), ccz = -TILE / 2;
+      const rx = lx - ccx, rz = lz - ccz;
+      const d = Math.hypot(rx, rz) || 1e-6;
+      // +ve lateral is to the car's right, matching the straight case.
+      const lateral = (d - CURVE_R) * sign;
+      // Tangent: rotate the radial vector 90° in the direction of travel.
+      const tanX = (-rz / d) * -sign;
+      const tanZ = (rx / d) * -sign;
+      const [dirX, dirZ] = rotateXZ(tanX, tanZ, t.rot);
+      return {
+        onRoad: Math.abs(lateral) <= ROAD_HALF,
+        y: elev * RAMP_H,
+        gx: 0, gz: 0,
+        dirX, dirZ,
+        lateral,
+        tile: t,
+      };
+    }
+
+    const u = (lz + TILE / 2) / TILE;
+    const { y, slope } = profile(t.type, elev, u);
+    // Local gradient points along +Z; rotate into world space.
+    const [gx, gz] = rotateXZ(0, slope, t.rot);
+    const [dirX, dirZ] = rotateXZ(0, 1, t.rot);
+    return {
+      onRoad: Math.abs(lx) <= ROAD_HALF,
+      y,
+      gx, gz,
+      dirX, dirZ,
+      lateral: -lx,   // local +X is the driver's left
+      tile: t,
+    };
+  };
+
+  const tileCenter = (t: Tile) => {
+    if (t.type === "curveL" || t.type === "curveR") {
+      // Middle of the arc, not the middle of the square.
+      const sign = curveSign(t.type);
+      const a = Math.PI / 4;
+      const lx = sign * (TILE / 2) - sign * Math.cos(a) * CURVE_R;
+      const lz = -TILE / 2 + Math.sin(a) * CURVE_R;
+      const [ox, oz] = rotateXZ(lx, lz, t.rot);
+      return { x: worldX(t.x) + ox, y: (t.elev ?? 0) * RAMP_H, z: worldZ(t.z) + oz };
+    }
+    const { y } = profile(t.type, t.elev ?? 0, 0.5);
+    return { x: worldX(t.x), y, z: worldZ(t.z) };
+  };
+
+  return { at, worldX, worldZ, gridX, gridZ, tileAt, tileCenter, bounds: { minX, maxX, minZ, maxZ } };
+}
+
+/** World-space heading (yaw) a car should have when it enters `t`. */
+export function tileYaw(t: Tile, enterDir: Rot): number {
+  return (rotIsForward(t, enterDir) ? t.rot : ((t.rot + 2) % 4)) * (Math.PI / 2);
+}
+
+// ── Local records ───────────────────────────────────────────────────
+// Personal bests and ghost recordings live in localStorage, keyed by the
+// same track ref the site-wide leaderboard uses.
+
+export type GhostSample = { t: number; x: number; y: number; z: number; ry: number };
+
+const pbKey = (trackRef: string) => `dap.polytrack.pb.${trackRef}`;
+const ghostKey = (trackRef: string) => `dap.polytrack.ghost.${trackRef}`;
+
+export function readPersonalBest(trackRef: string): number | null {
+  try {
+    const raw = localStorage.getItem(pbKey(trackRef));
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch { return null; }
+}
+
+/** Save a run locally. Returns the personal best after this run. */
+export function recordPersonalBest(trackRef: string, timeMs: number): number {
+  const prev = readPersonalBest(trackRef);
+  const best = prev == null ? timeMs : Math.min(prev, timeMs);
+  try { localStorage.setItem(pbKey(trackRef), String(Math.round(best))); } catch { /* ignore */ }
+  return best;
+}
+
+export function readGhost(trackRef: string): GhostSample[] | null {
+  try {
+    const raw = localStorage.getItem(ghostKey(trackRef));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as GhostSample[];
+    return Array.isArray(parsed) && parsed.length > 1 ? parsed : null;
+  } catch { return null; }
+}
+
+export function writeGhost(trackRef: string, samples: GhostSample[]): void {
+  try { localStorage.setItem(ghostKey(trackRef), JSON.stringify(samples)); } catch { /* ignore */ }
+}
+
+export function clearGhost(trackRef: string): void {
+  try { localStorage.removeItem(ghostKey(trackRef)); } catch { /* ignore */ }
+}
+
+// ── Thumbnail ───────────────────────────────────────────────────────
+
+/** Small top-down 2D thumbnail of a tile track. Not the 3D renderer. */
 export function drawTrackThumbnail(
   ctx: CanvasRenderingContext2D,
   data: TrackData | null,
@@ -70,8 +326,10 @@ export function drawTrackThumbnail(
   // Compute bounds.
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const t of data.tiles) {
-    if (t.x < minX) minX = t.x; if (t.x > maxX) maxX = t.x;
-    if (t.z < minZ) minZ = t.z; if (t.z > maxZ) maxZ = t.z;
+    if (t.x < minX) minX = t.x;
+    if (t.x > maxX) maxX = t.x;
+    if (t.z < minZ) minZ = t.z;
+    if (t.z > maxZ) maxZ = t.z;
   }
   const pad = 1;
   minX -= pad; maxX += pad; minZ -= pad; maxZ += pad;
@@ -83,7 +341,9 @@ export function drawTrackThumbnail(
   const px = (x: number) => ox + x * scale;
   const py = (z: number) => oy + z * scale;
 
-  for (const t of data.tiles) drawTileTop(ctx, t, theme, px, py, scale);
+  // Elevated tiles get a drop shadow so height reads at a glance.
+  const sorted = [...data.tiles].sort((a, b) => (a.elev ?? 0) - (b.elev ?? 0));
+  for (const t of sorted) drawTileTop(ctx, t, theme, px, py, scale);
 }
 
 function drawTileTop(
@@ -96,39 +356,76 @@ function drawTileTop(
 ) {
   const cx = px(t.x) + s / 2;
   const cy = py(t.z) + s / 2;
+  const roadW = s * (ROAD_HALF * 2) / TILE;
+  const elev = t.elev ?? 0;
+
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate((t.rot * Math.PI) / 2);
-  const w = s;
-  const roadW = s * 0.62;
-  ctx.fillStyle = theme.road;
+  // Canvas Y grows downward, so a +rot Y-rotation is a -rot canvas turn.
+  ctx.rotate((-t.rot * Math.PI) / 2);
 
-  if (t.type === "curveL" || t.type === "curveR") {
-    // Draw arc from bottom-mid to left-mid (curveL) or right-mid (curveR).
-    const sign = t.type === "curveL" ? -1 : 1;
-    ctx.beginPath();
-    // outer edge
-    ctx.arc(sign * w / 2, w / 2, w / 2 + roadW / 2, sign > 0 ? Math.PI : 0, sign > 0 ? 1.5 * Math.PI : -0.5 * Math.PI, sign < 0);
-    ctx.arc(sign * w / 2, w / 2, Math.max(0, w / 2 - roadW / 2), sign > 0 ? 1.5 * Math.PI : -0.5 * Math.PI, sign > 0 ? Math.PI : 0, sign > 0);
-    ctx.closePath();
-    ctx.fill();
-  } else {
-    ctx.fillRect(-roadW / 2, -w / 2, roadW, w);
-    if (t.type === "start" || t.type === "finish") {
-      ctx.fillStyle = t.type === "start" ? "#22c55e" : "#ef4444";
-      ctx.fillRect(-roadW / 2, -w / 2, roadW, Math.max(2, s * 0.12));
-    } else if (t.type === "checkpoint") {
-      ctx.fillStyle = "#3b82f6";
-      ctx.fillRect(-roadW / 2, -1.5, roadW, 3);
-    } else if (t.type === "rampUp" || t.type === "rampDown") {
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
+  if (elev > 0) {
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = "#000";
+    ctx.translate(s * 0.07 * elev, s * 0.07 * elev);
+    paintRoad(ctx, t, roadW, s);
+    ctx.restore();
+  }
+
+  ctx.fillStyle = theme.road;
+  paintRoad(ctx, t, roadW, s);
+
+  // Feature overlays sit on the entry half of the tile.
+  if (t.type === "start" || t.type === "finish") {
+    ctx.fillStyle = t.type === "start" ? "#22c55e" : "#ef4444";
+    ctx.fillRect(-roadW / 2, -s * 0.1, roadW, Math.max(2, s * 0.2));
+  } else if (t.type === "checkpoint") {
+    ctx.fillStyle = "#3b82f6";
+    ctx.fillRect(-roadW / 2, -Math.max(1.5, s * 0.08), roadW, Math.max(3, s * 0.16));
+  } else if (t.type === "boost") {
+    ctx.fillStyle = "#06b6d4";
+    ctx.fillRect(-roadW / 2, -s / 2, roadW, s);
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    for (const off of [-0.22, 0.1]) {
       ctx.beginPath();
-      ctx.moveTo(-roadW / 2, w / 2);
-      ctx.lineTo(roadW / 2, w / 2);
-      ctx.lineTo(0, -w / 2);
+      ctx.moveTo(-roadW / 4, s * off + s * 0.16);
+      ctx.lineTo(roadW / 4, s * off + s * 0.16);
+      ctx.lineTo(0, s * off - s * 0.02);
       ctx.closePath();
       ctx.fill();
     }
+  } else if (t.type === "rampUp" || t.type === "rampDown" || t.type === "jump") {
+    ctx.fillStyle = t.type === "rampDown" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.38)";
+    ctx.beginPath();
+    ctx.moveTo(-roadW / 2, -s / 2);
+    ctx.lineTo(roadW / 2, -s / 2);
+    ctx.lineTo(0, s / 2);
+    ctx.closePath();
+    ctx.fill();
   }
   ctx.restore();
+}
+
+/** Paints the road surface of a tile in its local frame. */
+function paintRoad(ctx: CanvasRenderingContext2D, t: Tile, roadW: number, s: number) {
+  if (t.type !== "curveL" && t.type !== "curveR") {
+    ctx.fillRect(-roadW / 2, -s / 2, roadW, s);
+    return;
+  }
+  // Quarter annulus centred on the corner the bend hugs. In local space
+  // the entry edge is at -Z (canvas -Y) and the exit is at ±X.
+  const sign = curveSign(t.type);
+  const ccx = sign * (s / 2), ccy = -s / 2;
+  const r = s / 2;
+  const outer = r + roadW / 2;
+  const inner = Math.max(0, r - roadW / 2);
+  // Canvas angles: entry sits at ∓X from the centre, exit at +Y.
+  const a0 = sign > 0 ? Math.PI : 0;
+  const a1 = Math.PI / 2;
+  ctx.beginPath();
+  ctx.arc(ccx, ccy, outer, a0, a1, sign > 0);
+  ctx.arc(ccx, ccy, inner, a1, a0, sign < 0);
+  ctx.closePath();
+  ctx.fill();
 }

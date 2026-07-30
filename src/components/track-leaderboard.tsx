@@ -4,26 +4,11 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getLeaderboard } from "@/lib/tracks.functions";
-import { formatMs } from "@/lib/polytrack-engine";
+import { formatMs, readPersonalBest, recordPersonalBest } from "@/lib/polytrack-engine";
 
-const pbKey = (trackRef: string) => `dap.polytrack.pb.${trackRef}`;
-
-export function readPersonalBest(trackRef: string): number | null {
-  try {
-    const raw = localStorage.getItem(pbKey(trackRef));
-    if (!raw) return null;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  } catch { return null; }
-}
-
-/** Save a run locally. Returns the new personal best after this run. */
-export function recordPersonalBest(trackRef: string, timeMs: number): number {
-  const prev = readPersonalBest(trackRef);
-  const best = prev == null ? timeMs : Math.min(prev, timeMs);
-  try { localStorage.setItem(pbKey(trackRef), String(best)); } catch { /* ignore */ }
-  return best;
-}
+// Personal-best storage lives in the engine so the runner, the routes and
+// this board all agree on one key.
+export { readPersonalBest, recordPersonalBest };
 
 export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refreshKey?: number }) {
   const fetchLb = useServerFn(getLeaderboard);

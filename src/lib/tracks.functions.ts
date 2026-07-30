@@ -99,7 +99,7 @@ export const createTrack = createServerFn({ method: "POST" })
       name: z.string().min(1).max(60),
       season: seasonSchema,
       params: trackDataSchema,
-      goal: z.number().int().min(200).max(4000),
+      goal: z.number().int().min(2000).max(600_000),
     }).parse(i)
   )
   .handler(async ({ data, context }) => {
@@ -129,7 +129,7 @@ export const updateTrack = createServerFn({ method: "POST" })
       name: z.string().min(1).max(60),
       season: seasonSchema,
       params: trackDataSchema,
-      goal: z.number().int().min(200).max(4000),
+      goal: z.number().int().min(2000).max(600_000),
     }).parse(i)
   )
   .handler(async ({ data, context }) => {
