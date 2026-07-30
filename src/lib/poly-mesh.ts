@@ -52,6 +52,41 @@ export class Mesher {
     this.quad(v(x0, y0, z0), v(x0, y0, z1), v(x0, y1, z1), v(x0, y1, z0));
   }
 
+  /**
+   * Six-faced hull between a bottom ring and a top ring of four corners.
+   * Both rings run in the order (-x,-z), (-x,+z), (+x,+z), (+x,-z) — the
+   * same cycle box() walks — so every face comes out pointing outward.
+   *
+   * The corners are otherwise free, which is what lets a car body taper,
+   * wedge and rake without a single extra triangle.
+   */
+  hull(bottom: readonly V3[], top: readonly V3[]): void {
+    this.quad(top[0], top[1], top[2], top[3]);
+    this.quad(bottom[0], bottom[3], bottom[2], bottom[1]);
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4;
+      this.quad(bottom[i], bottom[j], top[j], top[i]);
+    }
+  }
+
+  /**
+   * Vertical tapered box — a rectangle of half-extents (hx0, hz0) at y0
+   * growing or shrinking to (hx1, hz1) at y1, both centred on (cx, cz).
+   * Bridge pillars and their footings are all this shape.
+   */
+  frustum(
+    cx: number, cz: number, y0: number, y1: number,
+    hx0: number, hz0: number, hx1: number, hz1: number,
+  ): void {
+    const ring = (y: number, hx: number, hz: number): V3[] => [
+      { x: cx - hx, y, z: cz - hz },
+      { x: cx - hx, y, z: cz + hz },
+      { x: cx + hx, y, z: cz + hz },
+      { x: cx + hx, y, z: cz - hz },
+    ];
+    this.hull(ring(y0, hx0, hz0), ring(y1, hx1, hz1));
+  }
+
   /** Four-sided pyramid sitting on (x, y, z) — cheap trees and rocks. */
   pyramid(x: number, y: number, z: number, half: number, height: number): void {
     const apex: V3 = { x, y: y + height, z };
@@ -111,6 +146,51 @@ export class Mesher {
     for (let i = 0; i < n - 1; i++) this.quad(a[i], a[i + 1], b[i + 1], b[i]);
   }
 
+  /**
+   * Dashes laid along a centreline: `dash` units painted, `gap` units
+   * bare, repeating, measured by arc length so a dash never stretches
+   * round a bend. `phase` slides the pattern forward along the line —
+   * two interleaved calls into different buffers make a kerb.
+   */
+  dashed(pts: V3[], halfW: number, dash: number, gap: number, phase = 0): void {
+    const period = dash + gap;
+    if (pts.length < 2 || dash <= 0 || period <= 0) return;
+    const n = pts.length;
+    const left: V3[] = [], right: V3[] = [];
+    for (let i = 0; i < n; i++) {
+      const [rx, rz] = sideOf(pts, i);
+      left.push({ x: pts[i].x - rx * halfW, y: pts[i].y, z: pts[i].z - rz * halfW });
+      right.push({ x: pts[i].x + rx * halfW, y: pts[i].y, z: pts[i].z + rz * halfW });
+    }
+    let s = 0;
+    for (let i = 0; i < n - 1; i++) {
+      const seg = dist(pts[i], pts[i + 1]);
+      if (seg < 1e-6) continue;
+      const end = s + seg;
+      // Start one period early so a dash straddling the joint still lands.
+      for (let k = Math.floor((s + phase) / period) - 1; ; k++) {
+        const from = k * period - phase;
+        if (from >= end) break;
+        const a = Math.max(from, s), b = Math.min(from + dash, end);
+        if (b > a) {
+          const t0 = (a - s) / seg, t1 = (b - s) / seg;
+          this.quad(
+            mix(left[i], left[i + 1], t0), mix(left[i], left[i + 1], t1),
+            mix(right[i], right[i + 1], t1), mix(right[i], right[i + 1], t0),
+          );
+        }
+      }
+      s = end;
+    }
+  }
+
+  /** Total arc length of a polyline. */
+  static arcLength(pts: V3[]): number {
+    let s = 0;
+    for (let i = 1; i < pts.length; i++) s += dist(pts[i - 1], pts[i]);
+    return s;
+  }
+
   /** Shift a centreline sideways (along sideOf) and upward. */
   static offset(pts: V3[], lateral: number, lift = 0): V3[] {
     return pts.map((p, i) => {
@@ -128,6 +208,19 @@ export class Mesher {
   }
 }
 
+function dist(a: V3, b: V3): number {
+  return Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+}
+
+function mix(a: V3, b: V3, t: number): V3 {
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
+}
+
+function unit(x: number, z: number): [number, number] {
+  const len = Math.hypot(x, z);
+  return len < 1e-9 ? [0, 1] : [x / len, z / len];
+}
+
 /**
  * Unit sideways vector at point i of a polyline — the road's local +X
  * side, which is the driver's left. Faces are wound against this so top
@@ -135,10 +228,34 @@ export class Mesher {
  * symmetrically, so which side is "left" only matters to the winding.
  */
 function sideOf(pts: V3[], i: number): [number, number] {
-  const a = pts[Math.max(0, i - 1)];
-  const b = pts[Math.min(pts.length - 1, i + 1)];
-  let tx = b.x - a.x, tz = b.z - a.z;
-  const len = Math.hypot(tx, tz);
-  if (len < 1e-9) { tx = 0; tz = 1; } else { tx /= len; tz /= len; }
+  const [tx, tz] = tangentOf(pts, i);
   return [tz, -tx];
+}
+
+/**
+ * Unit tangent at point i.
+ *
+ * Inside the line a central difference is exact enough. At the two ends
+ * it is not: the chord leaving an end point is the tangent at the
+ * *middle* of that segment, so on an arc it lags by half a segment's
+ * turn — which on a quarter-circle piece throws the edge of the slab a
+ * quarter of a unit out of line with the straight it joins, and every
+ * seam shows as a dark hairline. Reflecting the neighbouring tangent
+ * back through the chord recovers the end tangent exactly on an arc, and
+ * changes nothing at all on a straight.
+ */
+function tangentOf(pts: V3[], i: number): [number, number] {
+  const n = pts.length;
+  if (n < 2) return [0, 1];
+  if (i > 0 && i < n - 1) return unit(pts[i + 1].x - pts[i - 1].x, pts[i + 1].z - pts[i - 1].z);
+  const j = i === 0 ? 0 : n - 2;
+  const chord = unit(pts[j + 1].x - pts[j].x, pts[j + 1].z - pts[j].z);
+  if (n === 2) return chord;
+  const inner = tangentOf(pts, i === 0 ? 1 : n - 2);
+  const ac = Math.atan2(chord[1], chord[0]);
+  let turn = ac - Math.atan2(inner[1], inner[0]);
+  while (turn > Math.PI) turn -= Math.PI * 2;
+  while (turn < -Math.PI) turn += Math.PI * 2;
+  const a = ac + turn;
+  return [Math.cos(a), Math.sin(a)];
 }
