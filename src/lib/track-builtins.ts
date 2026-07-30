@@ -197,6 +197,13 @@ function freeStraightNear(cells: Pt[], frac: number, taken: Set<number>): number
 // Every shape is a closed circuit. Sizes are in grid cells; the compiler
 // turns the corners into bends and the ramps into levels. Shapes that
 // cross their own path rely on a ramp lifting one pass over the other.
+//
+// Two rules keep a shape drivable rather than merely valid. Quick
+// left-rights — a chamfered corner, a staircase tread, the mouth of a
+// notch — want at least three cells of road between the two bends, or a
+// car carrying speed simply runs out of tarmac. And ramps belong in the
+// middle of long straights: a bend taken on a raised deck has nothing
+// beyond its edge, so a boost pad just before one is a way off the map.
 
 /**
  * Raise a stretch of the lap: ramps up at `from`, back down at `to`,
@@ -229,6 +236,87 @@ function hill(shape: Shape, ups: Pt[], downs: Pt[], extra: Feature[] = []): Shap
 /** Plain rectangle — the shape you learn the car on. */
 function oval(w: number, h: number): Shape {
   return { cells: route([[1, 1], [w, 1], [w, h], [1, h], [1, 1]]), features: [] };
+}
+
+/**
+ * Rectangle with every corner cut back by `cut` cells, which the grid
+ * renders as a step. A small cut rounds a rectangle off into something
+ * that flows; a cut approaching half the shorter side pulls the straights
+ * inward until the silhouette is a cross.
+ */
+function polygonRing(w: number, h: number, cut: number): Shape {
+  if (w < 2 * cut + 4 || h < 2 * cut + 4) throw new Error(`ring ${w}x${h} cut ${cut} doesn't fit`);
+  const a = 1 + cut, bx = w - cut, bz = h - cut;
+  return {
+    cells: route([
+      [a, 1], [bx, 1], [bx, a], [w, a],
+      [w, bz], [bx, bz], [bx, h],
+      [a, h], [a, bz], [1, bz],
+      [1, a], [a, a], [a, 1],
+    ]),
+    features: [],
+  };
+}
+
+/**
+ * Waisted ring: a notch bitten out of the middle of both long sides, so
+ * the lap pinches in the centre and opens into a lobe at each end.
+ * `raised` puts the whole right-hand lobe up on stilts — the ramps go on
+ * the long straights either side of it, never in the notch, because a
+ * bend taken on a raised deck is a bend you fall off.
+ */
+function dogbone(w: number, h: number, neck: number, depth: number, raised = false): Shape {
+  const m = Math.round((w + 1) / 2);
+  if (m - neck < 3 || m + neck > w - 3) throw new Error(`dogbone ${w} is too narrow for neck ${neck}`);
+  if (h < 2 * depth + 3) throw new Error(`dogbone ${h} is too short for depth ${depth}`);
+  const shape: Shape = {
+    cells: route([
+      [1, 1], [m - neck, 1], [m - neck, 1 + depth], [m + neck, 1 + depth], [m + neck, 1], [w, 1],
+      [w, h], [m + neck, h], [m + neck, h - depth], [m - neck, h - depth], [m - neck, h], [1, h],
+      [1, 1],
+    ]),
+    features: [],
+  };
+  if (!raised) return shape;
+  // The climb starts well down the long right-hand straight and comes
+  // back to earth on the bottom row, so no bend is taken on a ledge.
+  return hill(shape, [[w, 3]], [[m + neck + 3, h]], [
+    { type: "boost", cell: [m + neck + 1, h] },
+  ]);
+}
+
+/**
+ * A staircase down one long side, then one sweeping return leg. `levels`
+ * lifts that return leg into a viaduct; the staircase itself stays on the
+ * deck, where its quick left-rights belong.
+ */
+function zigzag(w: number, h: number, steps: number, depth: number, levels = 0): Shape {
+  const run = Math.max(4, Math.floor((w - 2) / (steps + 1)));
+  if (1 + steps * run >= w) throw new Error(`zigzag ${w} can't fit ${steps} steps of ${run}`);
+  if (1 + steps * depth >= h - 1) throw new Error(`zigzag ${w}x${h} can't fit ${steps} steps`);
+  const pts: Pt[] = [[1, 1]];
+  let z = 1;
+  for (let i = 1; i <= steps; i++) {
+    pts.push([1 + i * run, z]);
+    z += depth;
+    pts.push([1 + i * run, z]);
+  }
+  pts.push([w, z], [w, h], [1, h], [1, 1]);
+  const shape: Shape = { cells: route(pts), features: [] };
+  if (levels < 1) return shape;
+  const ups: Pt[] = [], downs: Pt[] = [];
+  for (let i = 0; i < levels; i++) {
+    ups.push([w - 2 - i, h]);
+    downs.push([3 + levels - i, h]);
+  }
+  if (3 + levels >= w - 2 - levels) throw new Error(`zigzag ${w} has no room for a viaduct`);
+  return hill(shape, ups, downs, [{ type: "boost", cell: [Math.round(w * 0.68), h] }]);
+}
+
+/** L-shaped circuit — a whole quarter of the field is left out. */
+function lCircuit(w: number, h: number, bx: number, bz: number): Shape {
+  if (bx <= 2 || bx >= w || bz <= 2 || bz >= h) throw new Error(`L ${w}x${h} bite ${bx},${bz} doesn't fit`);
+  return { cells: route([[1, 1], [w, 1], [w, bz], [bx, bz], [bx, h], [1, h], [1, 1]]), features: [] };
 }
 
 /** Rectangle with an S-jog cut into the top straight. */
@@ -264,6 +352,22 @@ function spur(w: number, h: number, inset = 6): Shape {
   return {
     cells: route([
       [2, 1], [w, 1], [w, a], [inset, a], [inset, b], [w, b], [w, h], [2, h], [2, 1],
+    ]),
+    features: [],
+  };
+}
+
+/** Spurs folded into the infield from both sides, one after the other. */
+function twinSpur(w: number, h: number, inset: number): Shape {
+  const step = Math.max(3, Math.floor((h - 3) / 4));
+  const a = 1 + step, b = a + step, c = b + step, d = c + step;
+  if (d > h - 2) throw new Error(`twin spur ${w}x${h} doesn't fit`);
+  const out = Math.max(4, w - inset + 2);
+  if (inset <= 3 || inset >= w - 1 || out >= w - 1) throw new Error(`twin spur inset ${inset} doesn't fit`);
+  return {
+    cells: route([
+      [2, 1], [w, 1], [w, a], [inset, a], [inset, b], [w, b], [w, h],
+      [2, h], [2, d], [out, d], [out, c], [2, c], [2, 1],
     ]),
     features: [],
   };
@@ -337,7 +441,53 @@ function doubleCross(w: number, h: number): Shape {
     { cells, features: [] },
     [[4, lower]],
     [[6, upper]],
-    [{ type: "boost", cell: [w - 2, lower] }],
+    [
+      { type: "boost", cell: [Math.round(far * 0.45), lower] },
+      { type: "jump", cell: [Math.round(w / 2), h] },
+    ],
+  );
+}
+
+/**
+ * Cloverleaf: the lap winds twice round, ducking into the infield and
+ * then flying back out over the straight it came in on.
+ */
+function cloverleaf(w: number, h: number): Shape {
+  const p = Math.max(4, Math.round(h * 0.35));
+  const r = Math.min(h - 2, p + 4);
+  const g = Math.max(6, Math.round(w * 0.6));
+  if (r <= p + 1 || g >= w - 2 || p <= 3) throw new Error(`cloverleaf ${w}x${h} doesn't fit`);
+  const cells = route([
+    [2, 2], [w, 2], [w, h], [2, h], [2, p], [g, p], [g, r], [0, r], [0, 2], [2, 2],
+  ]);
+  return hill(
+    { cells, features: [] },
+    [[g - 1, p]],
+    [[1, r]],
+    [
+      { type: "boost", cell: [w - 2, h] },
+      { type: "jump", cell: [Math.round(w / 2), 2] },
+    ],
+  );
+}
+
+/**
+ * Weave: the road leaves the ring at the bottom, climbs over the main
+ * straight, doubles back above the field and drops down over it again —
+ * two flyovers on the same piece of tarmac.
+ */
+function weave(w: number, h: number): Shape {
+  const c = Math.max(7, Math.round(w * 0.62));
+  const d = c - 4;
+  if (c > w - 3 || d < 4 || h < 8) throw new Error(`weave ${w}x${h} doesn't fit`);
+  const cells = route([
+    [2, 2], [w, 2], [w, h], [c, h], [c, 0], [d, 0], [d, h], [2, h], [2, 2],
+  ]);
+  return hill(
+    { cells, features: [] },
+    [[c + 2, h]],
+    [[d, 5]],
+    [{ type: "boost", cell: [w, 4] }],
   );
 }
 
@@ -429,58 +579,60 @@ function build(
 type Entry = [name: string, difficulty: Difficulty, shape: Shape, checkpoints: number];
 
 /**
- * Ten tracks per season. Each season runs its own set of layouts — no two
- * of the forty share a shape — and works up from plain ovals through
- * hills to full flyovers.
+ * Ten tracks per season, and no two of the forty are the same layout.
+ * A season opens on a shape you can read at a glance — a ring, a kink, a
+ * waist — then works through hills, switchbacks and infield spurs into
+ * the crossings and climbs at the bottom of the list. The fields widen as
+ * the year turns, so winter's laps are the longest.
  */
 const CATALOGUE: Record<Season, Entry[]> = {
   spring: [
-    ["Sprout Loop",       "easy",   oval(7, 5), 2],
-    ["Meadow Mile",       "easy",   oval(12, 6), 3],
-    ["Willow Bend",       "easy",   rise(chicane(11, 7, 3, 2), 0.55, 0.8), 3],
-    ["Fern Switchback",   "medium", rise(switchback(9, 3), 0.1, 0.45), 3],
-    ["Bluebell Rise",     "medium", hillLoop(11, 7), 3],
-    ["Clover Spur",       "medium", rise(spur(11, 10, 6), 0.2, 0.62, 2), 3],
-    ["Dewfall Crossing",  "medium", crossover(13, 10), 3],
-    ["Highvine Terrace",  "hard",   terrace(12, 8), 4],
-    ["Verdant Circuit",   "hard",   rise(grandTour(15, 12, 5), 0.08, 0.55, 2), 4],
-    ["Skyblossom",        "hard",   skyway(13, 9), 4],
+    ["Sprout Loop",       "easy",   oval(8, 6), 2],
+    ["Meadow Kink",       "easy",   chicane(12, 8, 4, 3), 2],
+    ["Clover Ring",       "easy",   polygonRing(16, 12, 4), 2],
+    ["Willow Waist",      "easy",   dogbone(13, 9, 2, 3), 3],
+    ["Fern Switchback",   "medium", rise(switchback(11, 3, 3), 0.12, 0.5), 3],
+    ["Bluebell Rise",     "medium", hillLoop(13, 8), 3],
+    ["Verdant Spur",      "medium", rise(spur(13, 11, 7), 0.2, 0.62, 2), 3],
+    ["Dewfall Crossing",  "medium", crossover(14, 10), 3],
+    ["Highvine Terrace",  "hard",   terrace(13, 9), 4],
+    ["Skyblossom",        "hard",   skyway(14, 10), 4],
   ],
   summer: [
-    ["Sunbaked Oval",     "easy",   oval(9, 7), 2],
-    ["Dune Dash",         "easy",   rise(oval(14, 5), 0.1, 0.35), 3],
-    ["Mirage Kink",       "easy",   chicane(13, 6, 4, 3), 3],
-    ["Canyon Switch",     "medium", rise(switchback(11, 3, 3), 0.12, 0.5, 2), 3],
-    ["Sandstone Rise",    "medium", hillLoop(13, 6), 3],
-    ["Oasis Spur",        "medium", rise(spur(12, 12, 7), 0.25, 0.7), 4],
-    ["Scorpion Cross",    "medium", crossover(15, 11), 4],
-    ["Sunspire Climb",    "hard",   terrace(14, 10), 4],
-    ["Great Basin",       "hard",   rise(grandTour(17, 13, 6), 0.06, 0.5, 2), 5],
-    ["Coilback Pass",     "hard",   rise(hairpins(12, 4), 0.15, 0.72, 2), 4],
+    ["Sunbaked Ring",     "easy",   polygonRing(17, 13, 4), 2],
+    ["Dune Dash",         "easy",   zigzag(16, 12, 3, 3, 1), 3],
+    ["Mirage Kink",       "easy",   chicane(16, 9, 5, 4), 3],
+    ["Canyon Switch",     "medium", rise(switchback(12, 3, 3), 0.12, 0.5, 2), 3],
+    ["Sandstone Rise",    "medium", hillLoop(14, 7), 3],
+    ["Oasis Spur",        "medium", rise(twinSpur(14, 15, 8), 0.25, 0.7), 4],
+    ["Scorpion Cross",    "medium", cloverleaf(15, 11), 4],
+    ["Sunspire Climb",    "hard",   terrace(15, 10), 4],
+    ["Great Basin",       "hard",   rise(lCircuit(18, 13, 9, 7), 0.06, 0.5, 2), 5],
+    ["Coilback Pass",     "hard",   rise(hairpins(13, 4), 0.15, 0.72, 2), 4],
   ],
   fall: [
-    ["Amber Loop",        "easy",   oval(10, 8), 2],
-    ["Harvest Mile",      "easy",   rise(oval(15, 6), 0.08, 0.4), 3],
-    ["Copper Kink",       "easy",   chicane(14, 8, 5, 3), 3],
-    ["Ember Switchback",  "medium", rise(switchback(13, 4), 0.1, 0.55, 2), 4],
-    ["Maple Rise",        "medium", rise(hillLoop(15, 8), 0.5, 0.78), 4],
-    ["Orchard Spur",      "medium", rise(spur(14, 11, 8), 0.22, 0.66, 2), 4],
-    ["Hollow Crossing",   "medium", crossover(16, 12), 4],
-    ["Ridgefire Climb",   "hard",   rise(terrace(16, 11), 0.55, 0.82), 5],
-    ["Amber Grand Tour",  "hard",   rise(grandTour(19, 14, 7), 0.06, 0.46, 2), 5],
-    ["Twinfall Viaduct",  "hard",   doubleCross(16, 13), 5],
+    ["Amber Cross",       "easy",   polygonRing(15, 14, 5), 2],
+    ["Harvest Mile",      "easy",   dogbone(17, 12, 3, 4, true), 3],
+    ["Copper Kink",       "easy",   zigzag(18, 13, 3, 3), 3],
+    ["Ember Switchback",  "medium", rise(switchback(14, 4, 3), 0.1, 0.55, 2), 4],
+    ["Maple Rise",        "medium", rise(hillLoop(16, 9), 0.5, 0.78), 4],
+    ["Orchard Spur",      "medium", rise(spur(15, 12, 8), 0.22, 0.66, 2), 4],
+    ["Hollow Crossing",   "medium", cloverleaf(17, 13), 4],
+    ["Ridgefire Climb",   "hard",   rise(terrace(17, 11), 0.55, 0.82), 5],
+    ["Amber Grand Tour",  "hard",   rise(grandTour(20, 14, 7), 0.06, 0.46, 2), 5],
+    ["Twinfall Viaduct",  "hard",   doubleCross(17, 13), 5],
   ],
   winter: [
-    ["Frost Oval",        "easy",   oval(11, 9), 2],
-    ["Glacier Mile",      "easy",   rise(oval(16, 7), 0.07, 0.38), 3],
-    ["Icicle Kink",       "easy",   rise(chicane(16, 9, 6, 4), 0.6, 0.85), 3],
-    ["Drift Switchback",  "medium", rise(switchback(15, 5), 0.08, 0.6, 2), 4],
-    ["Summit Rise",       "medium", rise(hillLoop(17, 9), 0.48, 0.76, 2), 4],
-    ["Pinehall Spur",     "medium", rise(spur(16, 13, 9), 0.2, 0.68, 2), 4],
-    ["Blizzard Crossing", "medium", crossover(18, 13), 4],
-    ["Northwall Climb",   "hard",   skyway(17, 11), 5],
+    ["Frost Ring",        "easy",   polygonRing(19, 13, 4), 2],
+    ["Glacier Mile",      "easy",   rise(lCircuit(17, 10, 9, 6), 0.07, 0.38), 3],
+    ["Icicle Kink",       "easy",   rise(chicane(17, 10, 6, 4), 0.6, 0.85), 3],
+    ["Drift Switchback",  "medium", rise(switchback(16, 5, 3), 0.08, 0.6, 2), 4],
+    ["Summit Rise",       "medium", zigzag(20, 15, 3, 4, 2), 4],
+    ["Pinehall Spur",     "medium", rise(twinSpur(17, 17, 10), 0.2, 0.68, 2), 4],
+    ["Blizzard Weave",    "medium", weave(19, 14), 4],
+    ["Northwall Climb",   "hard",   doubleCross(19, 15), 5],
     ["Frost Grand Tour",  "hard",   rise(grandTour(21, 16, 8), 0.05, 0.44, 3), 6],
-    ["Aurora Spiral",     "hard",   spiral(19, 14), 5],
+    ["Aurora Spiral",     "hard",   spiral(19, 15), 5],
   ],
 };
 
