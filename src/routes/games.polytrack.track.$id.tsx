@@ -6,8 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PolyTrackRunner, type RunResult } from "@/components/polytrack-runner";
-import { Leaderboard, recordPersonalBest } from "@/components/track-leaderboard";
-import { MEDAL_META, formatMs, type Season } from "@/lib/polytrack-engine";
+import { Leaderboard } from "@/components/track-leaderboard";
+import { MEDAL_META, formatMs, recordPersonalBest, type Season } from "@/lib/polytrack-engine";
 import { getTrack, submitScore } from "@/lib/tracks.functions";
 
 export const Route = createFileRoute("/games/polytrack/track/$id")({

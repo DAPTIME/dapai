@@ -269,7 +269,7 @@ function EditorPage() {
   const nameErr = validateName(name);
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 animate-fade-in lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="mx-auto grid max-w-6xl gap-6 animate-fade-in lg:grid-cols-[minmax(0,1fr)_280px]">
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h1 className="text-2xl font-bold">✏️ Track Editor</h1>
@@ -325,14 +325,7 @@ function EditorPage() {
           </span>
         </div>
 
-        <GridEditor
-          width={GRID_W}
-          height={GRID_H}
-          tileMap={tileMap}
-          onPaint={placeTile}
-          season={season}
-          data={data}
-        />
+        <GridEditor width={GRID_W} height={GRID_H} tileMap={tileMap} onPaint={placeTile} />
 
         {report.error && <p className="mt-2 text-xs font-medium text-destructive">⚠ {report.error}</p>}
         {!report.error && report.warning && (
@@ -347,6 +340,19 @@ function EditorPage() {
       </div>
 
       <div className="space-y-4">
+        <div className="rounded-lg border border-border bg-card/40 p-3">
+          <div className="flex gap-3">
+            <ThumbCanvas data={data} season={season} />
+            <div className="grid flex-1 grid-cols-1 gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+              {LEGEND.map(([color, label]) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <span className="inline-block h-2 w-2 shrink-0 rounded-sm" style={{ backgroundColor: color }} />
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
         <div>
           <Label>Name</Label>
           <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
@@ -419,14 +425,12 @@ function EditorPage() {
   );
 }
 
-function GridEditor({ width, height, tileMap, onPaint, season, data }: {
+function GridEditor({ width, height, tileMap, onPaint }: {
   width: number; height: number;
   tileMap: Map<string, Tile>;
   onPaint: (x: number, z: number, forceTool?: Tool) => void;
-  season: Season;
-  data: TrackData;
 }) {
-  const cellSize = 38;
+  const cellSize = 32;
   // Painting is pointer-driven so a drag lays a whole run of road.
   const painting = useRef<Tool | null>(null);
 
@@ -441,11 +445,10 @@ function GridEditor({ width, height, tileMap, onPaint, season, data }: {
   }, []);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
-      <div
-        className="relative overflow-auto rounded-lg border border-border bg-muted/20 p-2"
-        onContextMenu={(e) => e.preventDefault()}
-      >
+    <div
+      className="relative overflow-auto rounded-lg border border-border bg-muted/20 p-2"
+      onContextMenu={(e) => e.preventDefault()}
+    >
         <div className="grid w-max" style={{ gridTemplateColumns: `repeat(${width}, ${cellSize}px)` }}>
           {Array.from({ length: width * height }).map((_, i) => {
             const x = i % width;
@@ -473,21 +476,14 @@ function GridEditor({ width, height, tileMap, onPaint, season, data }: {
             );
           })}
         </div>
-      </div>
-      <div>
-        <div className="mb-1 text-xs text-muted-foreground">Preview</div>
-        <ThumbCanvas data={data} season={season} />
-        <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
-          <div><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-[#22c55e]" />Start</div>
-          <div><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-[#ef4444]" />Finish</div>
-          <div><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-[#3b82f6]" />Checkpoint</div>
-          <div><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-[#06b6d4]" />Boost</div>
-          <div><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-[#a855f7]" />Ramp / jump</div>
-        </div>
-      </div>
     </div>
   );
 }
+
+const LEGEND: Array<[string, string]> = [
+  ["#22c55e", "Start"], ["#ef4444", "Finish"], ["#3b82f6", "Checkpoint"],
+  ["#06b6d4", "Boost"], ["#a855f7", "Ramp"], ["#c026d3", "Jump"],
+];
 
 const TILE_COLOR: Record<TileType, string> = {
   start: "#22c55e",

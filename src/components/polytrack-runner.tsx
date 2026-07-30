@@ -445,7 +445,6 @@ export function PolyTrackRunner(props: Props) {
       cleanup?.();
     };
     // The scene is rebuilt only when the track itself changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, season, legacy, trackRef, goal]);
 
   const press = useCallback((a: Action, on: boolean) => controls.press(a, on), [controls]);
@@ -744,7 +743,7 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
     if (t.type === "checkpoint") checkpoints.push(t);
 
     // Supports down to the terrain for anything off the ground.
-    const mid = pts[Math.floor(pts.length / 2)];
+    const mid = sampler.tileCenter(t);
     if (mid.y > 0.6) {
       support.box(mid.x, (mid.y - ROAD_THICK + TERRAIN_Y) / 2, mid.z, 1.5, mid.y - ROAD_THICK - TERRAIN_Y, 1.5);
     }
@@ -779,12 +778,19 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
   let seed = track.tiles.length * 9301 + 49297;
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
   const b = sampler.bounds;
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < 120; i++) {
     const gx = b.minX - 6 + rnd() * (b.maxX - b.minX + 12);
     const gz = b.minZ - 6 + rnd() * (b.maxZ - b.minZ + 12);
-    if (sampler.tileAt(sampler.worldX(gx), sampler.worldZ(gz))) continue;
     const h = 2.5 + rnd() * 5;
-    props.pyramid(sampler.worldX(gx), TERRAIN_Y, sampler.worldZ(gz), 1.4 + rnd() * 1.4, h);
+    const half = 1.4 + rnd() * 1.4;
+    const wx = sampler.worldX(gx), wz = sampler.worldZ(gz);
+    if (sampler.tileAt(wx, wz)) continue;
+    // Keep the whole trunk clear of the tarmac, not just its centre.
+    const pad = half + 2;
+    const clear = [[0, 0], [-pad, 0], [pad, 0], [0, -pad], [0, pad]]
+      .every(([ox, oz]) => !sampler.at(wx + ox, wz + oz).onRoad);
+    if (!clear) continue;
+    props.pyramid(wx, TERRAIN_Y, wz, half, h);
   }
   if (!props.isEmpty) {
     const geo = props.build(THREE);
@@ -797,12 +803,11 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
   const cpGates = new Map<string, import("three").MeshLambertMaterial>();
 
   const addGate = (t: Tile, color: number, key?: string) => {
-    const pts = tilePath(sampler, t);
-    const p = pts[Math.floor(pts.length / 2)];
-    const nxt = pts[Math.min(pts.length - 1, Math.floor(pts.length / 2) + 1)];
-    const tx = nxt.x - p.x, tz = nxt.z - p.z;
-    const len = Math.hypot(tx, tz) || 1;
-    const rotY = Math.atan2(tx / len, tz / len);
+    // Straddle the road at the piece's centre, square to the direction of
+    // travel — the posts must end up either side of the tarmac.
+    const p = sampler.tileCenter(t);
+    const surf = sampler.at(p.x, p.z);
+    const rotY = Math.atan2(surf.dirX, surf.dirZ);
 
     const mat = new THREE.MeshLambertMaterial({ color, flatShading: true });
     gateMats.push(mat);
@@ -811,9 +816,12 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
     const m = new Mesher();
     const w = ROAD_HALF + 0.5;
     // Posts either side plus a bar overhead, built in tile-local space.
-    m.box(-w, 2.1, 0, 0.45, 4.2, 0.45);
-    m.box(w, 2.1, 0, 0.45, 4.2, 0.45);
-    m.box(0, 4.2, 0, w * 2 + 0.45, 0.55, 0.5);
+    // The arch clears GATE_H so the chase camera passes under it instead
+    // of clipping through the bar as it crosses the line.
+    const GATE_H = 6.8;
+    m.box(-w, GATE_H / 2, 0, 0.5, GATE_H, 0.5);
+    m.box(w, GATE_H / 2, 0, 0.5, GATE_H, 0.5);
+    m.box(0, GATE_H, 0, w * 2 + 0.5, 0.6, 0.55);
     m.box(0, 0.06, 0, w * 2, 0.12, 1.1);
     const geo = m.build(THREE);
     disposables.push(geo);

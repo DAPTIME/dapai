@@ -4,11 +4,9 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getLeaderboard } from "@/lib/tracks.functions";
-import { formatMs, readPersonalBest, recordPersonalBest } from "@/lib/polytrack-engine";
-
-// Personal-best storage lives in the engine so the runner, the routes and
-// this board all agree on one key.
-export { readPersonalBest, recordPersonalBest };
+// Personal-best storage lives in @/lib/polytrack-engine so the runner, the
+// routes and this board all agree on one key.
+import { formatMs, readPersonalBest } from "@/lib/polytrack-engine";
 
 export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refreshKey?: number }) {
   const fetchLb = useServerFn(getLeaderboard);

@@ -13,7 +13,7 @@ import {
 import { submitScore } from "@/lib/tracks.functions";
 import { BUILTINS } from "@/lib/track-builtins";
 
-export const Route = createFileRoute("/games/polytrack")({
+export const Route = createFileRoute("/games/polytrack/")({
   head: () => ({
     meta: [
       { title: "Poly Racer — 3D Time Trials" },
