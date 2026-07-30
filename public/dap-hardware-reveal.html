@@ -496,6 +496,13 @@
         <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
       </radialGradient>
 
+      <!-- Die substrate: silicon reads blue-grey, not black. -->
+      <linearGradient id="dieSub" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%"   stop-color="#0d1a22"/>
+        <stop offset="52%"  stop-color="#132430"/>
+        <stop offset="100%" stop-color="#0a141b"/>
+      </linearGradient>
+
       <!-- Blur sized to the fan, so the sweeping highlight reads as
            blades smeared by shutter rather than three grey wedges. -->
       <filter id="fanBlur" x="-30%" y="-30%" width="160%" height="160%">
@@ -526,6 +533,16 @@
       <!-- Boards, switch and PSU are stamped in here by JS. -->
       <g id="hwLayer"></g>
 
+      <!-- The die. Sits exactly where the Orin module is on node 1, so
+           pulling the camera out of it lands on the real hardware
+           without a cut. Drawn last so it stays over the board while
+           the two cross-fade. -->
+      <!-- pointer-events off: this layer is drawn over the board and
+           opacity 0 does not stop an element hit-testing, so once the
+           shells faded out they were still swallowing every hover over
+           the module underneath them. -->
+      <g id="dieLayer" pointer-events="none"></g>
+
       <!-- Callout lines + labels. -->
       <g id="labelLayer"></g>
     </g>
@@ -533,6 +550,10 @@
 
   <!-- ── Cinematic captions ──────────────────────────────────────── -->
   <div class="cine" id="cine">
+    <!-- The first two land while the camera is still inside the die, so
+         nothing has been named yet. line1 is the reveal. -->
+    <p class="cine-line" id="line0">Every answer starts <em>here</em>.</p>
+    <p class="cine-line" id="line0b">Inside a single piece of silicon.</p>
     <p class="cine-line" id="line1">This is what <em>DAP AI</em> runs on.</p>
     <p class="cine-line" id="line2">Two of these.</p>
     <p class="cine-line" id="line3">Working together as one AI system.</p>
@@ -719,11 +740,11 @@ function boardMarkup(n, x, y, tilt = 0) {
            drive; on the real board all of this sits inside the module,
            so they glow through the heatsink rather than next to it. -->
       <g id="heatsink${n}">
-        <ellipse id="gpuLit${n}" cx="${ux(0.44)}" cy="${vy(0.20)}" rx="62" ry="34"
+        <ellipse pointer-events="none" id="gpuLit${n}" cx="${ux(0.44)}" cy="${vy(0.20)}" rx="62" ry="34"
                  fill="#76b900" fill-opacity="0.30" opacity="0" filter="url(#softGlow)"/>
-        <ellipse id="cpuLit${n}" cx="${ux(0.56)}" cy="${vy(0.33)}" rx="40" ry="22"
+        <ellipse pointer-events="none" id="cpuLit${n}" cx="${ux(0.56)}" cy="${vy(0.33)}" rx="40" ry="22"
                  fill="#5aa9e6" fill-opacity="0.28" opacity="0" filter="url(#softGlow)"/>
-        <ellipse id="aiLit${n}"  cx="${ux(0.38)}" cy="${vy(0.36)}" rx="38" ry="20"
+        <ellipse pointer-events="none" id="aiLit${n}"  cx="${ux(0.38)}" cy="${vy(0.36)}" rx="38" ry="20"
                  fill="#a78bfa" fill-opacity="0.26" opacity="0" filter="url(#softGlow)"/>
       </g>
 
@@ -731,7 +752,7 @@ function boardMarkup(n, x, y, tilt = 0) {
         <ellipse cx="${fcx}" cy="${fcy}" rx="${(frx * 0.94).toFixed(1)}"
                  ry="${(fry * 1.02).toFixed(1)}" fill="transparent"/>
         <g transform="translate(${fcx} ${fcy}) scale(1 ${squash})">
-          <g id="fanBlades${n}" filter="url(#fanBlur)"
+          <g id="fanBlades${n}" pointer-events="none" filter="url(#fanBlur)"
                style="transform-box: fill-box; transform-origin: 50% 50%;">
             ${sweep}
           </g>
@@ -742,7 +763,7 @@ function boardMarkup(n, x, y, tilt = 0) {
     <!-- LPDDR5 sits under the module lid; it lights along the memory strip. -->
     <g id="ram${n}" class="hot" data-part="ram">
       <rect ${rect(UV.memStrip)} fill="transparent"/>
-      <ellipse id="ramLit${n}" cx="${ux(0.505)}" cy="${vy(0.462)}" rx="56" ry="13"
+      <ellipse pointer-events="none" id="ramLit${n}" cx="${ux(0.505)}" cy="${vy(0.462)}" rx="56" ry="13"
                fill="#d9b45a" fill-opacity="0.30" opacity="0" filter="url(#softGlow)"/>
     </g>
 
@@ -775,6 +796,176 @@ function boardMarkup(n, x, y, tilt = 0) {
     <!-- Silicon electricity rides the routes above, injected at runtime. -->
     <g id="sparks${n}"></g>
   </g></g>`;
+}
+
+/**
+ * The die the reveal opens inside.
+ *
+ * Drawn in its own 1000x760 space and scaled down onto the board, so the
+ * detail can be authored at a comfortable size and still end up 50 world
+ * units across — the footprint of the real Orin module. Because it lands
+ * exactly where node 1's module is, the camera can pull straight out of
+ * the silicon onto the hardware with no cut.
+ *
+ * Three shells, revealed outwards as the camera retreats:
+ *   #dieCore  the floorplan — GPU array, memory banks, CPU complex
+ *   #diePkg   the package the die is bonded into
+ *   #dieMod   the module the package is soldered to
+ *
+ * Traffic is routed, never random. Inside here it is GPU↔memory; the
+ * board carries GPU→Ethernet; the cables carry Ethernet→switch→node 2.
+ */
+const DIE_AT = { x: 327.5, y: 309 };   // node 1's module, in scene units
+const DIE_SCALE = 0.05;                // 1000 local units → 50 world units
+
+function dieMarkup() {
+  /* ── The GPU, laid out as a city block ─────────────────────────── */
+  let sms = "";
+  const SM_C = 5, SM_R = 4, SM_W = 88, SM_H = 98, SM_GX = 14, SM_GY = 16;
+  const gx0 = -466, gy0 = -318;
+  for (let r = 0; r < SM_R; r++) {
+    for (let c = 0; c < SM_C; c++) {
+      const x = gx0 + c * (SM_W + SM_GX);
+      const y = gy0 + r * (SM_H + SM_GY);
+      // Each block is a stack of lanes, which is what gives the array
+      // its texture when the camera is close enough to see one block.
+      let lanes = "";
+      for (let l = 0; l < 5; l++) {
+        lanes += `<rect x="${x + 9}" y="${y + 11 + l * 16}" width="${SM_W - 18}" height="7"
+                        rx="2" fill="#3f6f8f" opacity="${0.34 + (l % 2) * 0.16}"/>`;
+      }
+      sms += `<g class="sm">
+        <rect x="${x}" y="${y}" width="${SM_W}" height="${SM_H}" rx="6"
+              fill="#12212c" stroke="#2f5f7d" stroke-width="1.6"/>
+        ${lanes}
+        <rect class="smLit" x="${x}" y="${y}" width="${SM_W}" height="${SM_H}" rx="6"
+              fill="#76b900" opacity="0"/>
+      </g>`;
+    }
+  }
+
+  /* ── Memory: banks of ranks, deliberately a different texture ──── */
+  let banks = "";
+  for (let b = 0; b < 2; b++) {
+    const bx = 96 + b * 196;
+    let ranks = "";
+    for (let i = 0; i < 22; i++) {
+      ranks += `<rect x="${bx + 12}" y="${-306 + i * 12}" width="160" height="6" rx="1.5"
+                      fill="#b08a3c" opacity="${0.14 + (i % 3) * 0.09}"/>`;
+    }
+    banks += `<g class="bank">
+      <rect x="${bx}" y="-318" width="184" height="288" rx="7"
+            fill="#17150f" stroke="#6b5622" stroke-width="1.6"/>
+      ${ranks}
+      <rect class="bankLit" x="${bx}" y="-318" width="184" height="288" rx="7"
+            fill="#d9b45a" opacity="0"/>
+    </g>`;
+  }
+
+  /* ── CPU complex: six cores, so it reads as its own district ───── */
+  let cores = "";
+  for (let i = 0; i < 6; i++) {
+    const cx = 108 + (i % 3) * 124, cy = 40 + Math.floor(i / 3) * 96;
+    cores += `<g class="core">
+      <rect x="${cx}" y="${cy}" width="108" height="80" rx="5"
+            fill="#131c28" stroke="#3f6d9a" stroke-width="1.5"/>
+      <rect x="${cx + 10}" y="${cy + 12}" width="88" height="26" rx="3" fill="#274b6b" opacity="0.6"/>
+      <rect x="${cx + 10}" y="${cy + 46}" width="88" height="20" rx="3" fill="#274b6b" opacity="0.4"/>
+      <rect class="coreLit" x="${cx}" y="${cy}" width="108" height="80" rx="5"
+            fill="#5aa9e6" opacity="0"/>
+    </g>`;
+  }
+
+  /* ── Fine circuitry, the texture between the districts ─────────── */
+  let mesh = "";
+  for (let i = 0; i < 34; i++) {
+    const y = -352 + i * 21;
+    mesh += `<path d="M-486 ${y} H${-40 + (i % 5) * 18} V${y + 13} H${470}"
+                   fill="none" stroke="#2b4d63" stroke-width="0.9" opacity="0.17"/>`;
+  }
+  for (let i = 0; i < 26; i++) {
+    const x = -478 + i * 38;
+    mesh += `<path d="M${x} -366 V${-40 + (i % 4) * 22} H${x + 16} V352"
+                   fill="none" stroke="#2b4d63" stroke-width="0.9" opacity="0.13"/>`;
+  }
+
+  /* ── Pad ring: the die's edge, and the hint of a package ───────── */
+  let pads = "";
+  for (let i = 0; i < 30; i++) {
+    pads += `<rect x="${-476 + i * 32}" y="366" width="18" height="12" rx="2"
+                   fill="#b98f36" opacity="0.55"/>`;
+  }
+
+  /* ── Package: substrate, solder balls, lid seat ────────────────── */
+  let balls = "";
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 26; c++) {
+      balls += `<circle cx="${-560 + c * 45}" cy="${476 + r * 40}" r="11"
+                        fill="#8d8f93" opacity="${0.5 - r * 0.12}"/>`;
+    }
+  }
+
+  return `
+  <g id="dieLayerPos" transform="translate(${DIE_AT.x} ${DIE_AT.y})">
+  <g id="orbit" style="transform-box: fill-box; transform-origin: 50% 50%;">
+  <g transform="scale(${DIE_SCALE})">
+
+    <!-- ── Shell 3 · the module the package sits on ─────────────── -->
+    <g id="dieMod" opacity="0">
+      <rect x="-1950" y="-1240" width="3900" height="2420" rx="90"
+            fill="#0a1410" stroke="#2f5f43" stroke-width="7"/>
+      <rect x="-1900" y="-1190" width="3800" height="2320" rx="70"
+            fill="none" stroke="#3f7a56" stroke-width="3" opacity="0.4"/>
+      <text x="-1860" y="-1100" font-size="62" letter-spacing="14" fill="#4e8c66"
+            font-family="Inter, sans-serif">JETSON ORIN NANO MODULE</text>
+    </g>
+
+    <!-- ── Shell 2 · the package the die is bonded into ──────────── -->
+    <g id="diePkg" opacity="0">
+      <rect x="-700" y="-560" width="1400" height="1120" rx="34"
+            fill="#0d1519" stroke="#4a5c66" stroke-width="5"/>
+      <rect x="-640" y="-500" width="1280" height="1000" rx="22"
+            fill="none" stroke="#68808d" stroke-width="2.5" opacity="0.5"/>
+      ${balls}
+      <text x="-700" y="640" font-size="38" letter-spacing="9" fill="#5d7280"
+            font-family="Inter, sans-serif">AMPERE · 1024 CUDA · 32 TENSOR</text>
+    </g>
+
+    <!-- ── Shell 1 · the floorplan ───────────────────────────────── -->
+    <g id="dieCore">
+      <rect x="-500" y="-380" width="1000" height="760" rx="16" fill="url(#dieSub)"/>
+      <g id="dieMesh">${mesh}</g>
+      <g id="dieBlocks">${sms}${banks}${cores}</g>
+      ${pads}
+
+      <!-- Routed interconnect. These are the motion paths the traffic
+           rides, so every particle in here is going somewhere: out of
+           the GPU array into memory, and back by a different road. -->
+      <g id="dieHighways" fill="none" stroke-linecap="round">
+        <path id="hwyGpuRam" d="M40 -250 H80 Q96 -250 96 -228 V-190 H96"
+              stroke="#76b900" stroke-width="7" opacity="0.5"/>
+        <path id="hwyRamGpu" d="M96 -70 Q60 -70 44 -46 H-30 Q-52 -46 -52 -18 V40"
+              stroke="#d9b45a" stroke-width="7" opacity="0.42"/>
+        <path id="hwyGpuIo"  d="M-200 130 V300 Q-200 330 -160 330 H420"
+              stroke="#76b900" stroke-width="6" opacity="0.4"/>
+        <path id="hwyCpuGpu" d="M108 90 H20 Q-10 90 -10 60 V20"
+              stroke="#5aa9e6" stroke-width="5.5" opacity="0.38"/>
+        <path id="hwyArrayA" d="M-410 -210 H-250 Q-224 -210 -224 -184 V-90 H-60"
+              stroke="#76b900" stroke-width="5" opacity="0.34"/>
+        <path id="hwyArrayB" d="M-420 120 H-180 Q-150 120 -150 92 V-20 H-30"
+              stroke="#76b900" stroke-width="5" opacity="0.30"/>
+        <path id="hwyRamEdge" d="M470 -180 V60 Q470 96 434 96 H300"
+              stroke="#d9b45a" stroke-width="5" opacity="0.30"/>
+      </g>
+      <g id="dieFlow"></g>
+
+      <!-- The layered look: the die is not one plane. -->
+      <rect x="-500" y="-380" width="1000" height="760" rx="16" fill="none"
+            stroke="#5f96b5" stroke-width="3" opacity="0.5"/>
+      <rect x="-478" y="-358" width="956" height="716" rx="12" fill="none"
+            stroke="#8fd0ea" stroke-width="1.4" opacity="0.22"/>
+    </g>
+  </g></g></g>`;
 }
 
 /** The cluster switch the two nodes talk through. */
@@ -834,6 +1025,7 @@ const NODES = [
   { n: 2, x: 1070, y: 250, tilt: -2.2 },
 ];
 for (const nd of NODES) stamp(hwLayer, boardMarkup(nd.n, nd.x, nd.y, nd.tilt));
+stamp(document.getElementById("dieLayer"), dieMarkup());
 stamp(hwLayer, switchMarkup(685, 640));
 stamp(hwLayer, psuMarkup(725, 742));
 
@@ -955,14 +1147,40 @@ for (const nd of NODES) {
   stamp(cableLayer, packets);
 }
 
-/* Everything starts hidden; the timeline reveals it in order. */
-utils.set("#rig", { scale: 1.22, translateX: 561, translateY: 92 });
-utils.set(".board", { scale: 0.82, translateY: 60 });
+/* Traffic inside the die. Each route is a real journey between two
+   districts, so a particle is always carrying something somewhere:
+   work out of the GPU array into memory, results back by another road,
+   results out to the I/O edge, and the CPU handing work to the GPU. */
+const DIE_ROUTES = [
+  { path: "#hwyGpuRam", cls: "dfA", n: 5, fill: "#a5e832", dur: 1500 },
+  { path: "#hwyRamGpu", cls: "dfB", n: 5, fill: "#f0cf7a", dur: 1750 },
+  { path: "#hwyGpuIo",  cls: "dfC", n: 4, fill: "#a5e832", dur: 2100 },
+  { path: "#hwyCpuGpu", cls: "dfD", n: 3, fill: "#8ec6f0", dur: 1900 },
+  { path: "#hwyArrayA", cls: "dfE", n: 5, fill: "#a5e832", dur: 1650 },
+  { path: "#hwyArrayB", cls: "dfF", n: 5, fill: "#a5e832", dur: 1800 },
+  { path: "#hwyRamEdge", cls: "dfG", n: 4, fill: "#f0cf7a", dur: 2000 },
+];
+{
+  let flow = "";
+  for (const r of DIE_ROUTES) {
+    for (let i = 0; i < r.n; i++) {
+      flow += `<circle class="dieFlowDot ${r.cls}" cx="0" cy="0" r="9"
+                       fill="${r.fill}" opacity="0" filter="url(#glow)"/>`;
+    }
+  }
+  stamp(document.getElementById("dieFlow"), flow);
+}
+
+/* Everything starts hidden; the timeline reveals it in order. The
+   camera opens deep inside the die — see the journey below. */
+const DIE_T = { x: 800 - DIE_AT.x, y: 450 - DIE_AT.y };   // centres the die
+utils.set("#rig", { scale: 110, translateX: DIE_T.x, translateY: DIE_T.y });
+utils.set(".board", { opacity: 0 });
 utils.set("#switch", { scale: 0.7, translateY: -40 });
 utils.set(["#ethernetCable1", "#ethernetCable2", "#usbcCable",
            "#adapterCable", "#powerCable1", "#powerCable2"], { opacity: 0 });
 
-const cineLines = ["#line1", "#line2", "#line3", "#line4", "#line5"];
+const cineLines = ["#line0", "#line0b", "#line1", "#line2", "#line3", "#line4", "#line5"];
 
 /** One caption in, hold, and out. Returns the time it consumes. */
 function caption(tl, sel, at, hold = 1500) {
@@ -987,137 +1205,205 @@ const master = createTimeline({
   autoplay: false,
 });
 
-/* ── Scene 0 · the room powers up ─────────────────────────────── */
-master.add("#circuitBg", { opacity: [0, 0.55], duration: 2200 }, 0);
-master.add(".dust", {
-  opacity: [0, 0.5],
-  duration: 1600,
-  delay: stagger(22, { from: "center" }),
-}, 200);
-master.add("#brand", { opacity: [0, 1], translateY: [-14, 0], duration: 1200 }, 900);
-master.add("#controls", { opacity: [0, 1], duration: 1000 }, 1200);
+/* ══════════════════════════════════════════════════════════════════
+   THE JOURNEY
+   ══════════════════════════════════════════════════════════════════
+   One continuous retreat from inside the silicon out to the whole
+   cluster. There are no cuts anywhere in it: the camera only ever
+   pushes, drifts or pulls, and every reveal happens because the frame
+   got wider, not because something was swapped.
 
-/* ── Scene 1 · "This is what DAP AI runs on." ──────────────────── */
-caption(master, "#line1", 700, 1700);
+   The scale range is about 120x, from 110 down to 0.92. The die sits
+   exactly where node 1's module is, so the retreat lands on the real
+   hardware without anything having to move.
 
-/* The first node condenses out of the dust. */
-master.add("#dustLayer", { opacity: [0.5, 0], duration: 1400 }, 3600);
-master.add("#jetson1", {
-  opacity: [0, 1],
-  scale: [0.82, 1],
-  translateY: [60, 0],
-  rotate: [-7, 0],
-  duration: 2000,
-  ease: "outExpo",
-}, 3700);
+   Anime composes the matrix as scale then translate, which means the
+   offset is applied in scaled space: to hold a point p in the middle
+   of frame the offset is simply origin - p, with no scale factor. Get
+   that wrong and the camera leaves the subject behind the moment the
+   scale changes.                                                      */
 
-/* Trace work draws itself on, which reads as the board "booting". */
+const ORIGIN = { x: 800, y: 450 };
+const focus = (px, py) => ({ translateX: ORIGIN.x - px, translateY: ORIGIN.y - py });
+
+/** A leg of the journey: where the camera ends up, and how long it takes. */
+function fly(at, duration, scale, px, py, ease = "inOutQuad") {
+  master.add("#rig", { scale, ...focus(px, py), duration, ease }, at);
+}
+
+const P_DIE    = [DIE_AT.x, DIE_AT.y];             // the module on node 1
+const P_BOARD1 = [340, 367];                       // node 1, whole
+const P_ALL    = [ORIGIN.x, ORIGIN.y];             // the cluster
+
+/* ── 0.0s · inside the silicon ─────────────────────────────────────
+   Far too close to read as anything. Just structure, and traffic
+   moving through it with obvious purpose. */
+master.add("#circuitBg", { opacity: [0, 0.30], duration: 2600 }, 0);
+master.add("#brand",     { opacity: [0, 1], translateY: [-14, 0], duration: 1400 }, 1400);
+master.add("#controls",  { opacity: [0, 1], duration: 1000 }, 1800);
+
+master.add(".dieFlowDot", { opacity: [0, 1], duration: 900, delay: stagger(40) }, 300);
+/* The die is alive from the first frame — the opening shot is traffic
+   moving through structure, so it cannot wait on the idle system that
+   starts twenty seconds later with the rest of the machine. */
+master.call(() => startDieLife(), 260);
+
+caption(master, "#line0", 900, 1500);
+
+/* A slow drift across the array before the retreat starts, so the
+   opening reads as a camera move rather than a still frame. */
+/* Drift is in world units, and at 110x one unit is 110 screen units —
+   the first pass moved 8 and threw the camera clean off the die. */
+fly(0,    3400, 110, P_DIE[0] - 0.7, P_DIE[1] - 0.4, "inOutSine");
+/* The orbit lives on its own group. Putting a rotate on #rig changes how
+   Anime composes the matrix, and the scale/translate maths above stops
+   holding the subject the moment the frame moves. */
+master.add("#orbit", { rotate: [-2.2, 1.4], duration: 7000, ease: "inOutSine" }, 0);
+
+/* ── 3.4s · the floorplan resolves ─────────────────────────────────
+   Wide enough now to see districts rather than texture: the GPU array
+   on one side, memory banks on the other, the CPU cores between. */
+fly(3400, 3000, 34, P_DIE[0], P_DIE[1]);
+caption(master, "#line0b", 3900, 1400);
+
+/* ── 6.4s · the package, then the module ───────────────────────────
+   Each shell appears just before the frame is wide enough to hold it,
+   so the die is always seen sitting inside the next thing out. */
+master.add("#diePkg", { opacity: [0, 1], duration: 1200 }, 6200);
+fly(6400, 2600, 13, P_DIE[0], P_DIE[1]);
+
+master.add("#dieMod", { opacity: [0, 1], duration: 1200 }, 8200);
+fly(9000, 2800, 4.2, P_DIE[0] + 4, P_DIE[1] + 12);
+
+/* ── 11.8s · the board it has been sitting on all along ────────────
+   The photograph comes up under the die shells and they dissolve into
+   it. This is the beat the whole opening exists to set up. */
+master.add("#jetson1", { opacity: [0, 1], duration: 1600, ease: "outQuad" }, 11200);
+master.add(["#dieCore", "#diePkg", "#dieMod"],
+           { opacity: 0, duration: 1400, ease: "inQuad" }, 11400);
+master.add(".dieFlowDot", { opacity: 0, duration: 900 }, 11400);
 master.add(svg.createDrawable(`#jetson1 [id^="trace1_"]`), {
-  draw: ["0 0", "0 1"],
-  duration: 1500,
-  delay: stagger(110),
-  ease: "inOutQuad",
-}, 4200);
+  draw: ["0 0", "0 1"], duration: 1600, delay: stagger(120), ease: "inOutQuad",
+}, 11600);
 
-/* Slow camera push so the viewer gets a moment with the hardware,
-   still framed on node 1 alone. */
-master.add("#rig", {
-  scale: 1.0, translateX: 460, translateY: 75,
-  duration: 3000, ease: "inOutQuad",
-}, 4000);
-master.add("#floorPool", { opacity: [0, 1], duration: 1800 }, 4600);
+/* The moment there is a fan on screen it has to be turning. The rest of
+   the idle system waits for the rails to come up, but a still fan on a
+   visible board reads as a photograph, which is the one thing this
+   sequence is trying not to look like. */
+master.call(() => spinFans(1500), 11400);
 
-/* ── Scene 2 · "Two of these." ─────────────────────────────────── */
-caption(master, "#line2", 6600, 1200);
+fly(11800, 3000, 1.35, P_BOARD1[0], P_BOARD1[1]);
+master.add("#floorPool", { opacity: [0, 1], duration: 1800 }, 12600);
+caption(master, "#line1", 12400, 1700);
 
+/* ── 15.8s · the second node ───────────────────────────────────────
+   The frame keeps widening and there is simply more machine in it. */
 master.add("#jetson2", {
-  opacity: [0, 1],
-  scale: [0.82, 1],
-  translateX: [220, 0],
-  translateY: [60, 0],
-  rotate: [7, 0],
-  duration: 1700,
-  ease: "outExpo",
-}, 7900);
+  opacity: [0, 1], scale: [0.86, 1], translateX: [180, 0], rotate: [5, 0],
+  duration: 1900, ease: "outExpo",
+}, 16000);
 master.add(svg.createDrawable(`#jetson2 [id^="trace2_"]`), {
-  draw: ["0 0", "0 1"],
-  duration: 1400,
-  delay: stagger(100),
-  ease: "inOutQuad",
-}, 8300);
+  draw: ["0 0", "0 1"], duration: 1500, delay: stagger(110), ease: "inOutQuad",
+}, 16500);
+fly(15800, 3200, 0.92, P_ALL[0], P_ALL[1]);
+caption(master, "#line2", 16200, 1300);
 
-/* Pull back to hold both nodes in frame. */
-master.add("#rig", {
-  scale: 0.92, translateX: 0, translateY: 0,
-  duration: 2000, ease: "inOutQuad",
-}, 7900);
-
-/* ── Scene 3 · "Working together as one AI system." ────────────── */
-caption(master, "#line3", 10000, 1500);
-
+/* ── 19.4s · the cluster wires itself together ─────────────────── */
+caption(master, "#line3", 19400, 1500);
 master.add("#switch", {
-  opacity: [0, 1],
-  scale: [0.7, 1],
-  translateY: [-40, 0],
-  duration: 1200,
-  ease: "outBack",
-}, 11200);
-master.add("#psu", { opacity: [0, 1], translateY: [26, 0], duration: 900 }, 11500);
+  opacity: [0, 1], scale: [0.7, 1], translateY: [-40, 0],
+  duration: 1200, ease: "outBack",
+}, 20200);
+master.add("#psu", { opacity: [0, 1], translateY: [26, 0], duration: 900 }, 20500);
 
-/* Cables reach out and lock into their sockets. */
 master.add(["#ethernetCable1", "#ethernetCable2", "#usbcCable",
             "#adapterCable", "#powerCable1", "#powerCable2"],
-           { opacity: 1, duration: 10 }, 11800);
+           { opacity: 1, duration: 10 }, 20800);
 master.add(svg.createDrawable("#ethernetCable1"),
-           { draw: ["0 0", "0 1"], duration: 1100, ease: "inOutQuad" }, 11800);
+           { draw: ["0 0", "0 1"], duration: 1100, ease: "inOutQuad" }, 20800);
 master.add(svg.createDrawable("#ethernetCable2"),
-           { draw: ["0 0", "0 1"], duration: 1100, ease: "inOutQuad" }, 11950);
-master.add("#usbEthAdapter", { opacity: [0, 1], scale: [0.6, 1], duration: 700 }, 12200);
+           { draw: ["0 0", "0 1"], duration: 1100, ease: "inOutQuad" }, 20950);
+master.add("#usbEthAdapter", { opacity: [0, 1], scale: [0.6, 1], duration: 700 }, 21200);
 master.add(svg.createDrawable("#usbcCable"),
-           { draw: ["0 0", "0 1"], duration: 900, ease: "inOutQuad" }, 12300);
+           { draw: ["0 0", "0 1"], duration: 900, ease: "inOutQuad" }, 21300);
 master.add(svg.createDrawable("#adapterCable"),
-           { draw: ["0 0", "0 1"], duration: 900, ease: "inOutQuad" }, 12600);
+           { draw: ["0 0", "0 1"], duration: 900, ease: "inOutQuad" }, 21600);
 master.add(svg.createDrawable(["#powerCable1", "#powerCable2"]),
-           { draw: ["0 0", "0 1"], duration: 1100, delay: stagger(140), ease: "inOutQuad" }, 12500);
-
-/* Link lights confirm the plugs seated. */
+           { draw: ["0 0", "0 1"], duration: 1100, delay: stagger(140), ease: "inOutQuad" }, 21500);
 master.add(["#ethLink1", "#ethLink2", "#adapterLed", "#psuLed"],
-           { opacity: [0, 1], duration: 400, delay: stagger(120) }, 13400);
+           { opacity: [0, 1], duration: 400, delay: stagger(120) }, 22400);
 
-/* ── Scene 4 · "Running AI locally." ───────────────────────────── */
-caption(master, "#line4", 14200, 1500);
+/* ── 23.2s · the rails come up and it stays alive ────────────────── */
+caption(master, "#line4", 23200, 1500);
+master.add(["#ledPwr1", "#ledPwr2"], { opacity: [0, 1], duration: 500 }, 24400);
+master.add(["#ledAct1", "#ledAct2"], { opacity: [0, 0.9], duration: 500 }, 24700);
+master.add(["#gpuLit1", "#gpuLit2"], { opacity: [0, 0.30], duration: 900 }, 24600);
+master.add(["#aiLit1", "#aiLit2"],   { opacity: [0, 0.24], duration: 900 }, 24900);
+master.add(["#cpuLit1", "#cpuLit2"], { opacity: [0, 0.20], duration: 900 }, 25100);
+master.add(["#ramLit1", "#ramLit2"], { opacity: [0, 0.16], duration: 900 }, 25300);
+master.add(".spark", { opacity: [0, 1], duration: 700, delay: stagger(24) }, 25000);
+master.add(".pkt",   { opacity: [0, 1], duration: 500, delay: stagger(40) }, 25600);
 
-/* Power rails come up: LEDs, then silicon, then the fans spin. */
-master.add(["#ledPwr1", "#ledPwr2"], { opacity: [0, 1], duration: 500 }, 15400);
-master.add(["#ledAct1", "#ledAct2"], { opacity: [0, 0.9], duration: 500 }, 15700);
+master.call(() => startIdleSystem(), 24400);
 
-master.add(["#gpuLit1", "#gpuLit2"], { opacity: [0, 0.30], duration: 900 }, 15600);
-master.add(["#aiLit1", "#aiLit2"],   { opacity: [0, 0.24], duration: 900 }, 15900);
-master.add(["#cpuLit1", "#cpuLit2"], { opacity: [0, 0.20], duration: 900 }, 16100);
-master.add(["#ramLit1", "#ramLit2"], { opacity: [0, 0.16], duration: 900 }, 16300);
+/* A last, very slow drift inward so the final frame is never static. */
+fly(25200, 4200, 0.99, P_ALL[0], P_ALL[1] - 8, "inOutSine");
 
-master.add(".spark", { opacity: [0, 1], duration: 700, delay: stagger(24) }, 16000);
-master.add(".pkt",   { opacity: [0, 1], duration: 500, delay: stagger(40) }, 16600);
-
-/* The machine is live from here on. */
-master.call(() => startIdleSystem(), 15400);
-
-/* ── Scene 5 · specs and sign-off ──────────────────────────────── */
-caption(master, "#line5", 17600, 1600);
-
-master.add("#cineSub", { opacity: [0, 1], translateY: [12, 0], duration: 1000 }, 18400);
+/* ── 26.6s · sign-off ────────────────────────────────────────────── */
+/* The sign-off line and the spec chips share the bottom of the frame,
+   so the chips wait for the line to clear rather than landing on it. */
+caption(master, "#line5", 26600, 1600);
+master.add("#cineSub", { opacity: [0, 1], translateY: [12, 0], duration: 1000 }, 30200);
 master.add(".chip", {
-  opacity: [0, 1],
-  translateY: [16, 0],
-  duration: 800,
-  delay: stagger(70),
-}, 19400);
-
-/* Callout lines draw, then their labels fade up. */
+  opacity: [0, 1], translateY: [16, 0], duration: 800, delay: stagger(70),
+}, 30700);
 master.add(svg.createDrawable(["#co1Line", "#co2Line", "#co3Line"]),
-           { draw: ["0 0", "0 1"], duration: 900, delay: stagger(150) }, 19600);
+           { draw: ["0 0", "0 1"], duration: 900, delay: stagger(150) }, 29000);
 master.add(["#co1Text", "#co2Text", "#co3Text"],
-           { opacity: [0, 1], duration: 700, delay: stagger(150) }, 20100);
+           { opacity: [0, 1], duration: 700, delay: stagger(150) }, 29500);
+
+
+/* ══════════════════════════════════════════════════════════════════
+   DIE LIFE — the silicon is never idle
+   ══════════════════════════════════════════════════════════════════
+   Every route is a journey between two districts, so traffic reads as
+   work being done rather than as decoration: out of the GPU array into
+   memory, back by a different road, across the array, out to the I/O
+   edge, and the CPU handing work over.                                */
+let dieLifeStarted = false;
+function startDieLife() {
+  if (dieLifeStarted) return;
+  dieLifeStarted = true;
+
+  for (const r of DIE_ROUTES) {
+    const mp = svg.createMotionPath(r.path);
+    animate(`.${r.cls}`, {
+      translateX: mp.translateX,
+      translateY: mp.translateY,
+      duration: r.dur,
+      delay: stagger(r.dur / r.n),
+      loop: true,
+      ease: "linear",
+    });
+  }
+
+  // Blocks light in waves across the array, which is what makes it look
+  // like a workload moving rather than a lit grid.
+  animate(".smLit", {
+    opacity: [0.05, 0.30],
+    duration: 900,
+    delay: stagger(60, { from: "center" }),
+    loop: true, alternate: true, ease: "inOutSine",
+  });
+  animate(".bankLit", {
+    opacity: [0.05, 0.22], duration: 1300, delay: stagger(340),
+    loop: true, alternate: true, ease: "inOutSine",
+  });
+  animate(".coreLit", {
+    opacity: [0.04, 0.18], duration: 1100, delay: stagger(150),
+    loop: true, alternate: true, ease: "inOutSine",
+  });
+}
 
 /* ══════════════════════════════════════════════════════════════════
    5. IDLE SYSTEM — the machine never goes static
