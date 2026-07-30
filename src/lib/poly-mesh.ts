@@ -69,9 +69,14 @@ export class Mesher {
   /**
    * Extrude a centreline polyline into a flat slab of the given half
    * width and thickness (thickness hangs below the line).
+   *
+   * Pass `sides` to send the flanks and underside to a second buffer, so
+   * the road's edge can take a darker material than its surface — which
+   * is what gives each piece its slab-like read.
    */
-  ribbon(pts: V3[], halfW: number, thick: number): void {
+  ribbon(pts: V3[], halfW: number, thick: number, sides?: Mesher): void {
     if (pts.length < 2) return;
+    const skirt = sides ?? this;
     const n = pts.length;
     const left: V3[] = [], right: V3[] = [];
     for (let i = 0; i < n; i++) {
@@ -83,14 +88,27 @@ export class Mesher {
 
     for (let i = 0; i < n - 1; i++) {
       const l0 = left[i], l1 = left[i + 1], r0 = right[i], r1 = right[i + 1];
-      this.quad(l0, l1, r1, r0);                              // top
-      this.quad(down(l0), down(r0), down(r1), down(l1));      // underside
-      this.quad(r0, r1, down(r1), down(r0));                  // right flank
-      this.quad(l0, down(l0), down(l1), l1);                  // left flank
+      this.quad(l0, l1, r1, r0);                               // top
+      skirt.quad(down(l0), down(r0), down(r1), down(l1));      // underside
+      skirt.quad(r0, r1, down(r1), down(r0));                  // right flank
+      skirt.quad(l0, down(l0), down(l1), l1);                  // left flank
     }
     // End caps.
-    this.quad(left[0], right[0], down(right[0]), down(left[0]));
-    this.quad(left[n - 1], down(left[n - 1]), down(right[n - 1]), right[n - 1]);
+    skirt.quad(left[0], right[0], down(right[0]), down(left[0]));
+    skirt.quad(left[n - 1], down(left[n - 1]), down(right[n - 1]), right[n - 1]);
+  }
+
+  /** A flat strip laid on top of a surface — road markings. */
+  stripe(pts: V3[], halfW: number): void {
+    if (pts.length < 2) return;
+    const n = pts.length;
+    const a: V3[] = [], b: V3[] = [];
+    for (let i = 0; i < n; i++) {
+      const [rx, rz] = sideOf(pts, i);
+      a.push({ x: pts[i].x - rx * halfW, y: pts[i].y, z: pts[i].z - rz * halfW });
+      b.push({ x: pts[i].x + rx * halfW, y: pts[i].y, z: pts[i].z + rz * halfW });
+    }
+    for (let i = 0; i < n - 1; i++) this.quad(a[i], a[i + 1], b[i + 1], b[i]);
   }
 
   /** Shift a centreline sideways (along sideOf) and upward. */

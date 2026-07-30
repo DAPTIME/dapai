@@ -1,4 +1,4 @@
-// Poly Racer community track player.
+// DAP Track community track player.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -10,8 +10,8 @@ import { Leaderboard } from "@/components/track-leaderboard";
 import { MEDAL_META, formatMs, recordPersonalBest, type Season } from "@/lib/polytrack-engine";
 import { getTrack, submitScore } from "@/lib/tracks.functions";
 
-export const Route = createFileRoute("/games/polytrack/track/$id")({
-  head: () => ({ meta: [{ title: "Community Track — Poly Racer" }] }),
+export const Route = createFileRoute("/games/daptrack/track/$id")({
+  head: () => ({ meta: [{ title: "Community Track — DAP Track" }] }),
   component: TrackPage,
 });
 
@@ -37,7 +37,7 @@ function TrackPage() {
     return (
       <div className="mx-auto max-w-md rounded-xl border border-border p-6 text-center">
         <p className="text-sm text-destructive">{err}</p>
-        <Link to="/games/polytrack/browse" className="mt-4 inline-block text-sm underline">Back to browse</Link>
+        <Link to="/games/daptrack/browse" className="mt-4 inline-block text-sm underline">Back to browse</Link>
       </div>
     );
   }
@@ -58,7 +58,7 @@ function TrackPage() {
   };
 
   const share = async () => {
-    const url = `${window.location.origin}/games/polytrack/track/${track.id}`;
+    const url = `${window.location.origin}/games/daptrack/track/${track.id}`;
     try { await navigator.clipboard.writeText(url); toast.success("Link copied!"); }
     catch { toast.info(url); }
   };
@@ -72,14 +72,14 @@ function TrackPage() {
         title={track.name}
         trackRef={trackRef}
         onFinish={handleFinish}
-        onExit={() => navigate({ to: "/games/polytrack/browse" })}
+        onExit={() => navigate({ to: "/games/daptrack/browse" })}
         exitLabel="Browse"
       />
       <div className="mx-auto max-w-md">
         <div className="mt-4 flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" onClick={share}>🔗 Copy link</Button>
           {isOwner && (
-            <Button size="sm" variant="outline" onClick={() => navigate({ to: "/games/polytrack/editor", search: { id: track.id } })}>
+            <Button size="sm" variant="outline" onClick={() => navigate({ to: "/games/daptrack/editor", search: { id: track.id } })}>
               ✏️ Edit
             </Button>
           )}

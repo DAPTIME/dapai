@@ -1,4 +1,4 @@
-// Poly Racer — 3D tile-track time trial runner (three.js, client-only).
+// DAP Track — 3D tile-track time trial runner (three.js, client-only).
 // three is loaded via dynamic import inside useEffect so it never enters
 // the SSR bundle or the main chat bundle.
 //
@@ -111,7 +111,9 @@ export function PolyTrackRunner(props: Props) {
       // ── Scene ──────────────────────────────────────────────────────
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(theme.sky);
-      scene.fog = new THREE.Fog(theme.sky, 90, 320);
+      // Only enough haze to soften the horizon — anything nearer and the
+      // whole scene turns muddy.
+      scene.fog = new THREE.Fog(theme.sky, 420, 1100);
 
       const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 900);
 
@@ -134,10 +136,15 @@ export function PolyTrackRunner(props: Props) {
       const ro = new ResizeObserver(resize);
       ro.observe(el);
 
-      scene.add(new THREE.HemisphereLight(new THREE.Color(theme.sky), new THREE.Color(theme.ground), 1.1));
-      const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-      sun.position.set(60, 120, 40);
+      // Sky/ground bounce does most of the work so faces stay bright and
+      // evenly lit; the sun only adds enough direction to read the slabs.
+      scene.add(new THREE.HemisphereLight(new THREE.Color(theme.sky), new THREE.Color(theme.ground), 2.1));
+      const sun = new THREE.DirectionalLight(0xffffff, 1.35);
+      sun.position.set(60, 140, 40);
       scene.add(sun);
+      const fill = new THREE.DirectionalLight(0xffffff, 0.45);
+      fill.position.set(-70, 60, -50);
+      scene.add(fill);
 
       // ── Track geometry ─────────────────────────────────────────────
       const built = buildTrack(THREE, track, sampler, theme);
@@ -719,26 +726,27 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
   const group = new THREE.Group();
   const disposables: Array<{ dispose: () => void }> = [];
 
-  const road = new Mesher();
-  const curb = new Mesher();
+  const road = new Mesher();     // tarmac surface
+  const roadSide = new Mesher(); // flanks + underside, a shade darker
+  const line = new Mesher();     // painted edge markings
   const support = new Mesher();
   const boost = new Mesher();
   const props = new Mesher();
+  const checkerLight = new Mesher();
+  const checkerDark = new Mesher();
 
   const checkpoints: Tile[] = [];
 
   for (const t of track.tiles) {
     const pts = tilePath(sampler, t);
-    road.ribbon(pts, ROAD_HALF, ROAD_THICK);
+    // Surface and flanks are separate buffers so the slab edge can be
+    // darker than the tarmac — that contrast is what makes each piece
+    // read as a solid block rather than a painted stripe on the ground.
+    road.ribbon(pts, ROAD_HALF, ROAD_THICK, roadSide);
 
-    // Raised lips down both edges, skipped where a gate crosses the road.
-    const lipH = 0.34;
+    // Flat painted lines just inside both edges.
     for (const side of [-1, 1]) {
-      curb.ribbon(
-        Mesher.offset(pts, side * (ROAD_HALF + 0.16), lipH),
-        0.22,
-        ROAD_THICK + lipH,
-      );
+      line.stripe(Mesher.offset(pts, side * (ROAD_HALF - 0.34), 0.035), 0.17);
     }
 
     if (t.type === "boost") {
@@ -753,15 +761,21 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
     }
   }
 
-  const roadMat = new THREE.MeshLambertMaterial({ color: theme.road, flatShading: true });
-  const curbMat = new THREE.MeshLambertMaterial({ color: theme.roadEdge, flatShading: true });
-  const supportMat = new THREE.MeshLambertMaterial({ color: theme.support, flatShading: true });
+  const roadMat = new THREE.MeshLambertMaterial({ color: theme.road });
+  const roadSideMat = new THREE.MeshLambertMaterial({ color: theme.roadSide });
+  const lineMat = new THREE.MeshBasicMaterial({ color: theme.roadLine });
+  const supportMat = new THREE.MeshLambertMaterial({ color: theme.support });
   const boostMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee });
   const propMat = new THREE.MeshLambertMaterial({ color: theme.prop, flatShading: true });
-  disposables.push(roadMat, curbMat, supportMat, boostMat, propMat);
+  const checkLightMat = new THREE.MeshBasicMaterial({ color: 0xf2f4f5 });
+  const checkDarkMat = new THREE.MeshBasicMaterial({ color: 0x1c2024 });
+  disposables.push(roadMat, roadSideMat, lineMat, supportMat, boostMat, propMat,
+                   checkLightMat, checkDarkMat);
 
   for (const [mesher, mat] of [
-    [road, roadMat], [curb, curbMat], [support, supportMat], [boost, boostMat],
+    [road, roadMat], [roadSide, roadSideMat], [line, lineMat],
+    [support, supportMat], [boost, boostMat],
+    [checkerLight, checkLightMat], [checkerDark, checkDarkMat],
   ] as const) {
     if (mesher.isEmpty) continue;
     const geo = mesher.build(THREE);
@@ -782,11 +796,11 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
   let seed = track.tiles.length * 9301 + 49297;
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
   const b = sampler.bounds;
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 64; i++) {
     const gx = b.minX - 6 + rnd() * (b.maxX - b.minX + 12);
     const gz = b.minZ - 6 + rnd() * (b.maxZ - b.minZ + 12);
-    const h = 2.5 + rnd() * 5;
-    const half = 1.4 + rnd() * 1.4;
+    const h = 2.2 + rnd() * 3.4;
+    const half = 1.3 + rnd() * 1.3;
     const wx = sampler.worldX(gx), wz = sampler.worldZ(gz);
     if (sampler.columnAt(wx, wz).length > 0) continue;
     // Keep the whole trunk clear of the tarmac — of every deck, at any
@@ -804,55 +818,95 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
   }
 
   // ── Gates: start, finish, checkpoints ─────────────────────────────
-  const gateMats: Array<import("three").MeshLambertMaterial> = [];
-  const cpGates = new Map<string, import("three").MeshLambertMaterial>();
+  const gateMats: Array<import("three").Material> = [];
+  const cpGates = new Map<string, {
+    frame: import("three").MeshLambertMaterial;
+    pane: import("three").MeshBasicMaterial;
+  }>();
 
-  const addGate = (t: Tile, color: number, key?: string) => {
-    // Straddle the road at the piece's centre, square to the direction of
-    // travel — the posts must end up either side of the tarmac.
+  /** Where a piece sits and which way it faces, for anything laid on it. */
+  const placeOn = (t: Tile) => {
     const p = sampler.tileCenter(t);
     const surf = sampler.at(p.x, p.z, p.y);
-    const rotY = Math.atan2(surf.dirX, surf.dirZ);
-    // An arch only fits where nothing crosses overhead.
+    return { p, rotY: Math.atan2(surf.dirX, surf.dirZ) };
+  };
+
+  /**
+   * A checkpoint gate: two slim uprights and a translucent panel you
+   * drive straight through. The panel turns green once collected.
+   */
+  const addGate = (t: Tile, color: number, key?: string) => {
+    const { p, rotY } = placeOn(t);
+    // A gate only fits where nothing crosses overhead.
     const headroom = sampler.ceilingAt(p.x, p.z, p.y + 0.5) - p.y;
+    const h = Math.min(5.4, headroom - 0.9);
+    if (h < 1.6) return;   // under a flyover: the road marking alone marks it
 
-    const mat = new THREE.MeshLambertMaterial({ color, flatShading: true });
-    gateMats.push(mat);
-    if (key) cpGates.set(key, mat);
+    const holder = new THREE.Group();
+    holder.position.set(p.x, p.y, p.z);
+    holder.rotation.y = rotY;
 
-    const m = new Mesher();
-    const w = ROAD_HALF + 0.5;
-    // Posts either side plus a bar overhead, built in tile-local space.
-    // The arch clears GATE_H so the chase camera passes under it instead
-    // of clipping through the bar as it crosses the line.
-    const GATE_H = Math.min(6.8, headroom - 0.8);
-    if (GATE_H > 2) {
-      m.box(-w, GATE_H / 2, 0, 0.5, GATE_H, 0.5);
-      m.box(w, GATE_H / 2, 0, 0.5, GATE_H, 0.5);
-      m.box(0, GATE_H, 0, w * 2 + 0.5, 0.6, 0.55);
-    } else {
-      // No room to arch over: mark the line with kerbside blocks instead.
-      m.box(-w, 0.7, 0, 0.6, 1.4, 0.6);
-      m.box(w, 0.7, 0, 0.6, 1.4, 0.6);
+    const w = ROAD_HALF + 0.35;
+    const frameMat = new THREE.MeshLambertMaterial({ color });
+    const paneMat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.17,
+      side: THREE.DoubleSide, depthWrite: false,
+    });
+    gateMats.push(frameMat);
+    if (key) cpGates.set(key, { frame: frameMat, pane: paneMat });
+
+    const fm = new Mesher();
+    fm.box(-w, h / 2, 0, 0.36, h, 0.36);
+    fm.box(w, h / 2, 0, 0.36, h, 0.36);
+    fm.box(0, h, 0, w * 2 + 0.36, 0.36, 0.36);
+    const frameGeo = fm.build(THREE);
+
+    const pm = new Mesher();
+    pm.quad(
+      { x: -w, y: 0.05, z: 0 }, { x: w, y: 0.05, z: 0 },
+      { x: w, y: h, z: 0 }, { x: -w, y: h, z: 0 },
+    );
+    const paneGeo = pm.build(THREE);
+
+    disposables.push(frameGeo, paneGeo, paneMat);
+    holder.add(new THREE.Mesh(frameGeo, frameMat));
+    holder.add(new THREE.Mesh(paneGeo, paneMat));
+    group.add(holder);
+  };
+
+  /** Black-and-white squares laid across the road for start and finish. */
+  const addCheckerLine = (t: Tile) => {
+    const { p, rotY } = placeOn(t);
+    const cols = 8, rows = 2;
+    const cw = (ROAD_HALF * 2) / cols, cd = 0.85;
+    const cos = Math.cos(rotY), sin = Math.sin(rotY);
+    // Tile-local (lx, lz) → world, rotated to face along the road.
+    const at = (lx: number, lz: number) => ({
+      x: p.x + lx * cos + lz * sin,
+      y: p.y + 0.04,
+      z: p.z - lx * sin + lz * cos,
+    });
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x0 = -ROAD_HALF + c * cw, x1 = x0 + cw;
+        const z0 = (r - rows / 2) * cd, z1 = z0 + cd;
+        const target = (r + c) % 2 === 0 ? checkerLight : checkerDark;
+        target.quad(at(x0, z0), at(x0, z1), at(x1, z1), at(x1, z0));
+      }
     }
-    m.box(0, 0.06, 0, w * 2, 0.12, 1.1);
-    const geo = m.build(THREE);
-    disposables.push(geo);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(p.x, p.y, p.z);
-    mesh.rotation.y = rotY;
-    group.add(mesh);
   };
 
   const startTile = track.tiles.find((t) => t.type === "start");
   const finishTile = track.tiles.find((t) => t.type === "finish");
-  if (startTile) addGate(startTile, 0x22c55e);
-  if (finishTile) addGate(finishTile, 0xef4444);
-  for (const cp of checkpoints) addGate(cp, 0x3b82f6, `${cp.x},${cp.y},${cp.z}`);
+  if (startTile) { addCheckerLine(startTile); addGate(startTile, 0x2fbf4a); }
+  if (finishTile) { addCheckerLine(finishTile); addGate(finishTile, 0xe63946); }
+  for (const cp of checkpoints) addGate(cp, 0x2f80ed, `${cp.x},${cp.y},${cp.z}`);
 
   const setCheckpointsLit = (hit: Set<string>) => {
-    for (const [key, mat] of cpGates) {
-      mat.color.setHex(hit.has(key) ? 0x22c55e : 0x3b82f6);
+    for (const [key, mats] of cpGates) {
+      const c = hit.has(key) ? 0x2fbf4a : 0x2f80ed;
+      mats.frame.color.setHex(c);
+      mats.pane.color.setHex(c);
     }
   };
 

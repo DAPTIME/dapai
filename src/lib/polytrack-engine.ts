@@ -1,4 +1,4 @@
-// Poly Racer shared engine: themes, tile geometry constants, the surface
+// DAP Track shared engine: themes, tile geometry constants, the surface
 // sampler that both the physics and the camera use, and the top-down
 // thumbnail renderer.
 //
@@ -13,25 +13,33 @@ export type Season = "spring" | "summer" | "fall" | "winter";
 export const SEASONS: Season[] = ["spring", "summer", "fall", "winter"];
 
 export type Theme = {
+  /** Terrain plane. Bright and saturated — the track reads against it. */
   ground: string;
+  /** Tarmac surface. Grey in every season, as asphalt is. */
   road: string;
-  roadEdge: string;
-  dash: string;
+  /** Flanks and underside of the slab, a shade down from the surface. */
+  roadSide: string;
+  /** Painted edge lines. */
+  roadLine: string;
   label: string;
   emoji: string;
-  fleck: string;
   sky: string;
-  /** Pillars and the underside of raised road. */
+  /** Pillars holding up raised road. */
   support: string;
   /** Scatter props dotted around the terrain. */
   prop: string;
 };
 
+/**
+ * Flat, high-key palettes. The look is a bright day with no haze: the
+ * seasons change the ground and sky, while the road stays the same grey
+ * so a track reads the same way wherever it is set.
+ */
 export const THEMES: Record<Season, Theme> = {
-  spring: { ground: "#4ea862", road: "#3a3a44", roadEdge: "#e5e7eb", dash: "#fde047", label: "Spring", emoji: "🌱", fleck: "#7ed07a", sky: "#8ec9ff", support: "#2f2f38", prop: "#2f8f4e" },
-  summer: { ground: "#d9b26a", road: "#a88558", roadEdge: "#f4e2b8", dash: "#ffffff", label: "Summer", emoji: "🏜️", fleck: "#f5deb3", sky: "#ffd47a", support: "#8a6a44", prop: "#c08a4a" },
-  fall:   { ground: "#8a5a2b", road: "#3a3a44", roadEdge: "#e5e7eb", dash: "#fde047", label: "Fall",   emoji: "🍂", fleck: "#f97316", sky: "#f4b183", support: "#2f2f38", prop: "#c2410c" },
-  winter: { ground: "#e8eef5", road: "#c9d3de", roadEdge: "#94a3b8", dash: "#64748b", label: "Winter", emoji: "❄️", fleck: "#ffffff", sky: "#cfe8f5", support: "#94a3b8", prop: "#7f9bb3" },
+  spring: { ground: "#68bf4d", sky: "#8fd3f4", road: "#7f868c", roadSide: "#565c62", roadLine: "#f4f7f8", support: "#5b6167", prop: "#3f9e52", label: "Spring", emoji: "🌱" },
+  summer: { ground: "#e0be74", sky: "#ffd9a0", road: "#868b8f", roadSide: "#5c6165", roadLine: "#fbf7ef", support: "#6a6f73", prop: "#c78a46", label: "Summer", emoji: "🏜️" },
+  fall:   { ground: "#c47b34", sky: "#ffc98d", road: "#7c8388", roadSide: "#54595e", roadLine: "#f7f2ea", support: "#5a6065", prop: "#a8421b", label: "Fall",   emoji: "🍂" },
+  winter: { ground: "#eaf2fa", sky: "#c4e6fb", road: "#8b9299", roadSide: "#626a71", roadLine: "#ffffff", support: "#6d757c", prop: "#8fb4cf", label: "Winter", emoji: "❄️" },
 };
 
 export const TILE = 10;          // world units per tile

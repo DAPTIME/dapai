@@ -5,8 +5,8 @@ import { listPublicTracks } from "@/lib/tracks.functions";
 import { THEMES, formatMs, type Season } from "@/lib/polytrack-engine";
 import { TrackThumbnail } from "@/components/track-thumbnail";
 
-export const Route = createFileRoute("/games/polytrack/browse")({
-  head: () => ({ meta: [{ title: "Community Tracks — Poly Racer" }] }),
+export const Route = createFileRoute("/games/daptrack/browse")({
+  head: () => ({ meta: [{ title: "Community Tracks — DAP Track" }] }),
   component: BrowsePage,
 });
 
@@ -35,8 +35,8 @@ function BrowsePage() {
           <p className="mt-1 text-sm text-muted-foreground">Tracks built and published by other players.</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/games/polytrack" className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-primary">← Poly Racer</Link>
-          <Link to="/games/polytrack/editor" className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Build one</Link>
+          <Link to="/games/daptrack" className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-primary">← DAP Track</Link>
+          <Link to="/games/daptrack/editor" className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Build one</Link>
         </div>
       </div>
       {err && <p className="text-sm text-destructive">{err}</p>}
@@ -44,7 +44,7 @@ function BrowsePage() {
       {rows && rows.length === 0 && (
         <div className="rounded-xl border border-dashed border-border p-8 text-center">
           <p className="text-sm text-muted-foreground">No public tracks yet.</p>
-          <Link to="/games/polytrack/editor" className="mt-3 inline-block rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground">Be the first</Link>
+          <Link to="/games/daptrack/editor" className="mt-3 inline-block rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground">Be the first</Link>
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -53,7 +53,7 @@ function BrowsePage() {
           return (
             <Link
               key={t.id}
-              to="/games/polytrack/track/$id"
+              to="/games/daptrack/track/$id"
               params={{ id: t.id }}
               className="group overflow-hidden rounded-xl border border-border bg-card/40 transition-all hover:-translate-y-0.5 hover:border-primary"
               style={{ boxShadow: `inset 0 -3px 0 ${theme.ground}` }}

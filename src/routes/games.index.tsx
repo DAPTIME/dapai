@@ -8,7 +8,7 @@ const GAMES = [
   { to: "/games/2048" as const, label: "2048", emoji: "🟨", desc: "Slide, merge, chase 2048." },
   { to: "/games/snake" as const, label: "Snake", emoji: "🐍", desc: "Classic — don't bite yourself." },
   { to: "/games/spacewar" as const, label: "Spacewar", emoji: "🚀", desc: "Dodge asteroids, blast rocks." },
-  { to: "/games/polytrack" as const, label: "Poly Racer", emoji: "🏎️", desc: "3D low-poly time trials — checkpoints, ghosts, medals, editor." },
+  { to: "/games/daptrack" as const, label: "DAP Track", emoji: "🏎️", desc: "3D low-poly time trials — checkpoints, ghosts, medals, editor." },
   { to: "/games/river" as const, label: "River Crosser", emoji: "🐸", desc: "Hop cars and logs — don't drown." },
   { to: "/games/flappy" as const, label: "Flappy", emoji: "🐤", desc: "Tap to flap between pipes." },
   { to: "/games/breakout" as const, label: "Brick Breaker", emoji: "🧱", desc: "Bounce, smash, clear the wall." },
@@ -39,12 +39,12 @@ function GamesHome() {
         ))}
       </div>
       <div className="mt-6 grid gap-2 sm:grid-cols-2">
-        <Link to="/games/polytrack/browse" className="rounded-xl border border-border bg-card p-4 hover:border-primary">
-          <div className="font-semibold">🌐 Community Poly Racer Tracks</div>
+        <Link to="/games/daptrack/browse" className="rounded-xl border border-border bg-card p-4 hover:border-primary">
+          <div className="font-semibold">🌐 Community DAP Track Tracks</div>
           <div className="text-sm text-muted-foreground">Play levels built by the community.</div>
         </Link>
-        <Link to="/games/polytrack/editor" className="rounded-xl border border-border bg-card p-4 hover:border-primary">
-          <div className="font-semibold">✏️ Poly Racer Editor</div>
+        <Link to="/games/daptrack/editor" className="rounded-xl border border-border bg-card p-4 hover:border-primary">
+          <div className="font-semibold">✏️ DAP Track Editor</div>
           <div className="text-sm text-muted-foreground">Build, share, and publish your own tracks.</div>
         </Link>
       </div>
