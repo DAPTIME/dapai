@@ -134,14 +134,21 @@
   .cine {
     position: absolute;
     left: 0; right: 0;
-    /* Sits in the gap below the boards rather than across them. */
-    top: 62%;
-    transform: translateY(-50%);
+    /* A lower third. Centred at mid-height it ran straight through the
+       stat blocks on the left, which are vertically centred by design. */
+    bottom: 13%;
     text-align: center;
     pointer-events: none;
     z-index: 20;
+    /* All seven lines share one cell. Stacked in flow the block is seven
+       lines tall, so its middle still landed on the stat column even
+       with the box pinned to the bottom. */
+    display: grid;
+    justify-items: center;
+    align-items: end;
   }
   .cine-line {
+    grid-area: 1 / 1;
     margin: 0;
     font-size: clamp(24px, 4.3vw, 62px);
     font-weight: 250;
@@ -155,6 +162,53 @@
     font-weight: 500;
     color: var(--nv-bright);
   }
+
+  /* ── Stat slams ───────────────────────────────────────────────────
+     A hard, kinetic counterpoint to the thin cinematic lines: blocks
+     that land on the left edge while the camera is deep in the
+     silicon, each carrying one number about this machine. Left-aligned
+     and stacked, so they read as an overlay on footage rather than as
+     a caption centred under it. */
+  .slams {
+    position: absolute;
+    left: clamp(16px, 4vw, 74px);
+    top: 50%;
+    transform: translateY(-50%);
+    /* Every pair shares one grid cell, so each stat lands where the
+       last one was instead of the column growing down the frame. */
+    display: grid;
+    justify-items: start;
+    align-items: center;
+    pointer-events: none;
+    z-index: 22;
+  }
+  .slam-pair {
+    grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: clamp(5px, 0.8vh, 11px);
+  }
+  .slam {
+    opacity: 0;
+    display: block;
+    padding: clamp(3px, 0.7vh, 10px) clamp(9px, 1.5vw, 22px);
+    background: rgba(10, 22, 8, 0.82);
+    border: 1.5px solid rgba(118, 185, 0, 0.85);
+    border-radius: 4px;
+    color: #fff;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 0.98;
+    text-transform: uppercase;
+    /* Condensed if the system has it, so long words stay on one line. */
+    font-stretch: 85%;
+    backdrop-filter: blur(3px);
+    white-space: nowrap;
+  }
+  .slam.big { font-size: clamp(44px, 9vw, 132px); letter-spacing: -0.03em; }
+  .slam.mid { font-size: clamp(19px, 3.4vw, 50px); }
+  .slam em  { font-style: normal; color: var(--nv-bright); }
   .bottom-stack {
     position: absolute;
     left: 0; right: 0;
@@ -498,9 +552,9 @@
 
       <!-- Die substrate: silicon reads blue-grey, not black. -->
       <linearGradient id="dieSub" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%"   stop-color="#0d1a22"/>
-        <stop offset="52%"  stop-color="#132430"/>
-        <stop offset="100%" stop-color="#0a141b"/>
+        <stop offset="0%"   stop-color="#12251c"/>
+        <stop offset="46%"  stop-color="#1b3527"/>
+        <stop offset="100%" stop-color="#0d1d17"/>
       </linearGradient>
 
       <!-- Blur sized to the fan, so the sweeping highlight reads as
@@ -549,6 +603,32 @@
   </svg>
 
   <!-- ── Cinematic captions ──────────────────────────────────────── -->
+  <!-- Stat slams. Every number here is this cluster's own: two nodes,
+       16 GB of unified memory across them, 80 trillion ops a second,
+       up to 23 experts routed per plan, and nothing leaving the box. -->
+  <div class="slams" id="slams">
+    <div class="slam-pair" id="slamOps">
+      <span class="slam big" data-count="80">0</span>
+      <span class="slam mid"><em>Trillion</em> ops / sec</span>
+    </div>
+    <div class="slam-pair" id="slamMem">
+      <span class="slam big" data-count="16">0</span>
+      <span class="slam mid">Gigabytes <em>unified</em></span>
+    </div>
+    <div class="slam-pair" id="slamExp">
+      <span class="slam big" data-count="23">0</span>
+      <span class="slam mid">Experts <em>routed</em></span>
+    </div>
+    <div class="slam-pair" id="slamNodes">
+      <span class="slam big" data-count="2">0</span>
+      <span class="slam mid">Jetson Orin Nano</span>
+    </div>
+    <div class="slam-pair" id="slamZero">
+      <span class="slam big" data-count="0">0</span>
+      <span class="slam mid">Requests <em>leave the box</em></span>
+    </div>
+  </div>
+
   <div class="cine" id="cine">
     <!-- The first two land while the camera is still inside the die, so
          nothing has been named yet. line1 is the reveal. -->
@@ -832,11 +912,11 @@ function dieMarkup() {
       let lanes = "";
       for (let l = 0; l < 5; l++) {
         lanes += `<rect x="${x + 9}" y="${y + 11 + l * 16}" width="${SM_W - 18}" height="7"
-                        rx="2" fill="#3f6f8f" opacity="${0.34 + (l % 2) * 0.16}"/>`;
+                        rx="2" fill="#6fae6a" opacity="${0.30 + (l % 2) * 0.16}"/>`;
       }
       sms += `<g class="sm">
         <rect x="${x}" y="${y}" width="${SM_W}" height="${SM_H}" rx="6"
-              fill="#12212c" stroke="#2f5f7d" stroke-width="1.6"/>
+              fill="#16301f" stroke="#4d8a52" stroke-width="1.6"/>
         ${lanes}
         <rect class="smLit" x="${x}" y="${y}" width="${SM_W}" height="${SM_H}" rx="6"
               fill="#76b900" opacity="0"/>
@@ -881,12 +961,12 @@ function dieMarkup() {
   for (let i = 0; i < 34; i++) {
     const y = -352 + i * 21;
     mesh += `<path d="M-486 ${y} H${-40 + (i % 5) * 18} V${y + 13} H${470}"
-                   fill="none" stroke="#2b4d63" stroke-width="0.9" opacity="0.17"/>`;
+                   fill="none" stroke="#3f7a52" stroke-width="0.9" opacity="0.18"/>`;
   }
   for (let i = 0; i < 26; i++) {
     const x = -478 + i * 38;
     mesh += `<path d="M${x} -366 V${-40 + (i % 4) * 22} H${x + 16} V352"
-                   fill="none" stroke="#2b4d63" stroke-width="0.9" opacity="0.13"/>`;
+                   fill="none" stroke="#3f7a52" stroke-width="0.9" opacity="0.14"/>`;
   }
 
   /* ── Pad ring: the die's edge, and the hint of a package ───────── */
@@ -961,9 +1041,9 @@ function dieMarkup() {
 
       <!-- The layered look: the die is not one plane. -->
       <rect x="-500" y="-380" width="1000" height="760" rx="16" fill="none"
-            stroke="#5f96b5" stroke-width="3" opacity="0.5"/>
+            stroke="#7fb98f" stroke-width="3" opacity="0.5"/>
       <rect x="-478" y="-358" width="956" height="716" rx="12" fill="none"
-            stroke="#8fd0ea" stroke-width="1.4" opacity="0.22"/>
+            stroke="#b7e6c2" stroke-width="1.4" opacity="0.22"/>
     </g>
   </g></g></g>`;
 }
@@ -1205,6 +1285,47 @@ const master = createTimeline({
   autoplay: false,
 });
 
+/**
+ * One stat block: number and label punch in off-axis and slightly
+ * oversized, the number counts up to its value, it holds, then the
+ * whole thing snaps away so the next can land in the same place.
+ * Returns nothing — position on the timeline is the caller's business.
+ */
+function slam(tl, sel, at, hold = 1500) {
+  const kids = `${sel} .slam`;
+  tl.add(kids, {
+    opacity: [0, 1],
+    scale: [1.28, 1],
+    translateX: [-46, 0],
+    skewX: [-9, 0],
+    duration: 480,
+    delay: stagger(110),
+    ease: "outExpo",
+  }, at);
+
+  // Numbers count rather than appear, which is what sells them as
+  // measurements of something rather than as decoration.
+  const num = document.querySelector(`${sel} [data-count]`);
+  if (num) {
+    const target = +num.dataset.count;
+    tl.add(num, {
+      innerHTML: [0, target],
+      duration: 620,
+      ease: "outExpo",
+      modifier: utils.round(0),
+    }, at + 60);
+  }
+
+  tl.add(kids, {
+    opacity: 0,
+    translateX: 30,
+    scale: 0.94,
+    duration: 320,
+    delay: stagger(60),
+    ease: "inQuad",
+  }, at + 480 + hold);
+}
+
 /* ══════════════════════════════════════════════════════════════════
    THE JOURNEY
    ══════════════════════════════════════════════════════════════════
@@ -1249,6 +1370,10 @@ master.add(".dieFlowDot", { opacity: [0, 1], duration: 900, delay: stagger(40) }
 master.call(() => startDieLife(), 260);
 
 caption(master, "#line0", 900, 1500);
+
+slam(master, "#slamOps", 3000, 1500);
+slam(master, "#slamMem", 5300, 1400);
+slam(master, "#slamExp", 7500, 1400);
 
 /* A slow drift across the array before the retreat starts, so the
    opening reads as a camera move rather than a still frame. */
@@ -1307,6 +1432,7 @@ master.add(svg.createDrawable(`#jetson2 [id^="trace2_"]`), {
 }, 16500);
 fly(15800, 3200, 0.92, P_ALL[0], P_ALL[1]);
 caption(master, "#line2", 16200, 1300);
+slam(master, "#slamNodes", 17400, 1500);
 
 /* ── 19.4s · the cluster wires itself together ─────────────────── */
 caption(master, "#line3", 19400, 1500);
@@ -1335,6 +1461,7 @@ master.add(["#ethLink1", "#ethLink2", "#adapterLed", "#psuLed"],
 
 /* ── 23.2s · the rails come up and it stays alive ────────────────── */
 caption(master, "#line4", 23200, 1500);
+slam(master, "#slamZero", 24000, 1700);
 master.add(["#ledPwr1", "#ledPwr2"], { opacity: [0, 1], duration: 500 }, 24400);
 master.add(["#ledAct1", "#ledAct2"], { opacity: [0, 0.9], duration: 500 }, 24700);
 master.add(["#gpuLit1", "#gpuLit2"], { opacity: [0, 0.30], duration: 900 }, 24600);
