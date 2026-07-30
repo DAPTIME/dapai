@@ -580,7 +580,10 @@ export function PolyTrackRunner(props: Props) {
         className="relative aspect-[16/10] w-full select-none overflow-hidden rounded-xl border border-border bg-black"
       >
         {/* HUD */}
-        <div className="pointer-events-none absolute inset-0 p-3 font-mono text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.8)]">
+        {/* A single soft drop shadow held up fine over grass and tarmac but
+            washed out over snow, where the timer sits on a near-white sky.
+            The tight halo underneath keeps it legible on every season. */}
+        <div className="pointer-events-none absolute inset-0 p-3 font-mono text-white [text-shadow:0_0_2px_rgba(0,0,0,0.95),0_2px_6px_rgba(0,0,0,0.85)]">
           <div className="flex items-start justify-between">
             <div>
               <div ref={timerRef} className="text-3xl font-bold tabular-nums sm:text-4xl">0.00</div>
