@@ -114,13 +114,20 @@ export const Route = createFileRoute("/about-dap-ai")({
  * because it sets its own `html, body` rules and locks scrolling — an
  * iframe keeps that sealed off from the app shell, and keeps one copy
  * of the animation rather than two.
+ *
+ * The `?v=` is a cache buster. An earlier build shipped a version that
+ * fetched Anime.js from a CDN and showed an error when the fetch failed;
+ * bumping this on every change to the reveal guarantees nobody keeps
+ * being served the broken copy out of their browser cache.
  */
+const REVEAL_SRC = "/dap-hardware-reveal.html?v=2";
+
 function HardwareReveal() {
   return (
     <section className="w-full">
       <div className="overflow-hidden border-b border-border bg-black">
         <iframe
-          src="/dap-hardware-reveal.html"
+          src={REVEAL_SRC}
           title="DAP AI hardware reveal — a cluster of two NVIDIA Jetson Orin Nano boards"
           className="block h-[88vh] min-h-[420px] w-full border-0"
           loading="eager"
@@ -129,7 +136,7 @@ function HardwareReveal() {
       <p className="px-6 pt-3 text-center text-xs text-muted-foreground">
         The machine DAP AI runs on — hover the hardware to explore it, or open the{" "}
         <a
-          href="/dap-hardware-reveal.html"
+          href={REVEAL_SRC}
           target="_blank"
           rel="noreferrer"
           className="underline hover:text-foreground"
