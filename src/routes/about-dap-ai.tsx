@@ -108,9 +108,45 @@ export const Route = createFileRoute("/about-dap-ai")({
   component: AboutDapAi,
 });
 
+/**
+ * The hardware reveal ships as a standalone document (public/dap-hardware-reveal.html)
+ * so it can also be opened on its own. It is framed rather than ported
+ * because it sets its own `html, body` rules and locks scrolling — an
+ * iframe keeps that sealed off from the app shell, and keeps one copy
+ * of the animation rather than two.
+ */
+function HardwareReveal() {
+  return (
+    <section className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6">
+      <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-2xl">
+        <iframe
+          src="/dap-hardware-reveal.html"
+          title="DAP AI hardware reveal — a cluster of two NVIDIA Jetson Orin Nano boards"
+          className="block h-[min(78vh,640px)] min-h-[380px] w-full border-0"
+          loading="eager"
+        />
+      </div>
+      <p className="mt-3 text-center text-xs text-muted-foreground">
+        The machine DAP AI runs on. Hover the hardware to explore it, or open the{" "}
+        <a
+          href="/dap-hardware-reveal.html"
+          target="_blank"
+          rel="noreferrer"
+          className="underline hover:text-foreground"
+        >
+          full-screen reveal
+        </a>
+        .
+      </p>
+    </section>
+  );
+}
+
 function AboutDapAi() {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <>
+      <HardwareReveal />
+      <div className="mx-auto max-w-3xl px-6 py-12">
       <div className="mb-6 text-sm text-muted-foreground">
         <Link to="/terms" className="underline hover:text-foreground">
           ← Back to Terms
@@ -294,6 +330,7 @@ function AboutDapAi() {
           Back to Terms
         </Link>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

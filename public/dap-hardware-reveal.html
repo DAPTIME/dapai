@@ -142,14 +142,20 @@
     font-weight: 500;
     color: var(--nv-bright);
   }
-  .cine-sub {
+  .bottom-stack {
     position: absolute;
     left: 0; right: 0;
-    bottom: 15vh;
+    bottom: 3vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    z-index: 16;
+    pointer-events: none;
+  }
+  .cine-sub {
     margin: 0;
     text-align: center;
-    pointer-events: none;
-    z-index: 16;
     font-size: clamp(11px, 1.2vw, 14px);
     letter-spacing: 0.34em;
     text-transform: uppercase;
@@ -159,10 +165,6 @@
 
   /* ── Spec chips (revealed at the end) ────────────────────────── */
   .specs {
-    position: absolute;
-    left: 50%;
-    bottom: 4.5vh;
-    transform: translateX(-50%);
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
@@ -447,8 +449,6 @@
     <p class="cine-line" id="line4">Running AI <em>locally</em>.</p>
     <p class="cine-line" id="line5">Your AI. <em>Your hardware.</em></p>
   </div>
-  <p class="cine-sub" id="cineSub">DAP AI · Edge Inference Cluster</p>
-
   <div class="brand" id="brand">
     <h1>DAP AI</h1>
     <p>Hardware</p>
@@ -459,8 +459,11 @@
     <button id="btnSkip"   type="button">Skip</button>
   </div>
 
-  <!-- Spec chips fade in once the machine is live. -->
-  <div class="specs" id="specs">
+  <!-- Sub-caption and spec chips share one bottom-anchored column, so
+       they stay clear of each other however short the frame is. -->
+  <div class="bottom-stack">
+    <p class="cine-sub" id="cineSub">DAP AI · Edge Inference Cluster</p>
+    <div class="specs" id="specs">
     <span class="chip"><b>2×</b> Jetson Orin Nano</span>
     <span class="chip"><b>16 GB</b> Combined Unified Memory</span>
     <span class="chip"><b>80 TOPS</b> Combined AI Performance</span>
@@ -468,6 +471,7 @@
     <span class="chip">Local AI Inference</span>
     <span class="chip">JetPack Linux</span>
     <span class="chip">Ethernet AI Cluster</span>
+    </div>
   </div>
 
   <div id="tip"><span class="tip-title"></span><span class="tip-body"></span></div>
@@ -778,7 +782,7 @@ const NODES = [
 ];
 for (const nd of NODES) stamp(hwLayer, boardMarkup(nd.n, nd.x, nd.y));
 stamp(hwLayer, switchMarkup(685, 640));
-stamp(hwLayer, psuMarkup(725, 790));
+stamp(hwLayer, psuMarkup(725, 742));
 
 /* Cables. Drawn as beziers from each board's socket to the switch, so
    they read as physically plugged in rather than floating. */
@@ -810,9 +814,9 @@ stamp(cableLayer, `
         fill="none" stroke="#1d2a20" stroke-width="6" stroke-linecap="round"/>
 
   <!-- Power -->
-  <path id="powerCable1" d="M502 474 C 560 700, 640 810, 725 812"
+  <path id="powerCable1" d="M502 474 C 560 690, 640 764, 725 764"
         fill="none" stroke="#161a1d" stroke-width="6.5" stroke-linecap="round"/>
-  <path id="powerCable2" d="M1422 474 C 1380 720, 980 830, 875 812"
+  <path id="powerCable2" d="M1422 474 C 1380 710, 980 790, 875 764"
         fill="none" stroke="#161a1d" stroke-width="6.5" stroke-linecap="round"/>
 `);
 
@@ -833,7 +837,7 @@ stamp(cableLayer, `
 const CALLOUTS = [
   { id: "co1", text: "2× JETSON ORIN NANO", x: 150,  y: 196, path: "M156 206 L156 246" },
   { id: "co2", text: "80 TOPS COMBINED",    x: 1076, y: 196, path: "M1082 206 L1082 246" },
-  { id: "co3", text: "ETHERNET AI CLUSTER", x: 700,  y: 764, path: "M800 716 L800 752" },
+  { id: "co3", text: "ETHERNET AI CLUSTER", x: 660,  y: 684, path: "M668 679 L681 675", anchor: "end" },
 ];
 {
   let markup = "";
@@ -842,6 +846,7 @@ const CALLOUTS = [
       <path id="${c.id}Line" d="${c.path}" fill="none" stroke="#76b900"
             stroke-width="1.1" opacity="0.55"/>
       <text id="${c.id}Text" x="${c.x}" y="${c.y}" font-size="11" letter-spacing="2.2"
+            text-anchor="${c.anchor ?? "start"}"
             fill="#a5e832" font-family="Inter, sans-serif" opacity="0">${c.text}</text>`;
   }
   stamp(labelLayer, markup);
