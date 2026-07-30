@@ -122,6 +122,10 @@
   #rig { transform-box: view-box; transform-origin: 800px 450px; }
 
   /* The hardware scene itself. */
+  /* Dragging the assembly must not select the text drawn on it, and on
+     touch it must not scroll the page instead. */
+  #stage { -webkit-user-select: none; user-select: none; touch-action: none; }
+
   #scene {
     position: absolute;
     inset: 0;
@@ -157,6 +161,18 @@
     opacity: 0;
     color: #fff;
   }
+  /* Closing line under the spec chips. */
+  .outro {
+    margin: 14px 0 0;
+    opacity: 0;
+    font-size: clamp(11px, 1.35vw, 15px);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: center;
+  }
+  .outro em { font-style: normal; color: var(--nv-bright); }
+
   .cine-line em {
     font-style: normal;
     font-weight: 500;
@@ -596,11 +612,17 @@
       <!-- Particle field the boards condense out of in scene 1. -->
       <g id="dustLayer"></g>
 
-      <!-- Cables sit under the boards so they tuck behind the PCBs. -->
-      <g id="cableLayer"></g>
+      <!-- Everything physical goes on the turntable, so the viewer can
+           turn the assembly at the end without moving the camera — a
+           rotate on #rig would break the framing maths the whole
+           journey depends on. -->
+      <g id="turntable" style="transform-box: view-box; transform-origin: 800px 470px;">
+        <!-- Cables sit under the boards so they tuck behind the PCBs. -->
+        <g id="cableLayer"></g>
 
-      <!-- Boards, switch and PSU are stamped in here by JS. -->
-      <g id="hwLayer"></g>
+        <!-- Boards, switch and PSU are stamped in here by JS. -->
+        <g id="hwLayer"></g>
+      </g>
 
       <!-- The die. Sits exactly where the Orin module is on node 1, so
            pulling the camera out of it lands on the real hardware
@@ -650,6 +672,7 @@
     <p class="cine-line" id="lineIn">Let's go inside.</p>
     <p class="cine-line" id="line0">Every answer starts <em>here</em>.</p>
     <p class="cine-line" id="line0b">Inside a single piece of silicon.</p>
+    <p class="cine-line" id="lineUnder">Underneath, the drive it all <em>loads from</em>.</p>
     <p class="cine-line" id="line1">This is what <em>DAP AI</em> runs on.</p>
     <p class="cine-line" id="line2">Two of these.</p>
     <p class="cine-line" id="line3">Working together as one AI system.</p>
@@ -679,6 +702,7 @@
     <span class="chip">JetPack Linux</span>
     <span class="chip">Ethernet AI Cluster</span>
     </div>
+    <p class="outro" id="outro">Drag to turn it &middot; <em>scroll down for more info</em> &darr;</p>
   </div>
 
   <div id="tip"><span class="tip-title"></span><span class="tip-body"></span></div>
@@ -764,6 +788,17 @@ const UV = {
   usbc:     { x: 0.812, y: 0.730, w: 0.082, h: 0.085 },
   power:    { x: 0.292, y: 0.672, w: 0.074, h: 0.140 },
   m2:       { x: 0.190, y: 0.320, w: 0.120, h: 0.300 },
+  dp:       { x: 0.345, y: 0.625, w: 0.160, h: 0.205 },
+  usba:     { x: 0.500, y: 0.545, w: 0.212, h: 0.280 },
+  camera:   { x: 0.150, y: 0.300, w: 0.125, h: 0.160 },
+  /* The silicon is all inside the module, so these are bands of the
+     heatsink rather than separate chips — but they are disjoint bands,
+     and disjoint from the fan between them. Overlapping boxes just mean
+     whichever is painted last quietly eats its neighbours' hovers. */
+  gpuBand:  { x: 0.280, y: 0.090, w: 0.090, h: 0.380 },
+  aiBand:   { x: 0.582, y: 0.090, w: 0.090, h: 0.380 },
+  cpuBand:  { x: 0.376, y: 0.310, w: 0.198, h: 0.120 },
+  memBand:  { x: 0.390, y: 0.440, w: 0.180, h: 0.052 },
 };
 
 function boardMarkup(n, x, y, tilt = 0) {
@@ -821,13 +856,13 @@ function boardMarkup(n, x, y, tilt = 0) {
          broad ones go first: the heatsink box contains the fan and
          overlaps the memory strip, so if it were painted last it would
          swallow both their hovers. Specific beats general, by order. -->
-    <rect id="gpu${n}"     class="hot" data-part="gpu" ${rect(UV.heatsink)} fill="transparent"/>
-    <g id="cpu${n}"        class="hot" data-part="cpu">
-      <rect ${rect(UV.m2)} fill="transparent"/>
-    </g>
-    <g id="ai_core${n}"    class="hot" data-part="ai">
-      <rect ${rect(UV.gpio)} fill="transparent"/>
-    </g>
+    <rect id="gpu${n}"     class="hot" data-part="gpu"    ${rect(UV.gpuBand)} fill="transparent"/>
+    <rect id="ai_core${n}" class="hot" data-part="ai"     ${rect(UV.aiBand)}  fill="transparent"/>
+    <rect id="cpu${n}"     class="hot" data-part="cpu"    ${rect(UV.cpuBand)} fill="transparent"/>
+    <rect id="gpio${n}"    class="hot" data-part="gpio"   ${rect(UV.gpio)}    fill="transparent"/>
+    <rect id="dp${n}"      class="hot" data-part="dp"     ${rect(UV.dp)}      fill="transparent"/>
+    <rect id="usba${n}"    class="hot" data-part="usba"   ${rect(UV.usba)}    fill="transparent"/>
+    <rect id="camera${n}"  class="hot" data-part="camera" ${rect(UV.camera)}  fill="transparent"/>
 
     <!-- ── Orin module: the die, its heatsink and the fan ─────────── -->
     <g id="module${n}">
@@ -858,7 +893,7 @@ function boardMarkup(n, x, y, tilt = 0) {
 
     <!-- LPDDR5 sits under the module lid; it lights along the memory strip. -->
     <g id="ram${n}" class="hot" data-part="ram">
-      <rect ${rect(UV.memStrip)} fill="transparent"/>
+      <rect ${rect(UV.memBand)} fill="transparent"/>
       <ellipse pointer-events="none" id="ramLit${n}" cx="${ux(0.505)}" cy="${vy(0.462)}" rx="56" ry="13"
                fill="#d9b45a" fill-opacity="0.30" opacity="0" filter="url(#softGlow)"/>
     </g>
@@ -874,7 +909,7 @@ function boardMarkup(n, x, y, tilt = 0) {
       <g id="usbc${n}" class="hot" data-part="usbc">
         <rect ${rect(UV.usbc)} fill="transparent"/>
       </g>
-      <g id="pwrPort${n}">
+      <g id="pwrPort${n}" class="hot" data-part="power">
         <rect ${rect(UV.power)} fill="transparent"/>
       </g>
     </g>
@@ -1097,6 +1132,123 @@ function dieMarkup() {
   </g></g></g>`;
 }
 
+/**
+ * The other side of the carrier board.
+ *
+ * Drawn rather than photographed, because the parts that matter here —
+ * the M.2 Key M slot and what is in it — are on a face NVIDIA does not
+ * publish a clean shot of. It sits below the die in world space, so the
+ * camera reaching it is a move downward and under, not a cut.
+ *
+ * Local units match the die's: 1000 across is 50 world units.
+ */
+const UNDER_AT_XY = { x: DIE_AT.x, y: DIE_AT.y + 62 };
+
+function undersideMarkup() {
+  // Ground plane pours, which is most of what a board's back face is.
+  let pours = "";
+  for (let i = 0; i < 16; i++) {
+    pours += `<rect x="${-1820 + (i % 4) * 940}" y="${-1080 + Math.floor(i / 4) * 560}"
+                    width="880" height="500" rx="18" fill="#0d1a13" opacity="0.55"/>`;
+  }
+  // Via field.
+  let vias = "";
+  for (let i = 0; i < 150; i++) {
+    const vx = -1860 + (i % 25) * 152;
+    const vy = -1120 + Math.floor(i / 25) * 190;
+    vias += `<circle cx="${vx}" cy="${vy}" r="7" fill="#1d3a28"/>`;
+  }
+  // NAND packages on the SSD.
+  let nand = "";
+  for (let i = 0; i < 4; i++) {
+    nand += `<rect x="${-520 + i * 240}" y="-96" width="196" height="192" rx="10"
+                   fill="#12161a" stroke="#39434b" stroke-width="4"/>
+             <text x="${-422 + i * 240}" y="14" text-anchor="middle" font-size="42"
+                   fill="#5d6b76" font-family="Inter, sans-serif">NAND</text>`;
+  }
+
+  return `
+  <g id="underside" opacity="0" transform="translate(${UNDER_AT_XY.x} ${UNDER_AT_XY.y})">
+  <g transform="scale(${DIE_SCALE})">
+
+    <!-- Board back face -->
+    <rect x="-2000" y="-1300" width="4000" height="2600" rx="70"
+          fill="#0a1610" stroke="#2c5c38" stroke-width="8"/>
+    ${pours}
+    ${vias}
+    <text x="-1940" y="-1360" font-size="66" letter-spacing="14" fill="#4e8c66"
+          font-family="Inter, sans-serif">CARRIER · UNDERSIDE</text>
+
+    <!-- ── M.2 Key M · the NVMe drive ──────────────────────────────
+         The reason this face is worth visiting: the model weights are
+         on this stick, and how fast it reads is how fast a cold expert
+         can be brought in. -->
+    <g id="uNvme" class="hot" data-part="nvme">
+      <rect x="-1560" y="-260" width="3000" height="520" rx="16" fill="#0c1013"
+            stroke="#4a545c" stroke-width="5"/>
+      <rect x="-1520" y="-220" width="2920" height="440" rx="10" fill="#151b20"/>
+      ${nand}
+      <rect x="420" y="-110" width="300" height="220" rx="12"
+            fill="#0f171d" stroke="#4f6b7d" stroke-width="4"/>
+      <text x="570" y="14" text-anchor="middle" font-size="40" fill="#8fb6cd"
+            font-family="Inter, sans-serif">CTRL</text>
+      <rect x="820" y="-150" width="560" height="300" rx="10" fill="#0a0f13"/>
+      <text x="1100" y="-40" text-anchor="middle" font-size="46" letter-spacing="4"
+            fill="#a5e832" font-family="Inter, sans-serif">NVMe</text>
+      <text x="1100" y="24" text-anchor="middle" font-size="34" letter-spacing="2"
+            fill="#7f9a72" font-family="Inter, sans-serif">PCIe Gen4 ×4</text>
+      <text x="1100" y="82" text-anchor="middle" font-size="34" letter-spacing="2"
+            fill="#7f9a72" font-family="Inter, sans-serif">4000 MB/s</text>
+      <!-- Edge connector and its retention screw. -->
+      <g fill="#c9a227">
+        ${Array.from({ length: 34 }, (_, i) =>
+          `<rect x="${-1500 + i * 46}" y="180" width="26" height="70" rx="4"/>`).join("")}
+      </g>
+      <circle cx="1470" cy="0" r="52" fill="#0b0f12" stroke="#5a656d" stroke-width="6"/>
+      <text x="-1540" y="-320" font-size="44" letter-spacing="8" fill="#5c6b60"
+            font-family="Inter, sans-serif">M.2 KEY M · 2280</text>
+    </g>
+
+    <!-- ── M.2 Key E · wireless ────────────────────────────────── -->
+    <g id="uWifi" class="hot" data-part="wifi">
+      <rect x="-1560" y="560" width="1180" height="470" rx="14" fill="#0c1013"
+            stroke="#4a545c" stroke-width="5"/>
+      <rect x="-1500" y="620" width="700" height="350" rx="10" fill="#161d23"/>
+      <text x="-1150" y="820" text-anchor="middle" font-size="46" letter-spacing="3"
+            fill="#8fb6cd" font-family="Inter, sans-serif">Wi-Fi</text>
+      <text x="-1150" y="880" text-anchor="middle" font-size="32" letter-spacing="2"
+            fill="#5d7280" font-family="Inter, sans-serif">+ BLUETOOTH</text>
+      <!-- Antenna leads, which is what makes a Key E module readable. -->
+      <path d="M-760 700 C -560 660, -520 560, -420 520" fill="none"
+            stroke="#6b4a2a" stroke-width="14" stroke-linecap="round"/>
+      <path d="M-760 900 C -540 900, -500 1010, -420 1040" fill="none"
+            stroke="#2a3a6b" stroke-width="14" stroke-linecap="round"/>
+      <circle cx="-760" cy="700" r="30" fill="#3b444c"/>
+      <circle cx="-760" cy="900" r="30" fill="#3b444c"/>
+      <text x="-1540" y="510" font-size="44" letter-spacing="8" fill="#5c6b60"
+            font-family="Inter, sans-serif">M.2 KEY E</text>
+    </g>
+
+    <!-- ── microSD, on the module itself ───────────────────────── -->
+    <g id="uSd" class="hot" data-part="microsd">
+      <rect x="420" y="560" width="1020" height="470" rx="14" fill="#0c1013"
+            stroke="#4a545c" stroke-width="5"/>
+      <rect x="500" y="640" width="700" height="300" rx="18" fill="#1b2228"
+            stroke="#5f6b74" stroke-width="4"/>
+      <text x="850" y="830" text-anchor="middle" font-size="46" letter-spacing="3"
+            fill="#aab6bd" font-family="Inter, sans-serif">microSD</text>
+      <text x="440" y="510" font-size="44" letter-spacing="8" fill="#5c6b60"
+            font-family="Inter, sans-serif">BOOT MEDIA</text>
+    </g>
+
+    <!-- Mounting holes, so the face reads as a real board. -->
+    <g fill="#05100a" stroke="#4e7c5a" stroke-width="6">
+      <circle cx="-1880" cy="-1180" r="46"/><circle cx="1880" cy="-1180" r="46"/>
+      <circle cx="-1880" cy="1180" r="46"/><circle cx="1880" cy="1180" r="46"/>
+    </g>
+  </g></g>`;
+}
+
 /** The cluster switch the two nodes talk through. */
 function switchMarkup(x, y) {
   let leds = "";
@@ -1155,6 +1307,7 @@ const NODES = [
 ];
 for (const nd of NODES) stamp(hwLayer, boardMarkup(nd.n, nd.x, nd.y, nd.tilt));
 stamp(document.getElementById("dieLayer"), dieMarkup());
+stamp(document.getElementById("dieLayer"), undersideMarkup());
 stamp(hwLayer, switchMarkup(685, 640));
 stamp(hwLayer, psuMarkup(725, 742));
 
@@ -1304,14 +1457,40 @@ const DIE_ROUTES = [
    camera opens deep inside the die — see the journey below. */
 const DIE_T = { x: 800 - DIE_AT.x, y: 450 - DIE_AT.y };   // centres the die
 utils.set("#rig", { scale: 110, translateX: DIE_T.x, translateY: DIE_T.y });
-utils.set(".board", { opacity: 0 });
-utils.set("#switch", { scale: 0.7, translateY: -40 });
-utils.set(["#ethernetCable1", "#ethernetCable2", "#usbcCable",
-           "#adapterCable", "#powerCable1", "#powerCable2"], { opacity: 0 });
+/* The opening state. Held in a function because restart() only rewinds
+   what the timeline itself animates — everything set outside it stays
+   where the last run left it, which is why replaying used to resume on
+   the finished cluster instead of going back to the board. */
+function resetScene() {
+  utils.set("#rig", { scale: 2.6, ...focus(DIE_AT.x, DIE_AT.y), rotate: 0 });
+  utils.set(".board", { opacity: 0 });
+  utils.set("#switch", { scale: 0.7, translateY: -40 });
+  utils.set(["#ethernetCable1", "#ethernetCable2", "#usbcCable",
+             "#adapterCable", "#powerCable1", "#powerCable2"], { opacity: 0 });
+  utils.set(["#dieCore", "#diePkg", "#dieMod", "#drvFan", "#drvFins",
+             "#underside", "#usbEthAdapter", "#psu", "#floorPool", "#outro"],
+            { opacity: 0 });
+  utils.set("#drvFan", { scale: 1 });
+  utils.set(".dieFlowDot", { opacity: 0 });
+  utils.set(["#co1Text", "#co2Text", "#co3Text", "#cineSub"], { opacity: 0 });
+  utils.set(".chip", { opacity: 0 });
+}
 
 const cineLines = ["#line0", "#line0b", "#line1", "#line2", "#line3", "#line4", "#line5"];
 
 /** One caption in, hold, and out. Returns the time it consumes. */
+/** caption() on the journey clock; captionAt() on the wall clock. */
+function captionAt(tl, sel, absT, hold = 1500) {
+  tl.add(sel, {
+    opacity: [0, 1], translateY: [26, 0],
+    letterSpacing: ["0.12em", "-0.02em"],
+    duration: 1100, ease: "outExpo",
+  }, absT);
+  tl.add(sel, {
+    opacity: 0, translateY: -22, duration: 750, ease: "inQuad",
+  }, absT + 1100 + hold);
+}
+
 function caption(tl, sel, at, hold = 1500) {
   tl.add(sel, {
     opacity: [0, 1],
@@ -1319,13 +1498,13 @@ function caption(tl, sel, at, hold = 1500) {
     letterSpacing: ["0.12em", "-0.02em"],
     duration: 1100,
     ease: "outExpo",
-  }, at + T0);
+  }, shift(at));
   tl.add(sel, {
     opacity: 0,
     translateY: -22,
     duration: 750,
     ease: "inQuad",
-  }, at + T0 + 1100 + hold);
+  }, shift(at) + 1100 + hold);
   return 1100 + hold + 750;
 }
 
@@ -1350,7 +1529,7 @@ function slam(tl, sel, at, hold = 1500) {
     duration: 480,
     delay: stagger(110),
     ease: "outExpo",
-  }, at + T0);
+  }, shift(at));
 
   // Numbers count rather than appear, which is what sells them as
   // measurements of something rather than as decoration.
@@ -1362,7 +1541,7 @@ function slam(tl, sel, at, hold = 1500) {
       duration: 620,
       ease: "outExpo",
       modifier: utils.round(0),
-    }, at + T0 + 60);
+    }, shift(at) + 60);
   }
 
   tl.add(kids, {
@@ -1372,7 +1551,7 @@ function slam(tl, sel, at, hold = 1500) {
     duration: 320,
     delay: stagger(60),
     ease: "inQuad",
-  }, at + T0 + 480 + hold);
+  }, shift(at) + 480 + hold);
 }
 
 /* The drive-in owns the first T0 milliseconds. The journey below was
@@ -1381,9 +1560,16 @@ function slam(tl, sel, at, hold = 1500) {
    through, and inside caption() and slam(). Those two are declared
    above but only ever called from below, so reading T0 is safe. */
 const T0 = 9600;
+/* The underside act is inserted at UNDER_AT rather than appended, so the
+   camera goes under the board straight off the memory shot the way it
+   should. Everything from that point on shifts by one more constant —
+   which is why the offset is piecewise rather than a single number. */
+const UNDER_AT = 3400;
+const UNDER_LEN = 6200;
+const shift = (t) => t + T0 + (t >= UNDER_AT ? UNDER_LEN : 0);
 const M = {
-  add:  (sel, props, t) => master.add(sel, props, t + T0),
-  call: (fn, t) => master.call(fn, t + T0),
+  add:  (sel, props, t) => master.add(sel, props, shift(t)),
+  call: (fn, t) => master.call(fn, shift(t)),
 };
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1449,8 +1635,7 @@ const P_ALL    = [ORIGIN.x, ORIGIN.y];             // the cluster
      The first pass ran 2.6 → 9.5 → 26 → 52 → 110 and skipped straight
      over the fins and the module, so the camera spent the descent
      inside holes with nothing on screen. */
-  utils.set("#rig", { scale: 2.6, ...focus(DIE_AT.x, DIE_AT.y) });
-  utils.set("#dieCore", { opacity: 0 });
+  resetScene();
 
   D("#circuitBg", { opacity: [0, 0.30], duration: 2600 }, 0);
   D("#jetson1",   { opacity: [0, 1], duration: 1400 }, 200);
@@ -1492,7 +1677,7 @@ const P_ALL    = [ORIGIN.x, ORIGIN.y];             // the cluster
   D("#dieCore", { opacity: [0, 1], duration: 900 }, 4900);
   cam(8200, 1400, 110);
 
-  caption(master, "#lineIn", -T0 + 1100, 1500);
+  captionAt(master, "#lineIn", 1100, 1500);
 }
 
 /* ── 0.0s · inside the silicon ─────────────────────────────────────
@@ -1510,19 +1695,63 @@ M.call(() => startDieLife(), 260);
 
 caption(master, "#line0", 900, 1050);
 
-slam(master, "#slamOps", 3000, 1500);
-slam(master, "#slamMem", 5300, 1400);
-slam(master, "#slamExp", 7500, 1400);
+slam(master, "#slamOps", 250, 1300);
+slam(master, "#slamMem", 2100, 1400);
+slam(master, "#slamExp", 5400, 1400);
 
-/* A slow drift across the array before the retreat starts, so the
-   opening reads as a camera move rather than a still frame. */
-/* Drift is in world units, and at 110x one unit is 110 screen units —
-   the first pass moved 8 and threw the camera clean off the die. */
-fly(0,    3400, 110, P_DIE[0] - 0.7, P_DIE[1] - 0.4, "inOutSine");
+/* Across the floorplan before the retreat starts. The descent lands on
+   the GPU array; the camera then tracks sideways over the interconnect
+   into the memory banks, which is the part of this die that is the RAM.
+   The two centres are the districts' own, converted out of die space:
+   local units are 0.05 of a world unit from the die's origin at DIE_AT.
+
+   Drift is in world units, and at 110x one of them is 110 screen units
+   — an earlier pass moved 8 and threw the camera clean off the die. */
+const P_ARRAY = [DIE_AT.x - 10.9, DIE_AT.y - 4.5];   // the GPU block
+const P_MEM   = [DIE_AT.x + 14.3, DIE_AT.y - 8.7];   // the LPDDR5 banks
+
+fly(0,    1700, 110, P_ARRAY[0], P_ARRAY[1], "inOutSine");
+fly(1800, 1500,  88, P_MEM[0],   P_MEM[1],   "inOutSine");
 /* The orbit lives on its own group. Putting a rotate on #rig changes how
    Anime composes the matrix, and the scale/translate maths above stops
    holding the subject the moment the frame moves. */
 M.add("#orbit", { rotate: [-2.2, 1.4], duration: 7000, ease: "inOutSine" }, 0);
+
+/* ══════════════════════════════════════════════════════════════════
+   UNDER THE BOARD  (3.4s → 9.6s of the journey)
+   ══════════════════════════════════════════════════════════════════
+   Straight off the memory shot: down past the die, through the
+   substrate and out the other face, where the drive that holds the
+   models lives. Then back up the way it came. */
+{
+  const U = (sel, props, t) => master.add(sel, props, T0 + t);
+  const ucam = (at, duration, scale, px, py, ease = "inOutQuad") =>
+    master.add("#rig", { scale, ...focus(px, py), duration, ease }, T0 + at);
+
+  /* Centres out of the drawing, converted at DIE_SCALE, and scales that
+     actually frame each part: the drive is 150 world units long, so at
+     26x only a third of it was on screen. */
+  const P_UNDER = [UNDER_AT_XY.x, UNDER_AT_XY.y];
+  const P_NVME  = [UNDER_AT_XY.x - 3, UNDER_AT_XY.y];
+  const P_WIFI  = [UNDER_AT_XY.x - 48.5, UNDER_AT_XY.y + 39.5];
+
+  // Pull off the memory and drop below the die.
+  ucam(3400, 1500, 13, DIE_AT.x, DIE_AT.y + 24);
+  U("#dieCore",   { opacity: 0.22, duration: 900 }, 3900);
+  U("#underside", { opacity: [0, 1], duration: 1100 }, 4000);
+
+  // The whole drive, end to end.
+  ucam(4900, 1700, 9.6, P_NVME[0], P_NVME[1]);
+  captionAt(master, "#lineUnder", T0 + 5100, 1400);
+
+  // Then the wireless module beside it.
+  ucam(6800, 1500, 19, P_WIFI[0], P_WIFI[1]);
+
+  // And back up through the board to where we left off.
+  ucam(8500, 1100, 7.5, P_UNDER[0], P_UNDER[1] - 30);
+  U("#underside", { opacity: 0, duration: 800, ease: "inQuad" }, 8700);
+  U("#dieCore",   { opacity: 1, duration: 800 }, 8900);
+}
 
 /* ── 3.4s · the floorplan resolves ─────────────────────────────────
    Wide enough now to see districts rather than texture: the GPU array
@@ -1627,6 +1856,11 @@ M.add(svg.createDrawable(["#co1Line", "#co2Line", "#co3Line"]),
            { draw: ["0 0", "0 1"], duration: 900, delay: stagger(150) }, 29000);
 M.add(["#co1Text", "#co2Text", "#co3Text"],
            { opacity: [0, 1], duration: 700, delay: stagger(150) }, 29500);
+M.add("#outro", { opacity: [0, 1], translateY: [10, 0], duration: 900 }, 31200);
+M.call(() => {
+  turnOn = true;
+  stage.style.cursor = "grab";
+}, 31200);
 
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1838,7 +2072,7 @@ const stage = document.getElementById("stage");
 let parallaxOn = false;
 
 stage.addEventListener("pointermove", (e) => {
-  if (!parallaxOn || REDUCED) return;
+  if (!parallaxOn || REDUCED || dragFrom) return;
   const rx = (e.clientX / window.innerWidth) - 0.5;
   const ry = (e.clientY / window.innerHeight) - 0.5;
   animate("#rig", {
@@ -1854,6 +2088,57 @@ stage.addEventListener("pointermove", (e) => {
   });
 });
 
+/* — Drag to turn the assembly. ————————————————————————————————————
+   Available once the sequence has played out. It turns #turntable, not
+   the camera: a rotate on #rig changes how Anime composes the matrix
+   and the framing stops holding. Two dimensions cannot really orbit, so
+   this leans the assembly rather than pretending to spin it — rotation
+   plus a little skew, which is what reads as turning. */
+let turnOn = false;
+let turnDeg = 0;
+let dragFrom = null;
+
+function setTurn(deg) {
+  turnDeg = Math.max(-16, Math.min(16, deg));
+  utils.set("#turntable", {
+    rotate: turnDeg,
+    skewX: -turnDeg * 0.35,
+    scaleX: 1 - Math.abs(turnDeg) * 0.004,
+  });
+}
+
+stage.addEventListener("pointerdown", (e) => {
+  if (!turnOn) return;
+  // The controls and the spec card live inside the stage, and
+  // preventDefault on their pointerdown swallows the click that
+  // follows — which left Replay and Skip dead once the sequence had
+  // finished and the turntable was live.
+  if (e.target.closest("#controls, #card, #brand")) return;
+  // Otherwise stop the drag selecting the silkscreen drawn on the
+  // board, which highlights blue and follows the pointer around.
+  e.preventDefault();
+  dragFrom = { x: e.clientX, deg: turnDeg };
+  stage.setPointerCapture(e.pointerId);
+  stage.style.cursor = "grabbing";
+});
+stage.addEventListener("pointermove", (e) => {
+  if (!dragFrom) return;
+  setTurn(dragFrom.deg + (e.clientX - dragFrom.x) * 0.07);
+});
+for (const ev of ["pointerup", "pointercancel"]) {
+  stage.addEventListener(ev, (e) => {
+    if (!dragFrom) return;
+    dragFrom = null;
+    stage.style.cursor = turnOn ? "grab" : "";
+    try { stage.releasePointerCapture(e.pointerId); } catch { /* already gone */ }
+    // Ease most of the way back so it never ends up parked askew.
+    animate({ d: turnDeg }, {
+      d: turnDeg * 0.35, duration: 900, ease: "outElastic(1, 0.6)",
+      onUpdate: (a) => setTurn(a.targets[0].d),
+    });
+  });
+}
+
 /* — Hover tooltips over each hardware region. — */
 const PART_INFO = {
   gpu:     { title: "GPU",             tip: "AI acceleration and CUDA processing" },
@@ -1864,6 +2149,14 @@ const PART_INFO = {
   cpu:     { title: "CPU complex",     tip: "Orchestration, I/O and pre-processing" },
   ai:      { title: "AI core",         tip: "Tensor cores running INT8 inference" },
   usbc:    { title: "USB-C",           tip: "Second network path via USB Ethernet" },
+  usba:    { title: "USB 3.2 Type-A",  tip: "Four ports, 10 Gbps each" },
+  dp:      { title: "DisplayPort 1.4", tip: "Direct console output" },
+  gpio:    { title: "40-pin header",   tip: "GPIO, I2C, SPI, UART" },
+  nvme:    { title: "NVMe SSD",        tip: "Models and cache live here" },
+  wifi:    { title: "Wi-Fi / Bluetooth", tip: "M.2 Key E wireless module" },
+  power:   { title: "DC input",        tip: "19 V barrel jack" },
+  camera:  { title: "CSI camera",      tip: "Two MIPI camera lanes" },
+  microsd: { title: "microSD",         tip: "Boot media on the module" },
 };
 
 const CARD_INFO = {
@@ -1906,6 +2199,46 @@ const CARD_INFO = {
     kicker: "Thermals", title: "Active cooling",
     body: "A heatsink and fan hold clocks steady under sustained load. The fans spin faster the moment a workload lands.",
     specs: [["Cooling", "Active"], ["Profile", "Load-aware"]],
+  },
+  usba: {
+    kicker: "Peripherals", title: "USB 3.2 Type-A",
+    body: "Four ports at 10 Gbps. Keyboard, storage and capture hardware hang off these during setup and maintenance.",
+    specs: [["Ports", "4"], ["Speed", "10 Gbps"], ["Standard", "USB 3.2 Gen 2"]],
+  },
+  dp: {
+    kicker: "Display", title: "DisplayPort 1.4",
+    body: "A direct console, so a node can be worked on without another machine in the way.",
+    specs: [["Version", "1.4a"], ["Max", "4K 60 Hz"]],
+  },
+  gpio: {
+    kicker: "Expansion", title: "40-pin header",
+    body: "The same header layout the Pi made standard: GPIO, I2C, SPI, UART and both power rails, for sensors and fan control.",
+    specs: [["Pins", "40"], ["Buses", "I2C · SPI · UART"], ["Rails", "3.3 V · 5 V"]],
+  },
+  nvme: {
+    kicker: "Storage", title: "NVMe Gen4 SSD",
+    body: "On the underside, in the M.2 Key M slot. Model weights live here — a 7-9B expert has to be read off it fast enough that routing to a cold expert is not felt.",
+    specs: [["Interface", "PCIe Gen4 ×4"], ["Read", "4000 MB/s"], ["Slot", "M.2 Key M 2280"]],
+  },
+  wifi: {
+    kicker: "Wireless", title: "Wi-Fi + Bluetooth",
+    body: "An M.2 Key E module with its own antennas. The cluster runs on wired Ethernet; this is for management.",
+    specs: [["Slot", "M.2 Key E"], ["Bands", "2.4 / 5 GHz"], ["Also", "Bluetooth"]],
+  },
+  power: {
+    kicker: "Power", title: "DC input",
+    body: "19 V in through the barrel jack. Both nodes feed from one brick, so the cluster is a single plug.",
+    specs: [["Input", "19 V DC"], ["Per node", "7-25 W"]],
+  },
+  camera: {
+    kicker: "Input", title: "CSI camera lanes",
+    body: "Two MIPI CSI-2 connectors take camera data straight into the ISP without crossing USB.",
+    specs: [["Connectors", "2"], ["Standard", "MIPI CSI-2"]],
+  },
+  microsd: {
+    kicker: "Boot", title: "microSD",
+    body: "The slot on the module itself carries JetPack. The OS boots from here; the models do not live on it.",
+    specs: [["Location", "On module"], ["Carries", "JetPack Linux"]],
   },
 };
 
@@ -1985,8 +2318,16 @@ document.getElementById("btnSkip").addEventListener("click", () => {
   finish();
 });
 document.getElementById("btnReplay").addEventListener("click", () => {
+  // Both interactions have to be handed back before the timeline
+  // restarts. Parallax writes to #rig every time the pointer moves, so
+  // left on it fights the camera all the way down; and the turntable
+  // would still be draggable during a replay it is not part of.
   parallaxOn = false;
-  utils.set("#rig", { translateX: 0, translateY: 0, rotate: 0 });
+  turnOn = false;
+  dragFrom = null;
+  stage.style.cursor = "";
+  setTurn(0);
+  resetScene();
   master.restart();
 });
 
