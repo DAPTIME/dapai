@@ -1,0 +1,1401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DAP AI — Hardware Reveal</title>
+
+<!--
+  ════════════════════════════════════════════════════════════════════
+  DAP AI · JETSON ORIN NANO CLUSTER REVEAL
+  ════════════════════════════════════════════════════════════════════
+
+  A single-file cinematic hardware reveal. Open it directly in a
+  browser (file:// works) or serve it — no build step, no bundler.
+
+  ── How this file is organised ──────────────────────────────────────
+    1. CSS                — page chrome, typography, overlay UI
+    2. Inline SVG scaffold — defs (gradients/filters), empty layers
+    3. Hardware templates  — JS that stamps board/switch/cable SVG
+    4. Master timeline     — the scripted reveal, Anime.js driven
+    5. Idle system         — the never-ending "machine is alive" loops
+    6. Interaction         — parallax, hover tooltips, info cards
+
+  ── Animation engine ────────────────────────────────────────────────
+    Anime.js v4 (ESM, from CDN) drives every moving thing. There are
+    no CSS @keyframes anywhere in this file by design — motion lives
+    in the timeline so it stays scriptable and seekable.
+
+  ── Hardware IDs ────────────────────────────────────────────────────
+    Boards are stamped from one template, so every part carries the
+    node number as a suffix:
+
+      #jetson1  #jetson2     whole board group
+      #gpu1     #gpu2        CUDA / graphics die
+      #cpu1     #cpu2        Arm CPU complex
+      #ram1     #ram2        LPDDR5 unified memory
+      #ai_core1 #ai_core2    tensor / NPU block
+      #fan1     #fan2        fan assembly  (#fanBlades1/2 spin)
+      #ethPort1 #ethPort2    RJ45 socket
+      #usbc1    #usbc2       USB-C socket
+      #pwrPort1 #pwrPort2    barrel jack
+
+      #switch                the cluster switch
+      #ethernetCable1/2      RJ45 → switch
+      #usbcCable             USB-C → USB Ethernet adapter → switch
+      #powerCable1/2         board → PSU brick
+
+  ── Expanding the cluster ───────────────────────────────────────────
+    buildBoard(n, x, y) stamps a complete node. To go from two nodes
+    to three: call buildBoard(3, …), add a matching cable via
+    buildEthCable(3, …), push '#fanBlades3' into the fan list in
+    startIdleSystem(), and add its traces to SILICON_TRACES. Nothing
+    else is hard-coded to a node count.
+  ════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  /* ── 1. Page chrome ──────────────────────────────────────────────
+     Static styling only. Anything that moves is animated by Anime.js,
+     so there are deliberately no @keyframes in this stylesheet.      */
+
+  :root {
+    --nv:        #76b900;   /* NVIDIA green, the accent throughout */
+    --nv-bright: #a5e832;
+    --nv-dim:    #3d6100;
+    --ink:       #05070a;
+    --panel:     rgba(10, 16, 12, 0.72);
+    --edge:      rgba(118, 185, 0, 0.22);
+    --text:      #e8f0e4;
+    --muted:     #8a9b86;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--ink);
+    color: var(--text);
+    font-family: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  /* The stage fills the viewport; everything is layered inside it. */
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    /* Deep vignette so the hardware reads as lit in a dark room. */
+    background:
+      radial-gradient(1200px 800px at 50% 42%, #0c130d 0%, #05070a 62%, #000 100%);
+  }
+
+  /* Faint circuit lattice behind the hardware. */
+  #circuitBg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;           /* Anime.js fades this in */
+    pointer-events: none;
+  }
+
+  /* The camera. A fixed origin at the middle of the viewBox keeps the
+     push-in steady as hardware appears and the bbox changes. */
+  #rig { transform-box: view-box; transform-origin: 800px 450px; }
+
+  /* The hardware scene itself. */
+  #scene {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ── Cinematic caption ───────────────────────────────────────── */
+  .cine {
+    position: absolute;
+    left: 0; right: 0;
+    /* Sits in the gap below the boards rather than across them. */
+    top: 62%;
+    transform: translateY(-50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .cine-line {
+    margin: 0;
+    font-size: clamp(24px, 4.3vw, 62px);
+    font-weight: 250;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    opacity: 0;
+    color: #fff;
+  }
+  .cine-line em {
+    font-style: normal;
+    font-weight: 500;
+    color: var(--nv-bright);
+  }
+  .bottom-stack {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 3vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    z-index: 16;
+    pointer-events: none;
+  }
+  .cine-sub {
+    margin: 0;
+    text-align: center;
+    font-size: clamp(11px, 1.2vw, 14px);
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--muted);
+    opacity: 0;
+  }
+
+  /* ── Spec chips (revealed at the end) ────────────────────────── */
+  .specs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    max-width: min(1100px, 92vw);
+    z-index: 15;
+    pointer-events: none;
+  }
+  .chip {
+    opacity: 0;
+    padding: 7px 14px;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 999px;
+    backdrop-filter: blur(10px);
+    white-space: nowrap;
+  }
+  .chip b { color: var(--nv-bright); font-weight: 600; }
+
+  /* ── Title block ─────────────────────────────────────────────── */
+  .brand {
+    position: absolute;
+    top: 3.2vh; left: 3.2vw;
+    z-index: 15;
+    opacity: 0;
+  }
+  .brand h1 {
+    margin: 0;
+    font-size: clamp(15px, 1.5vw, 19px);
+    font-weight: 600;
+    letter-spacing: 0.16em;
+  }
+  .brand p {
+    margin: 5px 0 0;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ── Hover tooltip ───────────────────────────────────────────── */
+  #tip {
+    position: absolute;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0;
+    padding: 9px 13px;
+    max-width: 260px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text);
+    background: rgba(8, 14, 10, 0.9);
+    border: 1px solid var(--edge);
+    border-radius: 10px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  }
+  #tip .tip-title {
+    display: block;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--nv-bright);
+    margin-bottom: 3px;
+  }
+
+  /* ── Click-through info card ─────────────────────────────────── */
+  #card {
+    position: absolute;
+    z-index: 40;
+    right: 3.2vw;
+    top: 50%;
+    width: min(330px, 84vw);
+    padding: 20px 22px;
+    opacity: 0;
+    pointer-events: none;
+    background: rgba(8, 14, 10, 0.93);
+    border: 1px solid var(--edge);
+    border-radius: 16px;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
+  }
+  #card.on { pointer-events: auto; }
+  #card h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  #card .kicker {
+    font-size: 10.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--nv-bright);
+  }
+  #card p {
+    margin: 12px 0 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #c3d2bd;
+  }
+  #card dl {
+    margin: 16px 0 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 7px 16px;
+    font-size: 12px;
+  }
+  #card dt { color: var(--muted); }
+  #card dd { margin: 0; text-align: right; color: var(--text); }
+  #card button {
+    margin-top: 18px;
+    width: 100%;
+    padding: 9px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--text);
+    background: rgba(118, 185, 0, 0.12);
+    border: 1px solid var(--edge);
+    border-radius: 9px;
+    cursor: pointer;
+  }
+  #card button:hover { background: rgba(118, 185, 0, 0.2); }
+
+  /* ── Transport controls ──────────────────────────────────────── */
+  .controls {
+    position: absolute;
+    right: 3.2vw; top: 3.2vh;
+    z-index: 25;
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+  }
+  .controls button {
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    padding: 7px 15px;
+    cursor: pointer;
+  }
+  .controls button:hover { color: var(--text); border-color: var(--edge); }
+
+  /* Interactive hotspots over hardware regions. */
+  .hot { cursor: pointer; }
+
+  /* Shown only if the CDN can't be reached. */
+  #fallback {
+    position: absolute;
+    inset: 0;
+    display: none;
+    place-content: center;
+    text-align: center;
+    padding: 40px;
+    z-index: 60;
+    font-size: 14px;
+    color: var(--muted);
+  }
+</style>
+</head>
+
+<body>
+<div class="stage" id="stage">
+
+  <!-- ── 2. Background lattice ─────────────────────────────────────
+       A tiling circuit pattern. Kept as one <rect> fill so it costs a
+       single draw call no matter how large the viewport gets.        -->
+  <svg id="circuitBg" preserveAspectRatio="xMidYMid slice" viewBox="0 0 1600 900">
+    <defs>
+      <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+        <path d="M80 0 L0 0 0 80" fill="none" stroke="#76b900" stroke-width="0.5" opacity="0.13"/>
+        <path d="M0 40 H30 M50 40 H80 M40 0 V30 M40 50 V80" fill="none"
+              stroke="#76b900" stroke-width="0.5" opacity="0.09"/>
+        <circle cx="40" cy="40" r="2.4" fill="#76b900" opacity="0.16"/>
+      </pattern>
+    </defs>
+    <rect width="1600" height="900" fill="url(#grid)"/>
+  </svg>
+
+  <!-- ── The hardware scene ──────────────────────────────────────── -->
+  <svg id="scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <!-- PCB substrate: dark board green with a lit top edge. -->
+      <linearGradient id="pcbGrad" x1="0" y1="0" x2="0.35" y2="1">
+        <stop offset="0%"   stop-color="#16301c"/>
+        <stop offset="45%"  stop-color="#0e2214"/>
+        <stop offset="100%" stop-color="#07160c"/>
+      </linearGradient>
+
+      <!-- Brushed metal for the Orin module shield. -->
+      <linearGradient id="shieldGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%"   stop-color="#5e6a72"/>
+        <stop offset="28%"  stop-color="#39424a"/>
+        <stop offset="55%"  stop-color="#4a555e"/>
+        <stop offset="100%" stop-color="#252c32"/>
+      </linearGradient>
+
+      <!-- Anodised heatsink. -->
+      <linearGradient id="sinkGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"   stop-color="#3a444c"/>
+        <stop offset="100%" stop-color="#1b2126"/>
+      </linearGradient>
+
+      <!-- Silicon packages. Each die gets its own tint so the labelled
+           blocks stay legible against the board. -->
+      <linearGradient id="gpuGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#1d2b16"/><stop offset="100%" stop-color="#0d1509"/>
+      </linearGradient>
+      <linearGradient id="cpuGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#182430"/><stop offset="100%" stop-color="#0b1119"/>
+      </linearGradient>
+      <linearGradient id="aiGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#231a2e"/><stop offset="100%" stop-color="#100b17"/>
+      </linearGradient>
+      <linearGradient id="ramGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#2a2f34"/><stop offset="100%" stop-color="#14181c"/>
+      </linearGradient>
+      <linearGradient id="switchGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#2b3238"/>
+        <stop offset="60%" stop-color="#171d22"/>
+        <stop offset="100%" stop-color="#0d1114"/>
+      </linearGradient>
+      <linearGradient id="psuGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#23282c"/><stop offset="100%" stop-color="#0f1215"/>
+      </linearGradient>
+
+      <!-- One shared glow. SVG filters are the expensive part of a
+           scene like this, so exactly one exists and only a handful of
+           elements reference it. -->
+      <filter id="glow" x="-70%" y="-70%" width="240%" height="240%">
+        <feGaussianBlur stdDeviation="4.5" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="softGlow" x="-120%" y="-120%" width="340%" height="340%">
+        <feGaussianBlur stdDeviation="11"/>
+      </filter>
+
+      <!-- Fan hub shading. -->
+      <radialGradient id="hubGrad">
+        <stop offset="0%" stop-color="#59636b"/>
+        <stop offset="100%" stop-color="#1d2328"/>
+      </radialGradient>
+
+      <!-- Light pooling under the cluster. -->
+      <radialGradient id="floorGlow">
+        <stop offset="0%"   stop-color="#76b900" stop-opacity="0.20"/>
+        <stop offset="100%" stop-color="#76b900" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <!-- #rig is the "camera": parallax and the push-in both move this
+         one group, so nothing below has to know about the camera. -->
+    <g id="rig">
+      <ellipse id="floorPool" cx="800" cy="700" rx="620" ry="150"
+               fill="url(#floorGlow)" opacity="0"/>
+
+      <!-- Particle field the boards condense out of in scene 1. -->
+      <g id="dustLayer"></g>
+
+      <!-- Cables sit under the boards so they tuck behind the PCBs. -->
+      <g id="cableLayer"></g>
+
+      <!-- Boards, switch and PSU are stamped in here by JS. -->
+      <g id="hwLayer"></g>
+
+      <!-- Callout lines + labels. -->
+      <g id="labelLayer"></g>
+    </g>
+  </svg>
+
+  <!-- ── Cinematic captions ──────────────────────────────────────── -->
+  <div class="cine" id="cine">
+    <p class="cine-line" id="line1">This is what <em>DAP AI</em> runs on.</p>
+    <p class="cine-line" id="line2">Two of these.</p>
+    <p class="cine-line" id="line3">Working together as one AI system.</p>
+    <p class="cine-line" id="line4">Running AI <em>locally</em>.</p>
+    <p class="cine-line" id="line5">Your AI. <em>Your hardware.</em></p>
+  </div>
+  <div class="brand" id="brand">
+    <h1>DAP AI</h1>
+    <p>Hardware</p>
+  </div>
+
+  <div class="controls" id="controls">
+    <button id="btnReplay" type="button">Replay</button>
+    <button id="btnSkip"   type="button">Skip</button>
+  </div>
+
+  <!-- Sub-caption and spec chips share one bottom-anchored column, so
+       they stay clear of each other however short the frame is. -->
+  <div class="bottom-stack">
+    <p class="cine-sub" id="cineSub">DAP AI · Edge Inference Cluster</p>
+    <div class="specs" id="specs">
+    <span class="chip"><b>2×</b> Jetson Orin Nano</span>
+    <span class="chip"><b>16 GB</b> Combined Unified Memory</span>
+    <span class="chip"><b>80 TOPS</b> Combined AI Performance</span>
+    <span class="chip">CUDA + TensorRT</span>
+    <span class="chip">Local AI Inference</span>
+    <span class="chip">JetPack Linux</span>
+    <span class="chip">Ethernet AI Cluster</span>
+    </div>
+  </div>
+
+  <div id="tip"><span class="tip-title"></span><span class="tip-body"></span></div>
+
+  <div id="card">
+    <div class="kicker" id="cardKicker"></div>
+    <h3 id="cardTitle"></h3>
+    <p id="cardBody"></p>
+    <dl id="cardSpecs"></dl>
+    <button type="button" id="cardClose">Close</button>
+  </div>
+
+  <div id="fallback">
+    Anime.js could not be loaded from the CDN.<br>
+    Connect to the network and reload to see the reveal.
+  </div>
+</div>
+
+<script type="module">
+/* ══════════════════════════════════════════════════════════════════
+   3. HARDWARE TEMPLATES
+   ══════════════════════════════════════════════════════════════════
+   The two boards are identical hardware, so they come from one
+   template that suffixes every id with the node number. That keeps
+   the file readable and makes a third node a one-line change.        */
+
+const SVGNS = "http://www.w3.org/2000/svg";
+
+/** Insert an SVG fragment into a parent node. */
+function stamp(parent, markup) {
+  const holder = document.createElementNS(SVGNS, "g");
+  holder.innerHTML = markup;
+  while (holder.firstChild) parent.appendChild(holder.firstChild);
+}
+
+/**
+ * A complete Jetson Orin Nano developer kit.
+ * Local coordinates run 0,0 → 380,250; `x`/`y` place it in the scene.
+ */
+function boardMarkup(n, x, y) {
+  // 40-pin GPIO header, drawn as two rows of pads.
+  let gpio = "";
+  for (let i = 0; i < 20; i++) {
+    const px = 44 + i * 8.2;
+    gpio += `<rect x="${px}" y="16" width="4.4" height="4.4" rx="1" fill="#c9a227" opacity="0.85"/>
+             <rect x="${px}" y="24" width="4.4" height="4.4" rx="1" fill="#c9a227" opacity="0.85"/>`;
+  }
+
+  // Heatsink fins across the module lid.
+  let fins = "";
+  for (let i = 0; i < 15; i++) {
+    fins += `<rect x="${40 + i * 12}" y="46" width="5" height="100" rx="2"
+                   fill="url(#sinkGrad)" opacity="0.9"/>`;
+  }
+
+  // Seven-blade fan. Seven-fold symmetry means any change of speed is
+  // visually seamless — no need to preserve the exact angle.
+  let blades = "";
+  for (let i = 0; i < 7; i++) {
+    blades += `<path d="M0 0 C 14 -6, 30 -12, 40 -4 C 30 4, 14 8, 0 0 Z"
+                     transform="rotate(${i * (360 / 7)})"
+                     fill="#78848c" opacity="0.92"/>`;
+  }
+
+  // Passives scattered over the carrier board.
+  let passives = "";
+  const caps = [[246, 208], [262, 208], [278, 208], [246, 226], [262, 226]];
+  for (const [cx, cy] of caps) {
+    passives += `<rect x="${cx}" y="${cy}" width="9" height="13" rx="2" fill="#1d242a"
+                       stroke="#39434b" stroke-width="0.7"/>`;
+  }
+  const resistors = [[196, 168], [210, 168], [224, 168], [196, 182], [210, 182]];
+  for (const [rx, ry] of resistors) {
+    passives += `<rect x="${rx}" y="${ry}" width="10" height="4.5" rx="1" fill="#2b2118"/>`;
+  }
+
+  // The outer group carries the position and the inner one is what
+  // Anime.js animates. Anime writes the `transform` property, which would
+  // otherwise clobber a translate() sitting on the same element.
+  return `
+  <g class="node-pos" transform="translate(${x} ${y})">
+  <g id="jetson${n}" class="board" opacity="0"
+     style="transform-box: fill-box; transform-origin: 50% 50%;">
+
+    <!-- Board shadow -->
+    <rect x="6" y="12" width="380" height="250" rx="18" fill="#000" opacity="0.5"/>
+
+    <!-- PCB substrate -->
+    <rect id="pcb${n}" x="0" y="0" width="380" height="250" rx="16"
+          fill="url(#pcbGrad)" stroke="#2c5c38" stroke-width="1.2"/>
+    <rect x="4" y="4" width="372" height="242" rx="13" fill="none"
+          stroke="#5ecf7f" stroke-width="0.6" opacity="0.14"/>
+
+    <!-- Mounting holes -->
+    <circle cx="16" cy="16" r="5.5" fill="#05100a" stroke="#4e7c5a" stroke-width="1"/>
+    <circle cx="364" cy="16" r="5.5" fill="#05100a" stroke="#4e7c5a" stroke-width="1"/>
+    <circle cx="16" cy="234" r="5.5" fill="#05100a" stroke="#4e7c5a" stroke-width="1"/>
+    <circle cx="364" cy="234" r="5.5" fill="#05100a" stroke="#4e7c5a" stroke-width="1"/>
+
+    <!-- Silkscreen traces. These double as the motion paths the
+         silicon particles ride along. -->
+    <g stroke="#5ecf7f" fill="none" stroke-width="1.1" opacity="0.3">
+      <path id="trace${n}_1" d="M60 160 H150 Q166 160 166 176 V214 H236"/>
+      <path id="trace${n}_2" d="M250 74 H214 Q198 74 198 92 V150 H120"/>
+      <path id="trace${n}_3" d="M250 176 H222 Q206 176 206 196 V226 H120 Q104 226 104 212 V196"/>
+      <path id="trace${n}_4" d="M330 104 V150 Q330 166 314 166 H262"/>
+      <path id="trace${n}_5" d="M40 60 H24 V196 H60"/>
+    </g>
+    <g fill="#5ecf7f" opacity="0.42">
+      <circle cx="166" cy="176" r="2"/><circle cx="198" cy="92" r="2"/>
+      <circle cx="206" cy="196" r="2"/><circle cx="314" cy="166" r="2"/>
+      <circle cx="24" cy="120" r="2"/>
+    </g>
+
+    <!-- GPIO header -->
+    ${gpio}
+
+    <!-- ── Orin module: heatsink + shield + fan ──────────────────── -->
+    <g id="module${n}">
+      <rect x="34" y="40" width="196" height="112" rx="8" fill="#12181d"/>
+      <g id="heatsink${n}">${fins}</g>
+      <rect x="34" y="40" width="196" height="112" rx="8" fill="none"
+            stroke="#5c6870" stroke-width="1.4"/>
+
+      <!-- Shield plate with NVIDIA branding -->
+      <rect x="40" y="46" width="88" height="100" rx="5" fill="url(#shieldGrad)"/>
+      <text x="84" y="88" text-anchor="middle" font-size="11" font-weight="700"
+            letter-spacing="1.6" fill="#76b900" font-family="Inter, sans-serif">NVIDIA</text>
+      <text x="84" y="104" text-anchor="middle" font-size="7.5" letter-spacing="0.9"
+            fill="#9fb0a2" font-family="Inter, sans-serif">JETSON ORIN</text>
+      <text x="84" y="116" text-anchor="middle" font-size="7.5" letter-spacing="0.9"
+            fill="#9fb0a2" font-family="Inter, sans-serif">NANO 8GB</text>
+
+      <!-- Module screws -->
+      <circle cx="46" cy="52" r="3.2" fill="#2b3238" stroke="#6b767e" stroke-width="0.8"/>
+      <circle cx="222" cy="52" r="3.2" fill="#2b3238" stroke="#6b767e" stroke-width="0.8"/>
+      <circle cx="46" cy="140" r="3.2" fill="#2b3238" stroke="#6b767e" stroke-width="0.8"/>
+      <circle cx="222" cy="140" r="3.2" fill="#2b3238" stroke="#6b767e" stroke-width="0.8"/>
+
+      <!-- Fan: housing, blades, hub -->
+      <g id="fan${n}" class="hot" data-part="cooling">
+        <circle cx="176" cy="96" r="48" fill="#0d1216" stroke="#4a545c" stroke-width="1.6"/>
+        <circle cx="176" cy="96" r="43" fill="#0a0e11"/>
+        <g transform="translate(176 96)">
+          <g id="fanBlades${n}" style="transform-box: fill-box; transform-origin: 50% 50%;">
+            ${blades}
+          </g>
+        </g>
+        <circle cx="176" cy="96" r="13" fill="url(#hubGrad)" stroke="#69737b" stroke-width="1"/>
+        <circle cx="176" cy="96" r="4" fill="#0d1216"/>
+      </g>
+    </g>
+
+    <!-- ── Silicon blocks ────────────────────────────────────────── -->
+    <g id="gpu${n}" class="hot" data-part="gpu">
+      <rect x="250" y="44" width="104" height="60" rx="5" fill="url(#gpuGrad)"
+            stroke="#76b900" stroke-width="1" opacity="0.95"/>
+      <rect id="gpuLit${n}" x="250" y="44" width="104" height="60" rx="5"
+            fill="#76b900" opacity="0"/>
+      <text x="302" y="70" text-anchor="middle" font-size="10" font-weight="600"
+            letter-spacing="1.2" fill="#a5e832" font-family="Inter, sans-serif">GPU</text>
+      <text x="302" y="84" text-anchor="middle" font-size="6.5" letter-spacing="0.7"
+            fill="#7f9a72" font-family="Inter, sans-serif">1024 CUDA · 32 TENSOR</text>
+      <text x="302" y="95" text-anchor="middle" font-size="6" letter-spacing="0.7"
+            fill="#5f7355" font-family="Inter, sans-serif">AMPERE</text>
+    </g>
+
+    <g id="cpu${n}" class="hot" data-part="cpu">
+      <rect x="250" y="112" width="104" height="40" rx="5" fill="url(#cpuGrad)"
+            stroke="#3f6d9a" stroke-width="1"/>
+      <rect id="cpuLit${n}" x="250" y="112" width="104" height="40" rx="5"
+            fill="#5aa9e6" opacity="0"/>
+      <text x="302" y="130" text-anchor="middle" font-size="9" font-weight="600"
+            letter-spacing="1.1" fill="#8ec6f0" font-family="Inter, sans-serif">CPU</text>
+      <text x="302" y="142" text-anchor="middle" font-size="6" letter-spacing="0.6"
+            fill="#5b7f9c" font-family="Inter, sans-serif">6-CORE ARM A78AE</text>
+    </g>
+
+    <g id="ai_core${n}" class="hot" data-part="ai">
+      <rect x="250" y="158" width="104" height="40" rx="5" fill="url(#aiGrad)"
+            stroke="#8b5cf6" stroke-width="1"/>
+      <rect id="aiLit${n}" x="250" y="158" width="104" height="40" rx="5"
+            fill="#a78bfa" opacity="0"/>
+      <text x="302" y="176" text-anchor="middle" font-size="9" font-weight="600"
+            letter-spacing="1.1" fill="#c4b5fd" font-family="Inter, sans-serif">AI CORE</text>
+      <text x="302" y="188" text-anchor="middle" font-size="6" letter-spacing="0.6"
+            fill="#8b7bb8" font-family="Inter, sans-serif">40 TOPS · INT8</text>
+    </g>
+
+    <!-- Unified LPDDR5 -->
+    <g id="ram${n}" class="hot" data-part="ram">
+      <rect x="40" y="162" width="66" height="26" rx="3" fill="url(#ramGrad)"
+            stroke="#68757f" stroke-width="0.9"/>
+      <rect x="112" y="162" width="66" height="26" rx="3" fill="url(#ramGrad)"
+            stroke="#68757f" stroke-width="0.9"/>
+      <rect id="ramLit${n}" x="40" y="162" width="138" height="26" rx="3"
+            fill="#d9b45a" opacity="0"/>
+      <text x="73" y="178" text-anchor="middle" font-size="6.5" letter-spacing="0.5"
+            fill="#aab6bd" font-family="Inter, sans-serif">LPDDR5</text>
+      <text x="145" y="178" text-anchor="middle" font-size="6.5" letter-spacing="0.5"
+            fill="#aab6bd" font-family="Inter, sans-serif">LPDDR5</text>
+    </g>
+
+    <!-- M.2 NVMe slot -->
+    <rect x="196" y="204" width="132" height="9" rx="2" fill="#101519" stroke="#3d474e" stroke-width="0.8"/>
+    <text x="262" y="200" text-anchor="middle" font-size="5.8" letter-spacing="0.8"
+          fill="#5c6b60" font-family="Inter, sans-serif">M.2 NVMe</text>
+
+    ${passives}
+
+    <!-- ── I/O along the bottom edge ─────────────────────────────── -->
+    <g id="ports${n}">
+      <!-- RJ45 -->
+      <g id="ethPort${n}" class="hot" data-part="eth">
+        <rect x="22" y="206" width="52" height="36" rx="3" fill="#151b20"
+              stroke="#5a656d" stroke-width="1.2"/>
+        <rect x="30" y="212" width="36" height="22" rx="2" fill="#05080a"/>
+        <rect id="ethLink${n}" x="26" y="238" width="7" height="3" rx="1.5" fill="#76b900" opacity="0"/>
+        <text x="48" y="252" text-anchor="middle" font-size="6" letter-spacing="0.8"
+              fill="#5c6b60" font-family="Inter, sans-serif">GbE</text>
+      </g>
+      <!-- USB-A stack -->
+      <rect x="84" y="210" width="34" height="14" rx="2" fill="#121820" stroke="#4a545c" stroke-width="1"/>
+      <rect x="84" y="228" width="34" height="14" rx="2" fill="#121820" stroke="#4a545c" stroke-width="1"/>
+      <!-- USB-C -->
+      <g id="usbc${n}" class="hot" data-part="usbc">
+        <rect x="128" y="220" width="26" height="11" rx="5.5" fill="#0d1216"
+              stroke="#6d7880" stroke-width="1.2"/>
+        <text x="141" y="252" text-anchor="middle" font-size="6" letter-spacing="0.8"
+              fill="#5c6b60" font-family="Inter, sans-serif">USB-C</text>
+      </g>
+      <!-- HDMI -->
+      <rect x="164" y="218" width="34" height="15" rx="2.5" fill="#121820"
+            stroke="#4a545c" stroke-width="1"/>
+      <!-- Barrel jack -->
+      <g id="pwrPort${n}">
+        <circle cx="352" cy="224" r="12" fill="#0b0f12" stroke="#5a656d" stroke-width="1.4"/>
+        <circle cx="352" cy="224" r="4.5" fill="#2b3238"/>
+      </g>
+    </g>
+
+    <!-- Status LEDs -->
+    <circle id="ledPwr${n}" cx="340" cy="30" r="4" fill="#76b900" opacity="0"/>
+    <circle id="ledAct${n}" cx="326" cy="30" r="4" fill="#d9b45a" opacity="0"/>
+
+    <!-- Silkscreen -->
+    <text x="196" y="34" font-size="7" letter-spacing="1.5" fill="#4e7c5a"
+          font-family="Inter, sans-serif">DAP AI · NODE 0${n}</text>
+
+    <!-- Silicon electricity rides these, injected at runtime. -->
+    <g id="sparks${n}"></g>
+  </g></g>`;
+}
+
+/** The cluster switch the two nodes talk through. */
+function switchMarkup(x, y) {
+  let leds = "";
+  for (let i = 0; i < 8; i++) {
+    leds += `<circle id="swLed${i}" cx="${34 + i * 24}" cy="26" r="3.6"
+                     fill="#76b900" opacity="0"/>`;
+  }
+  let ports = "";
+  for (let i = 0; i < 8; i++) {
+    ports += `<rect x="${24 + i * 24}" y="40" width="18" height="16" rx="2"
+                    fill="#05080a" stroke="#4a545c" stroke-width="0.9"/>`;
+  }
+  return `
+  <g transform="translate(${x} ${y})">
+  <g id="switch" class="hot" data-part="switch" opacity="0"
+     style="transform-box: fill-box; transform-origin: 50% 50%;">
+    <rect x="5" y="8" width="230" height="72" rx="8" fill="#000" opacity="0.5"/>
+    <rect x="0" y="0" width="230" height="72" rx="8" fill="url(#switchGrad)"
+          stroke="#5a656d" stroke-width="1.2"/>
+    <rect x="4" y="4" width="222" height="64" rx="6" fill="none"
+          stroke="#8f9aa2" stroke-width="0.5" opacity="0.25"/>
+    ${leds}
+    ${ports}
+    <text x="115" y="66" text-anchor="middle" font-size="7" letter-spacing="1.6"
+          fill="#7f8b83" font-family="Inter, sans-serif">GIGABIT CLUSTER SWITCH</text>
+  </g></g>`;
+}
+
+/** Power brick both nodes feed from. */
+function psuMarkup(x, y) {
+  return `
+  <g transform="translate(${x} ${y})">
+  <g id="psu" opacity="0">
+    <rect x="4" y="7" width="150" height="46" rx="7" fill="#000" opacity="0.45"/>
+    <rect x="0" y="0" width="150" height="46" rx="7" fill="url(#psuGrad)"
+          stroke="#4a545c" stroke-width="1.1"/>
+    <circle id="psuLed" cx="20" cy="23" r="4" fill="#76b900" opacity="0"/>
+    <text x="90" y="27" text-anchor="middle" font-size="7" letter-spacing="1.3"
+          fill="#7f8b83" font-family="Inter, sans-serif">DC POWER</text>
+  </g></g>`;
+}
+
+/* ── Build the scene ───────────────────────────────────────────── */
+
+const hwLayer    = document.getElementById("hwLayer");
+const cableLayer = document.getElementById("cableLayer");
+const dustLayer  = document.getElementById("dustLayer");
+const labelLayer = document.getElementById("labelLayer");
+
+// Node placement. Add a third here to grow the cluster.
+const NODES = [
+  { n: 1, x: 150,  y: 250 },
+  { n: 2, x: 1070, y: 250 },
+];
+for (const nd of NODES) stamp(hwLayer, boardMarkup(nd.n, nd.x, nd.y));
+stamp(hwLayer, switchMarkup(685, 640));
+stamp(hwLayer, psuMarkup(725, 742));
+
+/* Cables. Drawn as beziers from each board's socket to the switch, so
+   they read as physically plugged in rather than floating. */
+stamp(cableLayer, `
+  <!-- RJ45 → switch -->
+  <path id="ethernetCable1" d="M198 492 C 300 620, 520 700, 700 672"
+        fill="none" stroke="#1d2a20" stroke-width="7" stroke-linecap="round"/>
+  <path id="ethernetCable1Lit" d="M198 492 C 300 620, 520 700, 700 672"
+        fill="none" stroke="#76b900" stroke-width="2" stroke-linecap="round" opacity="0"/>
+
+  <path id="ethernetCable2" d="M1118 492 C 1040 620, 1000 690, 920 672"
+        fill="none" stroke="#1d2a20" stroke-width="7" stroke-linecap="round"/>
+  <path id="ethernetCable2Lit" d="M1118 492 C 1040 620, 1000 690, 920 672"
+        fill="none" stroke="#76b900" stroke-width="2" stroke-linecap="round" opacity="0"/>
+
+  <!-- USB-C → USB Ethernet adapter → switch -->
+  <path id="usbcCable" d="M1211 486 C 1240 560, 1200 610, 1120 612"
+        fill="none" stroke="#242c22" stroke-width="5.5" stroke-linecap="round"/>
+  <g transform="translate(1040 596)"><g id="usbEthAdapter" opacity="0"
+     style="transform-box: fill-box; transform-origin: 50% 50%;">
+    <rect x="0" y="0" width="70" height="30" rx="6" fill="#1b2126"
+          stroke="#5a656d" stroke-width="1"/>
+    <rect x="8" y="8" width="20" height="14" rx="2" fill="#05080a"/>
+    <circle id="adapterLed" cx="56" cy="15" r="3.2" fill="#76b900" opacity="0"/>
+    <text x="35" y="42" text-anchor="middle" font-size="6" letter-spacing="0.9"
+          fill="#5c6b60" font-family="Inter, sans-serif">USB-C → ETHERNET</text>
+  </g></g>
+  <path id="adapterCable" d="M1040 611 C 1000 611, 970 660, 920 668"
+        fill="none" stroke="#1d2a20" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Power -->
+  <path id="powerCable1" d="M502 474 C 560 690, 640 764, 725 764"
+        fill="none" stroke="#161a1d" stroke-width="6.5" stroke-linecap="round"/>
+  <path id="powerCable2" d="M1422 474 C 1380 710, 980 790, 875 764"
+        fill="none" stroke="#161a1d" stroke-width="6.5" stroke-linecap="round"/>
+`);
+
+/* Ambient dust that the first board condenses out of. */
+{
+  let dust = "";
+  for (let i = 0; i < 46; i++) {
+    const dx = 120 + Math.random() * 1360;
+    const dy = 120 + Math.random() * 660;
+    const r  = 0.7 + Math.random() * 1.5;
+    dust += `<circle class="dust" cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="${r.toFixed(2)}"
+                     fill="#76b900" opacity="0"/>`;
+  }
+  stamp(dustLayer, dust);
+}
+
+/* Callout labels, each tethered to a part by a line that draws itself. */
+const CALLOUTS = [
+  { id: "co1", text: "2× JETSON ORIN NANO", x: 150,  y: 196, path: "M156 206 L156 246" },
+  { id: "co2", text: "80 TOPS COMBINED",    x: 1076, y: 196, path: "M1082 206 L1082 246" },
+  { id: "co3", text: "ETHERNET AI CLUSTER", x: 660,  y: 684, path: "M668 679 L681 675", anchor: "end" },
+];
+{
+  let markup = "";
+  for (const c of CALLOUTS) {
+    markup += `
+      <path id="${c.id}Line" d="${c.path}" fill="none" stroke="#76b900"
+            stroke-width="1.1" opacity="0.55"/>
+      <text id="${c.id}Text" x="${c.x}" y="${c.y}" font-size="11" letter-spacing="2.2"
+            text-anchor="${c.anchor ?? "start"}"
+            fill="#a5e832" font-family="Inter, sans-serif" opacity="0">${c.text}</text>`;
+  }
+  stamp(labelLayer, markup);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   4. ANIME.JS — MASTER TIMELINE
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Anime.js v4, from CDN. Two hosts are tried so one CDN being blocked
+   doesn't take the reveal down with it. */
+const ANIME_CDNS = [
+  "https://cdn.jsdelivr.net/npm/animejs@4.5.0/lib/anime.esm.min.js",
+  "https://unpkg.com/animejs@4.5.0/lib/anime.esm.min.js",
+];
+let anime = null;
+for (const url of ANIME_CDNS) {
+  try { anime = await import(url); break; } catch { /* try the next host */ }
+}
+if (!anime) {
+  document.getElementById("fallback").style.display = "grid";
+  throw new Error("Anime.js could not be loaded from any CDN");
+}
+const { animate, createTimeline, createTimer, stagger, svg, utils } = anime;
+
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* Silicon particles ride the silkscreen traces. Two per trace keeps the
+   node count low (20 total) while still reading as constant activity. */
+const SILICON_TRACES = [];
+for (const nd of NODES) {
+  for (let t = 1; t <= 5; t++) SILICON_TRACES.push(`#trace${nd.n}_${t}`);
+}
+for (const nd of NODES) {
+  let sparks = "";
+  for (let t = 1; t <= 5; t++) {
+    for (let k = 0; k < 2; k++) {
+      sparks += `<circle class="spark s${nd.n}t${t}" cx="0" cy="0" r="2.1"
+                         fill="#a5e832" opacity="0" filter="url(#glow)"/>`;
+    }
+  }
+  stamp(document.getElementById(`sparks${nd.n}`), sparks);
+}
+
+/* Network packets travel the two Ethernet runs. */
+{
+  let packets = "";
+  for (let i = 0; i < 8; i++) {
+    packets += `<rect class="pkt pktA" x="-3" y="-2" width="6" height="4" rx="1.4"
+                      fill="#a5e832" opacity="0"/>`;
+  }
+  for (let i = 0; i < 8; i++) {
+    packets += `<rect class="pkt pktB" x="-3" y="-2" width="6" height="4" rx="1.4"
+                      fill="#a5e832" opacity="0"/>`;
+  }
+  stamp(cableLayer, packets);
+}
+
+/* Everything starts hidden; the timeline reveals it in order. */
+utils.set("#rig", { scale: 1.22, translateX: 561, translateY: 92 });
+utils.set(".board", { scale: 0.82, translateY: 60 });
+utils.set("#switch", { scale: 0.7, translateY: -40 });
+utils.set(["#ethernetCable1", "#ethernetCable2", "#usbcCable",
+           "#adapterCable", "#powerCable1", "#powerCable2"], { opacity: 0 });
+
+const cineLines = ["#line1", "#line2", "#line3", "#line4", "#line5"];
+
+/** One caption in, hold, and out. Returns the time it consumes. */
+function caption(tl, sel, at, hold = 1500) {
+  tl.add(sel, {
+    opacity: [0, 1],
+    translateY: [26, 0],
+    letterSpacing: ["0.12em", "-0.02em"],
+    duration: 1100,
+    ease: "outExpo",
+  }, at);
+  tl.add(sel, {
+    opacity: 0,
+    translateY: -22,
+    duration: 750,
+    ease: "inQuad",
+  }, at + 1100 + hold);
+  return 1100 + hold + 750;
+}
+
+const master = createTimeline({
+  defaults: { duration: 900, ease: "outExpo" },
+  autoplay: false,
+});
+
+/* ── Scene 0 · the room powers up ─────────────────────────────── */
+master.add("#circuitBg", { opacity: [0, 0.55], duration: 2200 }, 0);
+master.add(".dust", {
+  opacity: [0, 0.5],
+  duration: 1600,
+  delay: stagger(22, { from: "center" }),
+}, 200);
+master.add("#brand", { opacity: [0, 1], translateY: [-14, 0], duration: 1200 }, 900);
+master.add("#controls", { opacity: [0, 1], duration: 1000 }, 1200);
+
+/* ── Scene 1 · "This is what DAP AI runs on." ──────────────────── */
+caption(master, "#line1", 700, 1700);
+
+/* The first node condenses out of the dust. */
+master.add("#dustLayer", { opacity: [0.5, 0], duration: 1400 }, 3600);
+master.add("#jetson1", {
+  opacity: [0, 1],
+  scale: [0.82, 1],
+  translateY: [60, 0],
+  rotate: [-7, 0],
+  duration: 2000,
+  ease: "outExpo",
+}, 3700);
+
+/* Trace work draws itself on, which reads as the board "booting". */
+master.add(svg.createDrawable(`#jetson1 [id^="trace1_"]`), {
+  draw: ["0 0", "0 1"],
+  duration: 1500,
+  delay: stagger(110),
+  ease: "inOutQuad",
+}, 4200);
+
+/* Slow camera push so the viewer gets a moment with the hardware,
+   still framed on node 1 alone. */
+master.add("#rig", {
+  scale: 1.0, translateX: 460, translateY: 75,
+  duration: 3000, ease: "inOutQuad",
+}, 4000);
+master.add("#floorPool", { opacity: [0, 1], duration: 1800 }, 4600);
+
+/* ── Scene 2 · "Two of these." ─────────────────────────────────── */
+caption(master, "#line2", 6600, 1200);
+
+master.add("#jetson2", {
+  opacity: [0, 1],
+  scale: [0.82, 1],
+  translateX: [220, 0],
+  translateY: [60, 0],
+  rotate: [7, 0],
+  duration: 1700,
+  ease: "outExpo",
+}, 7900);
+master.add(svg.createDrawable(`#jetson2 [id^="trace2_"]`), {
+  draw: ["0 0", "0 1"],
+  duration: 1400,
+  delay: stagger(100),
+  ease: "inOutQuad",
+}, 8300);
+
+/* Pull back to hold both nodes in frame. */
+master.add("#rig", {
+  scale: 0.92, translateX: 0, translateY: 0,
+  duration: 2000, ease: "inOutQuad",
+}, 7900);
+
+/* ── Scene 3 · "Working together as one AI system." ────────────── */
+caption(master, "#line3", 10000, 1500);
+
+master.add("#switch", {
+  opacity: [0, 1],
+  scale: [0.7, 1],
+  translateY: [-40, 0],
+  duration: 1200,
+  ease: "outBack",
+}, 11200);
+master.add("#psu", { opacity: [0, 1], translateY: [26, 0], duration: 900 }, 11500);
+
+/* Cables reach out and lock into their sockets. */
+master.add(["#ethernetCable1", "#ethernetCable2", "#usbcCable",
+            "#adapterCable", "#powerCable1", "#powerCable2"],
+           { opacity: 1, duration: 10 }, 11800);
+master.add(svg.createDrawable("#ethernetCable1"),
+           { draw: ["0 0", "0 1"], duration: 1100, ease: "inOutQuad" }, 11800);
+master.add(svg.createDrawable("#ethernetCable2"),
+           { draw: ["0 0", "0 1"], duration: 1100, ease: "inOutQuad" }, 11950);
+master.add("#usbEthAdapter", { opacity: [0, 1], scale: [0.6, 1], duration: 700 }, 12200);
+master.add(svg.createDrawable("#usbcCable"),
+           { draw: ["0 0", "0 1"], duration: 900, ease: "inOutQuad" }, 12300);
+master.add(svg.createDrawable("#adapterCable"),
+           { draw: ["0 0", "0 1"], duration: 900, ease: "inOutQuad" }, 12600);
+master.add(svg.createDrawable(["#powerCable1", "#powerCable2"]),
+           { draw: ["0 0", "0 1"], duration: 1100, delay: stagger(140), ease: "inOutQuad" }, 12500);
+
+/* Link lights confirm the plugs seated. */
+master.add(["#ethLink1", "#ethLink2", "#adapterLed", "#psuLed"],
+           { opacity: [0, 1], duration: 400, delay: stagger(120) }, 13400);
+
+/* ── Scene 4 · "Running AI locally." ───────────────────────────── */
+caption(master, "#line4", 14200, 1500);
+
+/* Power rails come up: LEDs, then silicon, then the fans spin. */
+master.add(["#ledPwr1", "#ledPwr2"], { opacity: [0, 1], duration: 500 }, 15400);
+master.add(["#ledAct1", "#ledAct2"], { opacity: [0, 0.9], duration: 500 }, 15700);
+
+master.add(["#gpuLit1", "#gpuLit2"], { opacity: [0, 0.30], duration: 900 }, 15600);
+master.add(["#aiLit1", "#aiLit2"],   { opacity: [0, 0.24], duration: 900 }, 15900);
+master.add(["#cpuLit1", "#cpuLit2"], { opacity: [0, 0.20], duration: 900 }, 16100);
+master.add(["#ramLit1", "#ramLit2"], { opacity: [0, 0.16], duration: 900 }, 16300);
+
+master.add(".spark", { opacity: [0, 1], duration: 700, delay: stagger(24) }, 16000);
+master.add(".pkt",   { opacity: [0, 1], duration: 500, delay: stagger(40) }, 16600);
+
+/* The machine is live from here on. */
+master.call(() => startIdleSystem(), 15400);
+
+/* ── Scene 5 · specs and sign-off ──────────────────────────────── */
+caption(master, "#line5", 17600, 1600);
+
+master.add("#cineSub", { opacity: [0, 1], translateY: [12, 0], duration: 1000 }, 18400);
+master.add(".chip", {
+  opacity: [0, 1],
+  translateY: [16, 0],
+  duration: 800,
+  delay: stagger(70),
+}, 19400);
+
+/* Callout lines draw, then their labels fade up. */
+master.add(svg.createDrawable(["#co1Line", "#co2Line", "#co3Line"]),
+           { draw: ["0 0", "0 1"], duration: 900, delay: stagger(150) }, 19600);
+master.add(["#co1Text", "#co2Text", "#co3Text"],
+           { opacity: [0, 1], duration: 700, delay: stagger(150) }, 20100);
+
+/* ══════════════════════════════════════════════════════════════════
+   5. IDLE SYSTEM — the machine never goes static
+   ══════════════════════════════════════════════════════════════════
+   Started by the timeline and left running forever: fans, silicon
+   electricity, packets, LEDs and a slow breathing float.             */
+
+let idleStarted = false;
+let fanAnimations = [];
+let fanDuration = 1500;   // ms per revolution at idle
+
+function spinFans(duration) {
+  for (const a of fanAnimations) a.revert();
+  fanAnimations = NODES.map(({ n }) =>
+    animate(`#fanBlades${n}`, {
+      rotate: 360,
+      duration,
+      ease: "linear",
+      loop: true,
+    }),
+  );
+  fanDuration = duration;
+}
+
+function startIdleSystem() {
+  if (idleStarted) return;
+  idleStarted = true;
+
+  /* — Fans. Seven-fold blade symmetry means a speed change is
+       visually seamless, so we can simply restart the loop. — */
+  spinFans(1500);
+
+  /* — Silicon electricity: particles ride the silkscreen traces. — */
+  for (const nd of NODES) {
+    for (let t = 1; t <= 5; t++) {
+      const path = svg.createMotionPath(`#trace${nd.n}_${t}`);
+      animate(`.s${nd.n}t${t}`, {
+        translateX: path.translateX,
+        translateY: path.translateY,
+        duration: 2600 + t * 260,
+        delay: stagger(1300),
+        loop: true,
+        ease: "linear",
+      });
+    }
+  }
+
+  /* — Network packets between the nodes and the switch. — */
+  const runA = svg.createMotionPath("#ethernetCable1");
+  animate(".pktA", {
+    translateX: runA.translateX,
+    translateY: runA.translateY,
+    rotate: runA.rotate,
+    duration: 1900,
+    delay: stagger(230),
+    loop: true,
+    ease: "linear",
+  });
+  const runB = svg.createMotionPath("#ethernetCable2");
+  animate(".pktB", {
+    translateX: runB.translateX,
+    translateY: runB.translateY,
+    rotate: runB.rotate,
+    duration: 1700,
+    delay: stagger(210),
+    loop: true,
+    ease: "linear",
+  });
+
+  /* — Cable cores glow as traffic flows. — */
+  animate(["#ethernetCable1Lit", "#ethernetCable2Lit"], {
+    opacity: [0.15, 0.6],
+    duration: 1400,
+    loop: true,
+    alternate: true,
+    ease: "inOutSine",
+    delay: stagger(400),
+  });
+
+  /* — Switch port LEDs blink on their own rhythms. — */
+  for (let i = 0; i < 8; i++) {
+    animate(`#swLed${i}`, {
+      opacity: [0.16, 1],
+      duration: 300 + i * 95,
+      loop: true,
+      alternate: true,
+      ease: "steps(2)",
+      delay: i * 130,
+    });
+  }
+
+  /* — Activity LEDs on both boards. — */
+  animate(["#ledAct1", "#ledAct2"], {
+    opacity: [0.2, 1],
+    duration: 620,
+    loop: true,
+    alternate: true,
+    ease: "steps(2)",
+    delay: stagger(300),
+  });
+
+  /* — Silicon breathing: dies pulse as work lands on them. — */
+  animate(["#gpuLit1", "#gpuLit2"], {
+    opacity: [0.12, 0.36],
+    duration: 1500, loop: true, alternate: true, ease: "inOutSine",
+    delay: stagger(500),
+  });
+  animate(["#aiLit1", "#aiLit2"], {
+    opacity: [0.08, 0.34],
+    duration: 1150, loop: true, alternate: true, ease: "inOutSine",
+    delay: stagger(320),
+  });
+  animate(["#cpuLit1", "#cpuLit2"], {
+    opacity: [0.08, 0.26],
+    duration: 1800, loop: true, alternate: true, ease: "inOutSine",
+    delay: stagger(640),
+  });
+  animate(["#ramLit1", "#ramLit2"], {
+    opacity: [0.06, 0.22],
+    duration: 2100, loop: true, alternate: true, ease: "inOutSine",
+    delay: stagger(430),
+  });
+
+  /* — The whole rig breathes very slightly. — */
+  animate(".board", {
+    translateY: [0, -7],
+    duration: 3600,
+    loop: true,
+    alternate: true,
+    ease: "inOutSine",
+    delay: stagger(700),
+  });
+  animate("#switch", {
+    translateY: [0, -4],
+    duration: 4200, loop: true, alternate: true, ease: "inOutSine",
+  });
+
+  /* — Inference bursts: every few seconds a workload lands, the dies
+       flare and the fans spool up to match. — */
+  createTimer({
+    duration: 5200,
+    loop: true,
+    onLoop: () => {
+      spinFans(760);                                  // fans ramp up
+      animate(["#gpuLit1", "#gpuLit2", "#aiLit1", "#aiLit2"], {
+        opacity: 0.62,
+        duration: 320,
+        alternate: true,
+        loop: 2,
+        ease: "inOutQuad",
+      });
+      animate(["#ethernetCable1Lit", "#ethernetCable2Lit"], {
+        opacity: 0.95, duration: 300, alternate: true, loop: 2,
+      });
+      setTimeout(() => spinFans(1500), 2600);         // and settle again
+    },
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   6. INTERACTION
+   ══════════════════════════════════════════════════════════════════ */
+
+/* — Parallax. The rig leans toward the cursor for a sense of depth. — */
+const stage = document.getElementById("stage");
+let parallaxOn = false;
+
+stage.addEventListener("pointermove", (e) => {
+  if (!parallaxOn || REDUCED) return;
+  const rx = (e.clientX / window.innerWidth) - 0.5;
+  const ry = (e.clientY / window.innerHeight) - 0.5;
+  animate("#rig", {
+    translateX: rx * 46,
+    translateY: ry * 26,
+    rotate: rx * 1.1,
+    duration: 900,
+    ease: "outQuad",
+  });   // parallax only runs once the camera has settled at 0,0
+  // Cables and labels lag slightly behind for parallax depth.
+  animate("#labelLayer", {
+    translateX: rx * 18, translateY: ry * 10, duration: 1200, ease: "outQuad",
+  });
+});
+
+/* — Hover tooltips over each hardware region. — */
+const PART_INFO = {
+  gpu:     { title: "GPU",             tip: "AI acceleration and CUDA processing" },
+  ram:     { title: "Unified memory",  tip: "Unified memory for AI workloads" },
+  switch:  { title: "Cluster switch",  tip: "High-speed cluster networking" },
+  eth:     { title: "Gigabit Ethernet", tip: "Low latency communication" },
+  cooling: { title: "Active cooling",  tip: "Thermal management" },
+  cpu:     { title: "CPU complex",     tip: "Orchestration, I/O and pre-processing" },
+  ai:      { title: "AI core",         tip: "Tensor cores running INT8 inference" },
+  usbc:    { title: "USB-C",           tip: "Second network path via USB Ethernet" },
+};
+
+const CARD_INFO = {
+  gpu: {
+    kicker: "Ampere GPU", title: "1024 CUDA cores",
+    body: "Each node carries an Ampere GPU with 32 tensor cores. DAP AI's models run here through CUDA and TensorRT — no request ever leaves the box.",
+    specs: [["Architecture", "Ampere"], ["CUDA cores", "1024"], ["Tensor cores", "32"], ["Per node", "40 TOPS"]],
+  },
+  ram: {
+    kicker: "LPDDR5", title: "Unified memory",
+    body: "CPU and GPU share one pool, so tensors never get copied across a bus. Eight gigabytes per node, sixteen across the cluster.",
+    specs: [["Type", "LPDDR5"], ["Per node", "8 GB"], ["Cluster", "16 GB"], ["Bandwidth", "102 GB/s"]],
+  },
+  ai: {
+    kicker: "Inference", title: "AI core",
+    body: "The tensor block is where inference actually lands. Quantised INT8 weights keep latency low enough to feel instant.",
+    specs: [["Precision", "INT8 / FP16"], ["Per node", "40 TOPS"], ["Cluster", "80 TOPS"]],
+  },
+  cpu: {
+    kicker: "Arm", title: "6-core CPU",
+    body: "A six-core Arm Cortex-A78AE complex handles orchestration, tokenisation and I/O while the GPU stays busy on the model.",
+    specs: [["Cores", "6× A78AE"], ["OS", "JetPack Linux"]],
+  },
+  switch: {
+    kicker: "Networking", title: "Cluster switch",
+    body: "Both nodes meet here. Work is split across the pair and results come back over the same gigabit fabric.",
+    specs: [["Link", "1 GbE"], ["Nodes", "2"], ["Topology", "Star"]],
+  },
+  eth: {
+    kicker: "Interconnect", title: "Gigabit Ethernet",
+    body: "The primary link between nodes. Low latency matters more than raw bandwidth when two machines share one inference pass.",
+    specs: [["Speed", "1 Gb/s"], ["Latency", "< 1 ms"]],
+  },
+  usbc: {
+    kicker: "Secondary link", title: "USB-C Ethernet",
+    body: "A USB-C to Ethernet adapter gives each node a second path to the switch, so management traffic never competes with inference.",
+    specs: [["Port", "USB-C"], ["Adapter", "USB → GbE"]],
+  },
+  cooling: {
+    kicker: "Thermals", title: "Active cooling",
+    body: "A heatsink and fan hold clocks steady under sustained load. The fans spin faster the moment a workload lands.",
+    specs: [["Cooling", "Active"], ["Profile", "Load-aware"]],
+  },
+};
+
+const tip      = document.getElementById("tip");
+const tipTitle = tip.querySelector(".tip-title");
+const tipBody  = tip.querySelector(".tip-body");
+let tipVisible = false;
+
+function showTip(part, clientX, clientY) {
+  const info = PART_INFO[part];
+  if (!info) return;
+  tipTitle.textContent = info.title;
+  tipBody.textContent = info.tip;
+  tip.style.left = Math.min(clientX + 18, window.innerWidth - 280) + "px";
+  tip.style.top  = (clientY + 18) + "px";
+  if (!tipVisible) {
+    tipVisible = true;
+    animate(tip, { opacity: [0, 1], translateY: [8, 0], duration: 260, ease: "outQuad" });
+  }
+}
+function hideTip() {
+  if (!tipVisible) return;
+  tipVisible = false;
+  animate(tip, { opacity: 0, duration: 200, ease: "outQuad" });
+}
+
+for (const el of document.querySelectorAll(".hot")) {
+  const part = el.dataset.part;
+  el.addEventListener("pointerenter", (e) => {
+    showTip(part, e.clientX, e.clientY);
+    animate(el, { scale: 1.045, duration: 320, ease: "outBack" });
+  });
+  el.addEventListener("pointermove", (e) => showTip(part, e.clientX, e.clientY));
+  el.addEventListener("pointerleave", () => {
+    hideTip();
+    animate(el, { scale: 1, duration: 320, ease: "outQuad" });
+  });
+  el.addEventListener("click", () => openCard(part));
+  el.style.transformBox = "fill-box";
+  el.style.transformOrigin = "50% 50%";
+}
+
+/* — Click-through info cards. — */
+const card = document.getElementById("card");
+function openCard(part) {
+  const info = CARD_INFO[part];
+  if (!info) return;
+  document.getElementById("cardKicker").textContent = info.kicker;
+  document.getElementById("cardTitle").textContent = info.title;
+  document.getElementById("cardBody").textContent = info.body;
+  document.getElementById("cardSpecs").innerHTML =
+    info.specs.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  card.classList.add("on");
+  animate(card, {
+    opacity: [0, 1],
+    translateX: [40, 0],
+    translateY: ["-50%", "-50%"],
+    duration: 520,
+    ease: "outExpo",
+  });
+}
+document.getElementById("cardClose").addEventListener("click", () => {
+  card.classList.remove("on");
+  animate(card, { opacity: 0, translateX: 30, duration: 320, ease: "inQuad" });
+});
+
+/* — Transport controls. — */
+function finish() {
+  parallaxOn = true;
+  utils.set(cineLines, { opacity: 0 });
+}
+master.onComplete = finish;
+
+document.getElementById("btnSkip").addEventListener("click", () => {
+  master.complete();
+  startIdleSystem();
+  finish();
+});
+document.getElementById("btnReplay").addEventListener("click", () => {
+  parallaxOn = false;
+  utils.set("#rig", { translateX: 0, translateY: 0, rotate: 0 });
+  master.restart();
+});
+
+/* — Go. Anyone who asked for reduced motion gets the end state. — */
+if (REDUCED) {
+  master.complete();
+  startIdleSystem();
+  finish();
+} else {
+  master.play();
+}
+</script>
+</body>
+</html>
