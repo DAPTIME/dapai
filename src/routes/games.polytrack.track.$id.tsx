@@ -1,17 +1,17 @@
-// DAP Track custom track player.
+// Poly Racer community track player.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { PolyTrackRunner } from "@/components/polytrack-runner";
-import { Leaderboard, recordPersonalBest } from "@/components/track-leaderboard";
-import type { Season } from "@/lib/polytrack-engine";
+import { PolyTrackRunner, type RunResult } from "@/components/polytrack-runner";
+import { Leaderboard } from "@/components/track-leaderboard";
+import { MEDAL_META, formatMs, recordPersonalBest, type Season } from "@/lib/polytrack-engine";
 import { getTrack, submitScore } from "@/lib/tracks.functions";
 
 export const Route = createFileRoute("/games/polytrack/track/$id")({
-  head: () => ({ meta: [{ title: "Custom Track — DAP Track" }] }),
+  head: () => ({ meta: [{ title: "Community Track — Poly Racer" }] }),
   component: TrackPage,
 });
 
@@ -46,9 +46,13 @@ function TrackPage() {
   const trackRef = `custom:${track.id}`;
   const isOwner = userId && userId === track.owner_id;
 
-  const handleFinish = (ms: number) => {
+  const handleFinish = (ms: number, result: RunResult) => {
     recordPersonalBest(trackRef, ms);
     setLbKey((k) => k + 1);
+    if (result.medal) {
+      const m = MEDAL_META[result.medal];
+      toast.success(`${m.emoji} ${m.label} medal — ${formatMs(ms)}`);
+    }
     if (!userId) { toast.info("Sign in to save to the site-wide leaderboard."); return; }
     submit({ data: { trackRef, timeMs: ms } }).catch(() => {});
   };

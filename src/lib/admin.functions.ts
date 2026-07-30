@@ -310,6 +310,7 @@ export const FEATURE_KEYS = [
   "lite_model",
   "daps",
   "team",
+  "games",
 ] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
@@ -318,6 +319,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   lite_model: "DAP AI Lite",
   daps: "DAPs (Custom assistants)",
   team: "Our Team page",
+  games: "Games (DAP Arcade)",
 };
 
 export const getFeatureFlags = createServerFn({ method: "GET" }).handler(
@@ -332,6 +334,7 @@ export const getFeatureFlags = createServerFn({ method: "GET" }).handler(
       lite_model: true,
       daps: true,
       team: true,
+      games: true,
     };
     for (const row of data ?? []) {
       const key = row.id.replace(/^feature_/, "") as FeatureKey;

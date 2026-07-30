@@ -2,11 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listPublicTracks } from "@/lib/tracks.functions";
-import { THEMES, type Season } from "@/lib/polytrack-engine";
+import { THEMES, formatMs, type Season } from "@/lib/polytrack-engine";
 import { TrackThumbnail } from "@/components/track-thumbnail";
 
 export const Route = createFileRoute("/games/polytrack/browse")({
-  head: () => ({ meta: [{ title: "Community Tracks — DAP Track" }] }),
+  head: () => ({ meta: [{ title: "Community Tracks — Poly Racer" }] }),
   component: BrowsePage,
 });
 
@@ -32,10 +32,10 @@ function BrowsePage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">🌐 Community Tracks</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Player-built DAP Track levels.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Tracks built and published by other players.</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/games/polytrack" className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-primary">← DAP Track</Link>
+          <Link to="/games/polytrack" className="rounded-lg border border-border px-3 py-1.5 text-sm hover:border-primary">← Poly Racer</Link>
           <Link to="/games/polytrack/editor" className="rounded-lg bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Build one</Link>
         </div>
       </div>
@@ -65,7 +65,7 @@ function BrowsePage() {
                   <span className="text-xs text-muted-foreground">{theme.label}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Goal {t.goal}</span>
+                  <span>🎯 {formatMs(t.goal)}</span>
                   <span>▶ {t.play_count}</span>
                 </div>
               </div>
