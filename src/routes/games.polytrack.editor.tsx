@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { THEMES, drawTrackThumbnail, formatMs, type Season } from "@/lib/polytrack-engine";
 import {
-  analyzeTrack, autoLevel, isTrackData, validateForPublish, validateName,
-  MAX_ELEV, MAX_TILES,
+  analyzeTrack, autoLevel, toTrackData, validateForPublish, validateName,
+  MAX_LEVEL, MAX_TILES,
   type TileType, type Tile, type Rot, type TrackData,
 } from "@/lib/track-validation";
 import { PolyTrackRunner } from "@/components/polytrack-runner";
@@ -54,12 +54,12 @@ function clampGoal(seconds: string | number): number {
 
 const GRID_W = 16, GRID_H = 13;
 const DEFAULT_DATA: TrackData = {
-  version: 2,
+  version: 3,
   tiles: [
-    { type: "start", x: 3, z: 9, rot: 1 },
-    { type: "straight", x: 4, z: 9, rot: 1 },
-    { type: "straight", x: 5, z: 9, rot: 1 },
-    { type: "finish", x: 6, z: 9, rot: 1 },
+    { type: "start", x: 3, y: 0, z: 9, rot: 1 },
+    { type: "straight", x: 4, y: 0, z: 9, rot: 1 },
+    { type: "straight", x: 5, y: 0, z: 9, rot: 1 },
+    { type: "finish", x: 6, y: 0, z: 9, rot: 1 },
   ],
 };
 
@@ -79,7 +79,7 @@ function EditorPage() {
   const [testing, setTesting] = useState(false);
   const [tool, setTool] = useState<Tool>("straight");
   const [rot, setRot] = useState<Rot>(1);
-  const [elev, setElev] = useState(0);
+  const [level, setLevel] = useState(0);
   const [myTracks, setMyTracks] = useState<Awaited<ReturnType<typeof listMyTracks>>>([]);
 
   const fetchMine = useServerFn(listMyTracks);
@@ -106,7 +106,8 @@ function EditorPage() {
         setGoalText((row.goal / 1000).toString());
         setIsPublic(row.is_public);
         setPast([]); setFuture([]);
-        if (isTrackData(row.params)) setData(row.params as TrackData);
+        const parsed = toTrackData(row.params);
+        if (parsed) setData(parsed);
         else { setData(DEFAULT_DATA); toast.warning("This is a legacy track. Rebuild it in the new editor to save."); }
       })
       .catch((e: Error) => toast.error(e.message))
@@ -141,9 +142,15 @@ function EditorPage() {
     });
   }, []);
 
-  const tileMap = useMemo(() => {
-    const m = new Map<string, Tile>();
-    for (const t of data.tiles) m.set(`${t.x},${t.z}`, t);
+  // Grid cells hold every deck in the column, tallest last.
+  const columns = useMemo(() => {
+    const m = new Map<string, Tile[]>();
+    for (const t of data.tiles) {
+      const k = `${t.x},${t.z}`;
+      const col = m.get(k);
+      if (col) col.push(t); else m.set(k, [t]);
+    }
+    for (const col of m.values()) col.sort((a, b) => a.y - b.y);
     return m;
   }, [data]);
 
@@ -153,27 +160,33 @@ function EditorPage() {
   const placeTile = useCallback((x: number, z: number, forceTool?: Tool) => {
     const active = forceTool ?? tool;
     commit((prev) => {
+      // Editing only ever touches the level you're working on, so an
+      // overpass and the road under it stay independent.
+      const here = prev.tiles.find((t) => t.x === x && t.z === z && t.y === level);
       if (active === "erase") {
-        if (!prev.tiles.some((t) => t.x === x && t.z === z)) return prev;
-        return { version: 2, tiles: prev.tiles.filter((t) => !(t.x === x && t.z === z)) };
+        // Nothing on this level? Take the topmost deck instead, so erase
+        // never feels like it did nothing.
+        const target = here ?? prev.tiles
+          .filter((t) => t.x === x && t.z === z)
+          .sort((a, b) => b.y - a.y)[0];
+        if (!target) return prev;
+        return { version: 3, tiles: prev.tiles.filter((t) => t !== target) };
       }
-      if (prev.tiles.length >= MAX_TILES && !prev.tiles.some((t) => t.x === x && t.z === z)) {
-        return prev;
-      }
-      const existing = prev.tiles.find((t) => t.x === x && t.z === z);
-      let tiles = prev.tiles.filter((t) => !(t.x === x && t.z === z));
+      if (!here && prev.tiles.length >= MAX_TILES) return prev;
+
+      let tiles = prev.tiles.filter((t) => t !== here);
       // Start and finish are unique — placing a new one moves it.
       if (active === "start") tiles = tiles.filter((t) => t.type !== "start");
       if (active === "finish") tiles = tiles.filter((t) => t.type !== "finish");
       // Clicking an identical piece spins it instead of replacing it.
-      if (existing && existing.type === active && existing.rot === rot && (existing.elev ?? 0) === elev) {
-        tiles.push({ ...existing, rot: (((existing.rot + 1) % 4) as Rot) });
+      if (here && here.type === active && here.rot === rot) {
+        tiles.push({ ...here, rot: (((here.rot + 1) % 4) as Rot) });
       } else {
-        tiles.push({ type: active, x, z, rot, elev: elev || undefined });
+        tiles.push({ type: active, x, y: level, z, rot });
       }
-      return { version: 2, tiles };
+      return { version: 3, tiles };
     });
-  }, [commit, tool, rot, elev]);
+  }, [commit, tool, rot, level]);
 
   // Keyboard shortcuts — number keys pick a piece, Q/E spin it.
   useEffect(() => {
@@ -190,6 +203,8 @@ function EditorPage() {
         if (t) setTool(t.tool);
       } else if (e.key.toLowerCase() === "q") setRot((r) => (((r + 3) % 4) as Rot));
       else if (e.key.toLowerCase() === "e") setRot((r) => (((r + 1) % 4) as Rot));
+      else if (e.key === "[") setLevel((l) => Math.max(0, l - 1));
+      else if (e.key === "]") setLevel((l) => Math.min(MAX_LEVEL, l + 1));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -304,14 +319,22 @@ function EditorPage() {
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-1">
-            <span className="text-muted-foreground">Height</span>
-            <input
-              type="number" min={0} max={MAX_ELEV} value={elev}
-              onChange={(e) => setElev(Math.max(0, Math.min(MAX_ELEV, Number(e.target.value) || 0)))}
-              className="w-14 rounded border border-border bg-background px-1 py-0.5"
-            />
-          </label>
+          <div className="flex items-center gap-1">
+            <span className="text-muted-foreground">Level</span>
+            <button
+              className="h-7 w-7 rounded border border-border disabled:opacity-40"
+              onClick={() => setLevel((l) => Math.max(0, l - 1))}
+              disabled={level === 0}
+              title="Go down a level"
+            >−</button>
+            <span className="w-6 text-center font-semibold tabular-nums">{level}</span>
+            <button
+              className="h-7 w-7 rounded border border-border disabled:opacity-40"
+              onClick={() => setLevel((l) => Math.min(MAX_LEVEL, l + 1))}
+              disabled={level === MAX_LEVEL}
+              title="Go up a level"
+            >+</button>
+          </div>
           <Button size="sm" variant="ghost" className="h-7 px-2" onClick={undo} disabled={past.length === 0}>↶ Undo</Button>
           <Button size="sm" variant="ghost" className="h-7 px-2" onClick={redo} disabled={future.length === 0}>↷ Redo</Button>
           <Button
@@ -321,11 +344,11 @@ function EditorPage() {
             ⛰ Auto-level
           </Button>
           <span className="ml-auto text-muted-foreground">
-            {data.tiles.length}/{MAX_TILES} pieces · drag to paint · right-click erases · Q/E rotate
+            {data.tiles.length}/{MAX_TILES} pieces · drag to paint · right-click erases · Q/E rotate · [ ] change level
           </span>
         </div>
 
-        <GridEditor width={GRID_W} height={GRID_H} tileMap={tileMap} onPaint={placeTile} />
+        <GridEditor width={GRID_W} height={GRID_H} columns={columns} level={level} onPaint={placeTile} />
 
         {report.error && <p className="mt-2 text-xs font-medium text-destructive">⚠ {report.error}</p>}
         {!report.error && report.warning && (
@@ -425,9 +448,10 @@ function EditorPage() {
   );
 }
 
-function GridEditor({ width, height, tileMap, onPaint }: {
+function GridEditor({ width, height, columns, level, onPaint }: {
   width: number; height: number;
-  tileMap: Map<string, Tile>;
+  columns: Map<string, Tile[]>;
+  level: number;
   onPaint: (x: number, z: number, forceTool?: Tool) => void;
 }) {
   const cellSize = 32;
@@ -453,7 +477,11 @@ function GridEditor({ width, height, tileMap, onPaint }: {
           {Array.from({ length: width * height }).map((_, i) => {
             const x = i % width;
             const z = Math.floor(i / width);
-            const t = tileMap.get(`${x},${z}`);
+            const col = columns.get(`${x},${z}`) ?? [];
+            const here = col.find((t) => t.y === level);
+            // Decks on other levels stay faintly visible so you can line
+            // an overpass up with the road it crosses.
+            const others = col.filter((t) => t.y !== level);
             return (
               <button
                 key={i}
@@ -471,7 +499,8 @@ function GridEditor({ width, height, tileMap, onPaint }: {
                 style={{ width: cellSize, height: cellSize }}
                 aria-label={`Tile ${x},${z}`}
               >
-                {t && <TileIcon tile={t} />}
+                {others.map((t) => <TileIcon key={t.y} tile={t} ghost />)}
+                {here && <TileIcon tile={here} />}
               </button>
             );
           })}
@@ -503,8 +532,7 @@ const TILE_GLYPH: Record<TileType, string> = {
   jump: "⤴", boost: "»", checkpoint: "◆", start: "S", finish: "F",
 };
 
-function TileIcon({ tile }: { tile: Tile }) {
-  const elev = tile.elev ?? 0;
+function TileIcon({ tile, ghost = false }: { tile: Tile; ghost?: boolean }) {
   return (
     <span
       className="absolute inset-0 grid place-items-center text-sm font-bold text-white"
@@ -513,16 +541,17 @@ function TileIcon({ tile }: { tile: Tile }) {
         // The grid's +z runs down the screen, so a +rot turn reads clockwise.
         transform: `rotate(${tile.rot * 90}deg)`,
         transition: "transform 0.12s",
+        opacity: ghost ? 0.22 : 1,
       }}
-      title={`${tile.type} facing ${ROT_LABEL[tile.rot]}${elev ? ` · height ${elev}` : ""}`}
+      title={`${tile.type} facing ${ROT_LABEL[tile.rot]} · level ${tile.y}`}
     >
       {TILE_GLYPH[tile.type]}
-      {elev > 0 && (
+      {tile.y > 0 && !ghost && (
         <span
           className="absolute right-0 top-0 rounded-bl bg-black/60 px-0.5 text-[9px] leading-tight"
           style={{ transform: `rotate(${-tile.rot * 90}deg)` }}
         >
-          {elev}
+          {tile.y}
         </span>
       )}
     </span>

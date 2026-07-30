@@ -1,5 +1,8 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Gamepad2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Gamepad2, Lock } from "lucide-react";
+import { getFeatureFlags } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/games")({
   head: () => ({
@@ -23,6 +26,33 @@ const GAMES = [
 
 function GamesLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+  });
+
+  // Gating the layout covers every game and the track editor with it.
+  if (flagsQuery.data?.games === false) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <div
+          className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-primary-foreground"
+          style={{ background: "var(--gradient-brand)" }}
+        >
+          <Lock className="h-6 w-6" />
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">Arcade temporarily disabled</h1>
+        <p className="mt-3 text-muted-foreground">
+          The games section is turned off right now. Please check back soon.
+        </p>
+        <Link to="/" className="mt-6 inline-block rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground">
+          Back to DAP AI
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col md:flex-row">
       <aside className="w-full shrink-0 border-b border-border bg-card/40 p-3 md:w-56 md:border-b-0 md:border-r">

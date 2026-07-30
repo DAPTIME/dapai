@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  THEMES, TILE, ROAD_HALF, RAMP_H, ROAD_THICK, TERRAIN_Y, CURVE_R, curveSign,
+  THEMES, TILE, ROAD_HALF, LEVEL_H, ROAD_THICK, TERRAIN_Y, CURVE_R, curveSign, tileHeightAt,
   formatMs, formatDelta, makeSampler, medalFor, MEDAL_META, MEDAL_MULT,
   readPersonalBest, recordPersonalBest, readGhost, writeGhost,
   type GhostSample, type Medal, type Sampler, type Season, type Theme,
@@ -151,9 +151,8 @@ export function PolyTrackRunner(props: Props) {
 
       // ── Race state ─────────────────────────────────────────────────
       const startTile = track.tiles.find((t) => t.type === "start") ?? track.tiles[0];
-      const finishTiles = new Set(
-        track.tiles.filter((t) => t.type === "finish").map((t) => `${t.x},${t.z}`),
-      );
+      const cellOf = (t: Tile) => `${t.x},${t.y},${t.z}`;
+      const finishTiles = new Set(track.tiles.filter((t) => t.type === "finish").map(cellOf));
       const totalCp = built.checkpoints.length;
 
       const spawn = spawnFrom(sampler, startTile);
@@ -290,7 +289,7 @@ export function PolyTrackRunner(props: Props) {
         const tile = res.surface.tile;
         if (running && onRoad && tile) {
           if (tile.type === "checkpoint") {
-            const key = `${tile.x},${tile.z}`;
+            const key = cellOf(tile);
             if (!cpHit.has(key)) {
               cpHit.add(key);
               built.setCheckpointsLit(cpHit);
@@ -298,7 +297,7 @@ export function PolyTrackRunner(props: Props) {
             }
           } else if (tile.type === "start") {
             respawnPoint = spawnFrom(sampler, tile, car.yaw);
-          } else if (finishTiles.has(`${tile.x},${tile.z}`) && cpHit.size >= totalCp) {
+          } else if (finishTiles.has(cellOf(tile)) && cpHit.size >= totalCp) {
             finish();
           }
         }
@@ -342,6 +341,11 @@ export function PolyTrackRunner(props: Props) {
         } else {
           const k = camMode === "hood" ? 1 : 1 - Math.pow(0.0009, dt);
           camera.position.lerp(camWanted, k);
+        }
+        // Duck under an overpass rather than clipping through its deck.
+        const ceiling = sampler.ceilingAt(camera.position.x, camera.position.z, y + 0.6);
+        if (Number.isFinite(ceiling) && camera.position.y > ceiling - 0.6) {
+          camera.position.y = Math.max(y + 0.8, ceiling - 0.6);
         }
         camera.lookAt(camTarget);
       };
@@ -643,7 +647,9 @@ function sampleGhost(samples: GhostSample[], t: number): GhostSample | null {
 /** Place the car on a tile's centreline, facing along the road. */
 function spawnFrom(sampler: Sampler, tile: Tile, travellingYaw?: number) {
   const c = sampler.tileCenter(tile);
-  const surf = sampler.at(c.x, c.z);
+  // Probe from the piece's own deck so a spawn under an overpass doesn't
+  // land the car on the bridge above it.
+  const surf = sampler.at(c.x, c.z, c.y);
   let yaw = tile.rot * (Math.PI / 2);
   if (surf.tile === tile) {
     yaw = Math.atan2(surf.dirX, surf.dirZ);
@@ -687,7 +693,7 @@ function tilePath(sampler: Sampler, t: Tile): V3[] {
     const sign = curveSign(t.type);
     const ccx = sign * (TILE / 2), ccz = -TILE / 2;
     const segs = 10;
-    const y = (t.elev ?? 0) * RAMP_H;
+    const y = tileHeightAt(t, 0.5);
     for (let i = 0; i <= segs; i++) {
       // Sweep from the entry edge (radial pointing -sign·X) to the exit (+Z).
       const a = (Math.PI / 2) * (i / segs);
@@ -704,9 +710,7 @@ function tilePath(sampler: Sampler, t: Tile): V3[] {
     const u = i / segs;
     const lz = -TILE / 2 + u * TILE;
     const [ox, oz] = local(0, lz);
-    const wx = cx + ox, wz = cz + oz;
-    const s = sampler.at(wx, wz);
-    pts.push({ x: wx, y: s.tile === t ? s.y : (t.elev ?? 0) * RAMP_H, z: wz });
+    pts.push({ x: cx + ox, y: tileHeightAt(t, u), z: cz + oz });
   }
   return pts;
 }
@@ -784,11 +788,12 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
     const h = 2.5 + rnd() * 5;
     const half = 1.4 + rnd() * 1.4;
     const wx = sampler.worldX(gx), wz = sampler.worldZ(gz);
-    if (sampler.tileAt(wx, wz)) continue;
-    // Keep the whole trunk clear of the tarmac, not just its centre.
+    if (sampler.columnAt(wx, wz).length > 0) continue;
+    // Keep the whole trunk clear of the tarmac — of every deck, at any
+    // height, not just the one nearest the ground.
     const pad = half + 2;
     const clear = [[0, 0], [-pad, 0], [pad, 0], [0, -pad], [0, pad]]
-      .every(([ox, oz]) => !sampler.at(wx + ox, wz + oz).onRoad);
+      .every(([ox, oz]) => sampler.columnAt(wx + ox, wz + oz).length === 0);
     if (!clear) continue;
     props.pyramid(wx, TERRAIN_Y, wz, half, h);
   }
@@ -806,8 +811,10 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
     // Straddle the road at the piece's centre, square to the direction of
     // travel — the posts must end up either side of the tarmac.
     const p = sampler.tileCenter(t);
-    const surf = sampler.at(p.x, p.z);
+    const surf = sampler.at(p.x, p.z, p.y);
     const rotY = Math.atan2(surf.dirX, surf.dirZ);
+    // An arch only fits where nothing crosses overhead.
+    const headroom = sampler.ceilingAt(p.x, p.z, p.y + 0.5) - p.y;
 
     const mat = new THREE.MeshLambertMaterial({ color, flatShading: true });
     gateMats.push(mat);
@@ -818,10 +825,16 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
     // Posts either side plus a bar overhead, built in tile-local space.
     // The arch clears GATE_H so the chase camera passes under it instead
     // of clipping through the bar as it crosses the line.
-    const GATE_H = 6.8;
-    m.box(-w, GATE_H / 2, 0, 0.5, GATE_H, 0.5);
-    m.box(w, GATE_H / 2, 0, 0.5, GATE_H, 0.5);
-    m.box(0, GATE_H, 0, w * 2 + 0.5, 0.6, 0.55);
+    const GATE_H = Math.min(6.8, headroom - 0.8);
+    if (GATE_H > 2) {
+      m.box(-w, GATE_H / 2, 0, 0.5, GATE_H, 0.5);
+      m.box(w, GATE_H / 2, 0, 0.5, GATE_H, 0.5);
+      m.box(0, GATE_H, 0, w * 2 + 0.5, 0.6, 0.55);
+    } else {
+      // No room to arch over: mark the line with kerbside blocks instead.
+      m.box(-w, 0.7, 0, 0.6, 1.4, 0.6);
+      m.box(w, 0.7, 0, 0.6, 1.4, 0.6);
+    }
     m.box(0, 0.06, 0, w * 2, 0.12, 1.1);
     const geo = m.build(THREE);
     disposables.push(geo);
@@ -835,7 +848,7 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
   const finishTile = track.tiles.find((t) => t.type === "finish");
   if (startTile) addGate(startTile, 0x22c55e);
   if (finishTile) addGate(finishTile, 0xef4444);
-  for (const cp of checkpoints) addGate(cp, 0x3b82f6, `${cp.x},${cp.z}`);
+  for (const cp of checkpoints) addGate(cp, 0x3b82f6, `${cp.x},${cp.y},${cp.z}`);
 
   const setCheckpointsLit = (hit: Set<string>) => {
     for (const [key, mat] of cpGates) {

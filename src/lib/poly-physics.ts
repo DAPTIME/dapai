@@ -19,8 +19,8 @@ export const DRIFT_GRIP = 2.2;
 export const OFF_GRIP = 4.5;
 export const OFF_DRAG = 3.4;      // grass is slow
 export const OFF_MAX = 20;
-export const TURN_RATE = 2.5;     // rad/s at the sweet spot
-export const AIR_TURN = 1.1;
+export const TURN_RATE = 2.4;     // rad/s at the sweet spot
+export const AIR_TURN = 0.9;
 export const GRAVITY = 34;
 export const BOOST_MAX = 66;
 export const BOOST_ACCEL = 55;
@@ -77,7 +77,7 @@ export function resetCar(car: CarState, x: number, y: number, z: number, yaw: nu
  * handbrake its slide and the tyres their bite.
  */
 export function stepCar(car: CarState, input: CarInput, dt: number, sampler: Sampler): StepResult {
-  const surf = sampler.at(car.x, car.z);
+  const surf = sampler.at(car.x, car.z, car.y);
   const onRoad = surf.onRoad;
 
   const fx = Math.sin(car.yaw), fz = Math.cos(car.yaw);
@@ -86,12 +86,14 @@ export function stepCar(car: CarState, input: CarInput, dt: number, sampler: Sam
   let vf = car.vx * fx + car.vz * fz;
   let vl = car.vx * rx + car.vz * rz;
 
-  car.steer += (input.steer - car.steer) * Math.min(1, dt * 12);
+  // Steering eases in rather than snapping to full lock, so a tap is a
+  // nudge and holding the key is what gets you round a hairpin.
+  car.steer += (input.steer - car.steer) * Math.min(1, dt * 10);
 
   if (car.grounded) {
     // Steering bites once rolling and calms down at speed.
     const sp = Math.abs(vf);
-    const bite = Math.min(1, sp / 6) * (1 - 0.4 * Math.min(1, sp / MAX_SPEED));
+    const bite = Math.min(1, sp / 6) * (1 - 0.45 * Math.min(1, sp / MAX_SPEED));
     const dir = vf < -0.5 ? -1 : 1;
     car.yaw += car.steer * TURN_RATE * bite * (input.drift ? 1.4 : 1) * dir * dt;
   } else {
@@ -132,7 +134,7 @@ export function stepCar(car: CarState, input: CarInput, dt: number, sampler: Sam
   car.x += car.vx * dt;
   car.z += car.vz * dt;
 
-  let next = sampler.at(car.x, car.z);
+  let next = sampler.at(car.x, car.z, car.y);
   let nextY = next.onRoad ? next.y : TERRAIN_Y;
 
   // The side of a raised piece is a wall, not a ramp.
@@ -143,7 +145,7 @@ export function stepCar(car: CarState, input: CarInput, dt: number, sampler: Sam
     vf *= 0.2; vl *= 0.2;
     car.vx = fx * vf + rx * vl;
     car.vz = fz * vf + rz * vl;
-    next = sampler.at(car.x, car.z);
+    next = sampler.at(car.x, car.z, car.y);
     nextY = next.onRoad ? next.y : TERRAIN_Y;
   }
 

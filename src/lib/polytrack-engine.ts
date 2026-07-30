@@ -6,9 +6,11 @@
 // validation-adjacent uses and must stay browser-safe & DOM-free (canvas
 // is only touched from client components).
 import type { TrackData, Tile, Rot, TileType } from "./track-validation";
-import { isTrackData, rotIsForward } from "./track-validation";
+import { columnKey, isRamp, rotIsForward, toTrackData } from "./track-validation";
 
 export type Season = "spring" | "summer" | "fall" | "winter";
+
+export const SEASONS: Season[] = ["spring", "summer", "fall", "winter"];
 
 export type Theme = {
   ground: string;
@@ -19,7 +21,7 @@ export type Theme = {
   emoji: string;
   fleck: string;
   sky: string;
-  /** Pillars / underside of the elevated road. */
+  /** Pillars and the underside of raised road. */
   support: string;
   /** Scatter props dotted around the terrain. */
   prop: string;
@@ -34,13 +36,16 @@ export const THEMES: Record<Season, Theme> = {
 
 export const TILE = 10;          // world units per tile
 export const ROAD_HALF = 3.2;    // road half-width in world units
-export const RAMP_H = 3;         // world-height per elevation step
+export const LEVEL_H = 5;        // world height of one grid level
 export const JUMP_H = 1.9;       // kicker lip height on a jump tile
 export const ROAD_THICK = 0.5;   // visual slab thickness
 export const TERRAIN_Y = -0.4;   // terrain plane — off the road, but drivable
 
 /** Curve centreline radius. */
 export const CURVE_R = TILE / 2;
+
+/** World height of a grid level. */
+export const levelY = (level: number) => level * LEVEL_H;
 
 /**
  * Which way a bend hugs, in tile-local X. The world is right-handed with
@@ -61,8 +66,7 @@ export function formatMs(ms: number): string {
 
 /** Signed delta, e.g. "-1.24" / "+0.31". */
 export function formatDelta(ms: number): string {
-  const sign = ms < 0 ? "-" : "+";
-  return `${sign}${formatMs(Math.abs(ms))}`;
+  return `${ms < 0 ? "-" : "+"}${formatMs(Math.abs(ms))}`;
 }
 
 // Rotate a tile-local (dx, dz) by rot × 90° about Y — matching three.js'
@@ -83,8 +87,6 @@ export function unrotateXZ(dx: number, dz: number, rot: number): [number, number
 }
 
 // ── Medals ──────────────────────────────────────────────────────────
-// A track stores one target time; the tiers fan out from it the way
-// Poly Racer's author medals do.
 
 export type Medal = "author" | "gold" | "silver" | "bronze" | null;
 
@@ -108,7 +110,7 @@ export const MEDAL_META: Record<Exclude<Medal, null>, { label: string; emoji: st
 // ── Surface sampling ────────────────────────────────────────────────
 
 export type Surface = {
-  /** Whether the sample point sits on tarmac. Off road = nothing to drive on. */
+  /** Whether the sample point sits on tarmac. */
   onRoad: boolean;
   /** Road surface height at the sample point. */
   y: number;
@@ -120,7 +122,7 @@ export type Surface = {
   dirZ: number;
   /** Signed distance from the centreline; |lateral| ≤ ROAD_HALF on road. */
   lateral: number;
-  /** The tile the sample landed in, if any. */
+  /** The deck the sample landed on, if any. */
   tile: Tile | null;
 };
 
@@ -136,16 +138,15 @@ function smoothstep(t: number): number {
  * Height profile along a tile's local Z axis, plus the local dy/dlz
  * slope. `u` runs 0 (entry edge) → 1 (exit edge).
  */
-function profile(type: TileType, elev: number, u: number): { y: number; slope: number } {
-  const base = elev * RAMP_H;
+function profile(type: TileType, level: number, u: number): { y: number; slope: number } {
+  const base = levelY(level);
   switch (type) {
     case "rampUp":
-      return { y: base + u * RAMP_H, slope: RAMP_H / TILE };
+      return { y: base + u * LEVEL_H, slope: LEVEL_H / TILE };
     case "rampDown":
-      return { y: base - u * RAMP_H, slope: -RAMP_H / TILE };
+      return { y: base - u * LEVEL_H, slope: -LEVEL_H / TILE };
     case "jump": {
       const k = smoothstep((u - 0.45) / 0.55);
-      // d/du of smoothstep, converted to per-world-unit.
       const t = Math.max(0, Math.min(1, (u - 0.45) / 0.55));
       const dk = (6 * t * (1 - t)) / 0.55;
       return { y: base + k * JUMP_H, slope: (dk * JUMP_H) / TILE };
@@ -155,35 +156,61 @@ function profile(type: TileType, elev: number, u: number): { y: number; slope: n
   }
 }
 
+/**
+ * Surface height along a piece's local Z axis — `u` runs 0 at the entry
+ * edge to 1 at the exit. Unlike a sampler probe this is unambiguous
+ * about which deck it means, so mesh building uses it directly.
+ */
+export function tileHeightAt(t: Tile, u: number): number {
+  return profile(t.type, t.y, u).y;
+}
+
 export type Sampler = {
-  /** World-space surface probe. */
-  at: (wx: number, wz: number) => Surface;
-  /** Grid → world helpers (the track is centred on the origin). */
+  /**
+   * World-space surface probe. `fromY` is the height of the thing doing
+   * the probing: with stacked decks it picks the highest road at or just
+   * below that height, so a car on a bridge stays on the bridge and a
+   * car underneath drives on the ground.
+   */
+  at: (wx: number, wz: number, fromY: number) => Surface;
+  /** Lowest road underside strictly above `aboveY`, or Infinity. */
+  ceilingAt: (wx: number, wz: number, aboveY: number) => number;
   worldX: (gx: number) => number;
   worldZ: (gz: number) => number;
   gridX: (wx: number) => number;
   gridZ: (wz: number) => number;
-  tileAt: (wx: number, wz: number) => Tile | null;
+  /** Every deck stacked in one grid column. */
+  columnAt: (wx: number, wz: number) => Tile[];
   /** Centre of a tile in world space, on the road surface. */
   tileCenter: (t: Tile) => { x: number; y: number; z: number };
-  bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
+  bounds: { minX: number; maxX: number; minZ: number; maxZ: number; maxLevel: number };
 };
+
+/** How far above a deck the car can be and still be standing on it. */
+const STAND_TOL = 1.4;
 
 /**
  * Build a sampler for a track. The track is re-centred on the origin so
  * the camera and fog behave regardless of where it was drawn on the grid.
  */
 export function makeSampler(track: TrackData): Sampler {
-  const map = new Map<string, Tile>();
-  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  const columns = new Map<string, Tile[]>();
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxLevel = 0;
   for (const t of track.tiles) {
-    map.set(`${t.x},${t.z}`, t);
+    const key = columnKey(t.x, t.z);
+    const col = columns.get(key);
+    if (col) col.push(t); else columns.set(key, [t]);
     if (t.x < minX) minX = t.x;
     if (t.x > maxX) maxX = t.x;
     if (t.z < minZ) minZ = t.z;
     if (t.z > maxZ) maxZ = t.z;
+    if (t.y > maxLevel) maxLevel = t.y;
   }
   if (!Number.isFinite(minX)) { minX = maxX = minZ = maxZ = 0; }
+  // Highest deck first so the "topmost deck you can stand on" search can
+  // stop at its first hit.
+  for (const col of columns.values()) col.sort((a, b) => b.y - a.y);
+
   const cx = (minX + maxX) / 2;
   const cz = (minZ + maxZ) / 2;
 
@@ -192,14 +219,11 @@ export function makeSampler(track: TrackData): Sampler {
   const gridX = (wx: number) => wx / TILE + cx;
   const gridZ = (wz: number) => wz / TILE + cz;
 
-  const tileAt = (wx: number, wz: number): Tile | null =>
-    map.get(`${Math.round(gridX(wx))},${Math.round(gridZ(wz))}`) ?? null;
+  const columnAt = (wx: number, wz: number): Tile[] =>
+    columns.get(columnKey(Math.round(gridX(wx)), Math.round(gridZ(wz)))) ?? [];
 
-  const at = (wx: number, wz: number): Surface => {
-    const t = tileAt(wx, wz);
-    if (!t) return OFF;
-    const elev = t.elev ?? 0;
-    // World offset from the tile centre → tile-local frame.
+  /** Surface of one specific deck at a world point. */
+  const sampleTile = (t: Tile, wx: number, wz: number): Surface => {
     const [lx, lz] = unrotateXZ(wx - worldX(t.x), wz - worldZ(t.z), t.rot);
 
     if (t.type === "curveL" || t.type === "curveR") {
@@ -207,15 +231,13 @@ export function makeSampler(track: TrackData): Sampler {
       const ccx = sign * (TILE / 2), ccz = -TILE / 2;
       const rx = lx - ccx, rz = lz - ccz;
       const d = Math.hypot(rx, rz) || 1e-6;
-      // +ve lateral is to the car's right, matching the straight case.
       const lateral = (d - CURVE_R) * sign;
-      // Tangent: rotate the radial vector 90° in the direction of travel.
       const tanX = (-rz / d) * -sign;
       const tanZ = (rx / d) * -sign;
       const [dirX, dirZ] = rotateXZ(tanX, tanZ, t.rot);
       return {
         onRoad: Math.abs(lateral) <= ROAD_HALF,
-        y: elev * RAMP_H,
+        y: levelY(t.y),
         gx: 0, gz: 0,
         dirX, dirZ,
         lateral,
@@ -224,8 +246,7 @@ export function makeSampler(track: TrackData): Sampler {
     }
 
     const u = (lz + TILE / 2) / TILE;
-    const { y, slope } = profile(t.type, elev, u);
-    // Local gradient points along +Z; rotate into world space.
+    const { y, slope } = profile(t.type, t.y, u);
     const [gx, gz] = rotateXZ(0, slope, t.rot);
     const [dirX, dirZ] = rotateXZ(0, 1, t.rot);
     return {
@@ -238,6 +259,34 @@ export function makeSampler(track: TrackData): Sampler {
     };
   };
 
+  const at = (wx: number, wz: number, fromY: number): Surface => {
+    const col = columnAt(wx, wz);
+    if (col.length === 0) return OFF;
+    let best: Surface | null = null;
+    let fallback: Surface | null = null;
+    for (const t of col) {           // highest deck first
+      const s = sampleTile(t, wx, wz);
+      if (!s.onRoad) continue;
+      if (s.y <= fromY + STAND_TOL) { best = s; break; }
+      fallback = s;                  // deck overhead — remember the lowest
+    }
+    // Nothing at or below us: we're under a bridge, so there's no road
+    // here, but keep the overhead deck's identity out of it.
+    if (!best) return fallback && fallback.y <= fromY + STAND_TOL ? fallback : OFF;
+    return best;
+  };
+
+  const ceilingAt = (wx: number, wz: number, aboveY: number): number => {
+    let lowest = Infinity;
+    for (const t of columnAt(wx, wz)) {
+      const s = sampleTile(t, wx, wz);
+      if (!s.onRoad) continue;
+      const under = s.y - ROAD_THICK;
+      if (under > aboveY && under < lowest) lowest = under;
+    }
+    return lowest;
+  };
+
   const tileCenter = (t: Tile) => {
     if (t.type === "curveL" || t.type === "curveR") {
       // Middle of the arc, not the middle of the square.
@@ -246,13 +295,16 @@ export function makeSampler(track: TrackData): Sampler {
       const lx = sign * (TILE / 2) - sign * Math.cos(a) * CURVE_R;
       const lz = -TILE / 2 + Math.sin(a) * CURVE_R;
       const [ox, oz] = rotateXZ(lx, lz, t.rot);
-      return { x: worldX(t.x) + ox, y: (t.elev ?? 0) * RAMP_H, z: worldZ(t.z) + oz };
+      return { x: worldX(t.x) + ox, y: levelY(t.y), z: worldZ(t.z) + oz };
     }
-    const { y } = profile(t.type, t.elev ?? 0, 0.5);
+    const { y } = profile(t.type, t.y, 0.5);
     return { x: worldX(t.x), y, z: worldZ(t.z) };
   };
 
-  return { at, worldX, worldZ, gridX, gridZ, tileAt, tileCenter, bounds: { minX, maxX, minZ, maxZ } };
+  return {
+    at, ceilingAt, worldX, worldZ, gridX, gridZ, columnAt, tileCenter,
+    bounds: { minX, maxX, minZ, maxZ, maxLevel },
+  };
 }
 
 /** World-space heading (yaw) a car should have when it enters `t`. */
@@ -261,8 +313,6 @@ export function tileYaw(t: Tile, enterDir: Rot): number {
 }
 
 // ── Local records ───────────────────────────────────────────────────
-// Personal bests and ghost recordings live in localStorage, keyed by the
-// same track ref the site-wide leaderboard uses.
 
 export type GhostSample = { t: number; x: number; y: number; z: number; ry: number };
 
@@ -299,16 +349,12 @@ export function writeGhost(trackRef: string, samples: GhostSample[]): void {
   try { localStorage.setItem(ghostKey(trackRef), JSON.stringify(samples)); } catch { /* ignore */ }
 }
 
-export function clearGhost(trackRef: string): void {
-  try { localStorage.removeItem(ghostKey(trackRef)); } catch { /* ignore */ }
-}
-
 // ── Thumbnail ───────────────────────────────────────────────────────
 
 /** Small top-down 2D thumbnail of a tile track. Not the 3D renderer. */
 export function drawTrackThumbnail(
   ctx: CanvasRenderingContext2D,
-  data: TrackData | null,
+  input: TrackData | null,
   season: Season,
   width: number,
   height: number,
@@ -316,14 +362,14 @@ export function drawTrackThumbnail(
   const theme = THEMES[season];
   ctx.fillStyle = theme.ground;
   ctx.fillRect(0, 0, width, height);
-  if (!data || !isTrackData(data) || data.tiles.length === 0) {
+  const data = toTrackData(input);
+  if (!data || data.tiles.length === 0) {
     ctx.fillStyle = "rgba(0,0,0,0.4)";
     ctx.font = "12px sans-serif";
     ctx.fillText("legacy track", 8, 18);
     return;
   }
 
-  // Compute bounds.
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const t of data.tiles) {
     if (t.x < minX) minX = t.x;
@@ -341,9 +387,17 @@ export function drawTrackThumbnail(
   const px = (x: number) => ox + x * scale;
   const py = (z: number) => oy + z * scale;
 
-  // Elevated tiles get a drop shadow so height reads at a glance.
-  const sorted = [...data.tiles].sort((a, b) => (a.elev ?? 0) - (b.elev ?? 0));
+  // Paint low decks first so overpasses sit on top of what they cross.
+  const sorted = [...data.tiles].sort((a, b) => a.y - b.y);
   for (const t of sorted) drawTileTop(ctx, t, theme, px, py, scale);
+}
+
+/** Lighten a hex colour toward white — raised decks read brighter. */
+function lift(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const mix = (c: number) => Math.round(c + (255 - c) * amount);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
 function drawTileTop(
@@ -357,26 +411,25 @@ function drawTileTop(
   const cx = px(t.x) + s / 2;
   const cy = py(t.z) + s / 2;
   const roadW = s * (ROAD_HALF * 2) / TILE;
-  const elev = t.elev ?? 0;
 
   ctx.save();
   ctx.translate(cx, cy);
   // Canvas Y grows downward, so a +rot Y-rotation is a -rot canvas turn.
   ctx.rotate((-t.rot * Math.PI) / 2);
 
-  if (elev > 0) {
+  if (t.y > 0) {
+    // Drop shadow so height reads at a glance.
     ctx.save();
-    ctx.globalAlpha = 0.18;
+    ctx.globalAlpha = 0.22;
     ctx.fillStyle = "#000";
-    ctx.translate(s * 0.07 * elev, s * 0.07 * elev);
+    ctx.translate(s * 0.06 * t.y, s * 0.06 * t.y);
     paintRoad(ctx, t, roadW, s);
     ctx.restore();
   }
 
-  ctx.fillStyle = theme.road;
+  ctx.fillStyle = t.y > 0 ? lift(theme.road, Math.min(0.45, t.y * 0.13)) : theme.road;
   paintRoad(ctx, t, roadW, s);
 
-  // Feature overlays sit on the entry half of the tile.
   if (t.type === "start" || t.type === "finish") {
     ctx.fillStyle = t.type === "start" ? "#22c55e" : "#ef4444";
     ctx.fillRect(-roadW / 2, -s * 0.1, roadW, Math.max(2, s * 0.2));
@@ -395,8 +448,8 @@ function drawTileTop(
       ctx.closePath();
       ctx.fill();
     }
-  } else if (t.type === "rampUp" || t.type === "rampDown" || t.type === "jump") {
-    ctx.fillStyle = t.type === "rampDown" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.38)";
+  } else if (isRamp(t.type) || t.type === "jump") {
+    ctx.fillStyle = t.type === "rampDown" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.4)";
     ctx.beginPath();
     ctx.moveTo(-roadW / 2, -s / 2);
     ctx.lineTo(roadW / 2, -s / 2);
@@ -420,7 +473,6 @@ function paintRoad(ctx: CanvasRenderingContext2D, t: Tile, roadW: number, s: num
   const r = s / 2;
   const outer = r + roadW / 2;
   const inner = Math.max(0, r - roadW / 2);
-  // Canvas angles: entry sits at ∓X from the centre, exit at +Y.
   const a0 = sign > 0 ? Math.PI : 0;
   const a1 = Math.PI / 2;
   ctx.beginPath();

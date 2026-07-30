@@ -37,6 +37,7 @@ import {
   deleteChat,
 } from "@/lib/chats.functions";
 import { useIncognito, isIncognitoNow } from "@/lib/use-incognito";
+import { getFeatureFlags } from "@/lib/admin.functions";
 
 const main = [
   { title: "Custom AI's", url: "/daps", icon: Sparkles },
@@ -54,6 +55,14 @@ export function AppSidebar() {
   const list = useServerFn(listChats);
   const create = useServerFn(createChat);
   const remove = useServerFn(deleteChat);
+
+  const fetchFlags = useServerFn(getFeatureFlags);
+  const flagsQuery = useQuery({
+    queryKey: ["feature-flags"],
+    queryFn: () => fetchFlags(),
+  });
+  // Admins can switch the arcade off; drop its link when they have.
+  const nav = main.filter((item) => item.url !== "/games" || flagsQuery.data?.games !== false);
 
   const chatsQuery = useQuery({
     queryKey: ["chats", user?.id ?? "anon"],
@@ -116,7 +125,7 @@ export function AppSidebar() {
                   <span>New chat</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {main.map((item, i) => (
+              {nav.map((item, i) => (
                 <SidebarMenuItem
                   key={item.url}
                   className="animate-fade-in"

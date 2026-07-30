@@ -7,18 +7,24 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { validateForPublish, validateTrack, isTrackData } from "./track-validation";
+import { validateForPublish, validateTrack, toTrackData, MAX_LEVEL, MAX_TILES } from "./track-validation";
 
+// Accepts both the v2 flat grid (which used `elev`) and the v3 levelled
+// grid; handlers normalise to v3 before storing.
 const tileSchema = z.object({
-  type: z.enum(["straight","curveL","curveR","rampUp","rampDown","start","finish","checkpoint"]),
+  type: z.enum([
+    "straight", "curveL", "curveR", "rampUp", "rampDown",
+    "jump", "boost", "start", "finish", "checkpoint",
+  ]),
   x: z.number().int(),
+  y: z.number().int().min(0).max(MAX_LEVEL).optional(),
   z: z.number().int(),
   rot: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
-  elev: z.number().int().optional(),
+  elev: z.number().int().min(0).max(MAX_LEVEL).optional(),
 });
 const trackDataSchema = z.object({
-  version: z.literal(2),
-  tiles: z.array(tileSchema).min(3).max(250),
+  version: z.union([z.literal(2), z.literal(3)]),
+  tiles: z.array(tileSchema).min(3).max(MAX_TILES),
 });
 
 const seasonSchema = z.enum(["spring", "summer", "fall", "winter"]);
@@ -61,7 +67,7 @@ export const listPublicTracks = createServerFn({ method: "GET" }).handler(async 
   if (error) throw new Error(error.message);
   // Silently hide legacy v1 tracks from the public browse list — they
   // cannot be played by the new 3D runner.
-  return (data ?? []).filter((r) => isTrackData(r.params));
+  return (data ?? []).filter((r) => toTrackData(r.params) !== null);
 });
 
 export const getTrack = createServerFn({ method: "GET" })
@@ -105,13 +111,14 @@ export const createTrack = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const err = validateTrack(data.params);
     if (err) throw new Error(err);
+    const params = toTrackData(data.params)!;
     const { data: row, error } = await context.supabase
       .from("custom_tracks")
       .insert({
         owner_id: context.userId,
         name: data.name.trim(),
         season: data.season,
-        params: data.params,
+        params,
         goal: data.goal,
         is_public: false,
       })
@@ -135,12 +142,13 @@ export const updateTrack = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const err = validateTrack(data.params);
     if (err) throw new Error(err);
+    const params = toTrackData(data.params)!;
     const { error } = await context.supabase
       .from("custom_tracks")
       .update({
         name: data.name.trim(),
         season: data.season,
-        params: data.params,
+        params,
         goal: data.goal,
         is_public: false,
       })
