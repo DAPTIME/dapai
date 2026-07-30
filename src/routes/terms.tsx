@@ -62,6 +62,12 @@ function Terms() {
             DAP AI provides an AI-powered conversational platform that allows Users to interact with large language models, create custom AI personas (“DAPs”), and manage chat histories. The Services include both free and paid subscription tiers.
           </p>
           <p className="mt-2">
+            DAP AI is delivered as a mixture-of-experts model: a pool of specialist models of which only those suited to a given request are used to produce a reply. The pool comprises 15 to 23 experts depending on the subscription plan, each of approximately 7-9 billion parameters. The number of experts available to a plan, the models in the pool, and the routing between them may change at any time as the Services are developed, and no particular model, expert count, or parameter size is guaranteed as part of any plan.
+          </p>
+          <p className="mt-2">
+            Inference runs on hardware operated by DAP AI rather than a third-party model provider. Your conversations are not forwarded to OpenAI, Anthropic, or Google for the purpose of generating replies.
+          </p>
+          <p className="mt-2">
             We do not guarantee that the Services will be uninterrupted, timely, secure, or error-free. AI-generated responses are provided “as is” and may contain inaccuracies, biases, or outdated information. You acknowledge that AI outputs are not professional advice and should not be relied upon for legal, medical, financial, or other critical decisions.
           </p>
           <p className="mt-2">

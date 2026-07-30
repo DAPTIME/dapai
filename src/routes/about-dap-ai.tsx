@@ -10,19 +10,19 @@ export const Route = createFileRoute("/about-dap-ai")({
       {
         name: "description",
         content:
-          "DAP AI is a free AI chatbot powered by a ~100M parameter small language model (Gemma E2B-class) running on consumer hardware. Ask about the weather, news, coding, math, study help, writing, recipes, travel, career advice, and more.",
+          "DAP AI is a free AI chatbot built as a mixture-of-experts model — 15 to 23 experts depending on your plan, each roughly 7-9B parameters — running on hardware we own. Ask about the weather, news, coding, math, study help, writing, recipes, travel, career advice, and more.",
       },
       {
         name: "keywords",
         content:
-          "DAP AI, dap ai, dapai, DAP, DAP AI 3.2, DAP AI Pro, DAP AI Lite, DAP AI chatbot, DAP AI assistant, free AI chatbot, free AI assistant, free chatbot online, small language model, SLM, 100M parameter model, tiny LLM, Gemma E2B alternative, edge AI, on-device AI, self-hosted AI, private AI, local AI, Jetson Orin Nano AI, RTX 5060 Ti AI, ChatGPT alternative, Claude alternative, Gemini alternative, Copilot alternative, AI for coding, AI code reviewer, AI study buddy, AI career coach, AI trip planner, AI writing assistant, AI homework help, AI math solver, AI essay writer, AI translator, AI summarizer, AI email writer, AI resume builder, AI recipe generator, AI weather assistant, weather today, what is the weather, ask AI anything, chat with AI, talk to AI, best free AI, fastest AI chatbot, no signup AI, AI without login, AI for students, AI for developers, AI for writers, AI for business, AI for teachers, small AI model, cheap AI, low cost AI, offline capable AI, open AI alternative, Devansh AI, DAP AI Dubai, DAP AI UAE, how does AI work, what is a language model, what is an SLM, run AI at home, AI on Jetson, AI on gaming GPU",
+          "DAP AI, dap ai, dapai, DAP, DAP AI 3.2, DAP AI Pro, DAP AI Lite, DAP AI chatbot, DAP AI assistant, free AI chatbot, free AI assistant, free chatbot online, mixture of experts, MoE model, sparse model, expert routing, 7B parameter experts, edge AI, on-device AI, self-hosted AI, private AI, local AI, Jetson Orin Nano AI, RTX 5060 Ti AI, ChatGPT alternative, Claude alternative, Gemini alternative, Copilot alternative, AI for coding, AI code reviewer, AI study buddy, AI career coach, AI trip planner, AI writing assistant, AI homework help, AI math solver, AI essay writer, AI translator, AI summarizer, AI email writer, AI resume builder, AI recipe generator, AI weather assistant, weather today, what is the weather, ask AI anything, chat with AI, talk to AI, best free AI, fastest AI chatbot, no signup AI, AI without login, AI for students, AI for developers, AI for writers, AI for business, AI for teachers, small AI model, cheap AI, low cost AI, offline capable AI, open AI alternative, Devansh AI, DAP AI Dubai, DAP AI UAE, how does AI work, what is a language model, what is an SLM, run AI at home, AI on Jetson, AI on gaming GPU",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "DAP AI — Free AI Chatbot & Small Language Model" },
       {
         property: "og:description",
         content:
-          "A free ~100M parameter AI chatbot running on consumer hardware. Answers weather, news, code, study, writing, recipes, travel, and everyday questions. No datacenter, no cloud GPU bill.",
+          "A free mixture-of-experts AI chatbot — 15-23 experts of roughly 7-9B parameters each — running on hardware we own. Answers weather, news, code, study, writing, recipes, travel, and everyday questions.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://dapai.lovable.app/about-dap-ai" },
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/about-dap-ai")({
       {
         name: "twitter:description",
         content:
-          "Free chatbot for weather, code, study, writing, recipes, travel, and more. A ~100M param SLM on one 5060 Ti and two Jetson Orin Nanos.",
+          "Free chatbot for weather, code, study, writing, recipes, travel, and more. A mixture-of-experts model with 15-23 experts of roughly 7-9B parameters each.",
       },
     ],
     links: [
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/about-dap-ai")({
               operatingSystem: "Web",
               url: "https://dapai.lovable.app",
               description:
-                "DAP AI is a free ~100M parameter small language model chatbot, comparable to Gemma E2B, running on consumer hardware (one RTX 5060 Ti and two Jetson Orin Nanos).",
+                "DAP AI is a free mixture-of-experts AI chatbot. Depending on the plan it routes across 15 to 23 experts, each roughly 7-9B parameters, running on hardware we own.",
               offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
             },
             {
@@ -62,7 +62,7 @@ export const Route = createFileRoute("/about-dap-ai")({
                   name: "What is DAP AI?",
                   acceptedAnswer: {
                     "@type": "Answer",
-                    text: "DAP AI is a free AI chatbot powered by a ~100M parameter small language model. It runs on consumer hardware — one RTX 5060 Ti and two Jetson Orin Nanos — with no datacenter required.",
+                    text: "DAP AI is a free AI chatbot built as a mixture-of-experts model. Depending on your plan it routes across 15 to 23 experts, each roughly 7-9B parameters, running on hardware we own rather than a rented datacenter.",
                   },
                 },
                 {
@@ -117,17 +117,17 @@ export const Route = createFileRoute("/about-dap-ai")({
  */
 function HardwareReveal() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6">
-      <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-2xl">
+    <section className="w-full">
+      <div className="overflow-hidden border-b border-border bg-black">
         <iframe
           src="/dap-hardware-reveal.html"
           title="DAP AI hardware reveal — a cluster of two NVIDIA Jetson Orin Nano boards"
-          className="block h-[min(78vh,640px)] min-h-[380px] w-full border-0"
+          className="block h-[88vh] min-h-[420px] w-full border-0"
           loading="eager"
         />
       </div>
-      <p className="mt-3 text-center text-xs text-muted-foreground">
-        The machine DAP AI runs on. Hover the hardware to explore it, or open the{" "}
+      <p className="px-6 pt-3 text-center text-xs text-muted-foreground">
+        The machine DAP AI runs on — hover the hardware to explore it, or open the{" "}
         <a
           href="/dap-hardware-reveal.html"
           target="_blank"
@@ -136,7 +136,7 @@ function HardwareReveal() {
         >
           full-screen reveal
         </a>
-        .
+        . Scroll on for the rest.
       </p>
     </section>
   );
@@ -147,37 +147,29 @@ function AboutDapAi() {
     <>
       <HardwareReveal />
       <div className="mx-auto max-w-3xl px-6 py-12">
-      <div className="mb-6 text-sm text-muted-foreground">
-        <Link to="/terms" className="underline hover:text-foreground">
-          ← Back to Terms
-        </Link>
-      </div>
-
       <h1 className="text-4xl font-semibold tracking-tight">About DAP AI</h1>
       <p className="mt-4 text-lg text-muted-foreground">
-        DAP AI is a <strong>small language model</strong> — around{" "}
-        <strong>100 million parameters</strong> — designed to be roughly as
-        capable as models like <strong>Gemma E2B</strong>, while running
-        entirely on consumer hardware. No datacenter, no cloud GPU bill, no
-        racks of H100s.
+        DAP AI is a <strong>mixture-of-experts</strong> model. Depending on your
+        plan it routes across <strong>15 to 23 experts</strong>, each roughly{" "}
+        <strong>7-9 billion parameters</strong> — and it runs on hardware we own.
+        No datacenter, no cloud GPU bill, no racks of H100s.
       </p>
 
       <section className="mt-10">
         <h2 className="text-2xl font-semibold">What DAP AI is</h2>
         <p className="mt-3 text-muted-foreground">
-          DAP AI is a compact, efficient language model built for everyday
-          chat, coding help, writing, and study questions. It belongs to the
-          new wave of <em>small language models</em> (SLMs) — models that
-          deliberately trade raw size for speed, cost, and the ability to run
-          on hardware you can actually buy at a store.
+          DAP AI is an efficient conversational model built for everyday chat,
+          coding help, writing, and study questions. Rather than one dense
+          model doing everything, it uses a <em>mixture of experts</em>: many
+          smaller specialist models, with only the few best suited to your
+          question actually running on any given reply.
         </p>
         <p className="mt-3 text-muted-foreground">
-          At ~100M parameters, DAP AI is dramatically smaller than frontier
-          models like GPT-4 or Claude (often hundreds of billions of
-          parameters), but punches well above its weight thanks to careful
-          training and tuning. Its target quality bar is{" "}
-          <strong>Gemma E2B</strong>-class — meaning useful, coherent answers
-          for the kinds of questions people actually ask a chatbot.
+          The pool holds <strong>15 to 23 experts depending on your plan</strong>,
+          each roughly <strong>7-9 billion parameters</strong>. Because only a
+          handful activate per message, answers come back quickly and cheaply
+          while the pool as a whole covers far more ground than any single
+          model that size could.
         </p>
       </section>
 
