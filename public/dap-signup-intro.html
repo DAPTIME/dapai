@@ -294,6 +294,10 @@
          off the bottom edge. Out here it is drawn at its final size and
          sits dead centre whatever the camera is doing — which is where
          the camera is looking anyway, so it still forms in the silicon. -->
+    <!-- One plain wrapper for the lock-up move. Animating translateY on
+         #dapLogo itself fights its transform-box: fill-box, so the move
+         did not land; this group has no transform-box of its own. -->
+    <g id="logoPos">
     <g transform="translate(600 350)">
       <g id="dapLogo" opacity="0" style="transform-box: fill-box; transform-origin: 50% 50%;">
         <!-- Dashed so the rotation actually reads. -->
@@ -307,6 +311,7 @@
       </g>
       <!-- Particles that fly in to build the mark. -->
       <g id="logoDust"></g>
+    </g>
     </g>
   </svg>
 
@@ -412,67 +417,87 @@ const vb = document.getElementById("scene").getBoundingClientRect();
 const cover = Math.max(vb.width / 1200, vb.height / 700) || 1;
 const REST_SCALE = Math.min(1, (vb.width / cover) * 0.94 / BOARD_W);
 
-utils.set("#rig", { scale: OPEN_SCALE, translateX: openX, translateY: openY });
-utils.set("#dapLogo", { scale: 0.3 });
+/* The camera no longer opens inside the die — the mark has the frame to
+   itself, so there is nothing to push out of. It sits at rest
+   throughout and the board simply arrives behind the logo. */
+utils.set("#rig", { scale: REST_SCALE, translateX: 0, translateY: 0 });
+utils.set("#board", { opacity: 0 });
+utils.set("#dapLogo", { scale: 0.28 });
 
 /* ══════════════════════════════════════════════════════════════════
    MASTER TIMELINE — five seconds, start to hand-off
    ══════════════════════════════════════════════════════════════════ */
 const tl = createTimeline({ defaults: { ease: "outExpo" }, autoplay: false });
 
-/* ── 0.0 → 1.0s · the silicon wakes ─────────────────────────────── */
-tl.add("#board",    { opacity: [0, 1], duration: 520 }, 0);
-tl.add("#wakeGlow", { opacity: [0, 1], duration: 900 }, 60);
-tl.add("#ramLit",   { opacity: [0, 0.42], duration: 620 }, 120);
-tl.add("#cpuLit",   { opacity: [0, 0.34], duration: 620 }, 260);
-tl.add("#gpuLit",   { opacity: [0, 0.40], duration: 620 }, 380);
-// Traces draw themselves on, which reads as the die powering up.
-tl.add(svg.createDrawable(TRACES), {
-  draw: ["0 0", "0 1"],
-  duration: 760,
-  delay: stagger(70),
-  ease: "inOutQuad",
-}, 180);
-tl.add(".spark", { opacity: [0, 1], duration: 420, delay: stagger(26) }, 620);
-tl.add("#skip",  { opacity: [0, 1], duration: 500 }, 700);
+/* ══════════════════════════════════════════════════════════════════
+   The mark first, the machine behind it
+   ══════════════════════════════════════════════════════════════════
+   This used to open deep inside the silicon and treat the logo as one
+   beat along the way. It is a signup intro, so the mark leads: it
+   builds alone in the dark, holds, and only then does the hardware it
+   runs on resolve behind it.
 
-/* ── 1.0 → 2.5s · the mark forms out of the electricity ─────────── */
-tl.add("#dapLogo", { opacity: [0, 1], scale: [0.3, 1], duration: 700 }, 1000);
-// Dust converges on the mark.
+     0.0   the mark assembles out of the dust
+     1.9   it holds, and charges
+     2.6   the machine behind it fades up, mark rises out of its way
+     4.1   the closing line, then the wipe
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 0.0 → 1.9s · the mark ─────────────────────────────────────── */
+tl.add("#wakeGlow", { opacity: [0, 0.55], duration: 900 }, 100);
+tl.add("#skip",     { opacity: [0, 1], duration: 500 }, 600);
+
+// Larger than it ends up: this is the only thing on screen, so it holds
+// the frame rather than sitting in the middle of it.
+tl.add("#dapLogo", { opacity: [0, 1], scale: [0.28, 1.34], duration: 900,
+                     ease: "outExpo" }, 120);
 tl.add(".dust", {
-  opacity: [{ to: 0.95, duration: 240 }, { to: 0, duration: 420, delay: 340 }],
-  translateX: 0,
-  translateY: 0,
-  duration: 900,
-  delay: stagger(16),
-  ease: "inOutQuad",
-}, 1000);
+  opacity: [{ to: 0.95, duration: 240 }, { to: 0, duration: 460, delay: 420 }],
+  translateX: 0, translateY: 0,
+  duration: 1000, delay: stagger(14), ease: "inOutQuad",
+}, 120);
 tl.add(svg.createDrawable("#logoMark"),
-       { draw: ["0 0", "0 1"], duration: 760, ease: "inOutQuad" }, 1180);
-tl.add("#logoRing", { rotate: [0, 180], opacity: [0, 0.85], duration: 1100 }, 1100);
-tl.add("#logoWord", { opacity: [0, 1], translateY: [10, 0], duration: 560 }, 1620);
-tl.add("#kicker",   { opacity: [0, 1], translateY: [10, 0], duration: 520 }, 1500);
+       { draw: ["0 0", "0 1"], duration: 820, ease: "inOutQuad" }, 320);
+tl.add("#logoRing", { rotate: [0, 300], opacity: [0, 0.9], duration: 1500,
+                      ease: "outQuart" }, 240);
+tl.add("#logoWord", { opacity: [0, 1], translateY: [12, 0], duration: 600 }, 900);
+tl.add("#kicker",   { opacity: [0, 1], translateY: [10, 0], duration: 520 }, 1120);
 
-/* ── 2.5 → 4.0s · pull out and orbit the whole board ────────────── */
-tl.add("#rig", {
-  scale: [OPEN_SCALE, REST_SCALE],
-  translateX: [openX, 0],
-  translateY: [openY, 0],
-  duration: 1250,
-  ease: "inOutQuart",
-}, 2500);
-// The logo shrinks away as the board takes over the frame.
-tl.add("#dapLogo", { opacity: 0, scale: 0.55, duration: 620, ease: "inQuad" }, 2500);
-tl.add("#kicker",  { opacity: 0, duration: 420, ease: "inQuad" }, 2560);
-tl.add(["#ledPwr", "#ledAct"], { opacity: [0, 1], duration: 360, delay: stagger(120) }, 3050);
+/* ── 1.9 → 2.6s · it charges ────────────────────────────────────
+   A brief brightening through the mark and the ring, which is what
+   gives the hold something to be rather than a pause. */
+tl.add("#logoMark", { stroke: ["#ffffff", "#d8ffb0"], duration: 260 }, 1520);
+tl.add("#logoMark", { stroke: "#ffffff", duration: 420 }, 1780);
+tl.add("#logoRing", { rotate: 360, opacity: 0.7, duration: 900, ease: "outQuad" }, 1560);
+
+/* ── 2.6 → 4.1s · the machine behind it ─────────────────────────── */
+tl.add("#board", { opacity: [0, 1], duration: 900, ease: "outQuad" }, 2600);
+tl.add("#wakeGlow", { opacity: 0.85, duration: 800 }, 2600);
+tl.add(svg.createDrawable(TRACES), {
+  draw: ["0 0", "0 1"], duration: 900, delay: stagger(60), ease: "inOutQuad",
+}, 2760);
+tl.add("#ramLit", { opacity: [0, 0.36], duration: 620 }, 3000);
+tl.add("#cpuLit", { opacity: [0, 0.30], duration: 620 }, 3140);
+tl.add("#gpuLit", { opacity: [0, 0.36], duration: 620 }, 3280);
+tl.add(".spark",  { opacity: [0, 1], duration: 420, delay: stagger(22) }, 3200);
+tl.add(["#ledPwr", "#ledAct"], { opacity: [0, 1], duration: 340, delay: stagger(110) }, 3420);
+
+// The mark stays — it just gets out of the board's way and settles into
+// a lock-up above it rather than vanishing the moment the hardware lands.
+// Clear of the heatsink, whose top edge is around 184 in viewBox units:
+// at 0.44 the ring spans 26 to 110 and the wordmark sits at 126.
+tl.add("#dapLogo", { scale: 0.44, duration: 1100, ease: "inOutQuart" }, 2600);
+tl.add("#logoPos", { translateY: -238, duration: 1100, ease: "inOutQuart" }, 2600);
+tl.add("#kicker", { opacity: 0, duration: 380, ease: "inQuad" }, 2600);
+
 // A slow lean, which reads as an orbit without leaving 2D.
-tl.add("#rig", { rotate: [-3.5, 2.5], duration: 1500, ease: "inOutSine" }, 2600);
+tl.add("#rig", { rotate: [-2.2, 1.8], duration: 1800, ease: "inOutSine" }, 2700);
 
-/* ── 4.0 → 5.0s · hand off to the site ──────────────────────────── */
-tl.add("#line1", { opacity: [0, 1], translateY: [16, 0], duration: 440 }, 3760);
-tl.add("#line1", { opacity: 0, translateY: -14, duration: 240, ease: "inQuad" }, 4260);
-tl.add("#line2", { opacity: [0, 1], translateY: [16, 0], duration: 340 }, 4440);
-tl.add("#wipe",  { opacity: [0, 1], duration: 300, ease: "inQuad" }, 4700);
+/* ── 4.1 → 5.1s · hand off ──────────────────────────────────────── */
+tl.add("#line1", { opacity: [0, 1], translateY: [16, 0], duration: 440 }, 4060);
+tl.add("#line1", { opacity: 0, translateY: -14, duration: 240, ease: "inQuad" }, 4520);
+tl.add("#line2", { opacity: [0, 1], translateY: [16, 0], duration: 340 }, 4820);
+tl.add("#wipe",  { opacity: [0, 1], duration: 300, ease: "inQuad" }, 5060);
 
 tl.onComplete = () => finish();
 
@@ -530,7 +555,7 @@ if (REDUCED) {
      more beats. Playing the whole timeline slower stretches every beat
      and every hold in proportion, which is what a longer cut of the
      same edit should be — 5.15s becomes about 7.6s. */
-  tl.speed = 0.68;
+  tl.speed = 0.73;   // hand-off lands ~7.5s, inside the eight second cap
   tl.play();
 }
 </script>
