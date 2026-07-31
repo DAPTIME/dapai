@@ -108,6 +108,37 @@
   }
 
   /* Faint circuit lattice behind the hardware. */
+  /* Now the cluster fills the frame, the captions and the spec chips sit
+     over hardware — the switch in particular lands right under them. A
+     scrim gives the type something to read against without moving the
+     hardware off the shot. */
+  #scrim {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 42%;
+    pointer-events: none;
+    z-index: 11;
+    background: linear-gradient(to bottom,
+      rgba(3, 6, 4, 0) 0%,
+      rgba(3, 6, 4, 0.42) 46%,
+      rgba(3, 6, 4, 0.80) 100%);
+  }
+
+  /* With the cluster filling the frame, the captions and spec chips sit
+     over hardware — the switch lands right under them. A scrim gives the
+     type something to read against without moving the hardware. */
+  #scrim {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 40%;
+    pointer-events: none;
+    z-index: 11;
+    background: linear-gradient(to bottom,
+      rgba(3, 6, 4, 0) 0%,
+      rgba(3, 6, 4, 0.40) 48%,
+      rgba(3, 6, 4, 0.78) 100%);
+  }
+
   /* Sits over the scene, under the type, and never takes the pointer. */
   #dive {
     position: absolute;
@@ -659,6 +690,10 @@
     </g>
   </svg>
 
+  <div id="scrim"></div>
+
+  <div id="scrim"></div>
+
   <!-- ── The dive ────────────────────────────────────────────────
        Screen space, above the scene and below the captions. Three
        things a camera actually does when it goes through a running
@@ -1029,7 +1064,7 @@ function dieMarkup() {
       let lanes = "";
       for (let l = 0; l < 5; l++) {
         lanes += `<rect x="${x + 9}" y="${y + 11 + l * 16}" width="${SM_W - 18}" height="7"
-                        rx="2" fill="#6fae6a" opacity="${0.30 + (l % 2) * 0.16}"/>`;
+                        rx="2" fill="#5b9a58" opacity="${0.20 + (l % 2) * 0.12}"/>`;
       }
       sms += `<g class="sm">
         <rect x="${x}" y="${y}" width="${SM_W}" height="${SM_H}" rx="6"
@@ -1433,7 +1468,8 @@ stamp(cableLayer, `
 const CALLOUTS = [
   { id: "co1", text: "2× JETSON ORIN NANO", x: 150,  y: 196, path: "M156 206 L156 246" },
   { id: "co2", text: "80 TOPS COMBINED",    x: 1076, y: 196, path: "M1082 206 L1082 246" },
-  { id: "co3", text: "ETHERNET AI CLUSTER", x: 660,  y: 684, path: "M668 679 L681 675", anchor: "end" },
+  // A third callout used to name the switch here. It landed on the
+  // sub-caption and repeated a spec chip word for word, so it is gone.
 ];
 {
   let markup = "";
@@ -1566,7 +1602,7 @@ function resetScene() {
             { opacity: 0 });
   utils.set("#drvFan", { scale: 1 });
   utils.set(".dieFlowDot", { opacity: 0 });
-  utils.set(["#co1Text", "#co2Text", "#co3Text", "#cineSub"], { opacity: 0 });
+  utils.set(["#co1Text", "#co2Text", "#cineSub"], { opacity: 0 });
   utils.set(".chip", { opacity: 0 });
 }
 
@@ -1889,8 +1925,8 @@ M.add("#orbit", { rotate: [-2.2, 1.4], duration: 7000, ease: "inOutSine" }, 0);
 
   // Pull off the memory and drop below the die.
   ucam(0, 1500, 13, DIE_AT.x, DIE_AT.y + 24);
-  U("#dieCore",   { opacity: 0.22, duration: 900 }, 500);
-  U("#underside", { opacity: [0, 1], duration: 1100 }, 600);
+  U("#dieCore",   { opacity: 0.22, duration: 900 }, 900);
+  U("#underside", { opacity: [0, 1], duration: 900 }, 0);
 
   // The whole drive, end to end.
   ucam(1500, 1700, 9.6, P_NVME[0], P_NVME[1]);
@@ -1923,9 +1959,9 @@ fly(9000, 2800, 4.2, P_DIE[0] + 4, P_DIE[1] + 12);
 /* ── 11.8s · the board it has been sitting on all along ────────────
    The photograph comes up under the die shells and they dissolve into
    it. This is the beat the whole opening exists to set up. */
-M.add("#jetson1", { opacity: [0, 1], duration: 1600, ease: "outQuad" }, 11200);
+M.add("#jetson1", { opacity: [0, 1], duration: 1500, ease: "outQuad" }, 11300);
 M.add(["#dieCore", "#diePkg", "#dieMod"],
-           { opacity: 0, duration: 1400, ease: "inQuad" }, 11400);
+           { opacity: 0, duration: 1100, ease: "inQuad" }, 10300);
 M.add(".dieFlowDot", { opacity: 0, duration: 900 }, 11400);
 M.add(svg.createDrawable(`#jetson1 [id^="trace1_"]`), {
   draw: ["0 0", "0 1"], duration: 1600, delay: stagger(120), ease: "inOutQuad",
@@ -1950,7 +1986,7 @@ M.add("#jetson2", {
 M.add(svg.createDrawable(`#jetson2 [id^="trace2_"]`), {
   draw: ["0 0", "0 1"], duration: 1500, delay: stagger(110), ease: "inOutQuad",
 }, 16500);
-fly(15800, 3200, 0.92, P_ALL[0], P_ALL[1]);
+fly(15800, 3200, 1.12, P_ALL[0], P_ALL[1] + 40);
 caption(master, "#line2", 16200, 1300);
 slam(master, "#slamNodes", 17400, 1500);
 
@@ -1994,7 +2030,7 @@ M.add(".pkt",   { opacity: [0, 1], duration: 500, delay: stagger(40) }, 25600);
 M.call(() => startIdleSystem(), 24400);
 
 /* A last, very slow drift inward so the final frame is never static. */
-fly(25200, 4200, 0.99, P_ALL[0], P_ALL[1] - 8, "inOutSine");
+fly(25200, 4200, 1.19, P_ALL[0], P_ALL[1] + 32, "inOutSine");
 
 /* ── 26.6s · sign-off ────────────────────────────────────────────── */
 /* The sign-off line and the spec chips share the bottom of the frame,
@@ -2004,9 +2040,9 @@ M.add("#cineSub", { opacity: [0, 1], translateY: [12, 0], duration: 1000 }, 3020
 M.add(".chip", {
   opacity: [0, 1], translateY: [16, 0], duration: 800, delay: stagger(70),
 }, 30700);
-M.add(svg.createDrawable(["#co1Line", "#co2Line", "#co3Line"]),
+M.add(svg.createDrawable(["#co1Line", "#co2Line"]),
            { draw: ["0 0", "0 1"], duration: 900, delay: stagger(150) }, 29000);
-M.add(["#co1Text", "#co2Text", "#co3Text"],
+M.add(["#co1Text", "#co2Text"],
            { opacity: [0, 1], duration: 700, delay: stagger(150) }, 29500);
 M.add("#outro", { opacity: [0, 1], translateY: [10, 0], duration: 900 }, 31200);
 M.call(() => {
@@ -2042,13 +2078,13 @@ function startDieLife() {
   // Blocks light in waves across the array, which is what makes it look
   // like a workload moving rather than a lit grid.
   animate(".smLit", {
-    opacity: [0.05, 0.30],
+    opacity: [0.03, 0.17],
     duration: 900,
     delay: stagger(60, { from: "center" }),
     loop: true, alternate: true, ease: "inOutSine",
   });
   animate(".bankLit", {
-    opacity: [0.05, 0.22], duration: 1300, delay: stagger(340),
+    opacity: [0.04, 0.15], duration: 1300, delay: stagger(340),
     loop: true, alternate: true, ease: "inOutSine",
   });
   animate(".coreLit", {
