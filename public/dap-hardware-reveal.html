@@ -96,11 +96,31 @@
     overflow: hidden;
   }
 
-  /* The stage fills the viewport; everything is layered inside it. */
+  /* ── Fixed canvas ─────────────────────────────────────────────────
+     The stage is laid out at one of three fixed sizes and scaled to fit
+     the viewport, rather than reflowing to whatever the window happens
+     to be. Two reasons: the composition is then the same everywhere,
+     and the browser rasterises a known number of pixels instead of
+     however many a 5K panel asks for.
+
+     Sizes are set from JS (see pickCanvas). Because the box is fixed,
+     vw/vh inside it would measure the window rather than the stage, so
+     everything below sizes off --sw and --sh instead. */
+  #fit {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  /* Centred by translate rather than by the grid: the canvas is larger
+     than the viewport before it is scaled down, and centring an
+     overflowing grid child pushes it to one corner instead. */
   .stage {
-    position: relative;
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--sw, 1920px);
+    height: var(--sh, 1080px);
+    transform-origin: center center;
     overflow: hidden;
     /* Deep vignette so the hardware reads as lit in a dark room. */
     background:
@@ -114,13 +134,13 @@
      hardware off the shot. */
   #telem {
     position: absolute;
-    right: clamp(14px, 2.4vw, 40px);
-    top: clamp(112px, 17vh, 168px);
+    right: clamp(14px, calc(var(--sw) * 0.02400), 40px);
+    top: clamp(112px, calc(var(--sh) * 0.17000), 168px);
     z-index: 22;
     opacity: 0;
     pointer-events: none;
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: clamp(9px, 0.86vw, 12px);
+    font-size: calc(clamp(9px, calc(var(--sw) * 0.00860), 12px) * var(--ui, 1));
     letter-spacing: 0.08em;
     color: var(--muted);
     background: rgba(6, 14, 8, 0.55);
@@ -222,7 +242,7 @@
   .cine-line {
     grid-area: 1 / 1;
     margin: 0;
-    font-size: clamp(24px, 4.3vw, 62px);
+    font-size: calc(clamp(24px, calc(var(--sw) * 0.04300), 62px) * var(--ui, 1));
     font-weight: 250;
     letter-spacing: -0.02em;
     line-height: 1.1;
@@ -233,7 +253,7 @@
   .outro {
     margin: 14px 0 0;
     opacity: 0;
-    font-size: clamp(11px, 1.35vw, 15px);
+    font-size: calc(clamp(11px, calc(var(--sw) * 0.01350), 15px) * var(--ui, 1));
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--muted);
@@ -255,7 +275,7 @@
      a caption centred under it. */
   .slams {
     position: absolute;
-    left: clamp(16px, 4vw, 74px);
+    left: clamp(16px, calc(var(--sw) * 0.04000), 74px);
     top: 50%;
     transform: translateY(-50%);
     /* Every pair shares one grid cell, so each stat lands where the
@@ -271,12 +291,12 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: clamp(5px, 0.8vh, 11px);
+    gap: clamp(5px, calc(var(--sh) * 0.00800), 11px);
   }
   .slam {
     opacity: 0;
     display: block;
-    padding: clamp(3px, 0.7vh, 10px) clamp(9px, 1.5vw, 22px);
+    padding: clamp(3px, calc(var(--sh) * 0.00700), 10px) clamp(9px, calc(var(--sw) * 0.01500), 22px);
     background: rgba(10, 22, 8, 0.82);
     border: 1.5px solid rgba(118, 185, 0, 0.85);
     border-radius: 4px;
@@ -290,13 +310,13 @@
     backdrop-filter: blur(3px);
     white-space: nowrap;
   }
-  .slam.big { font-size: clamp(44px, 9vw, 132px); letter-spacing: -0.03em; }
-  .slam.mid { font-size: clamp(19px, 3.4vw, 50px); }
+  .slam.big { font-size: calc(clamp(44px, calc(var(--sw) * 0.09000), 132px) * var(--ui, 1)); letter-spacing: -0.03em; }
+  .slam.mid { font-size: calc(clamp(19px, calc(var(--sw) * 0.03400), 50px) * var(--ui, 1)); }
   .slam em  { font-style: normal; color: var(--nv-bright); }
   .bottom-stack {
     position: absolute;
     left: 0; right: 0;
-    bottom: 3vh;
+    bottom: calc(var(--sh) * 0.03000);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -307,7 +327,7 @@
   .cine-sub {
     margin: 0;
     text-align: center;
-    font-size: clamp(11px, 1.2vw, 14px);
+    font-size: calc(clamp(11px, calc(var(--sw) * 0.01200), 14px) * var(--ui, 1));
     letter-spacing: 0.34em;
     text-transform: uppercase;
     color: var(--muted);
@@ -320,7 +340,7 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
-    max-width: min(1100px, 92vw);
+    max-width: min(1100px, calc(var(--sw) * 0.92000));
     z-index: 15;
     pointer-events: none;
   }
@@ -341,13 +361,13 @@
   /* ── Title block ─────────────────────────────────────────────── */
   .brand {
     position: absolute;
-    top: 3.2vh; left: 3.2vw;
+    top: calc(var(--sh) * 0.03200); left: calc(var(--sw) * 0.03200);
     z-index: 15;
     opacity: 0;
   }
   .brand h1 {
     margin: 0;
-    font-size: clamp(15px, 1.5vw, 19px);
+    font-size: calc(clamp(15px, calc(var(--sw) * 0.01500), 19px) * var(--ui, 1));
     font-weight: 600;
     letter-spacing: 0.16em;
   }
@@ -389,9 +409,9 @@
   #card {
     position: absolute;
     z-index: 40;
-    right: 3.2vw;
+    right: calc(var(--sw) * 0.03200);
     top: 50%;
-    width: min(330px, 84vw);
+    width: min(330px, calc(var(--sw) * 0.84000));
     padding: 20px 22px;
     opacity: 0;
     pointer-events: none;
@@ -445,7 +465,7 @@
   /* ── Transport controls ──────────────────────────────────────── */
   .controls {
     position: absolute;
-    right: 3.2vw; top: 3.2vh;
+    right: calc(var(--sw) * 0.03200); top: calc(var(--sh) * 0.03200);
     z-index: 25;
     display: flex;
     gap: 8px;
@@ -484,6 +504,7 @@
 </head>
 
 <body>
+<div id="fit">
 <div class="stage" id="stage">
 
   <!-- ── 2. Background lattice ─────────────────────────────────────
@@ -859,6 +880,7 @@
   <div id="fallback">
     The reveal could not start in this browser.
   </div>
+</div>
 </div>
 
 <script>
@@ -2195,8 +2217,57 @@ function startIdleSystem() {
    6. INTERACTION
    ══════════════════════════════════════════════════════════════════ */
 
-/* — Parallax. The rig leans toward the cursor for a sense of depth. — */
 const stage = document.getElementById("stage");
+
+/* ── Canvas size ───────────────────────────────────────────────────
+   The stage is laid out at a fixed size and scaled to fit, so the
+   composition is identical everywhere and the browser rasterises a
+   known number of pixels rather than however many the panel asks for.
+
+   The brief was to pick by physical screen size — 4K only above 27
+   inches, 1080p for anything phone-sized. The web does not expose
+   physical size: there is no inches API, and DPI reported by
+   devicePixelRatio is a ratio, not a measurement. What follows is the
+   closest honest proxy:
+
+     a coarse pointer means a phone or tablet, whatever its pixel count,
+       so those get 1080p — and portrait, so it fills the screen rather
+       than letterboxing;
+     a desktop reporting 3800+ physical pixels across *and* still 2200+
+       CSS pixels wide is an unscaled large 4K panel, so 2160p;
+     2500+ physical pixels is 1440p;
+     everything else is 1080p.
+
+   The bias is deliberately downward, as asked. */
+function pickCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const physical = window.screen.width * dpr;
+  const css = window.innerWidth;
+  const touch = window.matchMedia("(pointer: coarse)").matches;
+
+  if (touch || css < 760) return { w: 1080, h: 1920, ui: 1.5, name: "1080p portrait" };
+  if (physical >= 3800 && css >= 2200) return { w: 3840, h: 2160, ui: 1, name: "2160p" };
+  if (physical >= 2500) return { w: 2560, h: 1440, ui: 1, name: "1440p" };
+  return { w: 1920, h: 1080, ui: 1, name: "1080p" };
+}
+
+let canvas = null;
+function applyCanvas() {
+  const next = pickCanvas();
+  if (!canvas || canvas.w !== next.w || canvas.h !== next.h || canvas.ui !== next.ui) {
+    canvas = next;
+    stage.style.setProperty("--sw", `${next.w}px`);
+    stage.style.setProperty("--sh", `${next.h}px`);
+    stage.style.setProperty("--ui", String(next.ui));
+    stage.dataset.canvas = next.name;
+  }
+  // Contain, never crop: the whole composition has to fit, which is the
+  // one thing letterboxing gets right and cropping does not.
+  const s = Math.min(window.innerWidth / canvas.w, window.innerHeight / canvas.h);
+  stage.style.transform = `translate(-50%, -50%) scale(${s.toFixed(5)})`;
+}
+
+/* — Parallax. The rig leans toward the cursor for a sense of depth. — */
 let parallaxOn = false;
 
 stage.addEventListener("pointermove", (e) => {
@@ -2283,6 +2354,10 @@ for (const ev of ["pointerup", "pointercancel"]) {
     setTimeout(() => { dragMoved = false; }, 0);
   });
 }
+
+applyCanvas();
+window.addEventListener("resize", applyCanvas);
+window.addEventListener("orientationchange", applyCanvas);
 
 /* — Hover tooltips over each hardware region. — */
 const PART_INFO = {

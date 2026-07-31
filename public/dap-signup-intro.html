@@ -68,10 +68,20 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* ── Fixed canvas ─────────────────────────────────────────────────
+     Laid out at one of three fixed sizes and scaled to fit, so the
+     composition is the same everywhere and the browser rasterises a
+     known number of pixels. Centred by translate rather than by a grid,
+     because the canvas is larger than the viewport before it is scaled
+     and centring an overflowing grid child pushes it into a corner. */
+  #fit { position: absolute; inset: 0; overflow: hidden; }
   #stage {
-    position: relative;
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--sw, 1920px);
+    height: var(--sh, 1080px);
+    transform-origin: center center;
     overflow: hidden;
     background: radial-gradient(900px 620px at 50% 46%, #0b1410 0%, #05080b 58%, #000 100%);
   }
@@ -107,13 +117,13 @@
     letter-spacing: -0.01em;
     line-height: 1.15;
     color: #fff;
-    font-size: clamp(19px, 3.2vw, 42px);
+    font-size: calc(clamp(19px, calc(var(--sw) * 0.03200), 42px) * var(--ui, 1));
   }
   .line em { font-style: normal; font-weight: 500; color: var(--nv-lit); }
   .kicker {
     margin: 0;
     opacity: 0;
-    font-size: clamp(10px, 1.15vw, 13px);
+    font-size: calc(clamp(10px, calc(var(--sw) * 0.01150), 13px) * var(--ui, 1));
     letter-spacing: 0.32em;
     text-transform: uppercase;
     color: var(--muted);
@@ -122,7 +132,7 @@
   /* Skip is always available — nobody should be trapped in an intro. */
   #skip {
     position: absolute;
-    right: 3.5vw; bottom: 4.5vh;
+    right: calc(var(--sw) * 0.03500); bottom: calc(var(--sh) * 0.04500);
     z-index: 20;
     opacity: 0;
     padding: 8px 18px;
@@ -152,6 +162,7 @@
 </head>
 
 <body>
+<div id="fit">
 <div id="stage">
   <svg id="scene" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice">
     <defs>
@@ -324,6 +335,7 @@
   <button id="skip" type="button">Skip</button>
   <div id="wipe"></div>
 </div>
+</div>
 
 <script>
 /*! Anime.js v4.5.0 | MIT | (c) Julian Garnier | animejs.com
@@ -349,6 +361,42 @@ const anime = window.__anime__;
 const { animate, createTimeline, stagger, svg, utils } = anime;
 
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ── Canvas size ───────────────────────────────────────────────────
+   Same three tiers as the hardware reveal. Physical screen size is not
+   exposed to the web — there is no inches API and devicePixelRatio is a
+   ratio, not a measurement — so a coarse pointer stands in for "phone
+   or tablet, whatever its pixel count", and an unscaled wide desktop
+   stands in for "large panel". The bias is downward by design. */
+const stageEl = document.getElementById("stage");
+
+function pickCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const physical = window.screen.width * dpr;
+  const css = window.innerWidth;
+  if (window.matchMedia("(pointer: coarse)").matches || css < 760)
+    return { w: 1080, h: 1920, ui: 1.5, name: "1080p portrait" };
+  if (physical >= 3800 && css >= 2200) return { w: 3840, h: 2160, ui: 1, name: "2160p" };
+  if (physical >= 2500) return { w: 2560, h: 1440, ui: 1, name: "1440p" };
+  return { w: 1920, h: 1080, ui: 1, name: "1080p" };
+}
+
+let canvas = null;
+function applyCanvas() {
+  const next = pickCanvas();
+  if (!canvas || canvas.w !== next.w || canvas.ui !== next.ui) {
+    canvas = next;
+    stageEl.style.setProperty("--sw", `${next.w}px`);
+    stageEl.style.setProperty("--sh", `${next.h}px`);
+    stageEl.style.setProperty("--ui", String(next.ui));
+    stageEl.dataset.canvas = next.name;
+  }
+  const k = Math.min(window.innerWidth / canvas.w, window.innerHeight / canvas.h);
+  stageEl.style.transform = `translate(-50%, -50%) scale(${k.toFixed(5)})`;
+}
+applyCanvas();
+window.addEventListener("resize", applyCanvas);
+window.addEventListener("orientationchange", applyCanvas);
 const SVGNS = "http://www.w3.org/2000/svg";
 
 /** Inject an SVG fragment. */
