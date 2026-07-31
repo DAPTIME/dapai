@@ -112,6 +112,34 @@
      over hardware — the switch in particular lands right under them. A
      scrim gives the type something to read against without moving the
      hardware off the shot. */
+  #telem {
+    position: absolute;
+    right: clamp(14px, 2.4vw, 40px);
+    top: clamp(112px, 17vh, 168px);
+    z-index: 22;
+    opacity: 0;
+    pointer-events: none;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: clamp(9px, 0.86vw, 12px);
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    background: rgba(6, 14, 8, 0.55);
+    border: 1px solid rgba(118, 185, 0, 0.22);
+    border-radius: 6px;
+    padding: 9px 12px;
+    backdrop-filter: blur(6px);
+    min-width: 132px;
+  }
+  .tl-row { display: flex; align-items: baseline; gap: 6px; line-height: 1.7; }
+  .tl-row span { flex: 1; opacity: 0.7; }
+  .tl-row b { color: var(--nv-bright); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tl-row i { font-style: normal; opacity: 0.55; width: 26px; }
+  .tl-foot {
+    margin-top: 7px; padding-top: 6px;
+    border-top: 1px solid rgba(118, 185, 0, 0.16);
+    font-size: 0.82em; opacity: 0.6; letter-spacing: 0.12em;
+  }
+
   #scrim {
     position: absolute;
     left: 0; right: 0; bottom: 0;
@@ -127,17 +155,6 @@
   /* With the cluster filling the frame, the captions and spec chips sit
      over hardware — the switch lands right under them. A scrim gives the
      type something to read against without moving the hardware. */
-  #scrim {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 40%;
-    pointer-events: none;
-    z-index: 11;
-    background: linear-gradient(to bottom,
-      rgba(3, 6, 4, 0) 0%,
-      rgba(3, 6, 4, 0.40) 48%,
-      rgba(3, 6, 4, 0.78) 100%);
-  }
 
   /* Sits over the scene, under the type, and never takes the pointer. */
   #dive {
@@ -703,7 +720,19 @@
 
   <div id="scrim"></div>
 
-  <div id="scrim"></div>
+  <!-- ── Telemetry ────────────────────────────────────────────────
+       A corner readout of what the cluster is doing. The numbers move
+       because the idle system moves them: the burst that spools the
+       fans is the same event that pushes utilisation and power here, so
+       the panel and the hardware never disagree. -->
+  <div id="telem">
+    <div class="tl-row"><span>GPU</span><b id="tGpu">0</b><i>%</i></div>
+    <div class="tl-row"><span>MEM</span><b id="tMem">0.0</b><i>GB</i></div>
+    <div class="tl-row"><span>PWR</span><b id="tPwr">0.0</b><i>W</i></div>
+    <div class="tl-row"><span>TEMP</span><b id="tTmp">0</b><i>&deg;C</i></div>
+    <div class="tl-row"><span>FAN</span><b id="tFan">0</b><i>RPM</i></div>
+    <div class="tl-foot">JETPACK 6 &middot; TENSORRT &middot; CUDA 12</div>
+  </div>
 
   <!-- ── The dive ────────────────────────────────────────────────
        Screen space, above the scene and below the captions. Three
@@ -1160,6 +1189,21 @@ function dieMarkup() {
       <!-- Routed interconnect. These are the motion paths the traffic
            rides, so every particle in here is going somewhere: out of
            the GPU array into memory, and back by a different road. -->
+      <!-- District labels. The floorplan was legible as shapes but said
+           nothing; these name what each block actually is on an Orin. -->
+      <g id="dieLabels" font-family="Inter, sans-serif" opacity="0">
+        <text x="-466" y="-346" font-size="30" letter-spacing="7" fill="#8fd08a">
+          AMPERE SM ARRAY · 1024 CUDA · 32 TENSOR</text>
+        <text x="96" y="-346" font-size="30" letter-spacing="7" fill="#d3b06a">
+          LPDDR5 · 128-BIT · 102 GB/s</text>
+        <text x="108" y="18" font-size="27" letter-spacing="6" fill="#8fc0e8">
+          6× CORTEX-A78AE</text>
+        <text x="-466" y="366" font-size="24" letter-spacing="6" fill="#6f8f78">
+          I/O RING · PCIe Gen4 · MIPI CSI-2 · GbE</text>
+        <text x="-466" y="-378" font-size="22" letter-spacing="5" fill="#5f7f68">
+          NVIDIA ORIN · SoC DIE</text>
+      </g>
+
       <g id="dieHighways" fill="none" stroke-linecap="round">
         <path id="hwyGpuRam" d="M40 -250 H80 Q96 -250 96 -228 V-190 H96"
               stroke="#76b900" stroke-width="7" opacity="0.5"/>
@@ -1466,12 +1510,36 @@ stamp(cableLayer, `
 }
 
 /* Callout labels, each tethered to a part by a line that draws itself. */
+/* Leader lines onto the real parts of node 1, using the same measured
+   positions the hover regions use. A callout that names a port has to
+   point at that port, so these are derived rather than placed by eye:
+   node 1 sits at 150,250 and the fractions come from the UV table. */
+const NODE1 = { x: 150, y: 250 };
+const uvX = (u) => NODE1.x + (-60 + u * 500);
+const uvY = (v) => NODE1.y + (-19.7 + v * 281.4);
+
 const CALLOUTS = [
-  { id: "co1", text: "2× JETSON ORIN NANO", x: 150,  y: 196, path: "M156 206 L156 246" },
-  { id: "co2", text: "80 TOPS COMBINED",    x: 1076, y: 196, path: "M1082 206 L1082 246" },
-  // A third callout used to name the switch here. It landed on the
-  // sub-caption and repeated a spec chip word for word, so it is gone.
+  { id: "co1", text: "2× JETSON ORIN NANO", x: 150,  y: 232, path: "M156 242 L156 276" },
+  { id: "co2", text: "80 TOPS COMBINED",    x: 1076, y: 232, path: "M1082 242 L1082 276" },
 ];
+
+/* Ports, each pointing at itself, stacked in the gap between the two
+   nodes — the one part of this shot that is reliably empty. */
+const PORTS = [
+  ["co4", "40-PIN EXPANSION HEADER", 0.790, 0.360],
+  ["co5", "GIGABIT ETHERNET",        0.790, 0.660],
+  ["co6", "4× USB 3.2 TYPE-A",       0.610, 0.700],
+  ["co7", "DISPLAYPORT 1.4",         0.420, 0.740],
+  ["co8", "DC 19 V",                 0.330, 0.740],
+  ["co9", "2× MIPI CSI-2",           0.210, 0.380],
+];
+PORTS.forEach(([id, text, u, v], i) => {
+  const y = 318 + i * 46;
+  CALLOUTS.push({
+    id, text, x: 600, y, anchor: "start",
+    path: `M594 ${y - 4} L${uvX(u).toFixed(0)} ${uvY(v).toFixed(0)}`,
+  });
+});
 {
   let markup = "";
   for (const c of CALLOUTS) {
@@ -1603,8 +1671,9 @@ function resetScene() {
             { opacity: 0 });
   utils.set("#drvFan", { scale: 1 });
   utils.set(".dieFlowDot", { opacity: 0 });
-  utils.set(["#co1Text", "#co2Text", "#cineSub"], { opacity: 0 });
+  utils.set([...CALLOUTS.map((c) => `#${c.id}Text`), "#cineSub"], { opacity: 0 });
   utils.set(".chip", { opacity: 0 });
+  utils.set(["#telem", "#dieLabels"], { opacity: 0 });
 }
 
 const cineLines = ["#line0", "#line0b", "#line1", "#line2", "#line3", "#line4", "#line5"];
@@ -1813,6 +1882,8 @@ A("#diePkg", { opacity: 0, duration: 480, ease: "inQuad" }, 19200);
 A("#dieCore", { opacity: [0, 1], duration: 700 }, 17300);
 C(() => startDieLife(), 17200);
 A(".dieFlowDot", { opacity: [0, 1], duration: 700, delay: stagger(30) }, 17400);
+A("#dieLabels", { opacity: [0, 0.85], duration: 800 }, 19000);
+A("#dieLabels", { opacity: 0, duration: 600, ease: "inQuad" }, 31600);
 
 const flash = (t) => {
   A("#diveFlash", { opacity: [0, 0.42], scale: [0.4, 1.3], duration: 200 }, t);
@@ -1859,6 +1930,10 @@ captionAt(master, "#line4", 34600, 1300);
 
 /* The rails and the electricity, from here on and never stopping. */
 C(() => startIdleSystem(), 34400);
+C(() => telemetryTo(TELEM_IDLE, 1400), 8600);
+A("#telem", { opacity: [0, 1], translateX: [18, 0], duration: 700 }, 8800);
+A("#telem", { opacity: 0, duration: 500, ease: "inQuad" }, 13000);
+A("#telem", { opacity: 1, duration: 700 }, 33600);
 A(["#gpuLit1", "#gpuLit2"], { opacity: [0, 0.30], duration: 800 }, 34600);
 A(["#aiLit1", "#aiLit2"],   { opacity: [0, 0.24], duration: 800 }, 34900);
 A(["#cpuLit1", "#cpuLit2"], { opacity: [0, 0.20], duration: 800 }, 35100);
@@ -1870,12 +1945,43 @@ captionAt(master, "#line5", 37400, 1400);
 cam(37000, 3600, 1.19, P_ALL[0], P_ALL[1] - 8, "inOutSine");
 A("#cineSub", { opacity: [0, 1], translateY: [12, 0], duration: 900 }, 40600);
 A(".chip", { opacity: [0, 1], translateY: [16, 0], duration: 700, delay: stagger(60) }, 41000);
-A(svg.createDrawable(["#co1Line", "#co2Line"]),
+A(svg.createDrawable(CALLOUTS.map((c) => `#${c.id}Line`)),
   { draw: ["0 0", "0 1"], duration: 800, delay: stagger(140) }, 39600);
-A(["#co1Text", "#co2Text"], { opacity: [0, 1], duration: 600, delay: stagger(140) }, 40100);
+A(CALLOUTS.map((c) => `#${c.id}Text`),
+  { opacity: [0, 1], duration: 600, delay: stagger(90) }, 40100);
 A("#outro", { opacity: [0, 1], translateY: [10, 0], duration: 800 }, 42000);
 C(() => { turnOn = true; stage.style.cursor = "grab"; }, 42000);
 
+
+/* ── Telemetry ─────────────────────────────────────────────────────
+   Idle figures for a pair of Orin Nano 8GB under a light load, and the
+   burst figures the inference flare pushes them to. Values ease rather
+   than jump, because a readout that snaps looks scripted. */
+const TELEM_IDLE  = { gpu: 18, mem: 4.6, pwr: 9.4,  tmp: 41, fan: 3200 };
+const TELEM_BURST = { gpu: 94, mem: 7.8, pwr: 24.6, tmp: 58, fan: 5600 };
+const telemNow = { ...TELEM_IDLE };
+let telemAnim = null;
+
+function telemetryTo(target, duration = 900) {
+  if (telemAnim) telemAnim.revert();
+  const el = {
+    gpu: document.getElementById("tGpu"), mem: document.getElementById("tMem"),
+    pwr: document.getElementById("tPwr"), tmp: document.getElementById("tTmp"),
+    fan: document.getElementById("tFan"),
+  };
+  telemAnim = animate(telemNow, {
+    ...target,
+    duration,
+    ease: "inOutQuad",
+    onUpdate: () => {
+      el.gpu.textContent = Math.round(telemNow.gpu);
+      el.mem.textContent = telemNow.mem.toFixed(1);
+      el.pwr.textContent = telemNow.pwr.toFixed(1);
+      el.tmp.textContent = Math.round(telemNow.tmp);
+      el.fan.textContent = Math.round(telemNow.fan / 50) * 50;
+    },
+  });
+}
 
 /* ══════════════════════════════════════════════════════════════════
    DIE LIFE — the silicon is never idle
@@ -2066,6 +2172,7 @@ function startIdleSystem() {
     loop: true,
     onLoop: () => {
       spinFans(FAN_BURST);                            // fans ramp up
+      telemetryTo(TELEM_BURST, 700);                  // and the panel agrees
       animate(["#gpuLit1", "#gpuLit2", "#aiLit1", "#aiLit2"], {
         opacity: 0.62,
         duration: 320,
@@ -2076,7 +2183,10 @@ function startIdleSystem() {
       animate(["#ethernetCable1Lit", "#ethernetCable2Lit"], {
         opacity: 0.95, duration: 300, alternate: true, loop: 2,
       });
-      setTimeout(() => spinFans(FAN_IDLE), 2600);     // and settle back to fast
+      setTimeout(() => {
+        spinFans(FAN_IDLE);                           // settle back to fast
+        telemetryTo(TELEM_IDLE, 1600);
+      }, 2600);
     },
   });
 }
