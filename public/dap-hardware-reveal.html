@@ -108,6 +108,26 @@
   }
 
   /* Faint circuit lattice behind the hardware. */
+  /* Sits over the scene, under the type, and never takes the pointer. */
+  #dive {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 12;
+    mix-blend-mode: screen;
+  }
+
+  #diveChop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 13;
+  }
+
   #circuitBg {
     position: absolute;
     inset: 0;
@@ -637,6 +657,52 @@
       <!-- Callout lines + labels. -->
       <g id="labelLayer"></g>
     </g>
+  </svg>
+
+  <!-- ── The dive ────────────────────────────────────────────────
+       Screen space, above the scene and below the captions. Three
+       things a camera actually does when it goes through a running
+       fan: the blades chop across the lens, everything smears radially
+       toward the edges, and each layer you break through flares. -->
+  <svg id="dive" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"
+       aria-hidden="true">
+    <defs>
+      <radialGradient id="flashGrad">
+        <stop offset="0%"   stop-color="#dfffb0" stop-opacity="0.85"/>
+        <stop offset="38%"  stop-color="#a5e832" stop-opacity="0.30"/>
+        <stop offset="100%" stop-color="#76b900" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="streakGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%"   stop-color="#cfe9a8" stop-opacity="0"/>
+        <stop offset="45%"  stop-color="#cfe9a8" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="chopBlur" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="9"/>
+      </filter>
+    </defs>
+
+    <!-- Radial smear, the frame stretching past the lens. -->
+    <g id="diveStreaks" opacity="0"
+       style="transform-box: view-box; transform-origin: 800px 450px;"></g>
+
+    <!-- Breaking through a layer. -->
+    <ellipse id="diveFlash" cx="800" cy="450" rx="430" ry="300"
+             fill="url(#flashGrad)" opacity="0"/>
+  </svg>
+
+  <!-- Blades crossing the lens. Its own layer, blended normally: a
+       blade passing the lens blocks light, and the screen-blended layer
+       above cannot draw anything dark. -->
+  <svg id="diveChop" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"
+       aria-hidden="true">
+    <defs>
+      <filter id="chopBlur2" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="11"/>
+      </filter>
+    </defs>
+    <g id="bladeChop" opacity="0"
+       style="transform-box: view-box; transform-origin: 800px 450px;"></g>
   </svg>
 
   <!-- ── Cinematic captions ──────────────────────────────────────── -->
@@ -1429,6 +1495,34 @@ for (const nd of NODES) {
   stamp(cableLayer, packets);
 }
 
+/* ── Dive furniture ──────────────────────────────────────────────
+   Radial smear lines and a set of blades to cross the lens. Both are
+   built here rather than written out, because they are regular and
+   there are a lot of them. */
+{
+  let streaks = "";
+  for (let i = 0; i < 44; i++) {
+    const a = (i / 44) * Math.PI * 2;
+    const r0 = 210 + (i % 5) * 46;
+    const r1 = r0 + 300 + (i % 7) * 90;
+    streaks += `<line class="streak"
+      x1="${(800 + Math.cos(a) * r0).toFixed(1)}" y1="${(450 + Math.sin(a) * r0).toFixed(1)}"
+      x2="${(800 + Math.cos(a) * r1).toFixed(1)}" y2="${(450 + Math.sin(a) * r1).toFixed(1)}"
+      stroke="url(#streakGrad)" stroke-width="${(2 + (i % 3)).toFixed(1)}"
+      stroke-linecap="round"/>`;
+  }
+  stamp(document.getElementById("diveStreaks"), streaks);
+
+  // Nine blades, matching the fan in the photograph.
+  let chop = "";
+  for (let i = 0; i < 9; i++) {
+    chop += `<path d="M800 450 L1520 210 A780 780 0 0 1 1430 690 Z"
+                   transform="rotate(${i * 40} 800 450)"
+                   fill="#04070a" opacity="0.82"/>`;
+  }
+  stamp(document.getElementById("bladeChop"), chop);
+}
+
 /* Traffic inside the die. Each route is a real journey between two
    districts, so a particle is always carrying something somewhere:
    work out of the GPU array into memory, results back by another road,
@@ -1492,20 +1586,22 @@ function captionAt(tl, sel, absT, hold = 1500) {
 }
 
 function caption(tl, sel, at, hold = 1500) {
+  const IN = Math.round(1100 * RATE), OUT = Math.round(750 * RATE);
+  const HOLD = Math.round(hold * RATE);
   tl.add(sel, {
     opacity: [0, 1],
     translateY: [26, 0],
     letterSpacing: ["0.12em", "-0.02em"],
-    duration: 1100,
+    duration: IN,
     ease: "outExpo",
   }, shift(at));
   tl.add(sel, {
     opacity: 0,
     translateY: -22,
-    duration: 750,
+    duration: OUT,
     ease: "inQuad",
-  }, shift(at) + 1100 + hold);
-  return 1100 + hold + 750;
+  }, shift(at) + IN + HOLD);
+  return IN + HOLD + OUT;
 }
 
 const master = createTimeline({
@@ -1521,13 +1617,14 @@ const master = createTimeline({
  */
 function slam(tl, sel, at, hold = 1500) {
   const kids = `${sel} .slam`;
+  const IN = Math.round(480 * RATE), HOLD = Math.round(hold * RATE);
   tl.add(kids, {
     opacity: [0, 1],
     scale: [1.28, 1],
     translateX: [-46, 0],
     skewX: [-9, 0],
-    duration: 480,
-    delay: stagger(110),
+    duration: IN,
+    delay: stagger(Math.round(110 * RATE)),
     ease: "outExpo",
   }, shift(at));
 
@@ -1538,20 +1635,20 @@ function slam(tl, sel, at, hold = 1500) {
     const target = +num.dataset.count;
     tl.add(num, {
       innerHTML: [0, target],
-      duration: 620,
+      duration: Math.round(620 * RATE),
       ease: "outExpo",
       modifier: utils.round(0),
-    }, shift(at) + 60);
+    }, shift(at) + 40);
   }
 
   tl.add(kids, {
     opacity: 0,
     translateX: 30,
     scale: 0.94,
-    duration: 320,
-    delay: stagger(60),
+    duration: Math.round(320 * RATE),
+    delay: stagger(Math.round(60 * RATE)),
     ease: "inQuad",
-  }, shift(at) + 480 + hold);
+  }, shift(at) + IN + HOLD);
 }
 
 /* The drive-in owns the first T0 milliseconds. The journey below was
@@ -1559,16 +1656,42 @@ function slam(tl, sel, at, hold = 1500) {
    offset by one constant — through M here, which fly() also goes
    through, and inside caption() and slam(). Those two are declared
    above but only ever called from below, so reading T0 is safe. */
-const T0 = 9600;
-/* The underside act is inserted at UNDER_AT rather than appended, so the
-   camera goes under the board straight off the memory shot the way it
-   should. Everything from that point on shifts by one more constant —
-   which is why the offset is piecewise rather than a single number. */
-const UNDER_AT = 3400;
-const UNDER_LEN = 6200;
-const shift = (t) => t + T0 + (t >= UNDER_AT ? UNDER_LEN : 0);
+/* ── The clock ─────────────────────────────────────────────────────
+   The whole piece runs to a thirty second budget, split as: eight for
+   the dive in, four under the board, and the rest for the climb back
+   out to the cluster and the sign-off.
+
+   The retreat was authored at its original pace, so rather than
+   renumber forty beats by hand it is played at RATE — and RATE has to
+   scale durations as well as start times, or beats that were tuned to
+   butt against each other start overlapping.
+
+   The underside act is inserted at UNDER_AT rather than appended, so
+   the camera goes under the board straight off the memory shot. That is
+   why the offset is piecewise: everything past that point carries the
+   inserted act's length as well. */
+const T0 = 8000;              // the dive owns this much
+const RATE = 0.58;            // the retreat plays at this speed
+const UNDER_AT = 3400;        // journey time the underside act opens at
+const UNDER_LEN = 4200;       // and how long it lasts
+const U0 = Math.round(T0 + UNDER_AT * RATE);   // its absolute start
+
+const shift = (t) => Math.round(T0 + t * RATE + (t >= UNDER_AT ? UNDER_LEN : 0));
+/** Durations and numeric delays ride the same clock as start times. */
+const rate2 = (props, r) => {
+  const q = { ...props };
+  if (typeof q.duration === "number") q.duration = Math.round(q.duration * r);
+  if (typeof q.delay === "number") q.delay = Math.round(q.delay * r);
+  return q;
+};
+const rate = (props) => {
+  const q = { ...props };
+  if (typeof q.duration === "number") q.duration = Math.round(q.duration * RATE);
+  if (typeof q.delay === "number") q.delay = Math.round(q.delay * RATE);
+  return q;
+};
 const M = {
-  add:  (sel, props, t) => master.add(sel, props, shift(t)),
+  add:  (sel, props, t) => master.add(sel, rate(props), shift(t)),
   call: (fn, t) => master.call(fn, shift(t)),
 };
 
@@ -1595,7 +1718,7 @@ const focus = (px, py) => ({ translateX: ORIGIN.x - px, translateY: ORIGIN.y - p
 
 /** A leg of the journey: where the camera ends up, and how long it takes. */
 function fly(at, duration, scale, px, py, ease = "inOutQuad") {
-  M.add("#rig", { scale, ...focus(px, py), duration, ease }, at);
+  M.add("#rig", { scale, ...focus(px, py), duration, ease }, at);   // M scales both
 }
 
 const P_DIE    = [DIE_AT.x, DIE_AT.y];             // the module on node 1
@@ -1645,18 +1768,42 @@ const P_ALL    = [ORIGIN.x, ORIGIN.y];             // the cluster
 
   // The blades are real, and they are turning before we reach them.
   master.call(() => {
-    animate("#drvFanSpin", { rotate: 360, duration: 1100, ease: "linear", loop: true });
+    animate("#drvFanSpin", { rotate: 360, duration: 430, ease: "linear", loop: true });
     // The board's own fan too: it is on screen from the first second of
     // the descent and again the moment the retreat reaches it.
-    spinFans(1500);
+    spinFans(FAN_IDLE);
   }, 300);
+
+  /* ── Going through the blades ──────────────────────────────────
+     The chop is a set of blades turning fast and opening past the
+     lens, which is what a camera passing a running fan actually sees.
+     The smear runs the length of the descent and pulses at each break,
+     and the flash fires as each layer is broken through. */
+  D("#diveStreaks", { opacity: [0, 0.75], duration: 700 }, 900);
+  D(".streak", { scaleX: [0.35, 1], scaleY: [0.35, 1], duration: 1500, ease: "inQuad" }, 900);
+  D("#diveStreaks", { scale: [1, 2.1], duration: 3400, ease: "inQuad" }, 900);
+
+  D("#bladeChop", { opacity: [0, 1], duration: 220 }, 1600);
+  D("#bladeChop", { rotate: 1500, scale: [0.42, 5.4], duration: 1300, ease: "inQuad" }, 1600);
+  D("#bladeChop", { opacity: 0, duration: 380, ease: "inQuad" }, 2520);
+
+  const flash = (t) => {
+    D("#diveFlash", { opacity: [0, 0.42], scale: [0.4, 1.3], duration: 200 }, t);
+    D("#diveFlash", { opacity: 0, duration: 520, ease: "inQuad" }, t + 240);
+  };
+  flash(2200);   // through the blades
+  flash(3500);   // through the heatsink
+  flash(5000);   // onto the module
+  flash(6600);   // into the package
+
+  D("#diveStreaks", { opacity: 0, duration: 900, ease: "inQuad" }, 6600);
 
   // Down through the fan. The board leaves first: at this magnification
   // it is a photograph stretched past what it holds.
   cam(700, 2300, 6.5);
-  D("#jetson1",    { opacity: 0, duration: 800, ease: "inQuad" }, 2000);
-  D("#drvFan",     { scale: 7.5, opacity: 0, duration: 1200, ease: "inQuad" }, 1900);
-  D("#drvFanBlur", { stdDeviation: [0, 26], duration: 1200, ease: "inQuad" }, 1900);
+  D("#jetson1",    { opacity: 0, duration: 700, ease: "inQuad" }, 2200);
+  D("#drvFan",     { scale: 9, opacity: 0, duration: 700, ease: "inQuad" }, 2150);
+  D("#drvFanBlur", { stdDeviation: [0, 34], duration: 700, ease: "inQuad" }, 2150);
 
   // Through the heatsink.
   D("#drvFins", { opacity: [0, 1], duration: 600 }, 1700);
@@ -1724,9 +1871,14 @@ M.add("#orbit", { rotate: [-2.2, 1.4], duration: 7000, ease: "inOutSine" }, 0);
    substrate and out the other face, where the drive that holds the
    models lives. Then back up the way it came. */
 {
-  const U = (sel, props, t) => master.add(sel, props, T0 + t);
+  // Absolute clock, based at U0 — the act sits in the gap the piecewise
+  // offset opens, which is the one span the journey clock cannot address.
+  const UR = 0.68;   // its own compression, to fit UNDER_LEN
+  const U = (sel, props, t) =>
+    master.add(sel, rate2(props, UR), U0 + Math.round(t * UR));
   const ucam = (at, duration, scale, px, py, ease = "inOutQuad") =>
-    master.add("#rig", { scale, ...focus(px, py), duration, ease }, T0 + at);
+    master.add("#rig", { scale, ...focus(px, py), duration: Math.round(duration * UR), ease },
+               U0 + Math.round(at * UR));
 
   /* Centres out of the drawing, converted at DIE_SCALE, and scales that
      actually frame each part: the drive is 150 world units long, so at
@@ -1736,21 +1888,21 @@ M.add("#orbit", { rotate: [-2.2, 1.4], duration: 7000, ease: "inOutSine" }, 0);
   const P_WIFI  = [UNDER_AT_XY.x - 48.5, UNDER_AT_XY.y + 39.5];
 
   // Pull off the memory and drop below the die.
-  ucam(3400, 1500, 13, DIE_AT.x, DIE_AT.y + 24);
-  U("#dieCore",   { opacity: 0.22, duration: 900 }, 3900);
-  U("#underside", { opacity: [0, 1], duration: 1100 }, 4000);
+  ucam(0, 1500, 13, DIE_AT.x, DIE_AT.y + 24);
+  U("#dieCore",   { opacity: 0.22, duration: 900 }, 500);
+  U("#underside", { opacity: [0, 1], duration: 1100 }, 600);
 
   // The whole drive, end to end.
-  ucam(4900, 1700, 9.6, P_NVME[0], P_NVME[1]);
-  captionAt(master, "#lineUnder", T0 + 5100, 1400);
+  ucam(1500, 1700, 9.6, P_NVME[0], P_NVME[1]);
+  captionAt(master, "#lineUnder", U0 + 1000, 900);
 
   // Then the wireless module beside it.
-  ucam(6800, 1500, 19, P_WIFI[0], P_WIFI[1]);
+  ucam(3400, 1500, 19, P_WIFI[0], P_WIFI[1]);
 
   // And back up through the board to where we left off.
-  ucam(8500, 1100, 7.5, P_UNDER[0], P_UNDER[1] - 30);
-  U("#underside", { opacity: 0, duration: 800, ease: "inQuad" }, 8700);
-  U("#dieCore",   { opacity: 1, duration: 800 }, 8900);
+  ucam(5100, 1100, 7.5, P_UNDER[0], P_UNDER[1] - 30);
+  U("#underside", { opacity: 0, duration: 800, ease: "inQuad" }, 5300);
+  U("#dieCore",   { opacity: 1, duration: 800 }, 5500);
 }
 
 /* ── 3.4s · the floorplan resolves ─────────────────────────────────
@@ -1783,7 +1935,7 @@ M.add(svg.createDrawable(`#jetson1 [id^="trace1_"]`), {
    the idle system waits for the rails to come up, but a still fan on a
    visible board reads as a photograph, which is the one thing this
    sequence is trying not to look like. */
-M.call(() => spinFans(1500), 11400);
+M.call(() => spinFans(FAN_IDLE), 11400);
 
 fly(11800, 3000, 1.35, P_BOARD1[0], P_BOARD1[1]);
 M.add("#floorPool", { opacity: [0, 1], duration: 1800 }, 12600);
@@ -1913,7 +2065,11 @@ function startDieLife() {
 
 let idleStarted = false;
 let fanAnimations = [];
-let fanDuration = 1500;   // ms per revolution at idle
+/* Fans run fast and stay fast. An inference burst takes them faster
+   still, and they settle back to FAN_IDLE — not to something slower. */
+const FAN_IDLE = 620;    // ms per revolution
+const FAN_BURST = 340;
+let fanDuration = FAN_IDLE;
 
 function spinFans(duration) {
   for (const a of fanAnimations) a.revert();
@@ -1934,7 +2090,7 @@ function startIdleSystem() {
 
   /* — Fans. Seven-fold blade symmetry means a speed change is
        visually seamless, so we can simply restart the loop. — */
-  spinFans(1500);
+  spinFans(FAN_IDLE);
 
   /* — Silicon electricity: particles ride the silkscreen traces. — */
   for (const nd of NODES) {
@@ -2047,7 +2203,7 @@ function startIdleSystem() {
     duration: 5200,
     loop: true,
     onLoop: () => {
-      spinFans(760);                                  // fans ramp up
+      spinFans(FAN_BURST);                            // fans ramp up
       animate(["#gpuLit1", "#gpuLit2", "#aiLit1", "#aiLit2"], {
         opacity: 0.62,
         duration: 320,
@@ -2058,7 +2214,7 @@ function startIdleSystem() {
       animate(["#ethernetCable1Lit", "#ethernetCable2Lit"], {
         opacity: 0.95, duration: 300, alternate: true, loop: 2,
       });
-      setTimeout(() => spinFans(1500), 2600);         // and settle again
+      setTimeout(() => spinFans(FAN_IDLE), 2600);     // and settle back to fast
     },
   });
 }
@@ -2097,6 +2253,7 @@ stage.addEventListener("pointermove", (e) => {
 let turnOn = false;
 let turnDeg = 0;
 let dragFrom = null;
+let dragMoved = false;
 
 function setTurn(deg) {
   turnDeg = Math.max(-16, Math.min(16, deg));
@@ -2109,33 +2266,49 @@ function setTurn(deg) {
 
 stage.addEventListener("pointerdown", (e) => {
   if (!turnOn) return;
-  // The controls and the spec card live inside the stage, and
-  // preventDefault on their pointerdown swallows the click that
-  // follows — which left Replay and Skip dead once the sequence had
-  // finished and the turntable was live.
-  if (e.target.closest("#controls, #card, #brand")) return;
-  // Otherwise stop the drag selecting the silkscreen drawn on the
-  // board, which highlights blue and follows the pointer around.
-  e.preventDefault();
-  dragFrom = { x: e.clientX, deg: turnDeg };
-  stage.setPointerCapture(e.pointerId);
-  stage.style.cursor = "grabbing";
+  /* No preventDefault here. It stops a drag selecting the silkscreen,
+     but it also swallows the click that follows — which killed Replay
+     and Skip, and then every spec card on the board. `user-select:
+     none` on the stage does the selection job without touching events.
+     Instead a drag is remembered, so the click it ends with does not
+     also open a card. */
+  /* Capture is taken on the first real movement, not here. Capturing on
+     pointerdown retargets everything that follows to the stage, so the
+     click never reaches the button or the hot region under the cursor —
+     which killed Replay, Skip and every spec card the moment the
+     turntable went live. */
+  dragMoved = false;
+  dragFrom = { x: e.clientX, deg: turnDeg, id: e.pointerId, held: false };
 });
 stage.addEventListener("pointermove", (e) => {
   if (!dragFrom) return;
-  setTurn(dragFrom.deg + (e.clientX - dragFrom.x) * 0.07);
+  const dx = e.clientX - dragFrom.x;
+  if (Math.abs(dx) > 5 && !dragMoved) {
+    dragMoved = true;
+    dragFrom.held = true;
+    stage.setPointerCapture(dragFrom.id);
+    stage.style.cursor = "grabbing";
+  }
+  if (!dragMoved) return;
+  setTurn(dragFrom.deg + dx * 0.07);
 });
 for (const ev of ["pointerup", "pointercancel"]) {
   stage.addEventListener(ev, (e) => {
     if (!dragFrom) return;
+    const held = dragFrom.held;
     dragFrom = null;
     stage.style.cursor = turnOn ? "grab" : "";
-    try { stage.releasePointerCapture(e.pointerId); } catch { /* already gone */ }
-    // Ease most of the way back so it never ends up parked askew.
-    animate({ d: turnDeg }, {
-      d: turnDeg * 0.35, duration: 900, ease: "outElastic(1, 0.6)",
-      onUpdate: (a) => setTurn(a.targets[0].d),
-    });
+    if (held) {
+      try { stage.releasePointerCapture(e.pointerId); } catch { /* already gone */ }
+      // Ease most of the way back so it never ends up parked askew.
+      animate({ d: turnDeg }, {
+        d: turnDeg * 0.35, duration: 900, ease: "outElastic(1, 0.6)",
+        onUpdate: (a) => setTurn(a.targets[0].d),
+      });
+    }
+    // A plain click leaves dragMoved false, so the card still opens; it
+    // is cleared on the next frame so the guard does not outlive it.
+    setTimeout(() => { dragMoved = false; }, 0);
   });
 }
 
@@ -2276,7 +2449,10 @@ for (const el of document.querySelectorAll(".hot")) {
     hideTip();
     animate(el, { scale: 1, duration: 320, ease: "outQuad" });
   });
-  el.addEventListener("click", () => openCard(part));
+  el.addEventListener("click", () => {
+    if (dragMoved) return;   // that click was the end of a turn
+    openCard(part);
+  });
   el.style.transformBox = "fill-box";
   el.style.transformOrigin = "50% 50%";
 }
