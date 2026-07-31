@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/about-dap-ai")({
   head: () => ({
@@ -120,18 +121,90 @@ export const Route = createFileRoute("/about-dap-ai")({
  * bumping this on every change to the reveal guarantees nobody keeps
  * being served the broken copy out of their browser cache.
  */
-const REVEAL_SRC = "/dap-hardware-reveal.html?v=13";
+const REVEAL_SRC = "/dap-hardware-reveal.html?v=14";
 
 function HardwareReveal() {
+  /* Buffer the whole reveal into memory before anything plays it.
+   *
+   * The reveal is one self-contained document — the images, the fonts
+   * and Anime.js itself are all inlined, and it makes zero further
+   * requests once it is parsed (verified in the offline test). So the
+   * entire animation is a single response, and reading that response to
+   * completion means the animation is fully in RAM.
+   *
+   * Pointing the frame straight at the URL would instead let it start
+   * parsing and animating while the tail of the document is still
+   * arriving, which on a slow host is exactly where the stutter comes
+   * from. Here we stream the response ourselves, show how far along it
+   * is, and only then hand the frame a blob: URL — an in-memory
+   * document that needs no server at all. From that point the playback
+   * is pure CPU, with nothing left to wait on.
+   *
+   * If any of it fails, the frame falls back to loading the URL the
+   * ordinary way; a slower start beats a blank panel. */
+  const [src, setSrc] = useState<string | null>(null);
+  const [pct, setPct] = useState(0);
+
+  useEffect(() => {
+    const stop = new AbortController();
+    let blobUrl: string | null = null;
+
+    (async () => {
+      try {
+        const res = await fetch(REVEAL_SRC, { signal: stop.signal, cache: "force-cache" });
+        if (!res.ok || !res.body) throw new Error(`reveal: HTTP ${res.status}`);
+
+        // Content-Length is missing under some compressing proxies. Without
+        // it there is nothing honest to show, so the bar stays indeterminate.
+        const total = Number(res.headers.get("content-length")) || 0;
+        const reader = res.body.getReader();
+        const chunks: BlobPart[] = [];
+        let read = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          read += value.length;
+          if (total) setPct(Math.min(99, Math.round((read / total) * 100)));
+        }
+
+        blobUrl = URL.createObjectURL(new Blob(chunks, { type: "text/html" }));
+        setPct(100);
+        setSrc(blobUrl);
+      } catch {
+        if (!stop.signal.aborted) setSrc(REVEAL_SRC);
+      }
+    })();
+
+    return () => {
+      stop.abort();
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, []);
+
   return (
     <section className="w-full">
-      <div className="overflow-hidden border-b border-border bg-black">
-        <iframe
-          src={REVEAL_SRC}
-          title="DAP AI hardware reveal — a cluster of two NVIDIA Jetson Orin Nano boards"
-          className="block h-[88vh] min-h-[420px] w-full border-0"
-          loading="eager"
-        />
+      <div className="relative overflow-hidden border-b border-border bg-black">
+        {src ? (
+          <iframe
+            src={src}
+            title="DAP AI hardware reveal — a cluster of two NVIDIA Jetson Orin Nano boards"
+            className="block h-[88vh] min-h-[420px] w-full border-0"
+            loading="eager"
+          />
+        ) : (
+          <div className="flex h-[88vh] min-h-[420px] w-full flex-col items-center justify-center gap-4">
+            <div className="h-px w-40 overflow-hidden bg-white/15 sm:w-64">
+              <div
+                className="h-px bg-emerald-400 transition-[width] duration-200 ease-out"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-white/40">
+              Loading the hardware
+            </p>
+          </div>
+        )}
       </div>
       <p className="px-6 pt-3 text-center text-xs text-muted-foreground">
         The machine DAP AI runs on — hover the hardware to explore it, or open the{" "}
