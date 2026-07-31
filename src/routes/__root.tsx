@@ -136,6 +136,7 @@ function RootComponent() {
                   <RouteTransition>
                     <Outlet />
                   </RouteTransition>
+                  <SiteFooter />
                 </main>
               </div>
             </div>
@@ -245,5 +246,33 @@ function RouteTransition({ children }: { children: React.ReactNode }) {
     <div key={pathname} className="route-transition-enter">
       {children}
     </div>
+  );
+}
+
+/**
+ * Footer link, on every page except the chat surface itself.
+ *
+ * The main page and a thread are one continuous scroll ending at the
+ * composer; a footer under that would sit below the input box or push
+ * it off screen, so those are excluded by path.
+ */
+const FOOTERLESS = ["/", "/c", "/chat"];
+
+function SiteFooter() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const bare = FOOTERLESS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  if (bare) return null;
+
+  return (
+    <footer className="border-t border-border px-6 py-6 text-center">
+      <a
+        href="https://linktr.ee/daptime"
+        target="_blank"
+        rel="noreferrer"
+        className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
+        linktr.ee/daptime
+      </a>
+    </footer>
   );
 }
