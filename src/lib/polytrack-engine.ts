@@ -45,7 +45,11 @@ export const THEMES: Record<Season, Theme> = {
   spring: { ground: "#4fc23c", sky: "#9edcf7", road: "#83898f", roadSide: "#545a60", roadLine: "#f6fafb", support: "#4c5257", prop: "#1f8e3d", label: "Spring", emoji: "🌱" },
   summer: { ground: "#f0c552", sky: "#4dbde9", road: "#8a8f92", roadSide: "#585d60", roadLine: "#fdfaef", support: "#50555a", prop: "#d6862c", label: "Summer", emoji: "🏜️" },
   fall:   { ground: "#d4701f", sky: "#ffbb6b", road: "#82878c", roadSide: "#53585d", roadLine: "#fbf6ec", support: "#4b5055", prop: "#9c2f14", label: "Fall",   emoji: "🍂" },
-  winter: { ground: "#eef5fd", sky: "#b6e3fb", road: "#868e96", roadSide: "#525960", roadLine: "#ffffff", support: "#4a5158", prop: "#2f7a5c", label: "Winter", emoji: "❄️" },
+  // Winter's snow and sky were within a few percent of each other in
+  // value, so the horizon disappeared and the track read as floating on
+  // nothing. The sky is deeper and the snow carries a little more blue,
+  // which separates them without losing the cold, bright look.
+  winter: { ground: "#e2edf9", sky: "#8fcdf2", road: "#868e96", roadSide: "#525960", roadLine: "#ffffff", support: "#4a5158", prop: "#2f7a5c", label: "Winter", emoji: "❄️" },
 };
 
 export const TILE = 10;          // world units per tile
