@@ -117,6 +117,13 @@ function Terms() {
           <p className="mt-2">
             You retain ownership of any content you submit, post, or display through the Services (“User Content”). By submitting User Content, you grant us a worldwide, royalty-free, sublicensable, and transferable license to use, reproduce, modify, adapt, publish, and display such content solely for the purpose of operating and improving the Services.
           </p>
+          <p className="mt-4 font-medium text-foreground">A note on “Your AI. Your hardware.”</p>
+          <p className="mt-2">
+            That line is our motto, and we would rather be plain about what it does and does not mean. It is a promise about <em>where your work lives</em>: DAP AI runs on machines that DAP AI LABS owns and operates itself, not on rented capacity in someone else&rsquo;s datacentre. So when we say “your hardware”, we mean hardware kept for you rather than hardware given to you.
+          </p>
+          <p className="mt-2">
+            To be clear about ownership: the model, the software and the physical machines are and remain the property of DAP AI LABS. Using the Services does not transfer any interest in them to you. What genuinely is yours is your data — your prompts, your files and your conversations stay your property, and we do not sell them (see Section 18).
+          </p>
         </div>
 
         <div>
