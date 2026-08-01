@@ -591,9 +591,14 @@ export function PolyTrackRunner(props: Props) {
         </div>
       </div>
 
+      {/* 16:10 is right on a desktop and wrong on a phone: letterboxing a
+          landscape box into a portrait screen left the track about a
+          third of the height, with the touch pad crowding what was left.
+          Small screens get a portrait aspect instead, which roughly
+          quadruples the play area without widening the page. */}
       <div
         ref={wrapRef}
-        className="relative aspect-[16/10] w-full select-none overflow-hidden rounded-xl border border-border bg-black"
+        className="relative aspect-[3/4] w-full select-none overflow-hidden rounded-xl border border-border bg-black sm:aspect-[16/10]"
       >
         {/* HUD */}
         {/* A single soft drop shadow held up fine over grass and tarmac but

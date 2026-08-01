@@ -132,7 +132,12 @@ function RootComponent() {
             <AiReplyListener />
             <div className="flex min-h-screen w-full bg-background">
               <AppSidebar />
-              <div className="flex flex-1 flex-col">
+              {/* min-w-0: a flex item defaults to min-width:auto, so this
+                  column could never shrink below its widest child. Any
+                  wide content — the arcade's scroller, a game board —
+                  pushed the column past the viewport and took the header
+                  and the whole document's horizontal scroll with it. */}
+              <div className="flex min-w-0 flex-1 flex-col">
                 <HeaderBar />
                 <main className="flex-1">
                   <RouteTransition>
@@ -205,13 +210,19 @@ function HeaderBar() {
   });
   const isPro = profileQuery.data?.tier === "pro";
 
+  /* The two groups inside the header were flex items with nothing
+     stopping them growing, so on a phone the account controls pushed it
+     out to ~770px against a 412px screen — and because the header is in
+     the page flow, the whole document scrolled sideways on every route.
+     min-w-0 lets them shrink, and the brand truncates rather than
+     forcing width. */
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-3 backdrop-blur">
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-10 flex h-14 w-full max-w-full items-center justify-between gap-2 overflow-hidden border-b border-border bg-background/80 px-3 backdrop-blur">
+      <div className="flex min-w-0 items-center gap-2">
         <SidebarTrigger />
-        <span className="text-sm font-medium text-muted-foreground">DAP AI</span>
+        <span className="truncate text-sm font-medium text-muted-foreground">DAP AI</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 shrink items-center gap-2">
         <IncognitoToggle />
         {!isPro && (
           <Dialog>
