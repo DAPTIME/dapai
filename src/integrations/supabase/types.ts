@@ -96,7 +96,6 @@ export type Database = {
           created_at: string
           id: string
           is_incognito: boolean
-          slug: string | null
           title: string
           updated_at: string
           user_id: string
@@ -105,7 +104,6 @@ export type Database = {
           created_at?: string
           id?: string
           is_incognito?: boolean
-          slug?: string | null
           title?: string
           updated_at?: string
           user_id: string
@@ -114,7 +112,6 @@ export type Database = {
           created_at?: string
           id?: string
           is_incognito?: boolean
-          slug?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -306,10 +303,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      assign_chat_slug: {
-        Args: { _self_id: string; _title: string; _user_id: string }
-        Returns: string
-      }
       get_track_leaderboard: {
         Args: { _limit?: number; _track_ref: string }
         Returns: {
@@ -326,7 +319,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      slugify_chat_title: { Args: { _title: string }; Returns: string }
     }
     Enums: {
       account_tier: "free" | "pro"
