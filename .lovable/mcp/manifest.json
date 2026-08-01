@@ -3,7 +3,13 @@
   "sdk_version": "0.20.0",
   "path": "/mcp",
   "auth": {
-    "type": "none"
+    "type": "oauth",
+    "issuer": "https://ttluebxfudjbnsulqtcn.supabase.co/auth/v1",
+    "resource": "https://dapai.lovable.app/mcp",
+    "resource_name": "DAP AI",
+    "accepted_audiences": [
+      "authenticated"
+    ]
   },
   "mcp": {
     "server": {
