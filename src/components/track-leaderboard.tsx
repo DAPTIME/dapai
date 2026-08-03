@@ -3,6 +3,8 @@
 // tracked locally and shown instantly after every finished run.
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 import { getLeaderboard } from "@/lib/tracks.functions";
 // Personal-best storage lives in @/lib/polytrack-engine so the runner, the
 // routes and this board all agree on one key.
