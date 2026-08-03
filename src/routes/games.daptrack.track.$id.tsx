@@ -53,7 +53,13 @@ function TrackPage() {
       const m = MEDAL_META[result.medal];
       toast.success(`${m.emoji} ${m.label} medal — ${formatMs(ms)}`);
     }
-    if (!userId) { toast.info("Sign in to save to the site-wide leaderboard."); return; }
+    if (!userId) {
+      toast.info("Sign in to save records", {
+        description: "Guest runs stay on this device only.",
+        action: { label: "Sign in", onClick: () => { window.location.href = "/login"; } },
+      });
+      return;
+    }
     submit({ data: { trackRef, timeMs: ms } }).catch(() => {});
   };
 

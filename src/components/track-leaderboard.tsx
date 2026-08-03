@@ -3,6 +3,8 @@
 // tracked locally and shown instantly after every finished run.
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 import { getLeaderboard } from "@/lib/tracks.functions";
 // Personal-best storage lives in @/lib/polytrack-engine so the runner, the
 // routes and this board all agree on one key.
@@ -14,6 +16,17 @@ export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refres
   const [error, setError] = useState<string | null>(null);
   const [personal, setPersonal] = useState<number | null>(null);
   const [lastRefresh, setLastRefresh] = useState<number>(() => Date.now());
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+
+  // Records are only stored site-wide for signed-in players; guests still play
+  // and keep local personal bests.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => { if (!cancelled) setSignedIn(!!data.user); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s?.user));
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+
 
   // Personal best updates instantly whenever refreshKey ticks.
   useEffect(() => {
@@ -47,6 +60,12 @@ export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refres
         <div className="mb-3 flex items-center justify-between rounded-md border border-primary/40 bg-primary/5 px-2 py-1.5 text-sm">
           <span className="font-medium">Your best</span>
           <span className="font-mono">{formatMs(personal)}</span>
+        </div>
+      )}
+      {signedIn === false && (
+        <div className="mb-3 rounded-md border border-dashed border-border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+          Playing as a guest — times stay on this device.{" "}
+          <Link to="/login" className="font-medium text-primary underline">Sign in</Link> to save records to the leaderboard.
         </div>
       )}
       {error && <p className="text-xs text-destructive">{error}</p>}

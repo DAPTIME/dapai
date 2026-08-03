@@ -66,7 +66,10 @@ function PolyRacer() {
       toast.success(`${m.emoji} ${m.label} medal — ${formatMs(ms)}`);
     }
     if (userId) submit({ data: { trackRef: trackRefOf(level.id), timeMs: ms } }).catch(() => {});
-    else if (result.isPersonalBest) toast.info("Sign in to post this time to the site-wide leaderboard.");
+    else toast.info("Sign in to save records", {
+      description: "Guest runs stay on this device only.",
+      action: { label: "Sign in", onClick: () => { window.location.href = "/login"; } },
+    });
   };
 
   if (!level) {
