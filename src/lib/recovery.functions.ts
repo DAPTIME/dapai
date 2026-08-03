@@ -188,3 +188,54 @@ export const getMyRecoveryQuestion = createServerFn({ method: "GET" })
     };
   });
 
+
+/**
+ * Migration setup: accounts that existed before the backend move must pick a
+ * new password and a fresh recovery question before using the app again.
+ */
+export const getAccountSetupStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("profiles")
+      .select("password_reset_required, recovery_question")
+      .eq("id", userId)
+      .maybeSingle();
+    return {
+      needsSetup:
+        !!row?.password_reset_required || !row?.recovery_question,
+      question: row?.recovery_question ?? null,
+    };
+  });
+
+export const completeAccountSetup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        newPassword: z.string().min(6).max(200),
+        question: z.string().trim().min(3).max(200),
+        answer: z.string().trim().min(2).max(200),
+      })
+      .parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: data.newPassword,
+    });
+    if (pwErr) throw new Error(pwErr.message);
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        recovery_question: data.question,
+        recovery_answer_hash: makeStored(data.answer),
+        password_reset_required: false,
+      })
+      .eq("id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
