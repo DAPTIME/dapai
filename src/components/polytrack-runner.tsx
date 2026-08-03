@@ -18,7 +18,7 @@ import { createCar, resetCar, stepCar, STEP, SPEED_TO_KMH, MAX_SPEED } from "@/l
 import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 import { Mesher, type V3 } from "@/lib/poly-mesh";
 
-type Action = "left" | "right" | "gas" | "brake" | "handbrake" | "reset" | "restart" | "pause" | "camera";
+type Action = "left" | "right" | "gas" | "brake" | "handbrake" | "reset" | "restart" | "pause" | "camera" | "fullscreen";
 
 const DEFAULTS: Record<Action, string[]> = {
   left: ["ArrowLeft", "a"],
@@ -27,14 +27,16 @@ const DEFAULTS: Record<Action, string[]> = {
   brake: ["ArrowDown", "s"],
   handbrake: [" "],
   reset: ["r"],
-  restart: ["Enter"],
+  restart: ["Enter", "t"],
   pause: ["Escape", "p"],
   camera: ["c"],
+  fullscreen: ["f"],
 };
 const LABELS: Record<Action, string> = {
   left: "Steer left", right: "Steer right", gas: "Accelerate",
   brake: "Brake / reverse", handbrake: "Drift", reset: "Respawn at checkpoint",
   restart: "Restart run", pause: "Pause", camera: "Camera",
+  fullscreen: "Fullscreen",
 };
 
 type Phase = "loading" | "ready" | "running" | "paused" | "finished";
@@ -69,6 +71,7 @@ type EngineApi = {
   respawn: () => void;
   togglePause: () => void;
   cycleCamera: () => void;
+  toggleFullscreen: () => void;
 };
 
 export function PolyTrackRunner(props: Props) {
@@ -277,7 +280,17 @@ export function PolyTrackRunner(props: Props) {
         setCameraMode(camMode);
       };
 
-      apiRef.current = { restart, respawn, togglePause, cycleCamera };
+      /* Fullscreen targets the wrapper, not the canvas: the HUD, the
+         touch pad and the pause overlay are siblings of the canvas, and
+         taking only the canvas full-screen would leave every one of them
+         behind. The ResizeObserver above already watches this element,
+         so the camera aspect follows on its own. */
+      const toggleFullscreen = () => {
+        if (document.fullscreenElement) void document.exitFullscreen();
+        else void el.requestFullscreen?.().catch(() => { /* denied or unsupported */ });
+      };
+
+      apiRef.current = { restart, respawn, togglePause, cycleCamera, toggleFullscreen };
 
       // ── HUD (written directly, never through React) ────────────────
       const writeHud = () => {
@@ -422,9 +435,18 @@ export function PolyTrackRunner(props: Props) {
         const under = sampler.at(camera.position.x, camera.position.z, camera.position.y);
         const floor = (under.onRoad ? under.y : TERRAIN_Y) + 1.15;
         if (camera.position.y < floor) camera.position.y = floor;
-        const ceiling = sampler.ceilingAt(camera.position.x, camera.position.z, y + 0.6);
-        if (Number.isFinite(ceiling) && camera.position.y > ceiling - 0.6) {
-          camera.position.y = Math.max(y + 0.8, ceiling - 0.6);
+        // Ducking under an overpass probed upward from the car's height,
+        // which finds the elevated road the car is *on* the moment the
+        // camera trails off the back of it — and then pushed the camera
+        // down to sit under that platform, so the shot became the
+        // underside of a slab with the car nowhere in frame. Two things
+        // fix it: probe from the camera's own floor rather than the
+        // car's height, and ignore a ceiling with no headroom under it,
+        // since that is the road itself and not something to duck below.
+        const ceiling = sampler.ceilingAt(camera.position.x, camera.position.z, floor + 0.4);
+        if (Number.isFinite(ceiling) && ceiling - floor > 2.2 && camera.position.y > ceiling - 0.6) {
+          // Never below the floor: that clamp is what kept failing.
+          camera.position.y = Math.max(floor, ceiling - 0.6);
         }
         camera.lookAt(camTarget);
         if (camRoll !== 0) camera.rotateZ(camRoll);
@@ -524,6 +546,7 @@ export function PolyTrackRunner(props: Props) {
         else if (hit("restart")) { e.preventDefault(); restart(); }
         else if (hit("pause")) { e.preventDefault(); togglePause(); }
         else if (hit("camera")) { e.preventDefault(); cycleCamera(); }
+        else if (hit("fullscreen")) { e.preventDefault(); toggleFullscreen(); }
       };
       window.addEventListener("keydown", onKey);
 
@@ -579,10 +602,12 @@ export function PolyTrackRunner(props: Props) {
         <div className="min-w-0">
           <div className="truncate text-lg font-semibold">{title}</div>
           <div className="hidden text-xs text-muted-foreground sm:block">
-            WASD / Arrows · Space drift · R respawn · Enter restart · C camera · Esc pause
+            WASD / Arrows · Space drift · R respawn · T restart · F fullscreen · C camera · Esc pause
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="secondary" onClick={() => apiRef.current?.toggleFullscreen()}
+                  title="Fullscreen (F)">⛶</Button>
           <Button size="sm" variant="secondary" onClick={() => apiRef.current?.cycleCamera()}>
             🎥 {cameraMode}
           </Button>
@@ -591,9 +616,14 @@ export function PolyTrackRunner(props: Props) {
         </div>
       </div>
 
+      {/* 16:10 is right on a desktop and wrong on a phone: letterboxing a
+          landscape box into a portrait screen left the track about a
+          third of the height, with the touch pad crowding what was left.
+          Small screens get a portrait aspect instead, which roughly
+          quadruples the play area without widening the page. */}
       <div
         ref={wrapRef}
-        className="relative aspect-[16/10] w-full select-none overflow-hidden rounded-xl border border-border bg-black"
+        className="relative aspect-[3/4] w-full select-none overflow-hidden rounded-xl border border-border bg-black sm:aspect-[16/10]"
       >
         {/* HUD */}
         {/* A single soft drop shadow held up fine over grass and tarmac but

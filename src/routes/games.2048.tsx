@@ -242,6 +242,10 @@ function Game2048() {
 
       <div
         ref={boardRef}
+        // The board reads its own drags, and it is the only game surface
+        // that is not a <canvas>, so it has to opt out of the sidebar
+        // swipe by name.
+        data-no-swipe
         className="relative mt-4 aspect-square touch-none cursor-grab select-none rounded-xl bg-card p-2 active:cursor-grabbing"
       >
         {/* Background cells */}

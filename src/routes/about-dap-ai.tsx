@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/about-dap-ai")({
   head: () => ({
@@ -122,8 +122,78 @@ export const Route = createFileRoute("/about-dap-ai")({
  * being served the broken copy out of their browser cache.
  */
 const REVEAL_SRC = "/dap-hardware-reveal.html?v=14";
+const REVEAL_WEBM = "/dap-hardware-reveal.webm?v=1";
+const REVEAL_MP4 = "/dap-hardware-reveal.mp4?v=1";
+
+/**
+ * A phone plays a recording of the reveal instead of running it.
+ *
+ * The interactive version is an SVG scene the browser re-rasterises every
+ * frame while the camera moves across a 120x zoom range. Measured on a
+ * Pixel 7 profile that is about 2.1 million device pixels a frame — a
+ * phone's devicePixelRatio is ~2.6, and cost scales with its square — and
+ * the silicon act ran at 10fps. Cutting element counts and camera
+ * precision did not move it, because the element count was never the
+ * cost. Rasterisation was.
+ *
+ * A video sidesteps it entirely: the same 47 seconds decode in hardware,
+ * which is what phones are built for, and 1.7MB of H.264 is lighter than
+ * the 1MB document that was stuttering. Nothing interactive is lost —
+ * the hover specs and the turntable need a pointer, and a phone has none.
+ */
+function useIsPhone() {
+  // Server-rendered markup can't know, so the first paint is the desktop
+  // branch and the effect corrects it before anything plays.
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse), (max-width: 760px)");
+    const sync = () => setPhone(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return phone;
+}
+
+function RevealVideo() {
+  const ref = useRef<HTMLVideoElement>(null);
+  return (
+    <div className="relative overflow-hidden border-b border-border bg-black">
+      {/* Two encodings, because no single one covers every phone: Safari
+          and iOS decode H.264 and not VP9, and the reverse is true of a
+          plain Chromium build. The browser takes the first it can play. */}
+      <video
+        ref={ref}
+        // No loop, matching the interactive version: it plays once and
+        // holds its last frame.
+        autoPlay
+        muted
+        playsInline
+        preload="auto"
+        className="mx-auto block h-[88vh] min-h-[420px] w-full object-contain"
+      >
+        <source src={REVEAL_WEBM} type="video/webm" />
+        <source src={REVEAL_MP4} type="video/mp4" />
+      </video>
+      <button
+        type="button"
+        onClick={() => {
+          const v = ref.current;
+          if (!v) return;
+          v.currentTime = 0;
+          void v.play();
+        }}
+        className="absolute right-3 top-3 rounded-full border border-white/25 bg-black/55 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-white/85 backdrop-blur"
+      >
+        Replay
+      </button>
+    </div>
+  );
+}
 
 function HardwareReveal() {
+  const phone = useIsPhone();
+
   /* Buffer the whole reveal into memory before anything plays it.
    *
    * The reveal is one self-contained document — the images, the fonts
@@ -184,6 +254,7 @@ function HardwareReveal() {
 
   return (
     <section className="w-full">
+      {phone ? <RevealVideo /> : (
       <div className="relative overflow-hidden border-b border-border bg-black">
         {src ? (
           <iframe
@@ -206,6 +277,7 @@ function HardwareReveal() {
           </div>
         )}
       </div>
+      )}
       <p className="px-6 pt-3 text-center text-xs text-muted-foreground">
         The machine DAP AI runs on — hover the hardware to explore it, or open the{" "}
         <a
