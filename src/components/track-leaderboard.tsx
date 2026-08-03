@@ -62,6 +62,12 @@ export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refres
           <span className="font-mono">{formatMs(personal)}</span>
         </div>
       )}
+      {signedIn === false && (
+        <div className="mb-3 rounded-md border border-dashed border-border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+          Playing as a guest — times stay on this device.{" "}
+          <Link to="/login" className="font-medium text-primary underline">Sign in</Link> to save records to the leaderboard.
+        </div>
+      )}
       {error && <p className="text-xs text-destructive">{error}</p>}
       {!rows && !error && <p className="text-xs text-muted-foreground">Loading…</p>}
       {rows && rows.length === 0 && (
