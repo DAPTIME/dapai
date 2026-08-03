@@ -355,6 +355,8 @@ export function PolyTrackRunner(props: Props) {
       const camTarget = new THREE.Vector3();
       const camWanted = new THREE.Vector3();
       let camRoll = 0;
+      let camTilt = 0;
+
 
       /**
        * Chase view: low and close behind the bumper, leaning back and
@@ -378,14 +380,28 @@ export function PolyTrackRunner(props: Props) {
           camTarget.set(x, y + 1, z);
         } else {
           const back = 8.2 + rush * 3.6;
-          camWanted.set(x - fx * back, y + 2.95 + rush * 1.05, z - fz * back);
           // Lead the corner: swing the aim point round with the steering.
           const lead = yaw + car.steer * 0.30 * rush;
-          const ahead = 8 + rush * 7;
-          camTarget.set(x + Math.sin(lead) * ahead, y + 1.15, z + Math.cos(lead) * ahead);
+          const ahead = 9 + rush * 7;
+          const ax = x + Math.sin(lead) * ahead;
+          const az = z + Math.cos(lead) * ahead;
+          // Read the road a little way ahead so the camera tilts with the
+          // slope: it rises and looks down on descents, and drops back /
+          // looks up as the track climbs away.
+          const front = sampler.at(ax, az, y + 3);
+          const frontY = front.onRoad ? front.y : y;
+          const rise = Math.max(-14, Math.min(14, frontY - y));
+          const slope = rise / ahead;
+          camTilt += (slope - camTilt) * (1 - Math.pow(0.02, dt));
+          // Higher, more overhead angle so the car and the next section of
+          // track are both in frame at all times.
+          const height = y + 5.1 + rush * 1.5 + Math.max(0, -camTilt) * ahead * 0.55;
+          camWanted.set(x - fx * back, height - camTilt * back * 0.85, z - fz * back);
+          camTarget.set(ax, y + 1.0 + rise * 0.55, az);
           wantFov = FOV_BASE + rush * FOV_RUSH;
           wantRoll = -car.steer * 0.05 * rush;
         }
+
 
         if (!camInit) {
           camera.position.copy(camWanted);
