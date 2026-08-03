@@ -355,6 +355,8 @@ export function PolyTrackRunner(props: Props) {
       const camTarget = new THREE.Vector3();
       const camWanted = new THREE.Vector3();
       let camRoll = 0;
+      let camTilt = 0;
+
 
       /**
        * Chase view: low and close behind the bumper, leaning back and
