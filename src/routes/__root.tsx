@@ -140,7 +140,9 @@ function RootComponent() {
                 </main>
               </div>
             </div>
+            <AccountSetupGate />
             <Toaster />
+
           </SidebarProvider>
         </AppContextMenu>
       </AuthProvider>
