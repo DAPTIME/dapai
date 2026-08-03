@@ -197,6 +197,7 @@ export type Database = {
           email: string | null
           id: string
           name: string | null
+          password_reset_required: boolean
           pro_messages_used: number
           recovery_answer_hash: string | null
           recovery_question: string | null
@@ -209,6 +210,7 @@ export type Database = {
           email?: string | null
           id: string
           name?: string | null
+          password_reset_required?: boolean
           pro_messages_used?: number
           recovery_answer_hash?: string | null
           recovery_question?: string | null
@@ -221,6 +223,7 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string | null
+          password_reset_required?: boolean
           pro_messages_used?: number
           recovery_answer_hash?: string | null
           recovery_question?: string | null
