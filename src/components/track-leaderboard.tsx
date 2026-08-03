@@ -16,6 +16,17 @@ export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refres
   const [error, setError] = useState<string | null>(null);
   const [personal, setPersonal] = useState<number | null>(null);
   const [lastRefresh, setLastRefresh] = useState<number>(() => Date.now());
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+
+  // Records are only stored site-wide for signed-in players; guests still play
+  // and keep local personal bests.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => { if (!cancelled) setSignedIn(!!data.user); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSignedIn(!!s?.user));
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+
 
   // Personal best updates instantly whenever refreshKey ticks.
   useEffect(() => {
