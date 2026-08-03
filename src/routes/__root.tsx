@@ -20,6 +20,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EyeOff, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { AccountSetupGate } from "@/components/account-setup-gate";
+
 import { AccountMenu } from "@/components/account-menu";
 import { AppContextMenu } from "@/components/app-context-menu";
 import { useTheme } from "@/lib/theme";
