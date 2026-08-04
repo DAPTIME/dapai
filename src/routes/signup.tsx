@@ -37,6 +37,8 @@ function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,7 +51,16 @@ function SignupPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      toast.error("Passwords don't match.");
+      return;
+    }
     setBusy(true);
+
     try {
       await signUp(email, password, name);
       try {
@@ -90,9 +101,14 @@ function SignupPage() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input id="password" type="password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
           <p className="text-xs text-muted-foreground">At least 6 characters.</p>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="confirm">Confirm password</Label>
+          <Input id="confirm" type="password" autoComplete="new-password" required minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="question">Recovery question</Label>
           <Input

@@ -30,6 +30,8 @@ function ForgotPasswordPage() {
   const [question, setQuestion] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [busy, setBusy] = useState(false);
 
   const onEmailSubmit = async (e: FormEvent) => {
@@ -116,6 +118,18 @@ function ForgotPasswordPage() {
               onChange={(e) => setNewPassword(e.target.value)}
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm new password</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              required
+              minLength={6}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          </div>
+
           <Button type="submit" disabled={busy} className="w-full" style={{ background: "var(--gradient-brand)" }}>
             {busy ? "Saving…" : "Reset password"}
           </Button>

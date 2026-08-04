@@ -66,15 +66,6 @@ function LoginPage() {
     <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6 py-12">
       <h1 className="text-2xl font-semibold tracking-tight">Sign in to DAP AI</h1>
       <p className="mt-1 text-sm text-muted-foreground">Welcome back. Enter your details to continue.</p>
-      <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-        <strong className="font-medium text-foreground">Had an account before?</strong> DAP AI moved to a new
-        secure backend, so your old password no longer works. Use{" "}
-        <Link to="/forgot-password" className="font-medium text-foreground underline underline-offset-4">
-          Forgot password
-        </Link>{" "}
-        and answer your recovery question to get back in — you'll then be asked to set a new password and a new
-        recovery question.
-      </div>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <div className="space-y-2">
