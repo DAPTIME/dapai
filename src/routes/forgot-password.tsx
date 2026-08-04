@@ -54,7 +54,16 @@ function ForgotPasswordPage() {
 
   const onResetSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords don't match.");
+      return;
+    }
     setBusy(true);
+
     try {
       await reset({ data: { email, answer, newPassword } });
       toast.success("Password updated. You can sign in now.");
