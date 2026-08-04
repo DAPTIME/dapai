@@ -14,7 +14,15 @@ function createSupabaseAdminClient() {
       ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
       ...(!SUPABASE_SERVICE_ROLE_KEY ? ['SUPABASE_SERVICE_ROLE_KEY'] : []),
     ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
+    // These are server-side secrets, so they are not in .env alongside the
+    // publishable key — they belong in the deployment's environment /
+    // secrets, where they never reach the browser or the repository.
+    const message =
+      `Missing Supabase environment variable(s): ${missing.join(', ')}. ` +
+      `Set them in your hosting environment (Lovable → Project Settings → ` +
+      `Environment variables). SUPABASE_SERVICE_ROLE_KEY is in the Supabase ` +
+      `dashboard under Project Settings → API → service_role. It bypasses ` +
+      `row-level security, so it must never be committed or exposed to the client.`;
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
