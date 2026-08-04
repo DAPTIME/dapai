@@ -6,7 +6,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin, getAdminClient } from "@/lib/admin.server";
-import { FEATURE_KEYS, MODEL_IDS } from "@/lib/admin-config";
+import { FEATURE_KEYS, MODEL_IDS, type FeatureKey } from "@/lib/admin-config";
 
 export const adminListAllChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
