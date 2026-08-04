@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { assertAdmin, getAdminClient } from "@/lib/admin.server";
 
 export const listBetaTesters = createServerFn({ method: "GET" }).handler(
   async () => {
+    const supabaseAdmin = getAdminClient();
     const { data, error } = await supabaseAdmin
       .from("beta_testers")
       .select("id, name, sort_order")
@@ -15,24 +16,6 @@ export const listBetaTesters = createServerFn({ method: "GET" }).handler(
   },
 );
 
-const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
-
-async function assertAdmin(userId: string) {
-  const { data: authUser, error: authErr } =
-    await supabaseAdmin.auth.admin.getUserById(userId);
-  if (authErr) throw new Error(authErr.message);
-  const email = authUser?.user?.email?.toLowerCase() ?? "";
-  if (email !== ADMIN_EMAIL) throw new Error("Forbidden: admin role required");
-  const { data, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: admin role required");
-}
-
 export const adminAddBetaTester = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
@@ -40,6 +23,7 @@ export const adminAddBetaTester = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin
       .from("beta_testers")
       .insert({ name: data.name, sort_order: 999 });
@@ -52,6 +36,7 @@ export const adminRemoveBetaTester = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin
       .from("beta_testers")
       .delete()
