@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { listBetaTesters } from "@/lib/beta.functions";
 import { getFeatureFlags } from "@/lib/admin.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/team")({
   head: () => ({
@@ -28,7 +28,6 @@ export const Route = createFileRoute("/team")({
 });
 
 function TeamPage() {
-  const fetchBeta = useServerFn(listBetaTesters);
   const fetchFlags = useServerFn(getFeatureFlags);
   const flagsQuery = useQuery({
     queryKey: ["feature-flags"],
@@ -37,7 +36,15 @@ function TeamPage() {
   const teamEnabled = flagsQuery.data?.team !== false;
   const betaQuery = useQuery({
     queryKey: ["beta-testers"],
-    queryFn: () => fetchBeta(),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("beta_testers")
+        .select("id, name, sort_order")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
     enabled: teamEnabled,
   });
 

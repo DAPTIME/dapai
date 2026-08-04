@@ -5,12 +5,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { assertAdmin, getAdminClient } from "@/lib/admin.server";
+import { FEATURE_KEYS, MODEL_IDS, type FeatureKey } from "@/lib/admin-config";
 
 export const adminListAllChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const { data: chats, error } = await supabaseAdmin
       .from("chats")
       .select("id, title, user_id, created_at, updated_at")
@@ -35,6 +37,7 @@ export const adminGetChat = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const [{ data: chat }, { data: messages, error }] = await Promise.all([
       supabaseAdmin
         .from("chats")
@@ -51,31 +54,11 @@ export const adminGetChat = createServerFn({ method: "POST" })
     return { chat, messages: messages ?? [] };
   });
 
-const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
-
-async function assertAdmin(userId: string) {
-  // Verify the signed-in user's email matches the single allowed admin AND
-  // the user has the admin role. Both must hold.
-  const { data: authUser, error: authErr } =
-    await supabaseAdmin.auth.admin.getUserById(userId);
-  if (authErr) throw new Error(authErr.message);
-  const email = authUser?.user?.email?.toLowerCase() ?? "";
-  if (email !== ADMIN_EMAIL) throw new Error("Forbidden: admin role required");
-
-  const { data, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: admin role required");
-}
-
 export const adminListUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const { data, error } = await supabaseAdmin
       .from("profiles")
       .select("id, email, name, tier, pro_messages_used, created_at")
@@ -97,6 +80,7 @@ export const adminSetTier = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const patch: { tier: "free" | "pro"; pro_messages_used?: number } = {
       tier: data.tier,
     };
@@ -135,6 +119,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     if (data.email) {
       const { error } = await supabaseAdmin.auth.admin.updateUserById(
         data.userId,
@@ -174,6 +159,7 @@ export const adminResetPassword = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.auth.admin.updateUserById(
       data.userId,
       { password: data.newPassword }
@@ -187,6 +173,7 @@ export const adminConfirmEmail = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.auth.admin.updateUserById(
       data.userId,
       { email_confirm: true }
@@ -200,6 +187,7 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     if (data.userId === context.userId) {
       throw new Error("You can't delete your own admin account.");
     }
@@ -211,9 +199,6 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
 
 
 
-const MODEL_IDS = ["dap-ai-1.0", "dap-ai-lite"] as const;
-type ModelId = (typeof MODEL_IDS)[number];
-
 export const adminGetSystemPrompt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
@@ -223,6 +208,7 @@ export const adminGetSystemPrompt = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const id: string = data.model ?? "global";
     const { data: row, error } = await supabaseAdmin
       .from("ai_settings")
@@ -257,6 +243,7 @@ export const adminSetSystemPrompt = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const id: string = data.model ?? "global";
     const { error } = await supabaseAdmin
       .from("ai_settings")
@@ -276,6 +263,7 @@ export const adminSetSystemPrompt = createServerFn({ method: "POST" })
  */
 export const getSiteStatus = createServerFn({ method: "GET" }).handler(
   async () => {
+    const supabaseAdmin = getAdminClient();
     const { data } = await supabaseAdmin
       .from("ai_settings")
       .select("system_prompt")
@@ -292,6 +280,7 @@ export const adminSetSiteStatus = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ enabled: z.boolean() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.from("ai_settings").upsert({
       id: "site_status",
       system_prompt: data.enabled ? "on" : "off",
@@ -305,25 +294,9 @@ export const adminSetSiteStatus = createServerFn({ method: "POST" })
  * Per-feature on/off toggles. Stored as ai_settings rows with id
  * `feature_<key>` and "on"/"off" in system_prompt. Public read.
  */
-export const FEATURE_KEYS = [
-  "pro_model",
-  "lite_model",
-  "daps",
-  "team",
-  "games",
-] as const;
-export type FeatureKey = (typeof FEATURE_KEYS)[number];
-
-export const FEATURE_LABELS: Record<FeatureKey, string> = {
-  pro_model: "DAP AI 3.2 (Pro)",
-  lite_model: "DAP AI Lite",
-  daps: "DAPs (Custom assistants)",
-  team: "Our Team page",
-  games: "Games (DAP Arcade)",
-};
-
 export const getFeatureFlags = createServerFn({ method: "GET" }).handler(
   async () => {
+    const supabaseAdmin = getAdminClient();
     const ids = FEATURE_KEYS.map((k) => `feature_${k}`);
     const { data } = await supabaseAdmin
       .from("ai_settings")
@@ -359,6 +332,7 @@ export const adminSetFeatureFlag = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.from("ai_settings").upsert({
       id: `feature_${data.key}`,
       system_prompt: data.enabled ? "on" : "off",
