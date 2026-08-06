@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { setRecoveryQuestion } from "@/lib/recovery.functions";
+import { isValidEmail } from "@/lib/utils";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
