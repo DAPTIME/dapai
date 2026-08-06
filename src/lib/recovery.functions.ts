@@ -58,7 +58,7 @@ export const setRecoveryQuestion = createServerFn({ method: "POST" })
 /** Public: look up the recovery question for an email. */
 export const getRecoveryQuestion = createServerFn({ method: "POST" })
   .inputValidator((i) =>
-    z.object({ email: z.string().trim().email().max(255) }).parse(i)
+    z.object({ email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255) }).parse(i)
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -76,7 +76,7 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
   .inputValidator((i) =>
     z
       .object({
-        email: z.string().trim().email().max(255),
+        email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255),
         answer: z.string().trim().min(1).max(200),
         newPassword: z.string().min(6).max(200),
       })

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { isValidEmail } from "@/lib/utils";
 import {
   getRecoveryQuestion,
   resetPasswordWithAnswer,
@@ -36,6 +37,10 @@ function ForgotPasswordPage() {
 
   const onEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await getQ({ data: { email } });

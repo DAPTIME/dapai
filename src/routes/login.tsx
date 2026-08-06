@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { isValidEmail } from "@/lib/utils";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -42,6 +43,14 @@ function LoginPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (!password) {
+      toast.error("Please enter your password.");
+      return;
+    }
     setBusy(true);
     try {
       await signIn(email, password);
