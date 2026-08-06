@@ -43,6 +43,14 @@ function LoginPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (!password) {
+      toast.error("Please enter your password.");
+      return;
+    }
     setBusy(true);
     try {
       await signIn(email, password);
