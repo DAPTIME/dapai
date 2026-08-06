@@ -52,12 +52,20 @@ function SignupPage() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
     if (password.length < 6) {
       toast.error("Password must be at least 6 characters.");
       return;
     }
     if (password !== confirm) {
       toast.error("Passwords don't match.");
+      return;
+    }
+    if (question.trim().length < 3 || answer.trim().length < 2) {
+      toast.error("Please fill in your recovery question and answer.");
       return;
     }
     setBusy(true);
