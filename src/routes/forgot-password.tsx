@@ -37,6 +37,10 @@ function ForgotPasswordPage() {
 
   const onEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await getQ({ data: { email } });
