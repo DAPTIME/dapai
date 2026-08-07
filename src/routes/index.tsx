@@ -2,8 +2,11 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 
 import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
+import { DapIntro } from "@/components/dap-intro";
+
 import { createChat, getProfile } from "@/lib/chats.functions";
 import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 
@@ -125,15 +128,31 @@ function Home() {
   const maintenance = user && tier === "pro"
     ? !proEnabled && !liteEnabled
     : !liteEnabled;
+  const [showIntro, setShowIntro] = useState(false);
 
-
-
+  // Just confirmed their email: notify + play the short DAP AI intro.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("confirmed") === "1") {
+      params.delete("confirmed");
+      const qs = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${qs ? `?${qs}` : ""}`
+      );
+      toast.success("Your account is confirmed — welcome to DAP AI!");
+      setShowIntro(true);
+    }
+  }, []);
 
   useEffect(() => {
     const finalName = user?.name || "friend";
     const list = GREETINGS(finalName);
     setGreeting(list[Math.floor(Math.random() * list.length)]);
   }, [user]);
+
 
   const startChat = useMutation({
     mutationFn: async (payload: { text: string; images?: string[] }) => {
