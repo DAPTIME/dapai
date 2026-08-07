@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { MailCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import { setRecoveryQuestion } from "@/lib/recovery.functions";
+import { registerAccount, resendConfirmationEmail } from "@/lib/signup.functions";
 import { isValidEmail } from "@/lib/utils";
 
 export const Route = createFileRoute("/signup")({
@@ -32,9 +33,10 @@ export const Route = createFileRoute("/signup")({
 });
 
 function SignupPage() {
-  const { signUp, signIn, user, ready } = useAuth();
+  const { user, ready } = useAuth();
   const navigate = useNavigate();
-  const saveRecovery = useServerFn(setRecoveryQuestion);
+  const register = useServerFn(registerAccount);
+  const resend = useServerFn(resendConfirmationEmail);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,6 +45,7 @@ function SignupPage() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     if (ready && user) {
@@ -71,15 +74,18 @@ function SignupPage() {
     setBusy(true);
 
     try {
-      await signUp(email, password, name);
-      try {
-        await signIn(email, password);
-        await saveRecovery({ data: { question: question.trim(), answer: answer.trim() } });
-      } catch {
-        // Email confirmation may be required; user can set it later from settings.
-      }
-      toast.success("Account created");
-      navigate({ to: "/" });
+      await register({
+        data: {
+          email: email.trim(),
+          password,
+          name: name.trim() || undefined,
+          question: question.trim(),
+          answer: answer.trim(),
+          origin: window.location.origin,
+        },
+      });
+      setSent(true);
+      toast.success("Check your inbox to confirm your account");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign up failed");
     } finally {
@@ -91,6 +97,45 @@ function SignupPage() {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col items-center justify-center px-6">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (sent) {
+    return (
+      <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6 py-12 animate-fade-in">
+        <div className="rounded-xl border border-border bg-card p-6 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <MailCheck className="h-6 w-6" />
+          </div>
+          <h1 className="mt-4 text-xl font-semibold tracking-tight">Check your inbox</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We sent a confirmation link to <span className="font-medium text-foreground">{email}</span>.
+            Your account is on hold until you tap it — the link is good for 10 minutes.
+          </p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Nothing there? Check spam, or resend below.
+          </p>
+          <div className="mt-6 space-y-2">
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={async () => {
+                try {
+                  await resend({ data: { email: email.trim(), origin: window.location.origin } });
+                  toast.success("Confirmation email sent again");
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Couldn't resend");
+                }
+              }}
+            >
+              Resend email
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => setSent(false)}>
+              Use a different email
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
