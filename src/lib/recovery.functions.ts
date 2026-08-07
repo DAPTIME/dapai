@@ -83,6 +83,8 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ data }) => {
+    const { assertPasswordNotLeaked } = await import("./pwned.server");
+    await assertPasswordNotLeaked(data.newPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("profiles")
@@ -151,6 +153,8 @@ export const changePasswordWithAnswer = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
+    const { assertPasswordNotLeaked } = await import("./pwned.server");
+    await assertPasswordNotLeaked(data.newPassword);
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
@@ -222,6 +226,8 @@ export const completeAccountSetup = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
+    const { assertPasswordNotLeaked } = await import("./pwned.server");
+    await assertPasswordNotLeaked(data.newPassword);
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
