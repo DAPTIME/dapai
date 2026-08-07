@@ -91,12 +91,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
     },
     signIn: async (email, password) => {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
+      // Accounts stay on hold until the emailed confirmation link is used.
+      if (data.user && !data.user.email_confirmed_at) {
+        await supabase.auth.signOut();
+        throw new Error(
+          "Please confirm your email first — check your inbox for the DAP AI confirmation link."
+        );
+      }
     },
+
     signOut: async () => {
       await supabase.auth.signOut();
     },
