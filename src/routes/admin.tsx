@@ -594,7 +594,7 @@ function ResetPasswordDialog({
             Cancel
           </Button>
           <Button
-            disabled={saving || pw.length < 6}
+            disabled={saving || pw.length < 8}
             onClick={async () => {
               setSaving(true);
               await onSave(pw);
@@ -989,6 +989,8 @@ function SiteTab() {
     onSuccess: (_d, enabled) => {
       toast.success(enabled ? "Site enabled" : "Site disabled");
       qc.invalidateQueries({ queryKey: ["site-status"] });
+      qc.invalidateQueries({ queryKey: ["site-config"] });
+
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
@@ -1050,6 +1052,8 @@ function FeaturesTab() {
         `${FEATURE_LABELS[v.key]} ${v.enabled ? "enabled" : "disabled"}`
       );
       qc.invalidateQueries({ queryKey: ["feature-flags"] });
+      qc.invalidateQueries({ queryKey: ["site-config"] });
+
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });

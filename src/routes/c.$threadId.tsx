@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
-import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
+import { useSiteConfig } from "@/lib/site-config";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
@@ -56,21 +56,11 @@ function ChatPage() {
     queryFn: () => fetchProfile(),
     enabled: !!user,
   });
-  const fetchSiteStatus = useServerFn(getSiteStatus);
-  const siteStatus = useQuery({
-    queryKey: ["site-status"],
-    queryFn: () => fetchSiteStatus(),
-    refetchInterval: 30_000,
-  });
-  const siteEnabled = siteStatus.data?.enabled !== false;
-  const fetchFlags = useServerFn(getFeatureFlags);
-  const flagsQuery = useQuery({
-    queryKey: ["feature-flags"],
-    queryFn: () => fetchFlags(),
-    refetchInterval: 30_000,
-  });
-  const proEnabled = flagsQuery.data?.pro_model !== false;
-  const liteEnabled = flagsQuery.data?.lite_model !== false;
+  const siteConfig = useSiteConfig();
+  const siteEnabled = siteConfig.enabled;
+  const proEnabled = siteConfig.flags.pro_model;
+  const liteEnabled = siteConfig.flags.lite_model;
+
   const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
   const maintenance = tier === "pro"
     ? !proEnabled && !liteEnabled
@@ -323,7 +313,7 @@ function ChatPage() {
               }
             />
             <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-              DAP AI may produce inaccurate info.
+              DAP AI is AI and can make mistakes.
             </p>
           </>
         )}

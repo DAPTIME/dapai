@@ -89,7 +89,7 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
         email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255),
         token: z.string().trim().min(10).max(200),
         answer: z.string().trim().min(1).max(200),
-        newPassword: z.string().min(6).max(200),
+        newPassword: z.string().min(8).max(200),
         newQuestion: z.string().trim().min(3).max(200),
         newAnswer: z.string().trim().min(2).max(200),
       })
@@ -97,9 +97,16 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase();
+    const { consumeAttempt, clearAttempts, RECOVERY_ANSWER_POLICY } =
+      await import("./attempt-limit.server");
+    // Count the guess before checking it, so brute force gets locked out.
+    await consumeAttempt(RECOVERY_ANSWER_POLICY);
+
     const { consumeResetSession } = await import("./reset-session.server");
     await consumeResetSession(email, data.token);
 
+    const { assertPasswordPolicy } = await import("./password-policy");
+    assertPasswordPolicy(data.newPassword, { email });
     const { assertPasswordNotLeaked } = await import("./pwned.server");
     await assertPasswordNotLeaked(data.newPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -127,16 +134,22 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
       })
       .eq("id", row.id);
     if (qErr) throw dbError(qErr);
+    await clearAttempts(RECOVERY_ANSWER_POLICY);
     return { ok: true };
   });
 
 
-/** Signed-in: verify the current recovery answer, then update to a new question+answer. */
+
+/**
+ * Signed-in: verify the account password AND the current recovery answer,
+ * then update to a new question + answer.
+ */
 export const changeRecoveryQuestion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
     z
       .object({
+        currentPassword: z.string().min(1).max(200),
         currentAnswer: z.string().trim().min(1).max(200),
         newQuestion: z.string().trim().min(3).max(200),
         newAnswer: z.string().trim().min(2).max(200),
@@ -145,14 +158,25 @@ export const changeRecoveryQuestion = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { userId } = context;
+    const { consumeAttempt, clearAttempts, RECOVERY_ANSWER_POLICY } =
+      await import("./attempt-limit.server");
+    await consumeAttempt(RECOVERY_ANSWER_POLICY);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("profiles")
-      .select("recovery_answer_hash")
+      .select("email, recovery_answer_hash")
       .eq("id", userId)
       .maybeSingle();
     if (!row?.recovery_answer_hash) {
       throw new Error("No recovery question is set on your account yet.");
+    }
+    const { verifyCurrentPassword } = await import("./verify-password.server");
+    if (
+      !row.email ||
+      !(await verifyCurrentPassword(row.email, data.currentPassword))
+    ) {
+      throw new Error("Your current password is incorrect.");
     }
     if (!verifyStored(row.recovery_answer_hash, data.currentAnswer)) {
       throw new Error("That answer doesn't match your current recovery answer.");
@@ -165,42 +189,68 @@ export const changeRecoveryQuestion = createServerFn({ method: "POST" })
       })
       .eq("id", userId);
     if (error) throw dbError(error);
+    await clearAttempts(RECOVERY_ANSWER_POLICY);
     return { ok: true };
   });
 
-/** Signed-in: change your password by re-verifying your recovery answer. */
+/**
+ * Signed-in: change your password. Requires BOTH your current password and
+ * your recovery answer, is rate limited per network, and the new password is
+ * screened against known breached passwords.
+ */
 export const changePasswordWithAnswer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
     z
       .object({
+        currentPassword: z.string().min(1).max(200),
         answer: z.string().trim().min(1).max(200),
-        newPassword: z.string().min(6).max(200),
+        newPassword: z.string().min(8).max(200),
       })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
-    const { assertPasswordNotLeaked } = await import("./pwned.server");
-    await assertPasswordNotLeaked(data.newPassword);
     const { userId } = context;
+    const { consumeAttempt, clearAttempts, PASSWORD_CHANGE_POLICY } =
+      await import("./attempt-limit.server");
+    await consumeAttempt(PASSWORD_CHANGE_POLICY);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("profiles")
-      .select("recovery_answer_hash")
+      .select("email, name, recovery_answer_hash")
       .eq("id", userId)
       .maybeSingle();
     if (!row?.recovery_answer_hash) {
       throw new Error("No recovery question is set on your account.");
     }
+
+    const { assertPasswordPolicy } = await import("./password-policy");
+    assertPasswordPolicy(data.newPassword, { email: row.email, name: row.name });
+    const { assertPasswordNotLeaked } = await import("./pwned.server");
+    await assertPasswordNotLeaked(data.newPassword);
+
+    const { verifyCurrentPassword } = await import("./verify-password.server");
+    if (
+      !row.email ||
+      !(await verifyCurrentPassword(row.email, data.currentPassword))
+    ) {
+      throw new Error("Your current password is incorrect.");
+    }
     if (!verifyStored(row.recovery_answer_hash, data.answer)) {
       throw new Error("That answer doesn't match. Please try again.");
+    }
+    if (data.newPassword === data.currentPassword) {
+      throw new Error("Please choose a password you haven't used before.");
     }
     const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password: data.newPassword,
     });
     if (error) throw dbError(error);
+    await clearAttempts(PASSWORD_CHANGE_POLICY);
     return { ok: true };
   });
+
 
 /** Returns whether the current user has a recovery question set (and the question text). */
 export const getMyRecoveryQuestion = createServerFn({ method: "GET" })
@@ -246,15 +296,18 @@ export const completeAccountSetup = createServerFn({ method: "POST" })
   .inputValidator((i) =>
     z
       .object({
-        newPassword: z.string().min(6).max(200),
+        newPassword: z.string().min(8).max(200),
         question: z.string().trim().min(3).max(200),
         answer: z.string().trim().min(2).max(200),
       })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
+    const { assertPasswordPolicy } = await import("./password-policy");
+    assertPasswordPolicy(data.newPassword);
     const { assertPasswordNotLeaked } = await import("./pwned.server");
     await assertPasswordNotLeaked(data.newPassword);
+
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
@@ -334,7 +387,7 @@ export const resetPasswordWithLink = createServerFn({ method: "POST" })
       .object({
         email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255),
         token: z.string().trim().min(10).max(200),
-        newPassword: z.string().min(6).max(200),
+        newPassword: z.string().min(8).max(200),
         newQuestion: z.string().trim().min(3).max(200),
         newAnswer: z.string().trim().min(2).max(200),
       })
@@ -345,8 +398,11 @@ export const resetPasswordWithLink = createServerFn({ method: "POST" })
     const { consumeResetSession } = await import("./reset-session.server");
     await consumeResetSession(email, data.token);
 
+    const { assertPasswordPolicy } = await import("./password-policy");
+    assertPasswordPolicy(data.newPassword, { email });
     const { assertPasswordNotLeaked } = await import("./pwned.server");
     await assertPasswordNotLeaked(data.newPassword);
+
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin

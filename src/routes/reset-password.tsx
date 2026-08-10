@@ -8,6 +8,7 @@ import { resetPasswordWithLink } from "@/lib/recovery.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
 
 const searchSchema = z.object({
   token: z.string().optional(),
@@ -54,8 +55,9 @@ function ResetPasswordPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid) return;
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    const pwProblem = checkPassword(password);
+    if (pwProblem) {
+      toast.error(pwProblem);
       return;
     }
     if (password !== confirm) {

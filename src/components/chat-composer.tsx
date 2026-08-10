@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile } from "@/lib/chats.functions";
-import { getFeatureFlags } from "@/lib/admin.functions";
+import { useSiteConfig } from "@/lib/site-config";
 
 
 export interface QuotaInfo {
@@ -66,14 +66,10 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const isPro = tier === "pro";
   const canUsePro = !!user && isPro;
 
-  const fetchFlags = useServerFn(getFeatureFlags);
-  const flagsQuery = useQuery({
-    queryKey: ["feature-flags"],
-    queryFn: () => fetchFlags(),
-    refetchInterval: 30_000,
-  });
-  const proEnabled = flagsQuery.data?.pro_model !== false;
-  const liteEnabled = flagsQuery.data?.lite_model !== false;
+  const siteConfig = useSiteConfig();
+  const proEnabled = siteConfig.flags.pro_model;
+  const liteEnabled = siteConfig.flags.lite_model;
+
 
 
   const [text, setText] = useState("");

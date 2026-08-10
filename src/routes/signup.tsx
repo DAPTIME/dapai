@@ -9,6 +9,7 @@ import { MailCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { registerAccount, resendConfirmationEmail } from "@/lib/signup.functions";
 import { isValidEmail } from "@/lib/utils";
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -59,8 +60,9 @@ function SignupPage() {
       toast.error("Please enter a valid email address.");
       return;
     }
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    const pwProblem = checkPassword(password);
+    if (pwProblem) {
+      toast.error(pwProblem);
       return;
     }
     if (password !== confirm) {
@@ -155,12 +157,12 @@ function SignupPage() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input id="password" type="password" autoComplete="new-password" required minLength={PASSWORD_MIN_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)} />
           <p className="text-xs text-muted-foreground">At least 6 characters.</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">Confirm password</Label>
-          <Input id="confirm" type="password" autoComplete="new-password" required minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          <Input id="confirm" type="password" autoComplete="new-password" required minLength={PASSWORD_MIN_LENGTH} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
         </div>
 
         <div className="space-y-2">

@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-r
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Gamepad2, Lock } from "lucide-react";
-import { getFeatureFlags } from "@/lib/admin.functions";
+import { useSiteConfig } from "@/lib/site-config";
 
 export const Route = createFileRoute("/games")({
   head: () => ({
@@ -26,14 +26,11 @@ const GAMES = [
 
 function GamesLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const fetchFlags = useServerFn(getFeatureFlags);
-  const flagsQuery = useQuery({
-    queryKey: ["feature-flags"],
-    queryFn: () => fetchFlags(),
-  });
+  const siteConfig = useSiteConfig();
 
   // Gating the layout covers every game and the track editor with it.
-  if (flagsQuery.data?.games === false) {
+  if (!siteConfig.flags.games) {
+
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">
         <div

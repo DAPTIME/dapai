@@ -14,6 +14,8 @@ import {
   getMyRecoveryQuestion,
   setRecoveryQuestion,
 } from "@/lib/recovery.functions";
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
+
 
 
 export const Route = createFileRoute("/security")({
@@ -75,14 +77,17 @@ function ChangePasswordCard({
   question: string | null;
 }) {
   const changePw = useServerFn(changePasswordWithAnswer);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [answer, setAnswer] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
 
   const mut = useMutation({
-    mutationFn: () => changePw({ data: { answer, newPassword } }),
+    mutationFn: () =>
+      changePw({ data: { currentPassword, answer, newPassword } }),
     onSuccess: () => {
       toast.success("Password updated.");
+      setCurrentPassword("");
       setAnswer("");
       setNewPassword("");
       setConfirm("");
@@ -92,8 +97,9 @@ function ChangePasswordCard({
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    const problem = checkPassword(newPassword);
+    if (problem) {
+      toast.error(problem);
       return;
     }
     if (newPassword !== confirm) {
@@ -102,6 +108,7 @@ function ChangePasswordCard({
     }
     mut.mutate();
   };
+
 
   return (
     <form
@@ -118,7 +125,8 @@ function ChangePasswordCard({
         <div>
           <Label className="text-base">Change password</Label>
           <p className="mt-1 text-sm text-muted-foreground">
-            Verify your recovery answer, then set a new password.
+            Confirm your current password and recovery answer, then set a new
+            password (at least {PASSWORD_MIN_LENGTH} characters).
           </p>
         </div>
       </div>
@@ -130,6 +138,17 @@ function ChangePasswordCard({
         </p>
       ) : (
         <div className="mt-4 space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="cur-pw">Current password</Label>
+            <Input
+              id="cur-pw"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+            />
+          </div>
           <div className="space-y-2">
             <Label>Your recovery question</Label>
             <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
@@ -150,7 +169,8 @@ function ChangePasswordCard({
             <Input
               id="new-pw"
               type="password"
-              minLength={6}
+              autoComplete="new-password"
+              minLength={PASSWORD_MIN_LENGTH}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
@@ -161,7 +181,8 @@ function ChangePasswordCard({
             <Input
               id="confirm-pw"
               type="password"
-              minLength={6}
+              autoComplete="new-password"
+              minLength={PASSWORD_MIN_LENGTH}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
@@ -170,7 +191,10 @@ function ChangePasswordCard({
           <div className="flex justify-end">
             <Button
               type="submit"
-              disabled={mut.isPending || !answer || !newPassword}
+              disabled={
+                mut.isPending || !currentPassword || !answer || !newPassword
+              }
+
               style={{ background: "var(--gradient-brand)" }}
             >
               {mut.isPending ? "Updating…" : "Update password"}
@@ -193,6 +217,7 @@ function ChangeRecoveryCard({
   const change = useServerFn(changeRecoveryQuestion);
   const setQ = useServerFn(setRecoveryQuestion);
 
+  const [currentPassword, setCurrentPassword] = useState("");
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
@@ -200,14 +225,18 @@ function ChangeRecoveryCard({
   const mut = useMutation({
     mutationFn: () =>
       hasQuestion
-        ? change({ data: { currentAnswer, newQuestion, newAnswer } })
+        ? change({
+            data: { currentPassword, currentAnswer, newQuestion, newAnswer },
+          })
         : setQ({ data: { question: newQuestion, answer: newAnswer } }),
 
     onSuccess: () => {
       toast.success("Recovery question updated.");
+      setCurrentPassword("");
       setCurrentAnswer("");
       setNewQuestion("");
       setNewAnswer("");
+
       qc.invalidateQueries({ queryKey: ["my-recovery-question"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -242,7 +271,7 @@ function ChangeRecoveryCard({
           <Label className="text-base">Recovery question</Label>
           <p className="mt-1 text-sm text-muted-foreground">
             {hasQuestion
-              ? "Answer your current question, then set a new one."
+              ? "Confirm your password and current answer, then set a new question."
               : "You don't have a recovery question yet. Set one below."}
           </p>
         </div>
@@ -251,6 +280,17 @@ function ChangeRecoveryCard({
       <div className="mt-4 space-y-3">
         {hasQuestion && (
           <>
+            <div className="space-y-2">
+              <Label htmlFor="cur-rec-pw">Current password</Label>
+              <Input
+                id="cur-rec-pw"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label>Current question</Label>
               <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
@@ -268,6 +308,7 @@ function ChangeRecoveryCard({
             </div>
           </>
         )}
+
         <div className="space-y-2">
           <Label htmlFor="new-q">New recovery question</Label>
           <Input
@@ -292,7 +333,7 @@ function ChangeRecoveryCard({
             type="submit"
             disabled={
               mut.isPending ||
-              (hasQuestion && !currentAnswer) ||
+              (hasQuestion && (!currentAnswer || !currentPassword)) ||
               !newQuestion ||
               !newAnswer
             }

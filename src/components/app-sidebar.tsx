@@ -37,7 +37,7 @@ import {
   deleteChat,
 } from "@/lib/chats.functions";
 import { useIncognito, isIncognitoNow } from "@/lib/use-incognito";
-import { getFeatureFlags } from "@/lib/admin.functions";
+import { useSiteConfig } from "@/lib/site-config";
 
 const main = [
   { title: "Custom AI's", url: "/daps", icon: Sparkles },
@@ -56,13 +56,12 @@ export function AppSidebar() {
   const create = useServerFn(createChat);
   const remove = useServerFn(deleteChat);
 
-  const fetchFlags = useServerFn(getFeatureFlags);
-  const flagsQuery = useQuery({
-    queryKey: ["feature-flags"],
-    queryFn: () => fetchFlags(),
-  });
+  const siteConfig = useSiteConfig();
   // Admins can switch the arcade off; drop its link when they have.
-  const nav = main.filter((item) => item.url !== "/games" || flagsQuery.data?.games !== false);
+  const nav = main.filter(
+    (item) => item.url !== "/games" || siteConfig.flags.games
+  );
+
 
   const chatsQuery = useQuery({
     queryKey: ["chats", user?.id ?? "anon"],

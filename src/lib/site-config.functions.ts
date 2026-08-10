@@ -1,0 +1,68 @@
+/**
+ * One public read that returns the whole admin-controlled site state:
+ * the global on/off switch plus every feature flag.
+ *
+ * This exists so the app never needs two (or six) separate round trips to
+ * find out whether the admin disabled something — it's a single query,
+ * fetched once during SSR and shared by every component.
+ */
+import { createServerFn } from "@tanstack/react-start";
+
+export const FEATURE_KEYS = [
+  "pro_model",
+  "lite_model",
+  "daps",
+  "team",
+  "games",
+] as const;
+export type FeatureKey = (typeof FEATURE_KEYS)[number];
+
+export interface SiteConfig {
+  enabled: boolean;
+  flags: Record<FeatureKey, boolean>;
+}
+
+export const DEFAULT_SITE_CONFIG: SiteConfig = {
+  enabled: true,
+  flags: {
+    pro_model: true,
+    lite_model: true,
+    daps: true,
+    team: true,
+    games: true,
+  },
+};
+
+export const getPublicSiteConfig = createServerFn({ method: "GET" }).handler(
+  async (): Promise<SiteConfig> => {
+    const config: SiteConfig = {
+      enabled: true,
+      flags: { ...DEFAULT_SITE_CONFIG.flags },
+    };
+    try {
+      const { supabaseAdmin } = await import(
+        "@/integrations/supabase/client.server"
+      );
+      const ids = ["site_status", ...FEATURE_KEYS.map((k) => `feature_${k}`)];
+      const { data } = await supabaseAdmin
+        .from("ai_settings")
+        .select("id, system_prompt")
+        .in("id", ids);
+      for (const row of data ?? []) {
+        const on = (row.system_prompt ?? "on").trim().toLowerCase() !== "off";
+        if (row.id === "site_status") {
+          config.enabled = on;
+          continue;
+        }
+        const key = row.id.replace(/^feature_/, "") as FeatureKey;
+        if ((FEATURE_KEYS as readonly string[]).includes(key)) {
+          config.flags[key] = on;
+        }
+      }
+    } catch (e) {
+      // Never let a settings lookup take the site down — fail open.
+      console.error("[site-config] lookup failed:", (e as Error).message);
+    }
+    return config;
+  }
+);
