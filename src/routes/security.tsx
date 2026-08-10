@@ -75,14 +75,17 @@ function ChangePasswordCard({
   question: string | null;
 }) {
   const changePw = useServerFn(changePasswordWithAnswer);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [answer, setAnswer] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
 
   const mut = useMutation({
-    mutationFn: () => changePw({ data: { answer, newPassword } }),
+    mutationFn: () =>
+      changePw({ data: { currentPassword, answer, newPassword } }),
     onSuccess: () => {
       toast.success("Password updated.");
+      setCurrentPassword("");
       setAnswer("");
       setNewPassword("");
       setConfirm("");
@@ -92,8 +95,9 @@ function ChangePasswordCard({
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    const problem = checkPassword(newPassword);
+    if (problem) {
+      toast.error(problem);
       return;
     }
     if (newPassword !== confirm) {
@@ -102,6 +106,7 @@ function ChangePasswordCard({
     }
     mut.mutate();
   };
+
 
   return (
     <form
