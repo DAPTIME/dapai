@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, UserMinus } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, UserMinus, Mail } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +55,12 @@ const FEATURE_DESCRIPTIONS: Record<FeatureKey, string> = {
   team: "Hide the /team page.",
   games: "Hide the arcade: the sidebar link, /games and every game inside it.",
 };
+
+import {
+  adminListEmailExempt,
+  adminAddEmailExempt,
+  adminRemoveEmailExempt,
+} from "@/lib/email-exempt.functions";
 
 import {
   listBetaTesters,
@@ -122,6 +128,9 @@ function Admin() {
             <TabsTrigger value="beta">
               <Users className="mr-2 h-4 w-4" /> Beta Testers
             </TabsTrigger>
+            <TabsTrigger value="emails">
+              <Mail className="mr-2 h-4 w-4" /> Emails
+            </TabsTrigger>
             <TabsTrigger value="features">
               <Power className="mr-2 h-4 w-4" /> Site & Features
             </TabsTrigger>
@@ -138,6 +147,9 @@ function Admin() {
           </TabsContent>
           <TabsContent value="beta" className="mt-6">
             <BetaTab />
+          </TabsContent>
+          <TabsContent value="emails" className="mt-6">
+            <EmailExemptTab />
           </TabsContent>
           <TabsContent value="features" className="mt-6 space-y-6">
             <SiteTab />
@@ -760,6 +772,112 @@ function ChatsTab() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function EmailExemptTab() {
+  const qc = useQueryClient();
+  const fetchList = useServerFn(adminListEmailExempt);
+  const addFn = useServerFn(adminAddEmailExempt);
+  const removeFn = useServerFn(adminRemoveEmailExempt);
+  const [email, setEmail] = useState("");
+  const [note, setNote] = useState("");
+
+  const listQuery = useQuery({
+    queryKey: ["admin", "email-exempt"],
+    queryFn: () => fetchList(),
+  });
+
+  const add = useMutation({
+    mutationFn: () => addFn({ data: { email: email.trim(), note: note.trim() } }),
+    onSuccess: () => {
+      toast.success("Address will never be rate limited");
+      setEmail("");
+      setNote("");
+      qc.invalidateQueries({ queryKey: ["admin", "email-exempt"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => removeFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Removed");
+      qc.invalidateQueries({ queryKey: ["admin", "email-exempt"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const list = listQuery.data ?? [];
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div>
+        <h2 className="text-lg font-semibold">Rate-limit exemptions</h2>
+        <p className="text-sm text-muted-foreground">
+          Account emails (signup confirmation, password reset) are limited to 3
+          per 5 minutes per network. Addresses listed here are never blocked.
+        </p>
+      </div>
+
+      <form
+        className="mt-4 flex flex-col gap-2 sm:flex-row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!email.trim()) return;
+          add.mutate();
+        }}
+      >
+        <Input
+          type="email"
+          placeholder="name@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          maxLength={255}
+        />
+        <Input
+          placeholder="Note (optional)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={200}
+        />
+        <Button type="submit" disabled={add.isPending || !email.trim()}>
+          <Plus className="mr-1 h-4 w-4" /> Add
+        </Button>
+      </form>
+
+      <ul className="mt-5 divide-y divide-border rounded-md border border-border">
+        {listQuery.isLoading && (
+          <li className="px-3 py-3 text-sm text-muted-foreground">Loading…</li>
+        )}
+        {!listQuery.isLoading && list.length === 0 && (
+          <li className="px-3 py-3 text-sm text-muted-foreground">
+            No exempt addresses yet.
+          </li>
+        )}
+        {list.map((row) => (
+          <li
+            key={row.id}
+            className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+          >
+            <div className="min-w-0">
+              <p className="truncate font-medium">{row.email}</p>
+              {row.note ? (
+                <p className="truncate text-xs text-muted-foreground">{row.note}</p>
+              ) : null}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => remove.mutate(row.id)}
+              disabled={remove.isPending}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove
+            </Button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
