@@ -125,7 +125,8 @@ function ChangePasswordCard({
         <div>
           <Label className="text-base">Change password</Label>
           <p className="mt-1 text-sm text-muted-foreground">
-            Verify your recovery answer, then set a new password.
+            Confirm your current password and recovery answer, then set a new
+            password (at least {PASSWORD_MIN_LENGTH} characters).
           </p>
         </div>
       </div>
@@ -137,6 +138,17 @@ function ChangePasswordCard({
         </p>
       ) : (
         <div className="mt-4 space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="cur-pw">Current password</Label>
+            <Input
+              id="cur-pw"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+            />
+          </div>
           <div className="space-y-2">
             <Label>Your recovery question</Label>
             <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
@@ -157,7 +169,8 @@ function ChangePasswordCard({
             <Input
               id="new-pw"
               type="password"
-              minLength={6}
+              autoComplete="new-password"
+              minLength={PASSWORD_MIN_LENGTH}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               required
@@ -168,7 +181,8 @@ function ChangePasswordCard({
             <Input
               id="confirm-pw"
               type="password"
-              minLength={6}
+              autoComplete="new-password"
+              minLength={PASSWORD_MIN_LENGTH}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
@@ -177,7 +191,10 @@ function ChangePasswordCard({
           <div className="flex justify-end">
             <Button
               type="submit"
-              disabled={mut.isPending || !answer || !newPassword}
+              disabled={
+                mut.isPending || !currentPassword || !answer || !newPassword
+              }
+
               style={{ background: "var(--gradient-brand)" }}
             >
               {mut.isPending ? "Updating…" : "Update password"}
