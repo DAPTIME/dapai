@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Should this screen get on-screen controls as well as the keyboard?
@@ -108,4 +108,64 @@ export function useCompactScreen(): boolean {
   }, []);
 
   return compact;
+}
+
+
+/* ── Manual override ──────────────────────────────────────────────────
+   Auto-detection has one case it cannot win. An iPad set to "Request
+   Desktop Website" deliberately masquerades as desktop Safari: it
+   reports a fine pointer and a desktop viewport, because hiding its
+   tablet-ness is the entire point of the setting. No feature test can
+   see through that by design, so the pad never appeared on exactly the
+   device that needed it most.
+
+   Hence a switch. The stored value is a tri-state: "auto" defers to the
+   detection above, and "on"/"off" are the player's word on it, which
+   always wins. */
+
+export type TouchControlMode = "auto" | "on" | "off";
+
+const MODE_KEY = "dap.track.touchControls";
+
+function readMode(): TouchControlMode {
+  if (typeof window === "undefined") return "auto";
+  const v = window.localStorage.getItem(MODE_KEY);
+  return v === "on" || v === "off" ? v : "auto";
+}
+
+/**
+ * Whether to show the pad, plus the switch to change it.
+ *
+ * `resolved` is what to render; `mode` is what the player chose. Cycling
+ * goes auto → on → off → auto, so someone whose device is detected
+ * wrongly in either direction can correct it and someone who has not
+ * thought about it keeps the automatic behaviour.
+ */
+export function useTouchControls(): {
+  show: boolean;
+  mode: TouchControlMode;
+  setMode: (m: TouchControlMode) => void;
+  cycle: () => void;
+} {
+  const detected = useCompactScreen();
+  const [mode, setModeState] = useState<TouchControlMode>("auto");
+
+  // Read after mount so server and first client paint agree.
+  useEffect(() => { setModeState(readMode()); }, []);
+
+  const setMode = useCallback((m: TouchControlMode) => {
+    setModeState(m);
+    try { window.localStorage.setItem(MODE_KEY, m); } catch { /* private mode */ }
+  }, []);
+
+  const cycle = useCallback(() => {
+    setMode(mode === "auto" ? "on" : mode === "on" ? "off" : "auto");
+  }, [mode, setMode]);
+
+  return {
+    show: mode === "on" ? true : mode === "off" ? false : detected,
+    mode,
+    setMode,
+    cycle,
+  };
 }
