@@ -333,7 +333,7 @@ function ChangeRecoveryCard({
             type="submit"
             disabled={
               mut.isPending ||
-              (hasQuestion && !currentAnswer) ||
+              (hasQuestion && (!currentAnswer || !currentPassword)) ||
               !newQuestion ||
               !newAnswer
             }
