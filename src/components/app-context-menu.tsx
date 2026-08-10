@@ -34,7 +34,7 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const create = useServerFn(createChat);
-  const { requireTier } = useUpgradeGate();
+  const { openUpgrade } = useUpgradeGate();
 
 
   const createMut = useMutation({
@@ -64,8 +64,9 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
   }, []);
 
   const onUpgrade = useCallback(() => {
-    requireTier("pro", "DAP AI Pro");
-  }, [requireTier]);
+    openUpgrade();
+  }, [openUpgrade]);
+
 
 
   // Best-effort: turn inspect/source/devtools shortcuts into a new chat.

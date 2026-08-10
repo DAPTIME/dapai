@@ -14,20 +14,24 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, UserMinus, Mail } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
 import {
   adminAmIAdmin,
   adminListUsers,
   adminUpdateUser,
   adminResetPassword,
-  
+  adminSetBan,
   adminDeleteUser,
   adminGetSystemPrompt,
   adminSetSystemPrompt,
@@ -37,10 +41,10 @@ import {
   adminSetSiteStatus,
   getOfflineMessage,
   adminSetOfflineMessage,
-
   getFeatureFlags,
   adminSetFeatureFlag,
 } from "@/lib/admin.functions";
+
 
 const FEATURE_KEYS = ["pro_model", "lite_model", "daps", "team", "games"] as const;
 type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -59,11 +63,6 @@ const FEATURE_DESCRIPTIONS: Record<FeatureKey, string> = {
   games: "Hide the arcade: the sidebar link, /games and every game inside it.",
 };
 
-import {
-  adminListEmailExempt,
-  adminAddEmailExempt,
-  adminRemoveEmailExempt,
-} from "@/lib/email-exempt.functions";
 
 import {
   listBetaTesters,
@@ -131,9 +130,6 @@ function Admin() {
             <TabsTrigger value="beta">
               <Users className="mr-2 h-4 w-4" /> Beta Testers
             </TabsTrigger>
-            <TabsTrigger value="emails">
-              <Mail className="mr-2 h-4 w-4" /> Emails
-            </TabsTrigger>
             <TabsTrigger value="features">
               <Power className="mr-2 h-4 w-4" /> Site & Features
             </TabsTrigger>
@@ -151,9 +147,6 @@ function Admin() {
           <TabsContent value="beta" className="mt-6">
             <BetaTab />
           </TabsContent>
-          <TabsContent value="emails" className="mt-6">
-            <EmailExemptTab />
-          </TabsContent>
           <TabsContent value="features" className="mt-6 space-y-6">
             <SiteTab />
             <FeaturesTab />
@@ -164,21 +157,49 @@ function Admin() {
   );
 }
 
+type TierId = "free" | "go" | "pro" | "exclusive";
+
+const TIER_IDS: TierId[] = ["free", "go", "pro", "exclusive"];
+const TIER_NAMES: Record<TierId, string> = {
+  free: "Free",
+  go: "Go",
+  pro: "Pro",
+  exclusive: "Exclusive",
+};
+
 type AdminUser = {
   id: string;
   email: string | null;
   name: string | null;
-  tier: "free" | "pro";
+  tier: TierId;
   pro_messages_used: number;
   created_at: string;
+  banned?: boolean;
+  emailConfirmed?: boolean;
 };
+
+function TierBadge({ tier }: { tier: TierId }) {
+  const styles: Record<TierId, string> = {
+    free: "bg-muted text-muted-foreground",
+    go: "bg-sky-500/15 text-sky-500",
+    pro: "bg-primary/15 text-primary",
+    exclusive: "bg-amber-500/15 text-amber-500",
+  };
+  return (
+    <span
+      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[tier]}`}
+    >
+      {TIER_NAMES[tier]}
+    </span>
+  );
+}
 
 function UsersTab() {
   const qc = useQueryClient();
   const listUsers = useServerFn(adminListUsers);
   const updateUser = useServerFn(adminUpdateUser);
   const resetPassword = useServerFn(adminResetPassword);
-  
+  const setBan = useServerFn(adminSetBan);
   const deleteUser = useServerFn(adminDeleteUser);
 
   const usersQuery = useQuery({
@@ -190,32 +211,43 @@ function UsersTab() {
   const [pwUser, setPwUser] = useState<AdminUser | null>(null);
   const [viewing, setViewing] = useState<AdminUser | null>(null);
 
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "users"] });
+  const fail = (e: unknown) =>
+    toast.error(e instanceof Error ? e.message : "Failed");
+
   const setTier = useMutation({
-    mutationFn: (vars: { userId: string; tier: "free" | "pro" }) =>
+    mutationFn: (vars: { userId: string; tier: TierId }) =>
       updateUser({
         data: {
           userId: vars.userId,
           tier: vars.tier,
-          resetUsage: vars.tier === "pro",
+          resetUsage: vars.tier !== "free",
         },
       }),
-    onSuccess: () => {
-      toast.success("Tier updated");
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    onSuccess: (_d, vars) => {
+      toast.success(`Plan changed to ${TIER_NAMES[vars.tier]}`);
+      invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: fail,
   });
 
-
-
+  const banMut = useMutation({
+    mutationFn: (vars: { userId: string; banned: boolean }) =>
+      setBan({ data: vars }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.banned ? "User banned" : "User unbanned");
+      invalidate();
+    },
+    onError: fail,
+  });
 
   const deleteUserMut = useMutation({
     mutationFn: (userId: string) => deleteUser({ data: { userId } }),
     onSuccess: () => {
       toast.success("Account deleted.");
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: fail,
   });
 
   const users = (usersQuery.data ?? []) as AdminUser[];
@@ -230,7 +262,11 @@ function UsersTab() {
     );
   });
 
-  const proCount = users.filter((u) => u.tier === "pro").length;
+  const counts = TIER_IDS.map((t) => ({
+    tier: t,
+    n: users.filter((u) => u.tier === t).length,
+  }));
+
   const initials = (u: AdminUser) => {
     const src = (u.name || u.email || "?").trim();
     const parts = src.split(/\s+/);
@@ -241,23 +277,38 @@ function UsersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Users</h2>
-          <p className="text-sm text-muted-foreground">
-            {users.length} total · {proCount} Pro · {users.length - proCount} Free
-          </p>
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Users</h2>
+            <p className="text-sm text-muted-foreground">
+              {users.length} accounts
+            </p>
+          </div>
+          <div className="sm:w-72">
+            <Input
+              placeholder="Search by name or email…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="sm:w-72">
-          <Input
-            placeholder="Search by name or email…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {counts.map((c) => (
+            <div
+              key={c.tier}
+              className="rounded-xl border border-border bg-muted/30 px-4 py-3"
+            >
+              <div className="text-xl font-semibold">{c.n}</div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                {TIER_NAMES[c.tier]}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <ul className="divide-y divide-border">
           {usersQuery.isLoading && (
             <li className="px-5 py-8 text-center text-sm text-muted-foreground">
@@ -275,23 +326,27 @@ function UsersTab() {
               className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-muted/30"
             >
               <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-primary-foreground"
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-primary-foreground ${
+                  u.banned ? "opacity-40 grayscale" : ""
+                }`}
                 style={{ background: "var(--gradient-brand)" }}
               >
                 {initials(u)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="truncate font-medium">{u.name || "Unnamed"}</span>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
-                      u.tier === "pro"
-                        ? "bg-primary/15 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {u.tier}
-                  </span>
+                  <TierBadge tier={u.tier} />
+                  {u.banned && (
+                    <span className="shrink-0 rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                      Banned
+                    </span>
+                  )}
+                  {u.emailConfirmed === false && (
+                    <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-500">
+                      Unconfirmed
+                    </span>
+                  )}
                 </div>
                 <div className="truncate text-xs text-muted-foreground">
                   {u.email ?? "—"}
@@ -308,31 +363,53 @@ function UsersTab() {
                     <span className="sr-only">Actions</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-52">
                   <DropdownMenuItem onSelect={() => setViewing(u)}>
                     <Eye className="mr-2 h-4 w-4" /> View profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setEditing(u)}>
-                    <Pencil className="mr-2 h-4 w-4" /> Edit details
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setPwUser(u)}>
-                    <KeyRound className="mr-2 h-4 w-4" /> Reset password
-                  </DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Pencil className="mr-2 h-4 w-4" /> Edit details
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onSelect={() => setEditing(u)}>
+                        <Pencil className="mr-2 h-4 w-4" /> Name & email
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setPwUser(u)}>
+                        <KeyRound className="mr-2 h-4 w-4" /> Change password
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Crown className="mr-2 h-4 w-4" /> Change plan
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {TIER_IDS.map((t) => (
+                        <DropdownMenuItem
+                          key={t}
+                          disabled={u.tier === t || setTier.isPending}
+                          onSelect={() => setTier.mutate({ userId: u.id, tier: t })}
+                        >
+                          {u.tier === t ? (
+                            <Check className="mr-2 h-4 w-4 text-primary" />
+                          ) : (
+                            <span className="mr-2 h-4 w-4" />
+                          )}
+                          {TIER_NAMES[t]}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                   <DropdownMenuSeparator />
-                  {u.tier === "free" ? (
-                    <DropdownMenuItem
-                      onSelect={() => setTier.mutate({ userId: u.id, tier: "pro" })}
-                    >
-                      <Crown className="mr-2 h-4 w-4" /> Make Pro
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      onSelect={() => setTier.mutate({ userId: u.id, tier: "free" })}
-                    >
-                      <UserMinus className="mr-2 h-4 w-4" /> Downgrade to Free
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      banMut.mutate({ userId: u.id, banned: !u.banned })
+                    }
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    {u.banned ? "Unban user" : "Ban user"}
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
                     onSelect={() => {
@@ -361,10 +438,10 @@ function UsersTab() {
           try {
             await updateUser({ data: patch });
             toast.success("User updated");
-            qc.invalidateQueries({ queryKey: ["admin", "users"] });
+            invalidate();
             setEditing(null);
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed");
+            fail(e);
           }
         }}
       />
@@ -380,7 +457,7 @@ function UsersTab() {
             toast.success("Password reset");
             setPwUser(null);
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed");
+            fail(e);
           }
         }}
       />
@@ -454,12 +531,13 @@ function EditUserDialog({
     userId: string;
     name?: string;
     email?: string;
-    tier?: "free" | "pro";
+    tier?: TierId;
   }) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [tier, setTier] = useState<"free" | "pro">("free");
+  const [tier, setTier] = useState<TierId>("free");
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -495,24 +573,19 @@ function EditUserDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Tier</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={tier === "free" ? "default" : "outline"}
-                onClick={() => setTier("free")}
-              >
-                Free
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={tier === "pro" ? "default" : "outline"}
-                onClick={() => setTier("pro")}
-              >
-                Pro
-              </Button>
+            <Label>Plan</Label>
+            <div className="flex flex-wrap gap-2">
+              {TIER_IDS.map((t) => (
+                <Button
+                  key={t}
+                  type="button"
+                  size="sm"
+                  variant={tier === t ? "default" : "outline"}
+                  onClick={() => setTier(t)}
+                >
+                  {TIER_NAMES[t]}
+                </Button>
+              ))}
             </div>
           </div>
         </div>
@@ -529,8 +602,9 @@ function EditUserDialog({
                 userId: string;
                 name?: string;
                 email?: string;
-                tier?: "free" | "pro";
+                tier?: TierId;
               } = { userId: user.id };
+
               if (name.trim() && name !== (user.name ?? ""))
                 patch.name = name.trim();
               if (email.trim() && email !== (user.email ?? ""))
@@ -779,111 +853,6 @@ function ChatsTab() {
   );
 }
 
-function EmailExemptTab() {
-  const qc = useQueryClient();
-  const fetchList = useServerFn(adminListEmailExempt);
-  const addFn = useServerFn(adminAddEmailExempt);
-  const removeFn = useServerFn(adminRemoveEmailExempt);
-  const [email, setEmail] = useState("");
-  const [note, setNote] = useState("");
-
-  const listQuery = useQuery({
-    queryKey: ["admin", "email-exempt"],
-    queryFn: () => fetchList(),
-  });
-
-  const add = useMutation({
-    mutationFn: () => addFn({ data: { email: email.trim(), note: note.trim() } }),
-    onSuccess: () => {
-      toast.success("Address will never be rate limited");
-      setEmail("");
-      setNote("");
-      qc.invalidateQueries({ queryKey: ["admin", "email-exempt"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: string) => removeFn({ data: { id } }),
-    onSuccess: () => {
-      toast.success("Removed");
-      qc.invalidateQueries({ queryKey: ["admin", "email-exempt"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
-
-  const list = listQuery.data ?? [];
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <div>
-        <h2 className="text-lg font-semibold">Rate-limit exemptions</h2>
-        <p className="text-sm text-muted-foreground">
-          Account emails (signup confirmation, password reset) are limited to 3
-          per 5 minutes per network. Addresses listed here are never blocked.
-        </p>
-      </div>
-
-      <form
-        className="mt-4 flex flex-col gap-2 sm:flex-row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!email.trim()) return;
-          add.mutate();
-        }}
-      >
-        <Input
-          type="email"
-          placeholder="name@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          maxLength={255}
-        />
-        <Input
-          placeholder="Note (optional)"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={200}
-        />
-        <Button type="submit" disabled={add.isPending || !email.trim()}>
-          <Plus className="mr-1 h-4 w-4" /> Add
-        </Button>
-      </form>
-
-      <ul className="mt-5 divide-y divide-border rounded-md border border-border">
-        {listQuery.isLoading && (
-          <li className="px-3 py-3 text-sm text-muted-foreground">Loading…</li>
-        )}
-        {!listQuery.isLoading && list.length === 0 && (
-          <li className="px-3 py-3 text-sm text-muted-foreground">
-            No exempt addresses yet.
-          </li>
-        )}
-        {list.map((row) => (
-          <li
-            key={row.id}
-            className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-          >
-            <div className="min-w-0">
-              <p className="truncate font-medium">{row.email}</p>
-              {row.note ? (
-                <p className="truncate text-xs text-muted-foreground">{row.note}</p>
-              ) : null}
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => remove.mutate(row.id)}
-              disabled={remove.isPending}
-            >
-              <Trash2 className="mr-1 h-3.5 w-3.5" /> Remove
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 function BetaTab() {
   const qc = useQueryClient();
