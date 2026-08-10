@@ -20,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EyeOff, Eye, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { UpgradeGateProvider } from "@/lib/tier-gate";
+import { UpgradeGateProvider, useUpgradeGate } from "@/lib/tier-gate";
 import { AccountSetupGate } from "@/components/account-setup-gate";
 
 import { AccountMenu } from "@/components/account-menu";
