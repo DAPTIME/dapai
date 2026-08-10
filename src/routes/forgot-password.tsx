@@ -9,6 +9,7 @@ import { isValidEmail } from "@/lib/utils";
 import {
   getRecoveryQuestion,
   resetPasswordWithAnswer,
+  sendPasswordResetLink,
 } from "@/lib/recovery.functions";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -25,6 +26,7 @@ function ForgotPasswordPage() {
   const navigate = useNavigate();
   const getQ = useServerFn(getRecoveryQuestion);
   const reset = useServerFn(resetPasswordWithAnswer);
+  const sendLink = useServerFn(sendPasswordResetLink);
 
   const [step, setStep] = useState<"email" | "answer">("email");
   const [email, setEmail] = useState("");
@@ -55,6 +57,27 @@ function ForgotPasswordPage() {
     }, 1000);
     return () => window.clearInterval(t);
   }, [step, secondsLeft]);
+
+  // Emails a secure single-use link (10 min) that sets password + recovery question.
+  const onEmailLink = async () => {
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await sendLink({
+        data: { email, origin: window.location.origin },
+      });
+      toast.success(
+        "Check your inbox — we sent a secure reset link. It expires in 10 minutes."
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send the email.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -126,7 +149,7 @@ function ForgotPasswordPage() {
     <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6 py-12">
       <h1 className="text-2xl font-semibold tracking-tight">Forgot your password?</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Enter your email and we'll ask the recovery question you set up.
+        Enter your email and we'll ask your recovery question — or email you a secure reset link instead.
       </p>
 
       {step === "email" ? (
@@ -145,6 +168,20 @@ function ForgotPasswordPage() {
           <Button type="submit" disabled={busy} className="w-full" style={{ background: "var(--gradient-brand)" }}>
             {busy ? "Looking up…" : "Continue"}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            className="w-full"
+            onClick={() => void onEmailLink()}
+          >
+            Email me a secure reset link instead
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            The emailed link lets you set a new password and a new recovery
+            question without answering your old one. It works once and expires in
+            10 minutes.
+          </p>
         </form>
       ) : (
         <form onSubmit={onResetSubmit} className="mt-8 space-y-4">
@@ -213,7 +250,7 @@ function ForgotPasswordPage() {
             <span className="font-medium text-foreground">
               {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
             </span>{" "}
-            — reset sessions expire after 5 minutes.
+            — reset sessions expire after 10 minutes.
           </p>
 
           <Button type="submit" disabled={busy} className="w-full" style={{ background: "var(--gradient-brand)" }}>
