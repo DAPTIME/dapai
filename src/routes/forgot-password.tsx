@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { isValidEmail } from "@/lib/utils";
 import {
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
   getRecoveryQuestion,
   resetPasswordWithAnswer,
   sendPasswordResetLink,
@@ -110,8 +111,9 @@ function ForgotPasswordPage() {
       setStep("email");
       return;
     }
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    const pwProblem = checkPassword(newPassword);
+    if (pwProblem) {
+      toast.error(pwProblem);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -206,7 +208,7 @@ function ForgotPasswordPage() {
               id="newPassword"
               type="password"
               required
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
@@ -217,7 +219,7 @@ function ForgotPasswordPage() {
               id="confirmPassword"
               type="password"
               required
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />

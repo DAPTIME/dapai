@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import {
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
   completeAccountSetup,
   getAccountSetupStatus,
 } from "@/lib/recovery.functions";
@@ -55,8 +56,9 @@ export function AccountSetupGate() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters.");
+    const pwProblem = checkPassword(password);
+    if (pwProblem) {
+      toast.error(pwProblem);
       return;
     }
     if (password !== confirm) {
@@ -86,7 +88,7 @@ export function AccountSetupGate() {
               id="setup-pw"
               type="password"
               autoComplete="new-password"
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -98,7 +100,7 @@ export function AccountSetupGate() {
               id="setup-pw2"
               type="password"
               autoComplete="new-password"
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
               required
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}

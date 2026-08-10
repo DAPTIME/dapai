@@ -19,7 +19,7 @@ export const registerAccount = createServerFn({ method: "POST" })
           .max(255),
         password: z
           .string()
-          .min(6, { message: "Password must be at least 6 characters." })
+          .min(8, { message: "Password must be at least 8 characters." })
           .max(200),
         name: z.string().trim().max(80).optional(),
         question: z.string().trim().min(3).max(200),

@@ -594,7 +594,7 @@ function ResetPasswordDialog({
             Cancel
           </Button>
           <Button
-            disabled={saving || pw.length < 6}
+            disabled={saving || pw.length < 8}
             onClick={async () => {
               setSaving(true);
               await onSave(pw);
