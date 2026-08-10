@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { TIERS, tierConfig, type Tier } from "@/lib/tiers";
 import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, UserMinus } from "lucide-react";
 import {
   DropdownMenu,
@@ -153,7 +154,7 @@ type AdminUser = {
   id: string;
   email: string | null;
   name: string | null;
-  tier: "free" | "pro";
+  tier: Tier;
   pro_messages_used: number;
   created_at: string;
 };
@@ -176,12 +177,12 @@ function UsersTab() {
   const [viewing, setViewing] = useState<AdminUser | null>(null);
 
   const setTier = useMutation({
-    mutationFn: (vars: { userId: string; tier: "free" | "pro" }) =>
+    mutationFn: (vars: { userId: string; tier: Tier }) =>
       updateUser({
         data: {
           userId: vars.userId,
           tier: vars.tier,
-          resetUsage: vars.tier === "pro",
+          resetUsage: vars.tier !== "free",
         },
       }),
     onSuccess: () => {
@@ -215,7 +216,7 @@ function UsersTab() {
     );
   });
 
-  const proCount = users.filter((u) => u.tier === "pro").length;
+  const paidCount = users.filter((u) => u.tier !== "free").length;
   const initials = (u: AdminUser) => {
     const src = (u.name || u.email || "?").trim();
     const parts = src.split(/\s+/);
@@ -230,7 +231,7 @@ function UsersTab() {
         <div>
           <h2 className="text-lg font-semibold">Users</h2>
           <p className="text-sm text-muted-foreground">
-            {users.length} total · {proCount} Pro · {users.length - proCount} Free
+            {users.length} total · {paidCount} paid · {users.length - paidCount} Free
           </p>
         </div>
         <div className="sm:w-72">
@@ -270,7 +271,7 @@ function UsersTab() {
                   <span className="truncate font-medium">{u.name || "Unnamed"}</span>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
-                      u.tier === "pro"
+                      u.tier !== "free"
                         ? "bg-primary/15 text-primary"
                         : "bg-muted text-muted-foreground"
                     }`}
@@ -304,19 +305,19 @@ function UsersTab() {
                     <KeyRound className="mr-2 h-4 w-4" /> Reset password
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {u.tier === "free" ? (
+                  {TIERS.filter((t) => t !== u.tier).map((t) => (
                     <DropdownMenuItem
-                      onSelect={() => setTier.mutate({ userId: u.id, tier: "pro" })}
+                      key={t}
+                      onSelect={() => setTier.mutate({ userId: u.id, tier: t })}
                     >
-                      <Crown className="mr-2 h-4 w-4" /> Make Pro
+                      {t === "free" ? (
+                        <UserMinus className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Crown className="mr-2 h-4 w-4" />
+                      )}
+                      Set tier: <span className="ml-1 capitalize">{t}</span>
                     </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      onSelect={() => setTier.mutate({ userId: u.id, tier: "free" })}
-                    >
-                      <UserMinus className="mr-2 h-4 w-4" /> Downgrade to Free
-                    </DropdownMenuItem>
-                  )}
+                  ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
@@ -439,12 +440,12 @@ function EditUserDialog({
     userId: string;
     name?: string;
     email?: string;
-    tier?: "free" | "pro";
+    tier?: Tier;
   }) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [tier, setTier] = useState<"free" | "pro">("free");
+  const [tier, setTier] = useState<Tier>("free");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -481,24 +482,25 @@ function EditUserDialog({
           </div>
           <div className="space-y-2">
             <Label>Tier</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={tier === "free" ? "default" : "outline"}
-                onClick={() => setTier("free")}
-              >
-                Free
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={tier === "pro" ? "default" : "outline"}
-                onClick={() => setTier("pro")}
-              >
-                Pro
-              </Button>
+            <div className="flex flex-wrap gap-2">
+              {TIERS.map((t) => (
+                <Button
+                  key={t}
+                  type="button"
+                  size="sm"
+                  variant={tier === t ? "default" : "outline"}
+                  onClick={() => setTier(t)}
+                  title={tierConfig(t).productName}
+                  className="capitalize"
+                >
+                  {t}
+                </Button>
+              ))}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {tierConfig(tier).productName}
+              {tierConfig(tier).tagline ? ` — ${tierConfig(tier).tagline}` : ""}
+            </p>
           </div>
         </div>
         <DialogFooter>
@@ -514,7 +516,7 @@ function EditUserDialog({
                 userId: string;
                 name?: string;
                 email?: string;
-                tier?: "free" | "pro";
+                tier?: Tier;
               } = { userId: user.id };
               if (name.trim() && name !== (user.name ?? ""))
                 patch.name = name.trim();

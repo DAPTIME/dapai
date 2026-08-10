@@ -73,7 +73,7 @@ export const adminSetTier = createServerFn({ method: "POST" })
     z
       .object({
         userId: z.string().uuid(),
-        tier: z.enum(["free", "pro"]),
+        tier: z.enum(["free", "go", "pro", "exclusive"]),
         resetUsage: z.boolean().optional(),
       })
       .parse(i)
@@ -81,7 +81,7 @@ export const adminSetTier = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
     const supabaseAdmin = getAdminClient();
-    const patch: { tier: "free" | "pro"; pro_messages_used?: number } = {
+    const patch: { tier: "free" | "go" | "pro" | "exclusive"; pro_messages_used?: number } = {
       tier: data.tier,
     };
     if (data.resetUsage) patch.pro_messages_used = 0;
@@ -112,7 +112,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
         userId: z.string().uuid(),
         name: z.string().trim().min(1).max(120).optional(),
         email: z.string().trim().email().max(255).optional(),
-        tier: z.enum(["free", "pro"]).optional(),
+        tier: z.enum(["free", "go", "pro", "exclusive"]).optional(),
         resetUsage: z.boolean().optional(),
       })
       .parse(i)
@@ -130,7 +130,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
     const patch: {
       name?: string;
       email?: string;
-      tier?: "free" | "pro";
+      tier?: "free" | "go" | "pro" | "exclusive";
       pro_messages_used?: number;
     } = {};
     if (data.name !== undefined) patch.name = data.name;

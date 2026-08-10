@@ -16,6 +16,8 @@ import {
   clearMemories,
 } from "@/lib/memories.functions";
 import { useAuth } from "@/lib/auth";
+import { getProfile } from "@/lib/chats.functions";
+import { tierConfig, type Tier } from "@/lib/tiers";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -90,19 +92,37 @@ function Settings() {
           </div>
         ))}
 
-        {beta ? (
-          <MemorySection />
-        ) : (
-          <div className="rounded-2xl border border-dashed border-border bg-card/50 p-5 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2 font-medium text-foreground">
-              <Brain className="h-4 w-4" /> AI Memory
-            </div>
-            <p className="mt-1">Enable Beta features above to try AI Memory.</p>
-          </div>
-        )}
+        <MemoryGate beta={beta} />
       </div>
     </div>
   );
+}
+
+/**
+ * Memory is a paid-tier feature — the section is hidden entirely on Free.
+ */
+function MemoryGate({ beta }: { beta: boolean }) {
+  const { user } = useAuth();
+  const fetchProfile = useServerFn(getProfile);
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
+  if (!tierConfig(tier).memory) return null;
+  if (!beta) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card/50 p-5 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 font-medium text-foreground">
+          <Brain className="h-4 w-4" /> AI Memory
+        </div>
+        <p className="mt-1">Enable Beta features above to try AI Memory.</p>
+      </div>
+    );
+  }
+  return <MemorySection />;
 }
 
 function MemorySection() {
