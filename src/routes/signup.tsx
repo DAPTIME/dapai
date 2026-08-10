@@ -17,13 +17,13 @@ export const Route = createFileRoute("/signup")({
       {
         name: "description",
         content:
-          "Create a free DAP AI account to save chats and unlock the DAP AI 3.2 model.",
+          "Create a free DAP AI account to save chats and unlock the DAP AI 4 Pro model.",
       },
       { property: "og:title", content: "Create your free DAP AI account" },
       {
         property: "og:description",
         content:
-          "Sign up free to save chats, sync across devices, and unlock the DAP AI 3.2 model.",
+          "Sign up free to save chats, sync across devices, and unlock the DAP AI 4 Pro model.",
       },
       { property: "og:url", content: "https://dapai.lovable.app/signup" },
       { name: "robots", content: "noindex, nofollow" },

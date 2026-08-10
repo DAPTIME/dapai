@@ -41,7 +41,17 @@ export async function sendEmail(opts: {
   if (!res.ok) {
     const body = await res.text();
     console.error(`[email] Resend request failed [${res.status}]: ${body}`);
-    throw new Error(`Email send failed [${res.status}]: ${body}`);
+    // Resend only lets the shared onboarding@resend.dev sender deliver to the
+    // account owner. Until a domain is verified, say so in plain language
+    // instead of leaking the provider payload.
+    if (res.status === 403 && /testing emails|own email address|verify a domain/i.test(body)) {
+      throw new Error(
+        "DAP AI can't email that address yet — a sending domain still needs to be verified. Please contact DAPAI.support@gmail.com."
+      );
+    }
+    throw new Error(
+      `We couldn't send that email right now. Please try again in a minute.`
+    );
   }
   return (await res.json()) as { id?: string };
 }

@@ -33,7 +33,7 @@ export const registerAccount = createServerFn({ method: "POST" })
     const name = data.name?.trim() || email.split("@")[0]!;
 
     const { consumeEmailQuota } = await import("./rate-limit.server");
-    await consumeEmailQuota("signup");
+    await consumeEmailQuota("signup", email);
 
     const { assertPasswordNotLeaked } = await import("./pwned.server");
     await assertPasswordNotLeaked(data.password);
@@ -107,7 +107,7 @@ export const resendConfirmationEmail = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase();
     const { consumeEmailQuota } = await import("./rate-limit.server");
-    await consumeEmailQuota("resend");
+    await consumeEmailQuota("resend", email);
     const { findUserByEmail, sendConfirmation } = await import("./signup.server");
     const existing = await findUserByEmail(email);
     // Never reveal whether the address exists.

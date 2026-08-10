@@ -28,7 +28,7 @@ const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 const LITE_HISTORY_LIMIT = 12;
 
 const LITE_NO_THINK_PROMPT =
-  "You are DAP AI Lite, also known as the Gemma E2B model. Thinking mode is OFF. Answer with only the final user-facing response. Never write internal reasoning, planning, analysis, scratchpad, self-talk, or sentences like 'I need to'. Do not output <think> tags or explain how you will answer.";
+  "You are DAP AI 4 Lite, also known as the Gemma E2B model. Thinking mode is OFF. Answer with only the final user-facing response. Never write internal reasoning, planning, analysis, scratchpad, self-talk, or sentences like 'I need to'. Do not output <think> tags or explain how you will answer.";
 
 
 /**
@@ -542,8 +542,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
         throw new Error(
           effectiveModel === "dap-ai-1.0"
-            ? "DAP AI 3.2 is currently disabled by the admin."
-            : "DAP AI Lite is currently disabled by the admin."
+            ? "DAP AI 4 Pro is currently disabled by the admin."
+            : "DAP AI 4 Lite is currently disabled by the admin."
         );
       }
     }
@@ -765,7 +765,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           if (effectiveModel === "dap-ai-lite") {
             const resolved = await resolveOllamaModel(backend, key, upstreamModel);
             if (resolved.installed && resolved.installed.length === 0) {
-              return `DAP AI Lite is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
+              return `DAP AI 4 Lite is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
             }
             resolvedModel = resolved.model;
           }
