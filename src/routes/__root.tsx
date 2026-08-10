@@ -247,35 +247,17 @@ function HeaderBar() {
       <div className="flex min-w-0 shrink items-center gap-2">
         <IncognitoToggle />
         {!isPro && (
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                size="sm"
-                className="animate-pulse-glow gap-1 rounded-full px-3 font-semibold text-primary-foreground shadow-md transition-transform hover:scale-105"
-                style={{ background: "var(--gradient-brand)" }}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                Upgrade
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Upgrade to Pro</DialogTitle>
-                <DialogDescription>
-                  Pay Devansh 5 AED irl 💸
-                </DialogDescription>
-              </DialogHeader>
-              <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
-                Hand over 5 AED to Devansh in person, and your account will be upgraded to Pro.
-              </div>
-              <DialogFooter>
-                <Button variant="secondary" size="sm" onClick={(e) => (e.currentTarget.closest('[role="dialog"]') as HTMLElement)?.querySelector<HTMLButtonElement>('[aria-label="Close"]')?.click()}>
-                  Got it
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            size="sm"
+            className="animate-pulse-glow gap-1 rounded-full px-3 font-semibold text-primary-foreground shadow-md transition-transform hover:scale-105"
+            style={{ background: "var(--gradient-brand)" }}
+            onClick={() => openUpgrade()}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Upgrade
+          </Button>
         )}
+
         <AccountMenu />
       </div>
     </header>
