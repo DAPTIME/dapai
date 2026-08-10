@@ -20,7 +20,6 @@ export const Route = createFileRoute("/games")({
       { name: "twitter:title", content: "DAP Arcade — Free browser games by DAP AI" },
       { name: "twitter:description", content: GAMES_DESCRIPTION },
     ],
-    links: [{ rel: "canonical", href: "https://dapai.lovable.app/games" }],
     scripts: [
       {
         type: "application/ld+json",
