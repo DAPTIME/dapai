@@ -54,7 +54,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "The next step in ultra small AI" },
       { name: "twitter:description", content: "The next step in ultra small AI" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/favicon.png" },
+    ],
     scripts: [
       {
         type: "application/ld+json",
@@ -66,7 +70,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
               name: "DAP AI",
               alternateName: ["DAP", "DAP AI Chatbot", "dapai"],
               url: "https://dapai.lovable.app",
-              logo: "https://dapai.lovable.app/favicon.ico",
+              logo: "https://dapai.lovable.app/favicon.png",
             },
             {
               "@type": "WebSite",
