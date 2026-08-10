@@ -8,6 +8,7 @@ import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
 import { DapIntro } from "@/components/dap-intro";
 
 import { createChat, getProfile } from "@/lib/chats.functions";
+import { CHAT_MODELS, isModelAllowedForTier } from "@/lib/models";
 import type { Tier } from "@/lib/tiers";
 import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 
@@ -113,8 +114,7 @@ function Home() {
     refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
-  const proEnabled = flagsQuery.data?.pro_model !== false;
-  const liteEnabled = flagsQuery.data?.lite_model !== false;
+  const flags = flagsQuery.data;
 
   const fetchProfile = useServerFn(getProfile);
   const profileQuery = useQuery({
@@ -125,10 +125,10 @@ function Home() {
     refetchOnWindowFocus: false,
   });
   const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
-  // Free users / anon only have access to Lite. Paid tiers can use either.
-  const maintenance = user && tier !== "free"
-    ? !proEnabled && !liteEnabled
-    : !liteEnabled;
+  // Maintenance = every model this visitor could pick is switched off.
+  const maintenance = CHAT_MODELS.filter((m) =>
+    isModelAllowedForTier(m, tier, !!user)
+  ).every((m) => flags?.[m.flag] === false);
   const [showIntro, setShowIntro] = useState(false);
 
   // Just confirmed their email: notify + play the short DAP AI intro.
@@ -264,7 +264,7 @@ function Home() {
               <Link to="/signup" className="font-medium text-foreground underline">
                 Create an account
               </Link>{" "}
-              to save chats and use DAP AI 3.2.
+              to save chats and unlock more DAP AI 4 models.
             </p>
           )}
 

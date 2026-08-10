@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 const FAQS = [
   {
     q: "Is DAP AI connected to a real AI?",
-    a: "Yes — DAP AI routes requests to one of two models (DAP AI 3.2 Pro and DAP AI Lite) and streams responses back into your chat.",
+    a: "Yes — DAP AI routes requests to one of three models (DAP AI 4 Pro, DAP AI 4 Pro Lite and DAP AI 4 Lite) and streams responses back into your chat.",
   },
   {
     q: "How do I start a new chat?",
@@ -15,7 +15,7 @@ const FAQS = [
   },
   {
     q: "What's the difference between the Pro and Lite models?",
-    a: "DAP AI 3.2 (Pro) is the stronger model with better reasoning. DAP AI Lite is faster and unlimited. Free accounts get 5 Pro messages, then switch to Lite automatically.",
+    a: "DAP AI 4 Pro is the strongest model with the best reasoning. DAP AI 4 Pro Lite gives Pro features (web search, memory) at Lite speed. DAP AI 4 Lite is the fastest and open to everyone.",
   },
   {
     q: "What are DAPs?",
@@ -31,7 +31,7 @@ const FAQS = [
   },
   {
     q: "How do I switch models mid-chat?",
-    a: "You don't need to. If you have Pro messages remaining, DAP AI 3.2 is used automatically. Once those run out, Lite kicks in. You can upgrade to Pro anytime for more Pro messages.",
+    a: "You don't need to. DAP AI picks the best model your plan allows, and you can switch anytime from the model selector in the composer.",
   },
   {
     q: "Does DAP AI remember my chats?",

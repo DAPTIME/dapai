@@ -248,7 +248,14 @@ async function webSearchContext(query: string): Promise<string> {
   }
 }
 
-function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
+export type ChatModel = "dap-ai-1.0" | "dap-ai-pro-lite" | "dap-ai-lite";
+
+/**
+ * Model → backend map. "dap-ai-pro-lite" is the middle model: it shares the
+ * fast LITE tunnel/GPU, but the app layer treats it like Pro (web search,
+ * memory, images, no Lite output trimming).
+ */
+function backendFor(model: ChatModel): {
   url?: string;
   key?: string;
   upstreamModel: string;
@@ -258,6 +265,22 @@ function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
       url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
       key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
       upstreamModel: process.env.AI_BACKEND_MODEL_PRO ?? model,
+    };
+  }
+  if (model === "dap-ai-pro-lite") {
+    return {
+      url:
+        process.env.AI_BACKEND_URL_PRO_LITE ??
+        process.env.AI_BACKEND_URL_LITE ??
+        process.env.AI_BACKEND_URL,
+      key:
+        process.env.AI_BACKEND_KEY_PRO_LITE ??
+        process.env.AI_BACKEND_KEY_LITE ??
+        process.env.AI_BACKEND_KEY,
+      upstreamModel:
+        process.env.AI_BACKEND_MODEL_PRO_LITE ??
+        process.env.AI_BACKEND_MODEL_LITE ??
+        model,
     };
   }
   return {
@@ -477,7 +500,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .object({
         chatId: z.string().uuid(),
         text: z.string().min(1).max(8000),
-        model: z.enum(["dap-ai-1.0", "dap-ai-lite"]),
+        model: z.enum(["dap-ai-1.0", "dap-ai-pro-lite", "dap-ai-lite"]),
         images: z
           .array(z.string().startsWith("data:image/").max(8_000_000))
           .max(4)
@@ -533,11 +556,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       imageCount: pendingImageCount,
     });
 
-    let effectiveModel = data.model;
+    let effectiveModel: ChatModel = data.model;
     let forcedToLite = false;
-    if (data.model === "dap-ai-1.0" && tier === "free") {
+    // Free stays on Lite; Go tops out at Pro Lite.
+    if (tier === "free" && data.model !== "dap-ai-lite") {
       effectiveModel = "dap-ai-lite";
       forcedToLite = true;
+    } else if (tier === "go" && data.model === "dap-ai-1.0") {
+      effectiveModel = "dap-ai-pro-lite";
     }
 
     // Enforce per-model feature flags set in the admin console.
@@ -546,7 +572,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         "@/integrations/supabase/client.server"
       );
       const flagId =
-        effectiveModel === "dap-ai-1.0" ? "feature_pro_model" : "feature_lite_model";
+        effectiveModel === "dap-ai-1.0"
+          ? "feature_pro_model"
+          : effectiveModel === "dap-ai-pro-lite"
+            ? "feature_pro_lite_model"
+            : "feature_lite_model";
       const { data: flag } = await supabaseAdmin
         .from("ai_settings")
         .select("system_prompt")
@@ -555,8 +585,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
         throw new Error(
           effectiveModel === "dap-ai-1.0"
-            ? "DAP AI 3.2 is currently disabled by the admin."
-            : "DAP AI Lite is currently disabled by the admin."
+            ? "DAP AI 4 Pro is currently disabled by the admin."
+            : effectiveModel === "dap-ai-pro-lite"
+              ? "DAP AI 4 Pro Lite is currently disabled by the admin."
+              : "DAP AI 4 Lite is currently disabled by the admin."
         );
       }
     }
@@ -749,7 +781,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       replyText = `No AI backend configured for ${effectiveModel}. Set ${
         effectiveModel === "dap-ai-1.0"
           ? "AI_BACKEND_URL_PRO"
-          : "AI_BACKEND_URL_LITE"
+          : effectiveModel === "dap-ai-pro-lite"
+            ? "AI_BACKEND_URL_PRO_LITE (or AI_BACKEND_URL_LITE)"
+            : "AI_BACKEND_URL_LITE"
       } to that model's tunnel URL (e.g. https://abcd.ngrok-free.app/v1/chat/completions).`;
     } else {
       // Per-model queue: only one in-flight call per model at a time.
@@ -781,10 +815,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         const timer = setTimeout(() => ctrl.abort(), timeoutMs);
         try {
           let resolvedModel = upstreamModel;
-          if (effectiveModel === "dap-ai-lite") {
+          if (effectiveModel !== "dap-ai-1.0") {
             const resolved = await resolveOllamaModel(backend, key, upstreamModel);
             if (resolved.installed && resolved.installed.length === 0) {
-              return `DAP AI Lite is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
+              return `That model is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
             }
             resolvedModel = resolved.model;
           }
@@ -818,7 +852,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             const snippet = raw.replace(/\s+/g, " ").trim().slice(0, 120);
             const tunnelHint = /ngrok|endpoint (is )?offline|tunnel/i.test(raw)
               ? " The ngrok tunnel URL looks offline or expired — restart `ngrok http 1234` and update AI_BACKEND_URL_" +
-                (effectiveModel === "dap-ai-lite" ? "LITE" : "PRO") +
+                (effectiveModel === "dap-ai-1.0" ? "PRO" : "LITE") +
                 " to the new https URL."
               : "";
             return `AI backend is offline (HTTP ${res.status}). ${snippet}${tunnelHint}`;
@@ -841,7 +875,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         } catch (e) {
           const err = e as Error;
           if (err.name === "AbortError") {
-            return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${effectiveModel === "dap-ai-lite" ? "LITE" : "PRO"} points to the current tunnel), or the model is too slow for this prompt.`;
+            return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${effectiveModel === "dap-ai-1.0" ? "PRO" : "LITE"} points to the current tunnel), or the model is too slow for this prompt.`;
           }
           return `Couldn't reach AI backend: ${err.message}`;
         } finally {

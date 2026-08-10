@@ -1,7 +1,7 @@
 /**
  * Social sign-in buttons (Supabase Auth OAuth providers).
  * Providers must be enabled in Supabase → Authentication → Providers with the
- * client ID/secret from Google Cloud, GitHub Developer Settings and Apple.
+ * client ID/secret from Google Cloud and GitHub Developer Settings.
  */
 import { useState, type ReactElement } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,16 +26,9 @@ const GithubIcon = (
   </svg>
 );
 
-const AppleIcon = (
-  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true">
-    <path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.5-.1-2.8.9-3.5.9-.7 0-1.8-.9-3-.8-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 3 2.3 1.2 0 1.6-.8 3.1-.8s1.8.8 3 .8c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.8-1.1-2.8-4.2ZM14.3 5.3c.6-.8 1-1.9.9-3-1 0-2.2.7-2.9 1.5-.6.7-1.1 1.8-1 2.9 1.1.1 2.3-.6 3-1.4Z" />
-  </svg>
-);
-
 const PROVIDERS: Social[] = [
   { id: "google", label: "Sign in with Google", icon: GoogleIcon },
   { id: "github", label: "Sign in with GitHub", icon: GithubIcon },
-  { id: "apple", label: "Sign in with Apple", icon: AppleIcon },
 ];
 
 export function SocialAuthButtons() {
