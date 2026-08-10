@@ -248,7 +248,14 @@ async function webSearchContext(query: string): Promise<string> {
   }
 }
 
-function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
+export type ChatModel = "dap-ai-1.0" | "dap-ai-pro-lite" | "dap-ai-lite";
+
+/**
+ * Model → backend map. "dap-ai-pro-lite" is the middle model: it shares the
+ * fast LITE tunnel/GPU, but the app layer treats it like Pro (web search,
+ * memory, images, no Lite output trimming).
+ */
+function backendFor(model: ChatModel): {
   url?: string;
   key?: string;
   upstreamModel: string;
@@ -258,6 +265,22 @@ function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
       url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
       key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
       upstreamModel: process.env.AI_BACKEND_MODEL_PRO ?? model,
+    };
+  }
+  if (model === "dap-ai-pro-lite") {
+    return {
+      url:
+        process.env.AI_BACKEND_URL_PRO_LITE ??
+        process.env.AI_BACKEND_URL_LITE ??
+        process.env.AI_BACKEND_URL,
+      key:
+        process.env.AI_BACKEND_KEY_PRO_LITE ??
+        process.env.AI_BACKEND_KEY_LITE ??
+        process.env.AI_BACKEND_KEY,
+      upstreamModel:
+        process.env.AI_BACKEND_MODEL_PRO_LITE ??
+        process.env.AI_BACKEND_MODEL_LITE ??
+        model,
     };
   }
   return {
@@ -477,7 +500,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .object({
         chatId: z.string().uuid(),
         text: z.string().min(1).max(8000),
-        model: z.enum(["dap-ai-1.0", "dap-ai-lite"]),
+        model: z.enum(["dap-ai-1.0", "dap-ai-pro-lite", "dap-ai-lite"]),
         images: z
           .array(z.string().startsWith("data:image/").max(8_000_000))
           .max(4)
@@ -533,11 +556,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       imageCount: pendingImageCount,
     });
 
-    let effectiveModel = data.model;
+    let effectiveModel: ChatModel = data.model;
     let forcedToLite = false;
-    if (data.model === "dap-ai-1.0" && tier === "free") {
+    // Free stays on Lite; Go tops out at Pro Lite.
+    if (tier === "free" && data.model !== "dap-ai-lite") {
       effectiveModel = "dap-ai-lite";
       forcedToLite = true;
+    } else if (tier === "go" && data.model === "dap-ai-1.0") {
+      effectiveModel = "dap-ai-pro-lite";
     }
 
     // Enforce per-model feature flags set in the admin console.
@@ -546,7 +572,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         "@/integrations/supabase/client.server"
       );
       const flagId =
-        effectiveModel === "dap-ai-1.0" ? "feature_pro_model" : "feature_lite_model";
+        effectiveModel === "dap-ai-1.0"
+          ? "feature_pro_model"
+          : effectiveModel === "dap-ai-pro-lite"
+            ? "feature_pro_lite_model"
+            : "feature_lite_model";
       const { data: flag } = await supabaseAdmin
         .from("ai_settings")
         .select("system_prompt")
@@ -555,8 +585,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
         throw new Error(
           effectiveModel === "dap-ai-1.0"
-            ? "DAP AI 3.2 is currently disabled by the admin."
-            : "DAP AI Lite is currently disabled by the admin."
+            ? "DAP AI 4 Pro is currently disabled by the admin."
+            : effectiveModel === "dap-ai-pro-lite"
+              ? "DAP AI 4 Pro Lite is currently disabled by the admin."
+              : "DAP AI 4 Lite is currently disabled by the admin."
         );
       }
     }
