@@ -271,7 +271,7 @@ function UsersTab() {
                   <span className="truncate font-medium">{u.name || "Unnamed"}</span>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
-                      u.tier === "pro"
+                      u.tier !== "free"
                         ? "bg-primary/15 text-primary"
                         : "bg-muted text-muted-foreground"
                     }`}
