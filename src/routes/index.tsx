@@ -233,7 +233,7 @@ function Home() {
               color: "transparent",
             }}
           >
-            DAP AI — Free AI Chatbot
+            DAP AI — Free AI Chatbot & Workspace
           </h1>
 
 
