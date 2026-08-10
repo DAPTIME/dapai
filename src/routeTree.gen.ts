@@ -15,8 +15,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SecurityRouteImport } from './routes/security'
-import { Route as ReinstateRouteImport } from './routes/reinstate'
-import { Route as PlansRouteImport } from './routes/plans'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as HelpRouteImport } from './routes/help'
@@ -80,14 +79,9 @@ const SecurityRoute = SecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReinstateRoute = ReinstateRouteImport.update({
-  id: '/reinstate',
-  path: '/reinstate',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlansRoute = PlansRouteImport.update({
-  id: '/plans',
-  path: '/plans',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -266,8 +260,7 @@ export interface FileRoutesByFullPath {
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
-  '/plans': typeof PlansRoute
-  '/reinstate': typeof ReinstateRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
@@ -307,8 +300,7 @@ export interface FileRoutesByTo {
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
-  '/plans': typeof PlansRoute
-  '/reinstate': typeof ReinstateRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
@@ -350,8 +342,7 @@ export interface FileRoutesById {
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
-  '/plans': typeof PlansRoute
-  '/reinstate': typeof ReinstateRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
@@ -394,8 +385,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/login'
     | '/mcp'
-    | '/plans'
-    | '/reinstate'
+    | '/reset-password'
     | '/security'
     | '/settings'
     | '/signup'
@@ -435,8 +425,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/login'
     | '/mcp'
-    | '/plans'
-    | '/reinstate'
+    | '/reset-password'
     | '/security'
     | '/settings'
     | '/signup'
@@ -477,8 +466,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/login'
     | '/mcp'
-    | '/plans'
-    | '/reinstate'
+    | '/reset-password'
     | '/security'
     | '/settings'
     | '/signup'
@@ -520,8 +508,7 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
-  PlansRoute: typeof PlansRoute
-  ReinstateRoute: typeof ReinstateRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SecurityRoute: typeof SecurityRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
@@ -582,18 +569,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SecurityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/reinstate': {
-      id: '/reinstate'
-      path: '/reinstate'
-      fullPath: '/reinstate'
-      preLoaderRoute: typeof ReinstateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/plans': {
-      id: '/plans'
-      path: '/plans'
-      fullPath: '/plans'
-      preLoaderRoute: typeof PlansRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -870,8 +850,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
-  PlansRoute: PlansRoute,
-  ReinstateRoute: ReinstateRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SecurityRoute: SecurityRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,

@@ -65,7 +65,14 @@ function PolyRacer() {
       const m = MEDAL_META[result.medal];
       toast.success(`${m.emoji} ${m.label} medal — ${formatMs(ms)}`);
     }
-    if (userId) submit({ data: { trackRef: trackRefOf(level.id), timeMs: ms } }).catch(() => {});
+    // Bump the board only once the write has landed. Fired and forgotten
+    // alongside the synchronous bump above, any reload raced the insert
+    // and read the table as it was before the run.
+    if (userId) {
+      submit({ data: { trackRef: trackRefOf(level.id), timeMs: ms } })
+        .then(() => setLbKey((k) => k + 1))
+        .catch(() => {});
+    }
     else toast.info("Sign in to save records", {
       description: "Guest runs stay on this device only.",
       action: { label: "Sign in", onClick: () => { window.location.href = "/login"; } },

@@ -329,24 +329,3 @@
 .animate-game-over-in { animation: game-over-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .animate-game-shake { animation: game-shake 0.35s ease-out both; }
 
-
-/* Respect the OS "reduce motion" setting: keep entrances instant and stop
-   ambient loops instead of animating them at reduced amplitude. */
-@media (prefers-reduced-motion: reduce) {
-  .message-in,
-  .user-bubble,
-  .word-fade,
-  .chat-page-enter,
-  .route-transition-enter,
-  .home-logo-float,
-  .send-ready,
-  .send-pending,
-  .composer-pending {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-    filter: none !important;
-  }
-  .send-pending::before { display: none; }
-  * { scroll-behavior: auto !important; }
-}

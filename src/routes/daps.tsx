@@ -57,8 +57,7 @@ function Daps() {
     enabled: !!user,
   });
   const dapsEnabled = flagsQuery.data?.daps !== false;
-  const isPro =
-    profileQuery.data?.tier === "pro" || profileQuery.data?.tier === "exclusive";
+  const isPro = profileQuery.data?.tier === "pro";
 
   const [showForm, setShowForm] = useState(false);
 

@@ -19,15 +19,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enqueue } from "@/lib/ai-queue";
 import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { resolveOllamaModel } from "@/lib/ollama-models.server";
-import { MSG_SAFETY_BLOCKED, tierConfig } from "@/lib/tiers";
 
-// Chat-memory limits per tier (oldest chats auto-deleted on creation).
-const CHAT_LIMITS = { free: 5, go: 10, pro: 10, exclusive: 25 } as const;
-type TierId = keyof typeof CHAT_LIMITS;
-const asTier = (t: unknown): TierId =>
-  (["free", "go", "pro", "exclusive"] as const).includes(t as TierId)
-    ? (t as TierId)
-    : "free";
+const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 
 // Lite gets a smaller rolling window so its (smaller LM Studio context)
 // never overflows. Pro keeps the full history.
@@ -248,14 +241,7 @@ async function webSearchContext(query: string): Promise<string> {
   }
 }
 
-export type ChatModel = "dap-ai-1.0" | "dap-ai-pro-lite" | "dap-ai-lite";
-
-/**
- * Model → backend map. "dap-ai-pro-lite" is the middle model: it shares the
- * fast LITE tunnel/GPU, but the app layer treats it like Pro (web search,
- * memory, images, no Lite output trimming).
- */
-function backendFor(model: ChatModel): {
+function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
   url?: string;
   key?: string;
   upstreamModel: string;
@@ -265,22 +251,6 @@ function backendFor(model: ChatModel): {
       url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
       key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
       upstreamModel: process.env.AI_BACKEND_MODEL_PRO ?? model,
-    };
-  }
-  if (model === "dap-ai-pro-lite") {
-    return {
-      url:
-        process.env.AI_BACKEND_URL_PRO_LITE ??
-        process.env.AI_BACKEND_URL_LITE ??
-        process.env.AI_BACKEND_URL,
-      key:
-        process.env.AI_BACKEND_KEY_PRO_LITE ??
-        process.env.AI_BACKEND_KEY_LITE ??
-        process.env.AI_BACKEND_KEY,
-      upstreamModel:
-        process.env.AI_BACKEND_MODEL_PRO_LITE ??
-        process.env.AI_BACKEND_MODEL_LITE ??
-        model,
     };
   }
   return {
@@ -338,8 +308,7 @@ export const createChat = createServerFn({ method: "POST" })
         .select("tier")
         .eq("id", userId)
         .single();
-      const gateTier = asTier(gateProfile?.tier);
-      if (gateTier !== "pro" && gateTier !== "exclusive") {
+      if ((gateProfile?.tier as string) !== "pro") {
         throw new Error("Custom AI's are a Pro feature. Upgrade to use them.");
       }
     }
@@ -384,7 +353,7 @@ export const createChat = createServerFn({ method: "POST" })
       .select("tier")
       .eq("id", userId)
       .single();
-    const tier = asTier(profile?.tier);
+    const tier = (profile?.tier as "free" | "pro") ?? "free";
     const limit = CHAT_LIMITS[tier];
 
     // Prune oldest chats so that after we insert the new one we sit at
@@ -476,13 +445,9 @@ export const getProfile = createServerFn({ method: "GET" })
       .eq("id", userId)
       .single();
     if (error) throw new Error(error.message);
-    const tier = asTier(data.tier);
     return {
       ...data,
-      tier,
-      chatLimit: CHAT_LIMITS[tier],
-      // Client-safe capability summary for the current tier.
-      tierConfig: tierConfig(tier),
+      chatLimit: CHAT_LIMITS[(data.tier as "free" | "pro") ?? "free"],
     };
   });
 
@@ -500,7 +465,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .object({
         chatId: z.string().uuid(),
         text: z.string().min(1).max(8000),
-        model: z.enum(["dap-ai-1.0", "dap-ai-pro-lite", "dap-ai-lite"]),
+        model: z.enum(["dap-ai-1.0", "dap-ai-lite"]),
         images: z
           .array(z.string().startsWith("data:image/").max(8_000_000))
           .max(4)
@@ -537,33 +502,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .single();
     if (pErr) throw new Error(pErr.message);
 
-    const tier = asTier(profile.tier);
-    const tierCfg = tierConfig(tier);
-
-    // --- Usage layer: safety hook → prompt cap → usage tokens → images. ---
-    // None of this changes how responses are generated; it only gates and
-    // tracks usage around the existing chat flow.
-    const { assertQuotaAllows, recordUsage, isSafetyBlocked } = await import(
-      "@/lib/quota.server"
-    );
-    if (isSafetyBlocked(data.text)) throw new Error(MSG_SAFETY_BLOCKED);
-
-    const pendingImageCount = data.images?.length ?? 0;
-    const { cost: usageCost } = await assertQuotaAllows({
-      userId,
-      tier,
-      text: data.text,
-      imageCount: pendingImageCount,
-    });
-
-    let effectiveModel: ChatModel = data.model;
+    let effectiveModel = data.model;
     let forcedToLite = false;
-    // Free stays on Lite; Go tops out at Pro Lite.
-    if (tier === "free" && data.model !== "dap-ai-lite") {
+    if (data.model === "dap-ai-1.0" && profile.tier !== "pro") {
       effectiveModel = "dap-ai-lite";
       forcedToLite = true;
-    } else if (tier === "go" && data.model === "dap-ai-1.0") {
-      effectiveModel = "dap-ai-pro-lite";
     }
 
     // Enforce per-model feature flags set in the admin console.
@@ -572,11 +515,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         "@/integrations/supabase/client.server"
       );
       const flagId =
-        effectiveModel === "dap-ai-1.0"
-          ? "feature_pro_model"
-          : effectiveModel === "dap-ai-pro-lite"
-            ? "feature_pro_lite_model"
-            : "feature_lite_model";
+        effectiveModel === "dap-ai-1.0" ? "feature_pro_model" : "feature_lite_model";
       const { data: flag } = await supabaseAdmin
         .from("ai_settings")
         .select("system_prompt")
@@ -585,10 +524,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
         throw new Error(
           effectiveModel === "dap-ai-1.0"
-            ? "DAP AI 4 Pro is currently disabled by the admin."
-            : effectiveModel === "dap-ai-pro-lite"
-              ? "DAP AI 4 Pro Lite is currently disabled by the admin."
-              : "DAP AI 4 Lite is currently disabled by the admin."
+            ? "DAP AI 3.2 is currently disabled by the admin."
+            : "DAP AI Lite is currently disabled by the admin."
         );
       }
     }
@@ -646,13 +583,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     }
 
     // Per-user memories (ChatGPT-style). Injected as a system message.
-    // Memory is a paid-tier feature — Free tier neither reads nor writes it.
-    const { data: memRows } = tierCfg.memory
-      ? await supabase
-          .from("user_memories")
-          .select("content")
-          .order("created_at", { ascending: true })
-      : { data: null as { content: string }[] | null };
+    const { data: memRows } = await supabase
+      .from("user_memories")
+      .select("content")
+      .order("created_at", { ascending: true });
     const memoryBlock =
       memRows && memRows.length > 0
         ? `What you remember about this user (use naturally, don't recite):\n${memRows
@@ -683,18 +617,15 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // Auto web-search: a fast classifier decides if the question needs
     // fresh info; if so we run a Firecrawl search and inject the results
     // as system context so the model can answer accurately and cite.
-    // Web search is a paid-tier feature (Free tier never searches).
     let webContext = "";
-    if (tierCfg.webSearch) {
-      try {
-        const query =
-          data.searchQuery && data.searchQuery.trim().length > 0
-            ? data.searchQuery.trim()
-            : await planWebSearch(data.text);
-        if (query) webContext = await webSearchContext(query);
-      } catch {
-        /* best-effort */
-      }
+    try {
+      const query =
+        data.searchQuery && data.searchQuery.trim().length > 0
+          ? data.searchQuery.trim()
+          : await planWebSearch(data.text);
+      if (query) webContext = await webSearchContext(query);
+    } catch {
+      /* best-effort */
     }
 
     const ANTI_SYCOPHANCY =
@@ -781,9 +712,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       replyText = `No AI backend configured for ${effectiveModel}. Set ${
         effectiveModel === "dap-ai-1.0"
           ? "AI_BACKEND_URL_PRO"
-          : effectiveModel === "dap-ai-pro-lite"
-            ? "AI_BACKEND_URL_PRO_LITE (or AI_BACKEND_URL_LITE)"
-            : "AI_BACKEND_URL_LITE"
+          : "AI_BACKEND_URL_LITE"
       } to that model's tunnel URL (e.g. https://abcd.ngrok-free.app/v1/chat/completions).`;
     } else {
       // Per-model queue: only one in-flight call per model at a time.
@@ -815,10 +744,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         const timer = setTimeout(() => ctrl.abort(), timeoutMs);
         try {
           let resolvedModel = upstreamModel;
-          if (effectiveModel !== "dap-ai-1.0") {
+          if (effectiveModel === "dap-ai-lite") {
             const resolved = await resolveOllamaModel(backend, key, upstreamModel);
             if (resolved.installed && resolved.installed.length === 0) {
-              return `That model is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
+              return `DAP AI Lite is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
             }
             resolvedModel = resolved.model;
           }
@@ -832,8 +761,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               model: resolvedModel,
               messages,
               stream: false,
-              // Response ceiling for this user's tier.
-              max_tokens: tierCfg.maxResponseTokens,
               ...(effectiveModel === "dap-ai-lite" ? liteOptions : {}),
             }),
             signal: ctrl.signal,
@@ -852,7 +779,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             const snippet = raw.replace(/\s+/g, " ").trim().slice(0, 120);
             const tunnelHint = /ngrok|endpoint (is )?offline|tunnel/i.test(raw)
               ? " The ngrok tunnel URL looks offline or expired — restart `ngrok http 1234` and update AI_BACKEND_URL_" +
-                (effectiveModel === "dap-ai-1.0" ? "PRO" : "LITE") +
+                (effectiveModel === "dap-ai-lite" ? "LITE" : "PRO") +
                 " to the new https URL."
               : "";
             return `AI backend is offline (HTTP ${res.status}). ${snippet}${tunnelHint}`;
@@ -875,7 +802,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         } catch (e) {
           const err = e as Error;
           if (err.name === "AbortError") {
-            return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${effectiveModel === "dap-ai-1.0" ? "PRO" : "LITE"} points to the current tunnel), or the model is too slow for this prompt.`;
+            return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${effectiveModel === "dap-ai-lite" ? "LITE" : "PRO"} points to the current tunnel), or the model is too slow for this prompt.`;
           }
           return `Couldn't reach AI backend: ${err.message}`;
         } finally {
@@ -893,33 +820,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       model: effectiveModel,
     });
 
-    // Deduct usage tokens + images now that the message went through.
-    // (Exclusive tier is a no-op inside recordUsage.)
-    try {
-      await recordUsage({
-        userId,
-        tier,
-        cost: usageCost,
-        imageCount: pendingImageCount,
-      });
-    } catch {
-      /* never fail the reply on a counter write */
-    }
-
     // Auto-extract durable memories from the user's message (best-effort).
-    // Only for tiers where the memory feature is enabled.
-    if (tierCfg.memory) {
-      try {
-        const existingMems = (memRows ?? []).map((m) => m.content);
-        const newMems = await extractMemories(data.text, existingMems);
-        if (newMems.length > 0) {
-          await supabase.from("user_memories").insert(
-            newMems.map((content) => ({ user_id: userId, content }))
-          );
-        }
-      } catch {
-        /* best-effort, ignore */
+    try {
+      const existingMems = (memRows ?? []).map((m) => m.content);
+      const newMems = await extractMemories(data.text, existingMems);
+      if (newMems.length > 0) {
+        await supabase.from("user_memories").insert(
+          newMems.map((content) => ({ user_id: userId, content }))
+        );
       }
+    } catch {
+      /* best-effort, ignore */
     }
 
     // Return refreshed view

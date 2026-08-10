@@ -24,8 +24,8 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
-/** Login sessions expire 10 minutes after sign-in. */
-const SESSION_TTL_MS = 10 * 60 * 1000;
+/** Login sessions expire 5 minutes after sign-in. */
+const SESSION_TTL_MS = 5 * 60 * 1000;
 const SESSION_START_KEY = "dapai.session_started_at";
 
 
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setReady(true);
     });
 
-    // Enforce the 10-minute session lifetime.
+    // Enforce the 5-minute session lifetime.
     const timer = window.setInterval(() => {
       const started = Number(localStorage.getItem(SESSION_START_KEY) || 0);
       if (!started) return;

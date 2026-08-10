@@ -1,7 +1,7 @@
 // Leaderboard for a specific track_ref (builtin:N or custom:UUID).
 // Site-wide board polls every 5 minutes. The player's own best time is
 // tracked locally and shown instantly after every finished run.
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,20 +33,42 @@ export function Leaderboard({ trackRef, refreshKey }: { trackRef: string; refres
     setPersonal(readPersonalBest(trackRef));
   }, [trackRef, refreshKey]);
 
-  // Global board: initial load per track, then every 5 minutes.
-  // Intentionally NOT refetched on refreshKey.
+  /* One loader for all three callers: the first paint, the five-minute
+     poll, and the reload a finished run asks for. `alive` is a ref
+     rather than a per-effect local so a reload started by one effect is
+     still cancelled when the component unmounts or the track changes. */
+  const alive = useRef(true);
   useEffect(() => {
-    let cancelled = false;
-    const load = (initial: boolean) => {
-      if (initial) { setRows(null); setError(null); }
-      fetchLb({ data: { trackRef, limit: 10 } })
-        .then((r) => { if (!cancelled) { setRows(r); setLastRefresh(Date.now()); } })
-        .catch((e: Error) => { if (!cancelled) setError(e.message); });
-    };
+    alive.current = true;
+    return () => { alive.current = false; };
+  }, []);
+
+  const load = useCallback((initial: boolean) => {
+    if (initial) { setRows(null); setError(null); }
+    return fetchLb({ data: { trackRef, limit: 10 } })
+      .then((r) => { if (alive.current) { setRows(r); setLastRefresh(Date.now()); } })
+      .catch((e: Error) => { if (alive.current) setError(e.message); });
+  }, [trackRef, fetchLb]);
+
+  // Everyone else's times arrive on the five-minute poll.
+  useEffect(() => {
     load(true);
     const iv = setInterval(() => load(false), 5 * 60 * 1000);
-    return () => { cancelled = true; clearInterval(iv); };
-  }, [trackRef, fetchLb]);
+    return () => clearInterval(iv);
+  }, [load]);
+
+  /* Your own run shows up straight away. This used to be deliberately
+     skipped — the comment here said so — which is why a new personal
+     best updated the strip above but never the board: the only thing
+     that moved it was the poll, so your own time took up to five
+     minutes to appear. The caller bumps refreshKey *after* the write
+     resolves, so the row is there to read by the time this runs. The
+     first render is skipped, since the effect above already loaded. */
+  const firstKey = useRef(true);
+  useEffect(() => {
+    if (firstKey.current) { firstKey.current = false; return; }
+    load(false);
+  }, [refreshKey, load]);
 
   const nextMin = Math.max(0, Math.ceil((5 * 60 * 1000 - (Date.now() - lastRefresh)) / 60000));
 

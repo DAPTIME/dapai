@@ -9,7 +9,7 @@ import { isValidEmail } from "@/lib/utils";
 import {
   getRecoveryQuestion,
   resetPasswordWithAnswer,
-  requestAccountReinstatement,
+  sendPasswordResetLink,
 } from "@/lib/recovery.functions";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -26,9 +26,9 @@ function ForgotPasswordPage() {
   const navigate = useNavigate();
   const getQ = useServerFn(getRecoveryQuestion);
   const reset = useServerFn(resetPasswordWithAnswer);
-  const reinstate = useServerFn(requestAccountReinstatement);
+  const sendLink = useServerFn(sendPasswordResetLink);
 
-  const [step, setStep] = useState<"email" | "answer" | "sent">("email");
+  const [step, setStep] = useState<"email" | "answer">("email");
   const [email, setEmail] = useState("");
   const [question, setQuestion] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
@@ -58,6 +58,27 @@ function ForgotPasswordPage() {
     return () => window.clearInterval(t);
   }, [step, secondsLeft]);
 
+  // Emails a secure single-use link (10 min) that sets password + recovery question.
+  const onEmailLink = async () => {
+    if (!isValidEmail(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await sendLink({
+        data: { email, origin: window.location.origin },
+      });
+      toast.success(
+        "Check your inbox — we sent a secure reset link. It expires in 10 minutes."
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't send the email.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!isValidEmail(email)) {
@@ -68,15 +89,12 @@ function ForgotPasswordPage() {
     try {
       const res = await getQ({ data: { email } });
       if (!res.question || !res.token) {
-        // Lockout case: nothing to ask, so email a 10-minute restore link.
-        await reinstate({ data: { email, origin: window.location.origin } });
-        setStep("sent");
-        toast.success("Check your inbox for a restore-access link.");
+        toast.error("No recovery question is set for this email.");
         return;
       }
       setQuestion(res.question);
       setToken(res.token);
-      setSecondsLeft(Math.floor((res.expiresInMs || 600000) / 1000));
+      setSecondsLeft(Math.floor((res.expiresInMs || 300000) / 1000));
       setStep("answer");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Lookup failed");
@@ -100,9 +118,8 @@ function ForgotPasswordPage() {
       toast.error("Passwords don't match.");
       return;
     }
-    const changingQuestion = newQuestion.trim().length > 0 || newAnswer.trim().length > 0;
-    if (changingQuestion && (newQuestion.trim().length < 3 || newAnswer.trim().length < 2)) {
-      toast.error("Please fill in both the new recovery question and answer.");
+    if (newQuestion.trim().length < 3 || newAnswer.trim().length < 2) {
+      toast.error("Please set a new recovery question and answer.");
       return;
     }
     setBusy(true);
@@ -114,12 +131,11 @@ function ForgotPasswordPage() {
           token,
           answer,
           newPassword,
-          ...(changingQuestion
-            ? { newQuestion: newQuestion.trim(), newAnswer: newAnswer.trim() }
-            : {}),
+          newQuestion: newQuestion.trim(),
+          newAnswer: newAnswer.trim(),
         },
       });
-      toast.success("Password updated. You can sign in now.");
+      toast.success("Password and recovery question updated. You can sign in now.");
       navigate({ to: "/login" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reset failed");
@@ -133,22 +149,10 @@ function ForgotPasswordPage() {
     <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6 py-12">
       <h1 className="text-2xl font-semibold tracking-tight">Forgot your password?</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Enter your email and we'll ask the recovery question you set up.
+        Enter your email and we'll ask your recovery question — or email you a secure reset link instead.
       </p>
 
-      {step === "sent" ? (
-        <div className="mt-8 rounded-lg border border-border bg-muted/40 p-4 text-sm">
-          <p className="font-medium text-foreground">Check your inbox</p>
-          <p className="mt-1 text-muted-foreground">
-            If an account exists for <span className="font-medium text-foreground">{email}</span> and it
-            has no recovery question on file, we've emailed a restore-access link. It expires in 10
-            minutes and can only be used once.
-          </p>
-          <Link to="/login" className="mt-3 inline-block text-sm underline underline-offset-4">
-            Back to sign in
-          </Link>
-        </div>
-      ) : step === "email" ? (
+      {step === "email" ? (
         <form onSubmit={onEmailSubmit} className="mt-8 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -164,6 +168,20 @@ function ForgotPasswordPage() {
           <Button type="submit" disabled={busy} className="w-full" style={{ background: "var(--gradient-brand)" }}>
             {busy ? "Looking up…" : "Continue"}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            className="w-full"
+            onClick={() => void onEmailLink()}
+          >
+            Email me a secure reset link instead
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            The emailed link lets you set a new password and a new recovery
+            question without answering your old one. It works once and expires in
+            10 minutes.
+          </p>
         </form>
       ) : (
         <form onSubmit={onResetSubmit} className="mt-8 space-y-4">
@@ -206,9 +224,10 @@ function ForgotPasswordPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="newQuestion">New recovery question (optional)</Label>
+            <Label htmlFor="newQuestion">New recovery question</Label>
             <Input
               id="newQuestion"
+              required
               minLength={3}
               placeholder="e.g. What was my first pet's name?"
               value={newQuestion}
@@ -216,9 +235,10 @@ function ForgotPasswordPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="newAnswer">New recovery answer (optional)</Label>
+            <Label htmlFor="newAnswer">New recovery answer</Label>
             <Input
               id="newAnswer"
+              required
               minLength={2}
               value={newAnswer}
               onChange={(e) => setNewAnswer(e.target.value)}

@@ -7,16 +7,8 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
-import type { Tier } from "@/lib/tiers";
 import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
-import {
-  CHAT_MODELS,
-  MODEL_STORAGE_KEY,
-  isModelAllowedForTier,
-  resolveModelChoice,
-  type ChatModelId,
-} from "@/lib/models";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { trackAiReply } from "@/lib/ai-reply-notifier";
@@ -45,7 +37,7 @@ function ChatPage() {
     id: string;
     role: "user";
     content: string;
-    model: ChatModelId;
+    model: "dap-ai-1.0" | "dap-ai-lite";
     created_at: string;
   } | null>(null);
 
@@ -77,24 +69,21 @@ function ChatPage() {
     queryFn: () => fetchFlags(),
     refetchInterval: 30_000,
   });
-  const flags = flagsQuery.data;
-  const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
-  // Maintenance = every model this account could use is switched off.
-  const maintenance = CHAT_MODELS.filter((m) =>
-    isModelAllowedForTier(m, tier, true)
-  ).every((m) => flags?.[m.flag] === false);
+  const proEnabled = flagsQuery.data?.pro_model !== false;
+  const liteEnabled = flagsQuery.data?.lite_model !== false;
+  const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
+  const maintenance = tier === "pro"
+    ? !proEnabled && !liteEnabled
+    : !liteEnabled;
 
   const sendMut = useMutation({
     mutationFn: async ({ text, images }: { text: string; images?: string[] }) => {
-      const effective = resolveModelChoice({
-        saved:
-          typeof window !== "undefined"
-            ? localStorage.getItem(MODEL_STORAGE_KEY)
-            : null,
-        tier,
-        signedIn: true,
-        flags,
-      });
+      const model =
+        (typeof window !== "undefined"
+          ? localStorage.getItem("dap.model")
+          : null) || "dap-ai-1.0";
+      const effective: "dap-ai-1.0" | "dap-ai-lite" =
+        model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0";
 
       // Optimistically show the user's message in the transcript right away
       // so they don't stare at a blank "Thinking…" while we wait for the model.
@@ -166,7 +155,7 @@ function ChatPage() {
       qc.invalidateQueries({ queryKey: ["chats"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
       if (result.forcedToLite) {
-        toast.info("DAP AI 4 Pro is Pro-only — replied with DAP AI 4 Lite.");
+        toast.info("DAP AI 3.2 is Pro-only — replied with DAP AI Lite.");
       }
     },
     onError: (e) => {
@@ -329,7 +318,7 @@ function ChatPage() {
               pending={busy}
               quotaInfo={
                 profileQuery.data
-                  ? { tier: profileQuery.data.tier as Tier }
+                  ? { tier: profileQuery.data.tier as "free" | "pro" }
                   : undefined
               }
             />

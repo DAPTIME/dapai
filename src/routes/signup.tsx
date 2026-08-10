@@ -9,7 +9,6 @@ import { MailCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { registerAccount, resendConfirmationEmail } from "@/lib/signup.functions";
 import { isValidEmail } from "@/lib/utils";
-import { SocialAuthButtons } from "@/components/social-auth-buttons";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -18,13 +17,13 @@ export const Route = createFileRoute("/signup")({
       {
         name: "description",
         content:
-          "Create a free DAP AI account to save chats and unlock more DAP AI 4 models.",
+          "Create a free DAP AI account to save chats and unlock the DAP AI 3.2 model.",
       },
       { property: "og:title", content: "Create your free DAP AI account" },
       {
         property: "og:description",
         content:
-          "Sign up free to save chats, sync across devices, and unlock more DAP AI 4 models.",
+          "Sign up free to save chats, sync across devices, and unlock the DAP AI 3.2 model.",
       },
       { property: "og:url", content: "https://dapai.lovable.app/signup" },
       { name: "robots", content: "noindex, nofollow" },
@@ -193,11 +192,6 @@ function SignupPage() {
           {busy ? "Creating…" : "Create account"}
         </Button>
       </form>
-
-      <div className="mt-6">
-        <SocialAuthButtons />
-      </div>
-
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link to="/login" className="font-medium text-foreground underline-offset-4 hover:underline">

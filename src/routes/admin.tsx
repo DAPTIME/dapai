@@ -14,7 +14,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { TIERS, tierConfig, type Tier } from "@/lib/tiers";
 import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, UserMinus } from "lucide-react";
 import {
   DropdownMenu,
@@ -40,20 +39,18 @@ import {
   adminSetFeatureFlag,
 } from "@/lib/admin.functions";
 
-const FEATURE_KEYS = ["pro_model", "pro_lite_model", "lite_model", "daps", "team", "games"] as const;
+const FEATURE_KEYS = ["pro_model", "lite_model", "daps", "team", "games"] as const;
 type FeatureKey = (typeof FEATURE_KEYS)[number];
 const FEATURE_LABELS: Record<FeatureKey, string> = {
-  pro_model: "DAP AI 4 Pro",
-  pro_lite_model: "DAP AI 4 Pro Lite",
-  lite_model: "DAP AI 4 Lite",
+  pro_model: "DAP AI 3.2 (Pro)",
+  lite_model: "DAP AI Lite",
   daps: "Custom AI's",
   team: "Our Team page",
   games: "Games (DAP Arcade)",
 };
 const FEATURE_DESCRIPTIONS: Record<FeatureKey, string> = {
-  pro_model: "Block sending messages with the DAP AI 4 Pro model.",
-  pro_lite_model: "Block sending messages with the DAP AI 4 Pro Lite model.",
-  lite_model: "Block sending messages with the DAP AI 4 Lite model.",
+  pro_model: "Block sending messages with the DAP AI 3.2 Pro model.",
+  lite_model: "Block sending messages with the DAP AI Lite model.",
   daps: "Hide the /daps page and disable starting Custom AI chats.",
   team: "Hide the /team page.",
   games: "Hide the arcade: the sidebar link, /games and every game inside it.",
@@ -156,7 +153,7 @@ type AdminUser = {
   id: string;
   email: string | null;
   name: string | null;
-  tier: Tier;
+  tier: "free" | "pro";
   pro_messages_used: number;
   created_at: string;
 };
@@ -179,12 +176,12 @@ function UsersTab() {
   const [viewing, setViewing] = useState<AdminUser | null>(null);
 
   const setTier = useMutation({
-    mutationFn: (vars: { userId: string; tier: Tier }) =>
+    mutationFn: (vars: { userId: string; tier: "free" | "pro" }) =>
       updateUser({
         data: {
           userId: vars.userId,
           tier: vars.tier,
-          resetUsage: vars.tier !== "free",
+          resetUsage: vars.tier === "pro",
         },
       }),
     onSuccess: () => {
@@ -218,7 +215,7 @@ function UsersTab() {
     );
   });
 
-  const paidCount = users.filter((u) => u.tier !== "free").length;
+  const proCount = users.filter((u) => u.tier === "pro").length;
   const initials = (u: AdminUser) => {
     const src = (u.name || u.email || "?").trim();
     const parts = src.split(/\s+/);
@@ -233,7 +230,7 @@ function UsersTab() {
         <div>
           <h2 className="text-lg font-semibold">Users</h2>
           <p className="text-sm text-muted-foreground">
-            {users.length} total · {paidCount} paid · {users.length - paidCount} Free
+            {users.length} total · {proCount} Pro · {users.length - proCount} Free
           </p>
         </div>
         <div className="sm:w-72">
@@ -273,7 +270,7 @@ function UsersTab() {
                   <span className="truncate font-medium">{u.name || "Unnamed"}</span>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
-                      u.tier !== "free"
+                      u.tier === "pro"
                         ? "bg-primary/15 text-primary"
                         : "bg-muted text-muted-foreground"
                     }`}
@@ -307,19 +304,19 @@ function UsersTab() {
                     <KeyRound className="mr-2 h-4 w-4" /> Reset password
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {TIERS.filter((t) => t !== u.tier).map((t) => (
+                  {u.tier === "free" ? (
                     <DropdownMenuItem
-                      key={t}
-                      onSelect={() => setTier.mutate({ userId: u.id, tier: t })}
+                      onSelect={() => setTier.mutate({ userId: u.id, tier: "pro" })}
                     >
-                      {t === "free" ? (
-                        <UserMinus className="mr-2 h-4 w-4" />
-                      ) : (
-                        <Crown className="mr-2 h-4 w-4" />
-                      )}
-                      Set tier: <span className="ml-1 capitalize">{t}</span>
+                      <Crown className="mr-2 h-4 w-4" /> Make Pro
                     </DropdownMenuItem>
-                  ))}
+                  ) : (
+                    <DropdownMenuItem
+                      onSelect={() => setTier.mutate({ userId: u.id, tier: "free" })}
+                    >
+                      <UserMinus className="mr-2 h-4 w-4" /> Downgrade to Free
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
@@ -442,12 +439,12 @@ function EditUserDialog({
     userId: string;
     name?: string;
     email?: string;
-    tier?: Tier;
+    tier?: "free" | "pro";
   }) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [tier, setTier] = useState<Tier>("free");
+  const [tier, setTier] = useState<"free" | "pro">("free");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -484,25 +481,24 @@ function EditUserDialog({
           </div>
           <div className="space-y-2">
             <Label>Tier</Label>
-            <div className="flex flex-wrap gap-2">
-              {TIERS.map((t) => (
-                <Button
-                  key={t}
-                  type="button"
-                  size="sm"
-                  variant={tier === t ? "default" : "outline"}
-                  onClick={() => setTier(t)}
-                  title={tierConfig(t).productName}
-                  className="capitalize"
-                >
-                  {t}
-                </Button>
-              ))}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={tier === "free" ? "default" : "outline"}
+                onClick={() => setTier("free")}
+              >
+                Free
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={tier === "pro" ? "default" : "outline"}
+                onClick={() => setTier("pro")}
+              >
+                Pro
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {tierConfig(tier).productName}
-              {tierConfig(tier).tagline ? ` — ${tierConfig(tier).tagline}` : ""}
-            </p>
           </div>
         </div>
         <DialogFooter>
@@ -518,7 +514,7 @@ function EditUserDialog({
                 userId: string;
                 name?: string;
                 email?: string;
-                tier?: Tier;
+                tier?: "free" | "pro";
               } = { userId: user.id };
               if (name.trim() && name !== (user.name ?? ""))
                 patch.name = name.trim();
@@ -607,7 +603,7 @@ function SystemPromptTab() {
     <div className="space-y-6">
       <SystemPromptEditor
         model="dap-ai-1.0"
-        title="DAP AI 4 Pro"
+        title="DAP AI 3.2 (Pro)"
         description="Used when the Pro model is selected. Falls back to the legacy global prompt if left empty."
       />
       <SystemPromptEditor

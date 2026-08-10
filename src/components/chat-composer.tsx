@@ -8,28 +8,7 @@ import {
   Lock,
   Loader2,
   X,
-  Check,
-  ChevronDown,
-  Zap,
-  Gauge,
-  Brain,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  CHAT_MODELS,
-  MODEL_STORAGE_KEY,
-  isModelAllowedForTier,
-  modelInfo,
-  resolveModelChoice,
-  type ChatModelId,
-} from "@/lib/models";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -37,18 +16,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile } from "@/lib/chats.functions";
 import { getFeatureFlags } from "@/lib/admin.functions";
-import { getMyQuota } from "@/lib/quota.functions";
-import {
-  MSG_PROMPT_TOO_LONG,
-  estimateTokens,
-  tierConfig,
-  usageCostFor,
-  type Tier,
-} from "@/lib/tiers";
 
 
 export interface QuotaInfo {
-  tier: Tier;
+  tier: "free" | "pro";
 }
 
 interface Props {
@@ -56,6 +27,21 @@ interface Props {
   quotaInfo?: QuotaInfo;
   pending?: boolean;
 }
+
+const MODELS = [
+  {
+    id: "dap-ai-1.0",
+    label: "DAP AI 3.2",
+    description: "Our most capable and ambitious model yet.",
+    requiresPro: true,
+  },
+  {
+    id: "dap-ai-lite",
+    label: "DAP AI Lite 3.2",
+    description: "Fast responses and simple answers.",
+    requiresPro: false,
+  },
+];
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB per image
 
@@ -68,12 +54,6 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-function ModelIcon({ id, className }: { id: string; className?: string }) {
-  if (id === "dap-ai-1.0") return <Brain className={className} />;
-  if (id === "dap-ai-pro-lite") return <Gauge className={className} />;
-  return <Zap className={className} />;
-}
-
 export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const { user } = useAuth();
   const fetchProfile = useServerFn(getProfile);
@@ -82,21 +62,9 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
     queryFn: () => fetchProfile(),
     enabled: !!user && !quotaInfo,
   });
-  const tier = (quotaInfo?.tier ??
-    (profileQuery.data?.tier as Tier | undefined) ??
-    "free") as Tier;
-  const cfg = tierConfig(tier);
-  const isPaid = tier !== "free";
-
-  // Live usage-token budget (hidden for the Exclusive tier).
-  const fetchQuota = useServerFn(getMyQuota);
-  const quotaQuery = useQuery({
-    queryKey: ["my-quota", user?.id],
-    queryFn: () => fetchQuota(),
-    enabled: !!user,
-    staleTime: 15_000,
-  });
-  const quota = quotaQuery.data;
+  const tier = quotaInfo?.tier ?? (profileQuery.data?.tier as "free" | "pro" | undefined);
+  const isPro = tier === "pro";
+  const canUsePro = !!user && isPro;
 
   const fetchFlags = useServerFn(getFeatureFlags);
   const flagsQuery = useQuery({
@@ -104,17 +72,17 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
     queryFn: () => fetchFlags(),
     refetchInterval: 30_000,
   });
-  const flags = flagsQuery.data;
+  const proEnabled = flagsQuery.data?.pro_model !== false;
+  const liteEnabled = flagsQuery.data?.lite_model !== false;
+
 
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [model, setModel] = useState<ChatModelId>("dap-ai-lite");
-
-  // Per-response image cap for this tier (null = no cap; we still keep a
-  // sane upload ceiling so the payload stays reasonable).
-  const imageCap = cfg.maxImagesPerResponse ?? 4;
+  const [model, setModel] = useState<string>(
+    canUsePro ? "dap-ai-1.0" : "dap-ai-lite"
+  );
 
   // Keep the prompt textarea focused on mount and after each send finishes.
   useEffect(() => {
@@ -126,31 +94,32 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
 
   useEffect(() => {
     const saved =
-      typeof window !== "undefined"
-        ? localStorage.getItem(MODEL_STORAGE_KEY)
-        : null;
-    const resolved = resolveModelChoice({
-      saved,
-      tier,
-      signedIn: !!user,
-      flags,
-    });
+      typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
+    const isAllowed = (id: string) => {
+      const m = MODELS.find((mm) => mm.id === id);
+      if (!m) return false;
+      if (m.requiresPro && !canUsePro) return false;
+      if (m.id === "dap-ai-1.0" && !proEnabled) return false;
+      if (m.id === "dap-ai-lite" && !liteEnabled) return false;
+      return true;
+    };
+    const preferred = canUsePro && proEnabled ? "dap-ai-1.0" : "dap-ai-lite";
+    let resolved: string;
+    if (saved && isAllowed(saved)) resolved = saved;
+    else if (isAllowed(preferred)) resolved = preferred;
+    else if (isAllowed("dap-ai-lite")) resolved = "dap-ai-lite";
+    else if (isAllowed("dap-ai-1.0")) resolved = "dap-ai-1.0";
+    else resolved = preferred;
     setModel(resolved);
     if (typeof window !== "undefined") {
-      localStorage.setItem(MODEL_STORAGE_KEY, resolved);
+      localStorage.setItem("dap.model", resolved);
     }
-  }, [tier, user, flags]);
+  }, [canUsePro, proEnabled, liteEnabled]);
 
   const handlePickImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    if (images.length >= imageCap) {
-      toast.error(
-        `Your plan allows ${imageCap} image${imageCap === 1 ? "" : "s"} per response.`
-      );
-      return;
-    }
     const next: string[] = [];
-    for (const f of Array.from(files).slice(0, imageCap - images.length)) {
+    for (const f of Array.from(files).slice(0, 4 - images.length)) {
       if (!f.type.startsWith("image/")) {
         toast.error(`${f.name} isn't an image.`);
         continue;
@@ -165,26 +134,19 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
         toast.error(`Couldn't read ${f.name}.`);
       }
     }
-    if (next.length) setImages((prev) => [...prev, ...next].slice(0, imageCap));
+    if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
   };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (pending) return;
     if (!text.trim() && images.length === 0) return;
-    // Reject over-long prompts before spending anything.
-    if (user && usageCostFor(text.trim() || "(image)", tier) === null) {
-      toast.error(MSG_PROMPT_TOO_LONG);
-      return;
-    }
     onSend?.(text.trim() || "(image)", images.length ? images : undefined);
     setText("");
     setImages([]);
   };
 
-  const promptTokens = estimateTokens(text);
-  const overPromptCap = promptTokens > cfg.maxPromptTokens;
-  const activeModel = modelInfo(model);
+  const activeModel = MODELS.find((m) => m.id === model) ?? MODELS[1];
 
   return (
     <form
@@ -238,13 +200,13 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
       <div className="flex items-center justify-between px-2 pb-1">
         <div className="flex items-center gap-1 text-muted-foreground">
           {(() => {
-            const liteSelected = !activeModel.supportsImages;
+            const liteSelected = model === "dap-ai-lite";
             const imgTitle = liteSelected
-              ? `${activeModel.label} doesn't support images yet`
+              ? "DAP AI Lite doesn't support images yet"
               : "Attach image";
             const onClick = () => {
               if (liteSelected) {
-                toast.error(`${activeModel.label} doesn't support images yet.`);
+                toast.error("DAP AI Lite doesn't support images yet.");
                 return;
               }
               fileInputRef.current?.click();
@@ -260,126 +222,52 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
               </>
             );
           })()}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Select model"
-                className="ml-1 inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                <span
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-primary-foreground"
-                  style={{ background: "var(--gradient-brand)" }}
+          <select
+            value={model}
+            onChange={(e) => {
+              const next = e.target.value;
+              const m = MODELS.find((mm) => mm.id === next);
+              if (!m) return;
+              if (m.requiresPro && !canUsePro) return;
+              if (m.id === "dap-ai-1.0" && !proEnabled) return;
+              if (m.id === "dap-ai-lite" && !liteEnabled) return;
+              setModel(next);
+              if (typeof window !== "undefined") localStorage.setItem("dap.model", next);
+            }}
+            className="ml-2 rounded-md bg-transparent px-2 py-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
+            aria-label="Select model"
+            title={activeModel.description}
+          >
+            {MODELS.map((m) => {
+              const proLock = m.requiresPro && !canUsePro;
+              const offline =
+                (m.id === "dap-ai-1.0" && !proEnabled) ||
+                (m.id === "dap-ai-lite" && !liteEnabled);
+              const disabled = proLock || offline;
+              const suffix = offline
+                ? " — offline for maintenance"
+                : proLock
+                  ? !user
+                    ? " — sign in required"
+                    : " — Pro only"
+                  : "";
+              return (
+                <option
+                  key={m.id}
+                  value={m.id}
+                  disabled={disabled}
+                  className="bg-card text-foreground"
+                  title={offline ? "Disabled by admin" : m.description}
                 >
-                  <ModelIcon id={activeModel.id} className="h-3.5 w-3.5" />
-                </span>
-                <span className="flex min-w-0 flex-col leading-tight">
-                  <span className="truncate text-sm font-medium text-foreground">
-                    {activeModel.label}
-                  </span>
-                  <span className="hidden truncate text-[11px] text-muted-foreground sm:block">
-                    {activeModel.description}
-                  </span>
-                </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              side="top"
-              sideOffset={10}
-              className="w-[min(22rem,calc(100vw-2rem))] p-1.5"
-            >
-              <DropdownMenuLabel className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Choose a model
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {CHAT_MODELS.map((m) => {
-                const offline = flags?.[m.flag] === false;
-                const locked = !isModelAllowedForTier(m, tier, !!user);
-                const disabled = offline || locked;
-                const note = offline
-                  ? "Offline for maintenance"
-                  : locked
-                    ? !user
-                      ? "Sign in to use this model"
-                      : m.id === "dap-ai-1.0"
-                        ? "Available on Pro"
-                        : "Available on Go and above"
-                    : null;
-                return (
-                  <DropdownMenuItem
-                    key={m.id}
-                    disabled={disabled}
-                    onSelect={() => {
-                      if (disabled) return;
-                      setModel(m.id);
-                      if (typeof window !== "undefined") {
-                        localStorage.setItem(MODEL_STORAGE_KEY, m.id);
-                      }
-                    }}
-                    className="flex items-start gap-3 rounded-lg px-2 py-2.5"
-                  >
-                    <span
-                      className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full ${
-                        disabled
-                          ? "bg-muted text-muted-foreground"
-                          : "text-primary-foreground"
-                      }`}
-                      style={
-                        disabled ? undefined : { background: "var(--gradient-brand)" }
-                      }
-                    >
-                      <ModelIcon id={m.id} className="h-4 w-4" />
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        {m.label}
-                        {model === m.id && !disabled && (
-                          <Check className="h-3.5 w-3.5 text-primary" />
-                        )}
-                      </span>
-                      <span className="text-xs leading-snug text-muted-foreground">
-                        {m.description}
-                      </span>
-                      {note && (
-                        <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-                          {locked && !offline && <Lock className="h-3 w-3" />}
-                          {note}
-                        </span>
-                      )}
-                    </span>
-                  </DropdownMenuItem>
-                );
-              })}
-              {tier !== "exclusive" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="rounded-lg px-2 py-2 text-xs">
-                    <Link to="/plans">Compare plans and unlock more models</Link>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {user && quota && !quota.unlimited && quota.dayTokensLimit !== null && (
-            <Link
-              to="/plans"
-              title={`Daily usage tokens reset at ${quota.dailyResetsAt}`}
-              className="ml-2 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              {Math.max(
-                0,
-                quota.dayTokensLimit - quota.dayTokensUsed
-              ).toLocaleString()}{" "}
-              / {quota.dayTokensLimit} tokens today
-            </Link>
-          )}
-          {user && overPromptCap && (
-            <span className="ml-2 text-xs text-destructive">
-              Prompt too long ({promptTokens}/{cfg.maxPromptTokens})
-            </span>
-          )}
+                  {m.label}
+                  {suffix}
+                </option>
+              );
+            })}
+          </select>
+          <span className="ml-2 hidden text-xs text-muted-foreground sm:inline">
+            {activeModel.description}
+          </span>
           {!user && (
             <Link
               to="/login"

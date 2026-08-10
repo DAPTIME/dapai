@@ -717,7 +717,7 @@
       <!-- Blur sized to the fan, so the sweeping highlight reads as
            blades smeared by shutter rather than three grey wedges. -->
       <filter id="fanBlur" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="1.8"/>
+        <feGaussianBlur stdDeviation="4.5"/>
       </filter>
 
       <!-- Contact shadow. Solid black ellipses have an edge; light
@@ -1080,14 +1080,8 @@ function boardMarkup(n, x, y, tilt = 0) {
         <g transform="translate(${fcx} ${fcy}) scale(1 ${squash})">
           <!-- The shroud is part of the machine and does not move. -->
           <g pointer-events="none">${fanImg("fanHousing")}</g>
-          <!-- The rotor plus two trailing ghosts a few degrees behind it.
-               Rotating the whole stack reads as a shutter smear, which is
-               what a real fan looks like — far cleaner than blurring one
-               sprite, and it kills the wagon-wheel strobe. -->
           <g id="fanBlades${n}" pointer-events="none" filter="url(#fanBlur)"
                style="transform-box: fill-box; transform-origin: 50% 50%;">
-            <g opacity="0.22" transform="rotate(-16)">${fanImg("fanRotor")}</g>
-            <g opacity="0.45" transform="rotate(-8)">${fanImg("fanRotor")}</g>
             ${fanImg("fanRotor")}
           </g>
         </g>
@@ -2251,8 +2245,8 @@ let idleStarted = false;
 let fanAnimations = [];
 /* Fans run fast and stay fast. An inference burst takes them faster
    still, and they settle back to FAN_IDLE — not to something slower. */
-const FAN_IDLE = 900;    // ms per revolution
-const FAN_BURST = 480;
+const FAN_IDLE = 620;    // ms per revolution
+const FAN_BURST = 340;
 let fanDuration = FAN_IDLE;
 
 function spinFans(duration) {

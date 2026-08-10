@@ -1,4 +1,4 @@
-import { Outlet, createRootRouteWithContext, HeadContent, Scripts, useRouterState, Link } from "@tanstack/react-router";
+import { Outlet, createRootRouteWithContext, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -6,6 +6,15 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarSwipeGestures } from "@/components/sidebar-swipe-gestures";
 import { AiReplyListener } from "@/components/ai-reply-listener";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { EyeOff, Eye } from "lucide-react";
@@ -199,8 +208,7 @@ function HeaderBar() {
     queryFn: () => fetchProfile(),
     enabled: !!user,
   });
-  const isPro =
-    profileQuery.data?.tier === "pro" || profileQuery.data?.tier === "exclusive";
+  const isPro = profileQuery.data?.tier === "pro";
 
   /* The two groups inside the header were flex items with nothing
      stopping them growing, so on a phone the account controls pushed it
@@ -217,9 +225,27 @@ function HeaderBar() {
       <div className="flex min-w-0 shrink items-center gap-2">
         <IncognitoToggle />
         {!isPro && (
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/plans">Upgrade</Link>
-          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm">Upgrade</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Upgrade to Pro</DialogTitle>
+                <DialogDescription>
+                  Pay Devansh 5 AED irl 💸
+                </DialogDescription>
+              </DialogHeader>
+              <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
+                Hand over 5 AED to Devansh in person, and your account will be upgraded to Pro.
+              </div>
+              <DialogFooter>
+                <Button variant="secondary" size="sm" onClick={(e) => (e.currentTarget.closest('[role="dialog"]') as HTMLElement)?.querySelector<HTMLButtonElement>('[aria-label="Close"]')?.click()}>
+                  Got it
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
         <AccountMenu />
       </div>
