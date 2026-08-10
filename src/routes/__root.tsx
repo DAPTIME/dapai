@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { EyeOff, Eye } from "lucide-react";
+import { EyeOff, Eye, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { UpgradeGateProvider } from "@/lib/tier-gate";
