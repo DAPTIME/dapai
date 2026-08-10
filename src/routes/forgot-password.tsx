@@ -71,7 +71,7 @@ function ForgotPasswordPage() {
       }
       setQuestion(res.question);
       setToken(res.token);
-      setSecondsLeft(Math.floor((res.expiresInMs || 300000) / 1000));
+      setSecondsLeft(Math.floor((res.expiresInMs || 600000) / 1000));
       setStep("answer");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Lookup failed");
@@ -213,7 +213,7 @@ function ForgotPasswordPage() {
             <span className="font-medium text-foreground">
               {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
             </span>{" "}
-            — reset sessions expire after 5 minutes.
+            — reset sessions expire after 10 minutes.
           </p>
 
           <Button type="submit" disabled={busy} className="w-full" style={{ background: "var(--gradient-brand)" }}>
