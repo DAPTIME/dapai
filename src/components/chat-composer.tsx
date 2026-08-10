@@ -59,7 +59,13 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
+export function ChatComposer({
+  onSend,
+  quotaInfo,
+  pending,
+  offline,
+  offlineMessage,
+}: Props) {
   const { user } = useAuth();
   const fetchProfile = useServerFn(getProfile);
   const profileQuery = useQuery({
@@ -75,6 +81,10 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const siteConfig = useSiteConfig();
   const proEnabled = siteConfig.flags.pro_model;
   const liteEnabled = siteConfig.flags.lite_model;
+  const isOffline = offline || !siteConfig.enabled;
+  const offlineText =
+    offlineMessage?.trim() || siteConfig.offlineMessage;
+
 
 
 
