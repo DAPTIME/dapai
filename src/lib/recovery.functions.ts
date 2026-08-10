@@ -55,41 +55,57 @@ export const setRecoveryQuestion = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Public: look up the recovery question for an email. */
+/** Public: look up the recovery question for an email and open a 5-minute reset session. */
 export const getRecoveryQuestion = createServerFn({ method: "POST" })
   .inputValidator((i) =>
     z.object({ email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255) }).parse(i)
   )
   .handler(async ({ data }) => {
+    const email = data.email.toLowerCase();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("profiles")
       .select("recovery_question")
-      .eq("email", data.email.toLowerCase())
+      .eq("email", email)
       .maybeSingle();
     // Don't reveal whether the email exists.
-    return { question: row?.recovery_question ?? null };
+    if (!row?.recovery_question) return { question: null, token: null, expiresInMs: 0 };
+
+    const { requestIp } = await import("./rate-limit.server");
+    const { createResetSession } = await import("./reset-session.server");
+    const session = await createResetSession(email, requestIp());
+    return { question: row.recovery_question, token: session.token, expiresInMs: session.expiresInMs };
   });
 
-/** Public: verify answer and reset the password. */
+/**
+ * Public: verify the answer inside the 5-minute reset session, set a new
+ * password AND a fresh recovery question + answer.
+ */
 export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
   .inputValidator((i) =>
     z
       .object({
         email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255),
+        token: z.string().trim().min(10).max(200),
         answer: z.string().trim().min(1).max(200),
         newPassword: z.string().min(6).max(200),
+        newQuestion: z.string().trim().min(3).max(200),
+        newAnswer: z.string().trim().min(2).max(200),
       })
       .parse(i)
   )
   .handler(async ({ data }) => {
+    const email = data.email.toLowerCase();
+    const { consumeResetSession } = await import("./reset-session.server");
+    await consumeResetSession(email, data.token);
+
     const { assertPasswordNotLeaked } = await import("./pwned.server");
     await assertPasswordNotLeaked(data.newPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("profiles")
       .select("id, recovery_answer_hash")
-      .eq("email", data.email.toLowerCase())
+      .eq("email", email)
       .maybeSingle();
     if (!row?.recovery_answer_hash) {
       throw new Error("Couldn't verify your recovery answer.");
@@ -101,8 +117,18 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
       password: data.newPassword,
     });
     if (error) throw new Error(error.message);
+
+    const { error: qErr } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        recovery_question: data.newQuestion,
+        recovery_answer_hash: makeStored(data.newAnswer),
+      })
+      .eq("id", row.id);
+    if (qErr) throw new Error(qErr.message);
     return { ok: true };
   });
+
 
 /** Signed-in: verify the current recovery answer, then update to a new question+answer. */
 export const changeRecoveryQuestion = createServerFn({ method: "POST" })
