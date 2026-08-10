@@ -40,18 +40,20 @@ import {
   adminSetFeatureFlag,
 } from "@/lib/admin.functions";
 
-const FEATURE_KEYS = ["pro_model", "lite_model", "daps", "team", "games"] as const;
+const FEATURE_KEYS = ["pro_model", "pro_lite_model", "lite_model", "daps", "team", "games"] as const;
 type FeatureKey = (typeof FEATURE_KEYS)[number];
 const FEATURE_LABELS: Record<FeatureKey, string> = {
-  pro_model: "DAP AI 3.2 (Pro)",
-  lite_model: "DAP AI Lite",
+  pro_model: "DAP AI 4 Pro",
+  pro_lite_model: "DAP AI 4 Pro Lite",
+  lite_model: "DAP AI 4 Lite",
   daps: "Custom AI's",
   team: "Our Team page",
   games: "Games (DAP Arcade)",
 };
 const FEATURE_DESCRIPTIONS: Record<FeatureKey, string> = {
-  pro_model: "Block sending messages with the DAP AI 3.2 Pro model.",
-  lite_model: "Block sending messages with the DAP AI Lite model.",
+  pro_model: "Block sending messages with the DAP AI 4 Pro model.",
+  pro_lite_model: "Block sending messages with the DAP AI 4 Pro Lite model.",
+  lite_model: "Block sending messages with the DAP AI 4 Lite model.",
   daps: "Hide the /daps page and disable starting Custom AI chats.",
   team: "Hide the /team page.",
   games: "Hide the arcade: the sidebar link, /games and every game inside it.",
