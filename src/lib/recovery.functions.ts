@@ -387,7 +387,7 @@ export const resetPasswordWithLink = createServerFn({ method: "POST" })
       .object({
         email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255),
         token: z.string().trim().min(10).max(200),
-        newPassword: z.string().min(6).max(200),
+        newPassword: z.string().min(8).max(200),
         newQuestion: z.string().trim().min(3).max(200),
         newAnswer: z.string().trim().min(2).max(200),
       })
@@ -398,8 +398,11 @@ export const resetPasswordWithLink = createServerFn({ method: "POST" })
     const { consumeResetSession } = await import("./reset-session.server");
     await consumeResetSession(email, data.token);
 
+    const { assertPasswordPolicy } = await import("./password-policy");
+    assertPasswordPolicy(data.newPassword, { email });
     const { assertPasswordNotLeaked } = await import("./pwned.server");
     await assertPasswordNotLeaked(data.newPassword);
+
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
