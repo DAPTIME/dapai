@@ -479,6 +479,23 @@ export const sendChatMessage = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
 
+    // Ownership gate: the chat must belong to the caller before we write
+    // anything referencing its id. The chat_messages INSERT policy only
+    // pins user_id, so without this a known/guessed chat UUID could be
+    // written into by another signed-in user.
+    {
+      const { data: ownedChat, error: ownErr } = await supabase
+        .from("chats")
+        .select("id")
+        .eq("id", data.chatId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (ownErr) throw dbError(ownErr);
+      if (!ownedChat) throw new Error("Chat not found.");
+    }
+
+
+
     // Block sends when the site is in maintenance mode.
     {
       const { supabaseAdmin } = await import(
