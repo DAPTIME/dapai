@@ -482,24 +482,26 @@ function EditUserDialog({
           </div>
           <div className="space-y-2">
             <Label>Tier</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={tier === "free" ? "default" : "outline"}
-                onClick={() => setTier("free")}
-              >
-                Free
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={tier === "pro" ? "default" : "outline"}
-                onClick={() => setTier("pro")}
-              >
-                Pro
-              </Button>
+            <div className="flex flex-wrap gap-2">
+              {TIERS.map((t) => (
+                <Button
+                  key={t}
+                  type="button"
+                  size="sm"
+                  variant={tier === t ? "default" : "outline"}
+                  onClick={() => setTier(t)}
+                  title={tierConfig(t).productName}
+                  className="capitalize"
+                >
+                  {t}
+                </Button>
+              ))}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {tierConfig(tier).productName}
+              {tierConfig(tier).tagline ? ` — ${tierConfig(tier).tagline}` : ""}
+            </p>
+          </div>
           </div>
         </div>
         <DialogFooter>
