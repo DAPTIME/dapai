@@ -531,12 +531,13 @@ function EditUserDialog({
     userId: string;
     name?: string;
     email?: string;
-    tier?: "free" | "pro";
+    tier?: TierId;
   }) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [tier, setTier] = useState<"free" | "pro">("free");
+  const [tier, setTier] = useState<TierId>("free");
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
