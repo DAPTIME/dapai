@@ -502,7 +502,6 @@ function EditUserDialog({
               {tierConfig(tier).tagline ? ` — ${tierConfig(tier).tagline}` : ""}
             </p>
           </div>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
