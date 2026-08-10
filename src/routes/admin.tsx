@@ -607,7 +607,7 @@ function SystemPromptTab() {
     <div className="space-y-6">
       <SystemPromptEditor
         model="dap-ai-1.0"
-        title="DAP AI 3.2 (Pro)"
+        title="DAP AI 4 Pro"
         description="Used when the Pro model is selected. Falls back to the legacy global prompt if left empty."
       />
       <SystemPromptEditor
