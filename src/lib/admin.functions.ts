@@ -159,7 +159,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
         userId: z.string().uuid(),
         name: z.string().trim().min(1).max(120).optional(),
         email: z.string().trim().email().max(255).optional(),
-        tier: z.enum(["free", "pro"]).optional(),
+        tier: z.enum(TIERS).optional(),
         resetUsage: z.boolean().optional(),
       })
       .parse(i)
