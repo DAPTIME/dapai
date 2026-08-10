@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -11,7 +12,7 @@ export const listBetaTesters = createServerFn({ method: "GET" }).handler(
       .select("id, name, sort_order")
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data ?? [];
   },
 );
@@ -27,7 +28,7 @@ export const adminAddBetaTester = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("beta_testers")
       .insert({ name: data.name, sort_order: 999 });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -41,6 +42,6 @@ export const adminRemoveBetaTester = createServerFn({ method: "POST" })
       .from("beta_testers")
       .delete()
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });

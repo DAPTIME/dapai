@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 /**
  * Short-lived password-reset sessions. A reset must be completed within
  * RESET_TTL_MS of looking up the recovery question, and each ticket is
@@ -20,7 +21,7 @@ export async function createResetSession(email: string, ip: string | null) {
     ip,
     expires_at: new Date(Date.now() + RESET_TTL_MS).toISOString(),
   });
-  if (error) throw new Error(error.message);
+  if (error) throw dbError(error);
   return { token, expiresInMs: RESET_TTL_MS };
 }
 

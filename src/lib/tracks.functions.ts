@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 import {
   SUPABASE_URL as PUBLIC_SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY as PUBLIC_SUPABASE_PUBLISHABLE_KEY,
@@ -56,7 +57,7 @@ export const listMyTracks = createServerFn({ method: "GET" })
       .select("id, name, season, is_public, goal, play_count, created_at, updated_at, params")
       .eq("owner_id", context.userId)
       .order("updated_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data ?? [];
   });
 
@@ -68,7 +69,7 @@ export const listPublicTracks = createServerFn({ method: "GET" }).handler(async 
     .eq("is_public", true)
     .order("created_at", { ascending: false })
     .limit(100);
-  if (error) throw new Error(error.message);
+  if (error) throw dbError(error);
   // Silently hide legacy v1 tracks from the public browse list — they
   // cannot be played by the new 3D runner.
   return (data ?? []).filter((r) => toTrackData(r.params) !== null);
@@ -83,7 +84,7 @@ export const getTrack = createServerFn({ method: "GET" })
       .select("id, name, season, params, goal, is_public, play_count, owner_id, created_at")
       .eq("id", data.id)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     if (!row) throw new Error("Track not found");
     return row;
   });
@@ -97,7 +98,7 @@ export const getMyTrack = createServerFn({ method: "GET" })
       .select("id, name, season, params, goal, is_public, play_count, owner_id, created_at")
       .eq("id", data.id)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     if (!row) throw new Error("Track not found");
     return row;
   });
@@ -128,7 +129,7 @@ export const createTrack = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { id: row.id };
   });
 
@@ -158,7 +159,7 @@ export const updateTrack = createServerFn({ method: "POST" })
       })
       .eq("id", data.id)
       .eq("owner_id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -171,7 +172,7 @@ export const deleteTrack = createServerFn({ method: "POST" })
       .delete()
       .eq("id", data.id)
       .eq("owner_id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -184,7 +185,7 @@ export const publishTrack = createServerFn({ method: "POST" })
       .select("name, params, owner_id")
       .eq("id", data.id)
       .maybeSingle();
-    if (fErr) throw new Error(fErr.message);
+    if (fErr) throw dbError(fErr);
     if (!row) throw new Error("Track not found");
     if (row.owner_id !== context.userId) throw new Error("Not your track");
     const err = validateForPublish(row.name, row.params);
@@ -194,7 +195,7 @@ export const publishTrack = createServerFn({ method: "POST" })
       .update({ is_public: true })
       .eq("id", data.id)
       .eq("owner_id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -207,7 +208,7 @@ export const unpublishTrack = createServerFn({ method: "POST" })
       .update({ is_public: false })
       .eq("id", data.id)
       .eq("owner_id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -232,7 +233,7 @@ export const submitScore = createServerFn({ method: "POST" })
         track_ref: data.trackRef,
         best_time_ms: data.timeMs,
       });
-      if (error) throw new Error(error.message);
+      if (error) throw dbError(error);
       return { improved: true, bestMs: data.timeMs };
     }
     if (data.timeMs < existing.best_time_ms) {
@@ -240,7 +241,7 @@ export const submitScore = createServerFn({ method: "POST" })
         .from("track_scores")
         .update({ best_time_ms: data.timeMs })
         .eq("id", existing.id);
-      if (error) throw new Error(error.message);
+      if (error) throw dbError(error);
       return { improved: true, bestMs: data.timeMs };
     }
     return { improved: false, bestMs: existing.best_time_ms };
@@ -256,6 +257,6 @@ export const getLeaderboard = createServerFn({ method: "GET" })
       _track_ref: data.trackRef,
       _limit: data.limit ?? 20,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return (rows ?? []) as Array<{ name: string; best_time_ms: number; achieved_at: string; rank: number }>;
   });

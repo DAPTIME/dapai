@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
@@ -9,7 +10,7 @@ export function getAdminClient() {
 export async function assertAdmin(userId: string) {
   const { data: authUser, error: authErr } =
     await supabaseAdmin.auth.admin.getUserById(userId);
-  if (authErr) throw new Error(authErr.message);
+  if (authErr) throw dbError(authErr);
 
   const email = authUser?.user?.email?.toLowerCase() ?? "";
   if (email !== ADMIN_EMAIL) throw new Error("Forbidden: admin role required");
@@ -20,6 +21,6 @@ export async function assertAdmin(userId: string) {
     .eq("user_id", userId)
     .eq("role", "admin")
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw dbError(error);
   if (!data) throw new Error("Forbidden: admin role required");
 }
