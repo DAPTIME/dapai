@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, UserMinus, Mail } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
