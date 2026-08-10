@@ -24,8 +24,17 @@ export const AIR_TURN = 0.9;
 export const GRAVITY = 34;
 export const BOOST_MAX = 66;
 export const BOOST_ACCEL = 55;
-/** World units/s → the number shown on the speedo. */
-export const SPEED_TO_KMH = 3.2;
+/** What the speedo reads at full pelt on tarmac. */
+export const TOP_SPEED_KMH = 100;
+/**
+ * World units/s → the number shown on the speedo.
+ *
+ * Derived from MAX_SPEED rather than written as a literal, so the two
+ * cannot drift apart: retune the car's top speed and the dial still
+ * reads TOP_SPEED_KMH at the top of it. Boost briefly goes past this,
+ * which is the point of a boost.
+ */
+export const SPEED_TO_KMH = TOP_SPEED_KMH / MAX_SPEED;
 
 export type CarState = {
   x: number; y: number; z: number;

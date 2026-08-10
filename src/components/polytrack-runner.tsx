@@ -16,6 +16,7 @@ import {
 import { isTrackData, type TrackData, type Tile } from "@/lib/track-validation";
 import { createCar, resetCar, stepCar, STEP, SPEED_TO_KMH, MAX_SPEED } from "@/lib/poly-physics";
 import { KeybindEditor, useGameControls } from "@/lib/game-controls";
+import { useCompactScreen, isTouchOnly } from "@/lib/use-compact-screen";
 import { Mesher, type V3 } from "@/lib/poly-mesh";
 
 type Action = "left" | "right" | "gas" | "brake" | "handbrake" | "reset" | "restart" | "pause" | "camera" | "fullscreen";
@@ -89,6 +90,13 @@ export function PolyTrackRunner(props: Props) {
   const [offRoad, setOffRoad] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [best, setBest] = useState<number | null>(null);
+  /* On-screen controls follow the screen, not just the viewport width.
+     A small touch laptop or tablet needs them as much as a phone does. */
+  const compact = useCompactScreen();
+  // A device with a fine pointer has a keyboard worth rebinding, whatever
+  // its size, so the key editor stays for compact laptops and hides only
+  // where there is nothing to type on.
+  const hasKeyboard = !isTouchOnly();
 
   const apiRef = useRef<EngineApi | null>(null);
   const timerRef = useRef<HTMLDivElement | null>(null);
@@ -710,7 +718,7 @@ export function PolyTrackRunner(props: Props) {
         )}
       </div>
 
-      <TouchPad press={press} onRespawn={() => apiRef.current?.respawn()} />
+      {compact && <TouchPad press={press} onRespawn={() => apiRef.current?.respawn()} />}
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span className="font-semibold text-foreground">Medals</span>
@@ -721,7 +729,7 @@ export function PolyTrackRunner(props: Props) {
         ))}
       </div>
 
-      <div className="mt-2 hidden sm:block">
+      <div className={compact && !hasKeyboard ? "hidden" : "mt-2 block"}>
         <KeybindEditor controls={controls} labels={LABELS} />
       </div>
     </div>
@@ -743,7 +751,7 @@ function TouchPad({ press, onRespawn }: { press: (a: Action, on: boolean) => voi
   });
   const cls = "h-16 select-none rounded-xl bg-muted/70 text-lg font-semibold active:bg-primary/40";
   return (
-    <div className="mt-3 grid grid-cols-4 gap-2 sm:hidden">
+    <div className="mt-3 grid grid-cols-4 gap-2">
       <button className={cls} {...hold("left")}>◀</button>
       <button className={cls} {...hold("brake")}>▼</button>
       <button className={cls} {...hold("gas")}>▲</button>
