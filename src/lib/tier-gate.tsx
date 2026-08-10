@@ -53,7 +53,7 @@ interface GateCtx {
   hasTier: (min: Tier) => boolean;
   /** Returns true when allowed; otherwise shows the upgrade screen. */
   requireTier: (min: Tier, feature?: string) => boolean;
-  openUpgrade: (min: Tier, feature?: string) => void;
+  openUpgrade: (min?: Tier, feature?: string) => void;
 }
 
 const Ctx = createContext<GateCtx | null>(null);
@@ -68,7 +68,7 @@ export function UpgradeGateProvider({ children }: { children: ReactNode }) {
     staleTime: 60_000,
   });
 
-  const [dialog, setDialog] = useState<{ min: Tier; feature?: string } | null>(
+  const [dialog, setDialog] = useState<{ min?: Tier; feature?: string } | null>(
     null
   );
 
@@ -80,7 +80,7 @@ export function UpgradeGateProvider({ children }: { children: ReactNode }) {
     [tier, user]
   );
 
-  const openUpgrade = useCallback((min: Tier, feature?: string) => {
+  const openUpgrade = useCallback((min?: Tier, feature?: string) => {
     setDialog({ min, feature });
   }, []);
 
