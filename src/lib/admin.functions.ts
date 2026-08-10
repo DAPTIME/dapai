@@ -57,6 +57,9 @@ export const adminGetChat = createServerFn({ method: "POST" })
     return { chat, messages: messages ?? [] };
   });
 
+const TIERS = ["free", "go", "pro", "exclusive"] as const;
+type TierId = (typeof TIERS)[number];
+
 export const adminListUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -67,7 +70,47 @@ export const adminListUsers = createServerFn({ method: "GET" })
       .select("id, email, name, tier, pro_messages_used, created_at")
       .order("created_at", { ascending: false });
     if (error) throw dbError(error);
-    return data;
+
+    // Ban state + email confirmation live on the auth user, not the profile.
+    const banned = new Set<string>();
+    const unconfirmed = new Set<string>();
+    try {
+      const { data: authList } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
+      for (const u of authList?.users ?? []) {
+        const until = (u as { banned_until?: string | null }).banned_until;
+        if (until && new Date(until).getTime() > Date.now()) banned.add(u.id);
+        if (!u.email_confirmed_at) unconfirmed.add(u.id);
+      }
+    } catch (e) {
+      console.error("[admin] listUsers auth lookup failed:", (e as Error).message);
+    }
+
+    return (data ?? []).map((p) => ({
+      ...p,
+      banned: banned.has(p.id),
+      emailConfirmed: !unconfirmed.has(p.id),
+    }));
+  });
+
+export const adminSetBan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ userId: z.string().uuid(), banned: z.boolean() }).parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    if (data.userId === context.userId)
+      throw new Error("You can't ban your own admin account.");
+    const supabaseAdmin = getAdminClient();
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(
+      data.userId,
+      { ban_duration: data.banned ? "876000h" : "none" }
+    );
+    if (error) throw dbError(error);
+    return { ok: true };
   });
 
 export const adminSetTier = createServerFn({ method: "POST" })
@@ -76,7 +119,7 @@ export const adminSetTier = createServerFn({ method: "POST" })
     z
       .object({
         userId: z.string().uuid(),
-        tier: z.enum(["free", "pro"]),
+        tier: z.enum(TIERS),
         resetUsage: z.boolean().optional(),
       })
       .parse(i)
@@ -84,7 +127,7 @@ export const adminSetTier = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
     const supabaseAdmin = getAdminClient();
-    const patch: { tier: "free" | "pro"; pro_messages_used?: number } = {
+    const patch: { tier: TierId; pro_messages_used?: number } = {
       tier: data.tier,
     };
     if (data.resetUsage) patch.pro_messages_used = 0;
@@ -95,6 +138,7 @@ export const adminSetTier = createServerFn({ method: "POST" })
     if (error) throw dbError(error);
     return { ok: true };
   });
+
 
 export const adminAmIAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
