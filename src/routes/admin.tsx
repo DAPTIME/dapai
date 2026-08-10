@@ -305,19 +305,19 @@ function UsersTab() {
                     <KeyRound className="mr-2 h-4 w-4" /> Reset password
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {u.tier === "free" ? (
+                  {TIERS.filter((t) => t !== u.tier).map((t) => (
                     <DropdownMenuItem
-                      onSelect={() => setTier.mutate({ userId: u.id, tier: "pro" })}
+                      key={t}
+                      onSelect={() => setTier.mutate({ userId: u.id, tier: t })}
                     >
-                      <Crown className="mr-2 h-4 w-4" /> Make Pro
+                      {t === "free" ? (
+                        <UserMinus className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Crown className="mr-2 h-4 w-4" />
+                      )}
+                      Set tier: <span className="ml-1 capitalize">{t}</span>
                     </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      onSelect={() => setTier.mutate({ userId: u.id, tier: "free" })}
-                    >
-                      <UserMinus className="mr-2 h-4 w-4" /> Downgrade to Free
-                    </DropdownMenuItem>
-                  )}
+                  ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
