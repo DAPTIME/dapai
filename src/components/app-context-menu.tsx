@@ -92,6 +92,7 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
     // contextmenu event lands, so "was it open" has to include "it closed a
     // moment ago because of this very click".
     const wasOpen = openRef.current || Date.now() - closedAt.current < 200;
+    console.log('[ctx] wasOpen', wasOpen);
     if (!wasOpen) return;
 
     const { clientX, clientY } = e;
@@ -100,6 +101,7 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
     e.stopPropagation();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        console.log('[ctx] replay at', clientX, clientY);
         replaying.current = true;
         target.dispatchEvent(
           new MouseEvent("contextmenu", {
