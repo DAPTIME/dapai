@@ -16,7 +16,7 @@ export const Route = createFileRoute("/about-dap-ai")({
       {
         name: "keywords",
         content:
-          "DAP AI, dap ai, dapai, DAP, DAP AI 3.2, DAP AI Pro, DAP AI Lite, DAP AI chatbot, DAP AI assistant, free AI chatbot, free AI assistant, free chatbot online, mixture of experts, MoE model, sparse model, expert routing, 7B parameter experts, edge AI, on-device AI, self-hosted AI, private AI, local AI, Jetson Orin Nano AI, RTX 5060 Ti AI, ChatGPT alternative, Claude alternative, Gemini alternative, Copilot alternative, AI for coding, AI code reviewer, AI study buddy, AI career coach, AI trip planner, AI writing assistant, AI homework help, AI math solver, AI essay writer, AI translator, AI summarizer, AI email writer, AI resume builder, AI recipe generator, AI weather assistant, weather today, what is the weather, ask AI anything, chat with AI, talk to AI, best free AI, fastest AI chatbot, no signup AI, AI without login, AI for students, AI for developers, AI for writers, AI for business, AI for teachers, small AI model, cheap AI, low cost AI, offline capable AI, open AI alternative, Devansh AI, DAP AI Dubai, DAP AI UAE, how does AI work, what is a language model, what is an SLM, run AI at home, AI on Jetson, AI on gaming GPU",
+          "DAP AI, dap ai, dapai, DAP, DAP AI 4, DAP AI Pro, DAP AI 4 Lite, DAP AI chatbot, DAP AI assistant, free AI chatbot, free AI assistant, free chatbot online, mixture of experts, MoE model, sparse model, expert routing, 7B parameter experts, edge AI, on-device AI, self-hosted AI, private AI, local AI, Jetson Orin Nano AI, RTX 5060 Ti AI, ChatGPT alternative, Claude alternative, Gemini alternative, Copilot alternative, AI for coding, AI code reviewer, AI study buddy, AI career coach, AI trip planner, AI writing assistant, AI homework help, AI math solver, AI essay writer, AI translator, AI summarizer, AI email writer, AI resume builder, AI recipe generator, AI weather assistant, weather today, what is the weather, ask AI anything, chat with AI, talk to AI, best free AI, fastest AI chatbot, no signup AI, AI without login, AI for students, AI for developers, AI for writers, AI for business, AI for teachers, small AI model, cheap AI, low cost AI, offline capable AI, open AI alternative, Devansh AI, DAP AI Dubai, DAP AI UAE, how does AI work, what is a language model, what is an SLM, run AI at home, AI on Jetson, AI on gaming GPU",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "DAP AI — Free AI Chatbot & Small Language Model" },
@@ -47,7 +47,7 @@ export const Route = createFileRoute("/about-dap-ai")({
             {
               "@type": "SoftwareApplication",
               name: "DAP AI",
-              alternateName: ["DAP AI 3.2", "DAP AI Pro", "DAP AI Lite", "dapai", "DAP"],
+              alternateName: ["DAP AI 4", "DAP AI Pro", "DAP AI 4 Lite", "dapai", "DAP"],
               applicationCategory: "Chatbot",
               operatingSystem: "Web",
               url: "https://dapai.lovable.app",
@@ -79,7 +79,7 @@ export const Route = createFileRoute("/about-dap-ai")({
                   name: "Is DAP AI free?",
                   acceptedAnswer: {
                     "@type": "Answer",
-                    text: "Yes. DAP AI Lite is free forever. DAP AI 3.2 (Pro) unlocks longer memory, custom personas (Gems), web search, and image input.",
+                    text: "Yes. DAP AI 4 Lite is free forever. DAP AI 4 Pro unlocks longer memory, custom personas (Gems), web search, and image input.",
                   },
                 },
                 {
@@ -356,7 +356,7 @@ function AboutDapAi() {
           </li>
           <li>
             <strong>It's cheap to run.</strong> No $20k GPUs, no per-token
-            cloud bills. That's why DAP AI Lite can be free.
+            cloud bills. That's why DAP AI 4 Lite can be free.
           </li>
           <li>
             <strong>It's private.</strong> Your messages never leave hardware
@@ -375,11 +375,11 @@ function AboutDapAi() {
         <h2 className="text-2xl font-semibold">Tiers</h2>
         <ul className="mt-3 list-disc space-y-2 pl-6 text-muted-foreground">
           <li>
-            <strong>DAP AI Lite</strong> — free. Fast replies for quick
+            <strong>DAP AI 4 Lite</strong> — free. Fast replies for quick
             questions and chat.
           </li>
           <li>
-            <strong>DAP AI 3.2 (Pro)</strong> — the smarter tuned variant
+            <strong>DAP AI 4 Pro</strong> — the smarter tuned variant
             with longer memory, custom DAPs (personas), web search, and
             image input.
           </li>
@@ -428,7 +428,7 @@ function AboutDapAi() {
         <div className="mt-4 space-y-4 text-muted-foreground">
           <div>
             <h3 className="font-medium text-foreground">Is DAP AI free?</h3>
-            <p>Yes. DAP AI Lite is free forever. Pro unlocks longer memory, custom personas, web search, and image input.</p>
+            <p>Yes. DAP AI 4 Lite is free forever. Pro unlocks longer memory, custom personas, web search, and image input.</p>
           </div>
           <div>
             <h3 className="font-medium text-foreground">Can DAP AI tell me the weather?</h3>
@@ -440,7 +440,7 @@ function AboutDapAi() {
           </div>
           <div>
             <h3 className="font-medium text-foreground">Do I need to sign up?</h3>
-            <p>You can try DAP AI Lite without an account. Sign up to save chats and unlock Pro features.</p>
+            <p>You can try DAP AI 4 Lite without an account. Sign up to save chats and unlock Pro features.</p>
           </div>
           <div>
             <h3 className="font-medium text-foreground">Is my data private?</h3>

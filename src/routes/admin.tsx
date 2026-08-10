@@ -42,15 +42,15 @@ import {
 const FEATURE_KEYS = ["pro_model", "lite_model", "daps", "team", "games"] as const;
 type FeatureKey = (typeof FEATURE_KEYS)[number];
 const FEATURE_LABELS: Record<FeatureKey, string> = {
-  pro_model: "DAP AI 3.2 (Pro)",
-  lite_model: "DAP AI Lite",
+  pro_model: "DAP AI 4 Pro",
+  lite_model: "DAP AI 4 Lite",
   daps: "Custom AI's",
   team: "Our Team page",
   games: "Games (DAP Arcade)",
 };
 const FEATURE_DESCRIPTIONS: Record<FeatureKey, string> = {
-  pro_model: "Block sending messages with the DAP AI 3.2 Pro model.",
-  lite_model: "Block sending messages with the DAP AI Lite model.",
+  pro_model: "Block sending messages with the DAP AI 4 Pro model.",
+  lite_model: "Block sending messages with the DAP AI 4 Lite model.",
   daps: "Hide the /daps page and disable starting Custom AI chats.",
   team: "Hide the /team page.",
   games: "Hide the arcade: the sidebar link, /games and every game inside it.",
@@ -603,12 +603,12 @@ function SystemPromptTab() {
     <div className="space-y-6">
       <SystemPromptEditor
         model="dap-ai-1.0"
-        title="DAP AI 3.2 (Pro)"
+        title="DAP AI 4 Pro"
         description="Used when the Pro model is selected. Falls back to the legacy global prompt if left empty."
       />
       <SystemPromptEditor
         model="dap-ai-lite"
-        title="DAP AI Lite"
+        title="DAP AI 4 Lite"
         description="Used when the Lite model is selected. Falls back to the legacy global prompt if left empty."
       />
     </div>

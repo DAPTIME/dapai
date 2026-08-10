@@ -155,7 +155,7 @@ function ChatPage() {
       qc.invalidateQueries({ queryKey: ["chats"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
       if (result.forcedToLite) {
-        toast.info("DAP AI 3.2 is Pro-only — replied with DAP AI Lite.");
+        toast.info("DAP AI 4 is Pro-only — replied with DAP AI 4 Lite.");
       }
     },
     onError: (e) => {

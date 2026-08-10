@@ -294,7 +294,7 @@ export const sendPasswordResetLink = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase();
     const { consumeEmailQuota, requestIp } = await import("./rate-limit.server");
-    await consumeEmailQuota("password-reset");
+    await consumeEmailQuota("password-reset", email);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin

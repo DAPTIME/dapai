@@ -31,13 +31,13 @@ interface Props {
 const MODELS = [
   {
     id: "dap-ai-1.0",
-    label: "DAP AI 3.2",
+    label: "DAP AI 4",
     description: "Our most capable and ambitious model yet.",
     requiresPro: true,
   },
   {
     id: "dap-ai-lite",
-    label: "DAP AI Lite 3.2",
+    label: "DAP AI 4 Lite",
     description: "Fast responses and simple answers.",
     requiresPro: false,
   },
@@ -202,11 +202,11 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
           {(() => {
             const liteSelected = model === "dap-ai-lite";
             const imgTitle = liteSelected
-              ? "DAP AI Lite doesn't support images yet"
+              ? "DAP AI 4 Lite doesn't support images yet"
               : "Attach image";
             const onClick = () => {
               if (liteSelected) {
-                toast.error("DAP AI Lite doesn't support images yet.");
+                toast.error("DAP AI 4 Lite doesn't support images yet.");
                 return;
               }
               fileInputRef.current?.click();
