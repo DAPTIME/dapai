@@ -231,7 +231,7 @@ function UsersTab() {
         <div>
           <h2 className="text-lg font-semibold">Users</h2>
           <p className="text-sm text-muted-foreground">
-            {users.length} total · {proCount} Pro · {users.length - proCount} Free
+            {users.length} total · {paidCount} paid · {users.length - paidCount} Free
           </p>
         </div>
         <div className="sm:w-72">
