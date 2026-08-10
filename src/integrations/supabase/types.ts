@@ -190,6 +190,57 @@ export type Database = {
         }
         Relationships: []
       }
+      email_rate_limits: {
+        Row: {
+          created_at: string
+          id: string
+          ip: string
+          kind: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip: string
+          kind?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip?: string
+          kind?: string
+        }
+        Relationships: []
+      }
+      password_reset_sessions: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          ip: string | null
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          ip?: string | null
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          ip?: string | null
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

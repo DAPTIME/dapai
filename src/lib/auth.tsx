@@ -24,6 +24,11 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+/** Login sessions expire 5 minutes after sign-in. */
+const SESSION_TTL_MS = 5 * 60 * 1000;
+const SESSION_START_KEY = "dapai.session_started_at";
+
+
 function toUser(u: SupabaseUser | null | undefined): User | null {
   if (!u) return null;
   return {
@@ -48,12 +53,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, s) => {
+    } = supabase.auth.onAuthStateChange((event, s) => {
       if (cancelled) return;
+      if (event === "SIGNED_IN" && s) {
+        localStorage.setItem(SESSION_START_KEY, String(Date.now()));
+      }
+      if (event === "SIGNED_OUT") {
+        localStorage.removeItem(SESSION_START_KEY);
+      }
       setSession(s);
       setUser(toUser(s?.user));
       router.invalidate();
-      queryClient.invalidateQueries();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
 
     supabase.auth.getSession().then(({ data, error }) => {
@@ -61,17 +72,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error("[auth] getSession error:", error.message);
       }
+      if (data.session) {
+        const started = Number(localStorage.getItem(SESSION_START_KEY) || 0);
+        if (!started) {
+          localStorage.setItem(SESSION_START_KEY, String(Date.now()));
+        }
+      }
       setSession(data.session);
       setUser(toUser(data.session?.user));
       setLoading(false);
       setReady(true);
     });
 
+    // Enforce the 5-minute session lifetime.
+    const timer = window.setInterval(() => {
+      const started = Number(localStorage.getItem(SESSION_START_KEY) || 0);
+      if (!started) return;
+      if (Date.now() - started >= SESSION_TTL_MS) {
+        localStorage.removeItem(SESSION_START_KEY);
+        void supabase.auth.signOut();
+      }
+    }, 15_000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
       subscription.unsubscribe();
     };
   }, [router, queryClient]);
+
 
   const value: AuthCtx = {
     user,

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,8 +32,29 @@ function ForgotPasswordPage() {
   const [answer, setAnswer] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [token, setToken] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [newQuestion, setNewQuestion] = useState("");
+  const [newAnswer, setNewAnswer] = useState("");
 
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (step !== "answer" || secondsLeft <= 0) return;
+    const t = window.setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          window.clearInterval(t);
+          setStep("email");
+          setToken(null);
+          toast.error("Reset session expired. Please start again.");
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(t);
+  }, [step, secondsLeft]);
 
   const onEmailSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -44,11 +65,13 @@ function ForgotPasswordPage() {
     setBusy(true);
     try {
       const res = await getQ({ data: { email } });
-      if (!res.question) {
+      if (!res.question || !res.token) {
         toast.error("No recovery question is set for this email.");
         return;
       }
       setQuestion(res.question);
+      setToken(res.token);
+      setSecondsLeft(Math.floor((res.expiresInMs || 300000) / 1000));
       setStep("answer");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Lookup failed");
@@ -59,6 +82,11 @@ function ForgotPasswordPage() {
 
   const onResetSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!token) {
+      toast.error("Reset session expired. Please start again.");
+      setStep("email");
+      return;
+    }
     if (newPassword.length < 6) {
       toast.error("Password must be at least 6 characters.");
       return;
@@ -67,11 +95,24 @@ function ForgotPasswordPage() {
       toast.error("Passwords don't match.");
       return;
     }
+    if (newQuestion.trim().length < 3 || newAnswer.trim().length < 2) {
+      toast.error("Please set a new recovery question and answer.");
+      return;
+    }
     setBusy(true);
 
     try {
-      await reset({ data: { email, answer, newPassword } });
-      toast.success("Password updated. You can sign in now.");
+      await reset({
+        data: {
+          email,
+          token,
+          answer,
+          newPassword,
+          newQuestion: newQuestion.trim(),
+          newAnswer: newAnswer.trim(),
+        },
+      });
+      toast.success("Password and recovery question updated. You can sign in now.");
       navigate({ to: "/login" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reset failed");
@@ -79,6 +120,7 @@ function ForgotPasswordPage() {
       setBusy(false);
     }
   };
+
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6 py-12">
@@ -143,6 +185,36 @@ function ForgotPasswordPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="newQuestion">New recovery question</Label>
+            <Input
+              id="newQuestion"
+              required
+              minLength={3}
+              placeholder="e.g. What was my first pet's name?"
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="newAnswer">New recovery answer</Label>
+            <Input
+              id="newAnswer"
+              required
+              minLength={2}
+              value={newAnswer}
+              onChange={(e) => setNewAnswer(e.target.value)}
+            />
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Finish within{" "}
+            <span className="font-medium text-foreground">
+              {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
+            </span>{" "}
+            — reset sessions expire after 5 minutes.
+          </p>
 
           <Button type="submit" disabled={busy} className="w-full" style={{ background: "var(--gradient-brand)" }}>
             {busy ? "Saving…" : "Reset password"}
