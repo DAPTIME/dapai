@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile } from "@/lib/chats.functions";
+import { useUpgradeGate } from "@/lib/tier-gate";
 import { useSiteConfig } from "@/lib/site-config";
 
 
@@ -65,6 +66,7 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const tier = quotaInfo?.tier ?? (profileQuery.data?.tier as "free" | "pro" | undefined);
   const isPro = tier === "pro";
   const canUsePro = !!user && isPro;
+  const { requireTier } = useUpgradeGate();
 
   const siteConfig = useSiteConfig();
   const proEnabled = siteConfig.flags.pro_model;
@@ -224,7 +226,12 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
               const next = e.target.value;
               const m = MODELS.find((mm) => mm.id === next);
               if (!m) return;
-              if (m.requiresPro && !canUsePro) return;
+              // Selecting a locked model pops the upgrade screen instead of
+              // silently doing nothing.
+              if (m.requiresPro && !canUsePro) {
+                requireTier("pro", m.label);
+                return;
+              }
               if (m.id === "dap-ai-1.0" && !proEnabled) return;
               if (m.id === "dap-ai-lite" && !liteEnabled) return;
               setModel(next);
@@ -239,7 +246,7 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
               const offline =
                 (m.id === "dap-ai-1.0" && !proEnabled) ||
                 (m.id === "dap-ai-lite" && !liteEnabled);
-              const disabled = proLock || offline;
+              const disabled = offline;
               const suffix = offline
                 ? " — offline for maintenance"
                 : proLock

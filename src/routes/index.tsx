@@ -233,13 +233,13 @@ function Home() {
               color: "transparent",
             }}
           >
-            DAP AI
+            DAP AI — Free AI Chatbot
           </h1>
 
 
           <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
-            {greeting} DAP AI is a fast AI chatbot for answers, writing, studying,
-            coding, and custom AI assistants.
+            {greeting} DAP AI is a free AI chatbot for instant answers, writing,
+            studying, coding, and building your own custom AI assistants.
           </p>
 
           {!user && ready && (

@@ -1,3 +1,4 @@
+import { gameHead } from "@/lib/game-seo";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,13 @@ const SPACE_LABELS: Record<SpaceAction, string> = {
 };
 
 export const Route = createFileRoute("/games/spacewar")({
+  head: () =>
+    gameHead({
+      path: "/games/spacewar",
+      name: "Spacewar",
+      description:
+        "Play Spacewar free online — dodge incoming asteroids and blast rocks for a high score. Runs in your browser on desktop and mobile.",
+    }),
   component: Spacewar,
 });
 

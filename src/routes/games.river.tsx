@@ -1,9 +1,17 @@
+import { gameHead } from "@/lib/game-seo";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/river")({
+  head: () =>
+    gameHead({
+      path: "/games/river",
+      name: "River Crosser",
+      description:
+        "Play River Crosser free online — hop between traffic and floating logs without drowning. Browser game, no download needed.",
+    }),
   component: RiverGame,
 });
 

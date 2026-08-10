@@ -86,7 +86,9 @@ function TeamPage() {
         {sections.map((s) => (
           <Card key={s.title}>
             <CardHeader>
-              <CardTitle className="text-lg">{s.title}</CardTitle>
+              <CardTitle className="text-lg">
+                <h2 className="text-lg font-semibold leading-none tracking-tight">{s.title}</h2>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {s.dynamic && betaQuery.isLoading ? (

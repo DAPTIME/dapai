@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { EyeOff, Eye } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { UpgradeGateProvider } from "@/lib/tier-gate";
 import { AccountSetupGate } from "@/components/account-setup-gate";
 
 import { AccountMenu } from "@/components/account-menu";
@@ -37,7 +38,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "DAP AI" },
+      { title: "DAP AI — Free AI Chatbot" },
       { name: "application-name", content: "DAP AI" },
       { name: "apple-mobile-web-app-title", content: "DAP AI" },
       { property: "og:site_name", content: "DAP AI" },
@@ -47,8 +48,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "google-site-verification", content: "ihyVMpSKja5zvyeVXgKwlPewFA3s5qzQJX9FolcYAHI" },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/66282eb6-e53c-4f21-9d65-92a76922cf37" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/66282eb6-e53c-4f21-9d65-92a76922cf37" },
-      { property: "og:title", content: "DAP AI" },
-      { name: "twitter:title", content: "DAP AI" },
+      { property: "og:title", content: "DAP AI — Free AI Chatbot" },
+      { name: "twitter:title", content: "DAP AI — Free AI Chatbot" },
       { name: "description", content: "The next step in ultra small AI" },
       { property: "og:description", content: "The next step in ultra small AI" },
       { name: "twitter:description", content: "The next step in ultra small AI" },
@@ -141,6 +142,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <UpgradeGateProvider>
         <AppContextMenu>
           <SidebarProvider>
             <SidebarSwipeGestures />
@@ -167,6 +169,7 @@ function RootComponent() {
 
           </SidebarProvider>
         </AppContextMenu>
+        </UpgradeGateProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

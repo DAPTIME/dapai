@@ -5,13 +5,12 @@ export const Route = createFileRoute("/about-dap-ai")({
   head: () => ({
     meta: [
       {
-        title:
-          "DAP AI — Free AI Chatbot & Small Language Model | Ask Anything: Weather, Code, Study, Recipes",
+        title: "DAP AI — Free AI Chatbot & Small Language Model",
       },
       {
         name: "description",
         content:
-          "DAP AI is a free AI chatbot built as a mixture-of-experts model — 15 to 23 experts depending on your plan, each roughly 7-9B parameters — running on hardware we own. Ask about the weather, news, coding, math, study help, writing, recipes, travel, career advice, and more.",
+          "DAP AI is a free AI chatbot built on our own hardware. Ask about the weather, news, coding, maths, study help, writing, recipes and travel.",
       },
       {
         name: "keywords",

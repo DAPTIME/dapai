@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -220,7 +220,96 @@ function AccountPage() {
             Email: {profile.data?.email ?? user?.email}
           </p>
         </form>
+
+        <ConnectedAccounts />
       </div>
     </div>
   );
 }
+
+/**
+ * Connect / disconnect Google (and GitHub) to an existing email account so the
+ * same person can sign in either way.
+ */
+function ConnectedAccounts() {
+  const qc = useQueryClient();
+  const identities = useQuery({
+    queryKey: ["my-identities"],
+    queryFn: async () => {
+      const { data, error } = await supabase.auth.getUserIdentities();
+      if (error) throw error;
+      return data?.identities ?? [];
+    },
+    staleTime: 60_000,
+  });
+
+  const providers = [
+    { id: "google" as const, label: "Google" },
+    { id: "github" as const, label: "GitHub" },
+  ];
+
+  const link = async (provider: "google" | "github") => {
+    const { error } = await supabase.auth.linkIdentity({
+      provider,
+      options: { redirectTo: `${window.location.origin}/account` },
+    });
+    if (error) toast.error(error.message);
+  };
+
+  const unlink = async (provider: string) => {
+    const all = identities.data ?? [];
+    if (all.length <= 1) {
+      toast.error("You need at least one sign-in method.");
+      return;
+    }
+    const target = all.find((i) => i.provider === provider);
+    if (!target) return;
+    const { error } = await supabase.auth.unlinkIdentity(target);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(`${provider} disconnected`);
+    qc.invalidateQueries({ queryKey: ["my-identities"] });
+  };
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <Label className="text-base">Connected accounts</Label>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Link Google or GitHub to your account — then you can sign in either with
+        your email and password or with one click.
+      </p>
+      <div className="mt-4 space-y-2">
+        {providers.map((p) => {
+          const linked = (identities.data ?? []).some(
+            (i: { provider: string }) => i.provider === p.id
+          );
+          return (
+            <div
+              key={p.id}
+              className="flex items-center justify-between rounded-xl border border-border/70 px-4 py-3"
+            >
+              <div className="text-sm">
+                <span className="font-medium">{p.label}</span>
+                <span className="ml-2 text-muted-foreground">
+                  {linked ? "Connected" : "Not connected"}
+                </span>
+              </div>
+              {linked ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => unlink(p.id)}>
+                  Disconnect
+                </Button>
+              ) : (
+                <Button type="button" size="sm" onClick={() => link(p.id)}>
+                  Connect
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+

@@ -1,9 +1,17 @@
+import { gameHead } from "@/lib/game-seo";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/flappy")({
+  head: () =>
+    gameHead({
+      path: "/games/flappy",
+      name: "Flappy",
+      description:
+        "Play Flappy free online — tap or press space to flap through the pipes and beat your best score. Works on phone and desktop.",
+    }),
   component: FlappyGame,
 });
 
