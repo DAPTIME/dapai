@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 /**
  * Server functions for chats. All run as the authenticated user so RLS
  * scopes every read/write to that user's rows.
@@ -283,7 +284,7 @@ export const listChats = createServerFn({ method: "GET" })
       .select("id, title, created_at, updated_at")
       .eq("is_incognito", false)
       .order("updated_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data;
   });
 
@@ -378,7 +379,7 @@ export const createChat = createServerFn({ method: "POST" })
       })
       .select("id, title, created_at, updated_at")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
 
     if (dap) {
       const { error: dapErr } = await supabase.from("chat_messages").insert([
@@ -408,7 +409,7 @@ export const deleteChat = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase } = context;
     const { error } = await supabase.from("chats").delete().eq("id", data.chatId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -430,8 +431,8 @@ export const getChat = createServerFn({ method: "GET" })
           .eq("chat_id", data.chatId)
           .order("created_at", { ascending: true }),
       ]);
-    if (cErr) throw new Error(cErr.message);
-    if (mErr) throw new Error(mErr.message);
+    if (cErr) throw dbError(cErr);
+    if (mErr) throw dbError(mErr);
     return { chat, messages: messages ?? [] };
   });
 
@@ -444,7 +445,7 @@ export const getProfile = createServerFn({ method: "GET" })
       .select("id, email, name, tier, pro_messages_used")
       .eq("id", userId)
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return {
       ...data,
       chatLimit: CHAT_LIMITS[(data.tier as "free" | "pro") ?? "free"],
@@ -478,6 +479,23 @@ export const sendChatMessage = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
 
+    // Ownership gate: the chat must belong to the caller before we write
+    // anything referencing its id. The chat_messages INSERT policy only
+    // pins user_id, so without this a known/guessed chat UUID could be
+    // written into by another signed-in user.
+    {
+      const { data: ownedChat, error: ownErr } = await supabase
+        .from("chats")
+        .select("id")
+        .eq("id", data.chatId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (ownErr) throw dbError(ownErr);
+      if (!ownedChat) throw new Error("Chat not found.");
+    }
+
+
+
     // Block sends when the site is in maintenance mode.
     {
       const { supabaseAdmin } = await import(
@@ -500,7 +518,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .select("tier, pro_messages_used")
       .eq("id", userId)
       .single();
-    if (pErr) throw new Error(pErr.message);
+    if (pErr) throw dbError(pErr);
 
     let effectiveModel = data.model;
     let forcedToLite = false;
@@ -544,7 +562,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       content: storedUserContent,
       model: effectiveModel,
     });
-    if (insUserErr) throw new Error(insUserErr.message);
+    if (insUserErr) throw dbError(insUserErr);
 
 
     const { data: chatRow } = await supabase

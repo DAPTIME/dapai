@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 /**
  * Admin server functions. Caller must have the 'admin' role.
  * Uses supabaseAdmin to bypass RLS; gate enforcement is in code via has_role.
@@ -18,7 +19,7 @@ export const adminListAllChats = createServerFn({ method: "GET" })
       .select("id, title, user_id, created_at, updated_at")
       .order("updated_at", { ascending: false })
       .limit(500);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     const userIds = Array.from(new Set((chats ?? []).map((c) => c.user_id)));
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
@@ -50,7 +51,7 @@ export const adminGetChat = createServerFn({ method: "POST" })
         .eq("chat_id", data.chatId)
         .order("created_at", { ascending: true }),
     ]);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { chat, messages: messages ?? [] };
   });
 
@@ -63,7 +64,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
       .from("profiles")
       .select("id, email, name, tier, pro_messages_used, created_at")
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data;
   });
 
@@ -89,7 +90,7 @@ export const adminSetTier = createServerFn({ method: "POST" })
       .from("profiles")
       .update(patch)
       .eq("id", data.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -125,7 +126,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
         data.userId,
         { email: data.email, email_confirm: true }
       );
-      if (error) throw new Error(error.message);
+      if (error) throw dbError(error);
     }
     const patch: {
       name?: string;
@@ -142,7 +143,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
         .from("profiles")
         .update(patch)
         .eq("id", data.userId);
-      if (error) throw new Error(error.message);
+      if (error) throw dbError(error);
     }
     return { ok: true };
   });
@@ -164,7 +165,7 @@ export const adminResetPassword = createServerFn({ method: "POST" })
       data.userId,
       { password: data.newPassword }
     );
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -178,7 +179,7 @@ export const adminConfirmEmail = createServerFn({ method: "POST" })
       data.userId,
       { email_confirm: true }
     );
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -193,7 +194,7 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
     }
     // Delete the auth user; profile/role rows cascade via ON DELETE CASCADE.
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -215,7 +216,7 @@ export const adminGetSystemPrompt = createServerFn({ method: "POST" })
       .select("system_prompt, updated_at")
       .eq("id", id)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     // Fallback to legacy "global" row when a per-model prompt isn't set yet.
     let systemPrompt = row?.system_prompt ?? "";
     let updatedAt = row?.updated_at ?? null;
@@ -252,7 +253,7 @@ export const adminSetSystemPrompt = createServerFn({ method: "POST" })
         system_prompt: data.systemPrompt,
         updated_at: new Date().toISOString(),
       });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -286,7 +287,7 @@ export const adminSetSiteStatus = createServerFn({ method: "POST" })
       system_prompt: data.enabled ? "on" : "off",
       updated_at: new Date().toISOString(),
     });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -338,6 +339,6 @@ export const adminSetFeatureFlag = createServerFn({ method: "POST" })
       system_prompt: data.enabled ? "on" : "off",
       updated_at: new Date().toISOString(),
     });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });

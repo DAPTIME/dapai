@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 /** Server-only helpers for the confirm-your-email signup flow. */
 import { sendEmail, confirmEmailHtml } from "./email.server";
 import { resolveSiteUrl } from "./site-url.server";
@@ -33,7 +34,7 @@ export async function generateSignupLink(opts: {
       redirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1`,
     },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw dbError(error);
   const link = data?.properties?.action_link;
   if (!link) throw new Error("Could not create a confirmation link.");
   return link;
@@ -60,7 +61,7 @@ export async function sendConfirmation(opts: {
       email: opts.email,
       options: { redirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1` },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     link = data?.properties?.action_link;
   }
   if (!link) throw new Error("Could not create a confirmation link.");

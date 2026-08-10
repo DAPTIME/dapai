@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -33,7 +34,7 @@ export const listCustomDaps = createServerFn({ method: "GET" })
       .from("custom_daps")
       .select("id, name, description, emoji, system_prompt, opener, created_at")
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data ?? [];
   });
 
@@ -55,7 +56,7 @@ export const createCustomDap = createServerFn({ method: "POST" })
       })
       .select("id, name, description, emoji, system_prompt, opener, created_at")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return row;
   });
 
@@ -68,6 +69,6 @@ export const deleteCustomDap = createServerFn({ method: "POST" })
       .from("custom_daps")
       .delete()
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });

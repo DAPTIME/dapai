@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 /**
  * Profile self-service: read own profile, update name & avatar path.
  * Avatar files themselves are uploaded client-side to the private "avatars"
@@ -16,7 +17,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
       .select("id, name, email, avatar_url")
       .eq("id", userId)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
 
     let avatarSignedUrl: string | null = null;
     if (data?.avatar_url) {
@@ -46,7 +47,7 @@ export const updateMyName = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ name: data.name })
       .eq("id", userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     // keep auth user_metadata.name in sync
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.auth.admin.updateUserById(userId, {
@@ -70,6 +71,6 @@ export const updateMyAvatar = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ avatar_url: data.avatarPath })
       .eq("id", userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });

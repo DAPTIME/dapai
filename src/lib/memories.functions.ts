@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 /**
  * Per-user AI memories (ChatGPT-style). Scoped to the signed-in user by RLS.
  */
@@ -15,7 +16,7 @@ export const listMemories = createServerFn({ method: "GET" })
       .from("user_memories")
       .select("id, content, created_at")
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return data ?? [];
   });
 
@@ -42,7 +43,7 @@ export const addMemory = createServerFn({ method: "POST" })
       .insert({ user_id: userId, content: data.content })
       .select("id, content, created_at")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return row;
   });
 
@@ -55,7 +56,7 @@ export const deleteMemory = createServerFn({ method: "POST" })
       .from("user_memories")
       .delete()
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -67,6 +68,6 @@ export const clearMemories = createServerFn({ method: "POST" })
       .from("user_memories")
       .delete()
       .eq("user_id", userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });

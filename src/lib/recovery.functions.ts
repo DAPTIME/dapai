@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 /**
  * Password-recovery server functions.
  * Uses a recovery question + answer stored on the profile. The answer is
@@ -51,7 +52,7 @@ export const setRecoveryQuestion = createServerFn({ method: "POST" })
         recovery_answer_hash: makeStored(data.answer),
       })
       .eq("id", userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -116,7 +117,7 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.auth.admin.updateUserById(row.id, {
       password: data.newPassword,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
 
     const { error: qErr } = await supabaseAdmin
       .from("profiles")
@@ -125,7 +126,7 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
         recovery_answer_hash: makeStored(data.newAnswer),
       })
       .eq("id", row.id);
-    if (qErr) throw new Error(qErr.message);
+    if (qErr) throw dbError(qErr);
     return { ok: true };
   });
 
@@ -163,7 +164,7 @@ export const changeRecoveryQuestion = createServerFn({ method: "POST" })
         recovery_answer_hash: makeStored(data.newAnswer),
       })
       .eq("id", userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -197,7 +198,7 @@ export const changePasswordWithAnswer = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password: data.newPassword,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -259,7 +260,7 @@ export const completeAccountSetup = createServerFn({ method: "POST" })
     const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password: data.newPassword,
     });
-    if (pwErr) throw new Error(pwErr.message);
+    if (pwErr) throw dbError(pwErr);
     const { error } = await supabaseAdmin
       .from("profiles")
       .update({
@@ -268,7 +269,7 @@ export const completeAccountSetup = createServerFn({ method: "POST" })
         password_reset_required: false,
       })
       .eq("id", userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
     return { ok: true };
   });
 
@@ -358,7 +359,7 @@ export const resetPasswordWithLink = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.auth.admin.updateUserById(row.id, {
       password: data.newPassword,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
 
     const { error: qErr } = await supabaseAdmin
       .from("profiles")
@@ -368,6 +369,6 @@ export const resetPasswordWithLink = createServerFn({ method: "POST" })
         password_reset_required: false,
       })
       .eq("id", row.id);
-    if (qErr) throw new Error(qErr.message);
+    if (qErr) throw dbError(qErr);
     return { ok: true };
   });
