@@ -8,6 +8,7 @@ import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
 import { DapIntro } from "@/components/dap-intro";
 
 import { createChat, getProfile } from "@/lib/chats.functions";
+import { CHAT_MODELS, isModelAllowedForTier } from "@/lib/models";
 import type { Tier } from "@/lib/tiers";
 import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 
