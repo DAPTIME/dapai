@@ -185,19 +185,21 @@ export function ChatComposer({
       <textarea
         ref={textareaRef}
         autoFocus
-
-        value={text}
+        value={isOffline ? "" : text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Ask DAP AI anything…"
+        placeholder={isOffline ? offlineText : "Ask DAP AI anything…"}
         rows={2}
-        className="w-full resize-none bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
+        disabled={isOffline}
+        aria-disabled={isOffline}
+        className="w-full resize-none bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed"
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
-            if (pending) { e.preventDefault(); return; }
+            if (pending || isOffline) { e.preventDefault(); return; }
             submit(e);
           }
         }}
       />
+
       <input
         ref={fileInputRef}
         type="file"
