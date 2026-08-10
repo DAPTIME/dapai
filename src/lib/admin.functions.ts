@@ -177,7 +177,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
     const patch: {
       name?: string;
       email?: string;
-      tier?: "free" | "pro";
+      tier?: TierId;
       pro_messages_used?: number;
     } = {};
     if (data.name !== undefined) patch.name = data.name;
