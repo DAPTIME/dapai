@@ -1,9 +1,17 @@
+import { gameHead } from "@/lib/game-seo";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/breakout")({
+  head: () =>
+    gameHead({
+      path: "/games/breakout",
+      name: "Brick Breaker",
+      description:
+        "Play Brick Breaker free online — bounce the ball, smash bricks and clear every wall. Instant browser game, no install.",
+    }),
   component: BreakoutGame,
 });
 

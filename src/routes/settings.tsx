@@ -16,6 +16,7 @@ import {
   clearMemories,
 } from "@/lib/memories.functions";
 import { useAuth } from "@/lib/auth";
+import { useUpgradeGate } from "@/lib/tier-gate";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -55,7 +56,18 @@ function useLocalToggle(key: string, defaultValue: boolean) {
 function Settings() {
   const [history, setHistory] = useLocalToggle("dap.history", true);
   const [sounds, setSounds] = useLocalToggle("dap.sounds", false);
-  const [beta, setBeta] = useLocalToggle("dap.beta", false);
+  const [beta, setBetaRaw] = useLocalToggle("dap.beta", false);
+  const { hasTier, requireTier } = useUpgradeGate();
+  const canBeta = hasTier("pro");
+  // Beta features are Pro and up; anyone lower gets the upgrade screen.
+  const setBeta = (v: boolean) => {
+    if (v && !requireTier("pro", "Beta features")) return;
+    setBetaRaw(v);
+  };
+  useEffect(() => {
+    if (!canBeta && beta) setBetaRaw(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canBeta, beta]);
   const [glass, setGlassRaw] = useLocalToggle("dap.glass", false);
 
   useEffect(() => {
@@ -68,7 +80,7 @@ function Settings() {
     { id: "history", label: "Save chat history", desc: "Keep recent conversations in the sidebar.", checked: history, onChange: setHistory },
     { id: "sounds", label: "Sound effects", desc: "Play subtle sounds on send/receive.", checked: sounds, onChange: setSounds },
     { id: "glass", label: "Liquid Glass", desc: "Frosted, translucent surfaces across the app.", checked: glass, onChange: setGlassRaw },
-    { id: "beta", label: "Beta features", desc: "Try experimental tools early, including AI Memory.", checked: beta, onChange: setBeta },
+    { id: "beta", label: "Beta features", desc: canBeta ? "Try experimental tools early, including AI Memory." : "Pro and up. Try experimental tools early, including AI Memory.", checked: beta && canBeta, onChange: setBeta },
   ];
 
   return (
@@ -90,7 +102,7 @@ function Settings() {
           </div>
         ))}
 
-        {beta ? (
+        {beta && canBeta ? (
           <MemorySection />
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-5 text-sm text-muted-foreground">

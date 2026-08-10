@@ -1,8 +1,16 @@
+import { gameHead } from "@/lib/game-seo";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/games/2048")({
+  head: () =>
+    gameHead({
+      path: "/games/2048",
+      name: "2048",
+      description:
+        "Play 2048 free in your browser — slide the tiles, merge matching numbers and chase the 2048 block. No download, works on mobile.",
+    }),
   component: Game2048,
 });
 

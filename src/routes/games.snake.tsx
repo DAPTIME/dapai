@@ -1,9 +1,17 @@
+import { gameHead } from "@/lib/game-seo";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 
 export const Route = createFileRoute("/games/snake")({
+  head: () =>
+    gameHead({
+      path: "/games/snake",
+      name: "Snake",
+      description:
+        "Play the classic Snake game free online — eat, grow and try not to bite your own tail. Keyboard or touch controls, no download.",
+    }),
   component: SnakeGame,
 });
 
