@@ -217,6 +217,7 @@ function ChangeRecoveryCard({
   const change = useServerFn(changeRecoveryQuestion);
   const setQ = useServerFn(setRecoveryQuestion);
 
+  const [currentPassword, setCurrentPassword] = useState("");
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
@@ -224,14 +225,18 @@ function ChangeRecoveryCard({
   const mut = useMutation({
     mutationFn: () =>
       hasQuestion
-        ? change({ data: { currentAnswer, newQuestion, newAnswer } })
+        ? change({
+            data: { currentPassword, currentAnswer, newQuestion, newAnswer },
+          })
         : setQ({ data: { question: newQuestion, answer: newAnswer } }),
 
     onSuccess: () => {
       toast.success("Recovery question updated.");
+      setCurrentPassword("");
       setCurrentAnswer("");
       setNewQuestion("");
       setNewAnswer("");
+
       qc.invalidateQueries({ queryKey: ["my-recovery-question"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
