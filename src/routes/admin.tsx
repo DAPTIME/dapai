@@ -130,9 +130,6 @@ function Admin() {
             <TabsTrigger value="beta">
               <Users className="mr-2 h-4 w-4" /> Beta Testers
             </TabsTrigger>
-            <TabsTrigger value="emails">
-              <Mail className="mr-2 h-4 w-4" /> Emails
-            </TabsTrigger>
             <TabsTrigger value="features">
               <Power className="mr-2 h-4 w-4" /> Site & Features
             </TabsTrigger>
