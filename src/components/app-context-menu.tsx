@@ -34,7 +34,7 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const create = useServerFn(createChat);
-  const { requireTier } = useUpgradeGate();
+  const { openUpgrade } = useUpgradeGate();
 
 
   const createMut = useMutation({
