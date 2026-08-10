@@ -8,6 +8,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin, getAdminClient } from "@/lib/admin.server";
 import { FEATURE_KEYS, MODEL_IDS, type FeatureKey } from "@/lib/admin-config";
+import { DEFAULT_OFFLINE_MESSAGE } from "@/lib/site-config.functions";
+
 
 export const adminListAllChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -290,6 +292,41 @@ export const adminSetSiteStatus = createServerFn({ method: "POST" })
     if (error) throw dbError(error);
     return { ok: true };
   });
+
+/**
+ * Admin-authored text shown in the typing bar while DAP AI is offline.
+ * Stored in ai_settings (id="offline_message"). Public read, admin write.
+ */
+export const getOfflineMessage = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const supabaseAdmin = getAdminClient();
+    const { data } = await supabaseAdmin
+      .from("ai_settings")
+      .select("system_prompt")
+      .eq("id", "offline_message")
+      .maybeSingle();
+    const message = (data?.system_prompt ?? "").trim();
+    return { message: message || DEFAULT_OFFLINE_MESSAGE };
+  }
+);
+
+export const adminSetOfflineMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ message: z.string().trim().max(300) }).parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
+    const { error } = await supabaseAdmin.from("ai_settings").upsert({
+      id: "offline_message",
+      system_prompt: data.message || DEFAULT_OFFLINE_MESSAGE,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
 
 /**
  * Per-feature on/off toggles. Stored as ai_settings rows with id

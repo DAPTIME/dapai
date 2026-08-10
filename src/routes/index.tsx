@@ -74,14 +74,40 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const GREETINGS = (name: string) => [
-  `Hey ${name}, I'm here to help.`,
-  `What's on your mind, ${name}?`,
-  `Ready when you are, ${name}.`,
-  `Let's get into it, ${name}.`,
-  `How can I assist, ${name}?`,
-  `Ask me anything, ${name}.`,
-];
+/**
+ * Signed-in greetings. Time-aware: late-night visitors get night-owl lines,
+ * otherwise a random friendly opener.
+ */
+const GREETINGS = (name: string, hour: number) => {
+  if (hour >= 23 || hour < 5) {
+    return [
+      `Hello, night owl.`,
+      `Still up, ${name}? Let's get it done.`,
+      `Late-night session, ${name}?`,
+    ];
+  }
+  if (hour < 12) {
+    return [
+      `Good morning, ${name}.`,
+      `Morning, ${name} — what's first?`,
+      `Hey ${name}, how may I help?`,
+    ];
+  }
+  if (hour < 18) {
+    return [
+      `Hey ${name}, how may I help?`,
+      `What's popping, ${name}?`,
+      `Good afternoon, ${name}.`,
+      `Ask me anything, ${name}.`,
+    ];
+  }
+  return [
+    `Good evening, ${name}.`,
+    `Hello ${name}, how may I assist you?`,
+    `What's on your mind, ${name}?`,
+  ];
+};
+
 
 type TrialExchange = { userText: string; reply?: string; error?: string };
 
@@ -133,7 +159,7 @@ function Home() {
 
   useEffect(() => {
     const finalName = user?.name || "friend";
-    const list = GREETINGS(finalName);
+    const list = GREETINGS(finalName, new Date().getHours());
     setGreeting(list[Math.floor(Math.random() * list.length)]);
   }, [user]);
 
@@ -233,14 +259,11 @@ function Home() {
               color: "transparent",
             }}
           >
-            DAP AI — Free AI Chatbot & Workspace
+            {user && greeting
+              ? greeting
+              : "The only chatbot you'll ever need"}
           </h1>
 
-
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
-            {greeting} DAP AI is a free AI chatbot for instant answers, writing,
-            studying, coding, and building your own custom AI assistants.
-          </p>
 
           {!user && ready && (
             <p className="mt-2 text-sm text-muted-foreground">
@@ -299,28 +322,23 @@ function Home() {
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-2 backdrop-blur">
 
-        {!siteEnabled || maintenance ? (
-          <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
-            <h2 className="text-lg font-semibold text-foreground">
-              DAP AI is undergoing major reworks
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Please try again later.
-            </p>
-          </div>
-        ) : (
-          <section aria-labelledby="composer-heading">
-            <h2 id="composer-heading" className="sr-only">
-              Message DAP AI
-            </h2>
-            <ChatComposer onSend={handleSend} pending={trialPending} />
-          </section>
-        )}
+        <section aria-labelledby="composer-heading">
+          <h2 id="composer-heading" className="sr-only">
+            Message DAP AI
+          </h2>
+          <ChatComposer
+            onSend={handleSend}
+            pending={trialPending}
+            offline={!siteEnabled || !!maintenance}
+            offlineMessage={siteConfig.offlineMessage}
+          />
+        </section>
         {siteEnabled && !maintenance && (
           <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
             DAP AI is AI and can make mistakes.
           </p>
         )}
+
       </div>
 
 

@@ -35,6 +35,9 @@ import {
   adminGetChat,
   getSiteStatus,
   adminSetSiteStatus,
+  getOfflineMessage,
+  adminSetOfflineMessage,
+
   getFeatureFlags,
   adminSetFeatureFlag,
 } from "@/lib/admin.functions";
@@ -1030,9 +1033,62 @@ function SiteTab() {
           </Button>
         </div>
       </div>
+
+      <OfflineMessageEditor />
     </div>
   );
 }
+
+function OfflineMessageEditor() {
+  const qc = useQueryClient();
+  const fetchMsg = useServerFn(getOfflineMessage);
+  const saveMsg = useServerFn(adminSetOfflineMessage);
+  const msgQuery = useQuery({
+    queryKey: ["offline-message"],
+    queryFn: () => fetchMsg(),
+  });
+  const [draft, setDraft] = useState<string | null>(null);
+  const value = draft ?? msgQuery.data?.message ?? "";
+
+  const save = useMutation({
+    mutationFn: (message: string) => saveMsg({ data: { message } }),
+    onSuccess: () => {
+      toast.success("Offline message saved");
+      qc.invalidateQueries({ queryKey: ["offline-message"] });
+      qc.invalidateQueries({ queryKey: ["site-config"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  return (
+    <div className="mt-6 rounded-md border border-border bg-muted/20 p-4">
+      <h3 className="text-sm font-semibold">Offline message</h3>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Shown inside the typing bar whenever DAP AI is off or in maintenance.
+      </p>
+      <textarea
+        value={value}
+        onChange={(e) => setDraft(e.target.value.slice(0, 300))}
+        rows={2}
+        placeholder="DAP AI is offline right now — check back soon."
+        className="mt-3 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+      />
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {value.length}/300
+        </span>
+        <Button
+          size="sm"
+          onClick={() => save.mutate(value.trim())}
+          disabled={save.isPending || msgQuery.isLoading}
+        >
+          Save message
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 
 function FeaturesTab() {
   const qc = useQueryClient();

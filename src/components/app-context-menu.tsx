@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { MessageSquarePlus, Sparkles, Settings as SettingsIcon } from "lucide-react";
+import {
+  MessageSquarePlus,
+  Sparkles,
+  Settings as SettingsIcon,
+  TextSelect,
+  Crown,
+} from "lucide-react";
+
 import {
   ContextMenu,
   ContextMenuContent,
@@ -13,6 +20,8 @@ import {
 import { useAuth } from "@/lib/auth";
 import { createChat } from "@/lib/chats.functions";
 import { toast } from "sonner";
+import { useUpgradeGate } from "@/lib/tier-gate";
+
 
 /**
  * Global right-click menu. Replaces the browser default context menu so the
@@ -25,6 +34,8 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const create = useServerFn(createChat);
+  const { requireTier } = useUpgradeGate();
+
 
   const createMut = useMutation({
     mutationFn: () => create(),
@@ -42,6 +53,20 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
     }
     createMut.mutate();
   }, [createMut, navigate, user]);
+
+  const onSelectAll = useCallback(() => {
+    const sel = window.getSelection?.();
+    if (!sel) return;
+    sel.removeAllRanges();
+    const range = document.createRange();
+    range.selectNodeContents(document.body);
+    sel.addRange(range);
+  }, []);
+
+  const onUpgrade = useCallback(() => {
+    requireTier("pro", "DAP AI Pro");
+  }, [requireTier]);
+
 
   // Best-effort: turn inspect/source/devtools shortcuts into a new chat.
   // Note: browsers (especially Chrome) often handle F12 at the chrome level
@@ -151,7 +176,15 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
           <Sparkles className="h-4 w-4" />
           New Custom AI
         </ContextMenuItem>
+        <ContextMenuItem onSelect={onSelectAll} className="gap-2">
+          <TextSelect className="h-4 w-4" />
+          Select all
+        </ContextMenuItem>
         <ContextMenuSeparator />
+        <ContextMenuItem onSelect={onUpgrade} className="gap-2">
+          <Crown className="h-4 w-4" />
+          Upgrade
+        </ContextMenuItem>
         <ContextMenuItem
           onSelect={() => navigate({ to: "/settings" })}
           className="gap-2"
@@ -160,6 +193,7 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
           Settings
         </ContextMenuItem>
       </ContextMenuContent>
+
     </ContextMenu>
   );
 }

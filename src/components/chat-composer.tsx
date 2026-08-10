@@ -27,7 +27,11 @@ interface Props {
   onSend?: (text: string, images?: string[]) => void;
   quotaInfo?: QuotaInfo;
   pending?: boolean;
+  /** When true the bar is read-only and shows the admin's offline message. */
+  offline?: boolean;
+  offlineMessage?: string;
 }
+
 
 const MODELS = [
   {
@@ -55,7 +59,13 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
+export function ChatComposer({
+  onSend,
+  quotaInfo,
+  pending,
+  offline,
+  offlineMessage,
+}: Props) {
   const { user } = useAuth();
   const fetchProfile = useServerFn(getProfile);
   const profileQuery = useQuery({
@@ -71,6 +81,10 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const siteConfig = useSiteConfig();
   const proEnabled = siteConfig.flags.pro_model;
   const liteEnabled = siteConfig.flags.lite_model;
+  const isOffline = offline || !siteConfig.enabled;
+  const offlineText =
+    offlineMessage?.trim() || siteConfig.offlineMessage;
+
 
 
 
@@ -171,19 +185,21 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
       <textarea
         ref={textareaRef}
         autoFocus
-
-        value={text}
+        value={isOffline ? "" : text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Ask DAP AI anything…"
+        placeholder={isOffline ? offlineText : "Ask DAP AI anything…"}
         rows={2}
-        className="w-full resize-none bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none"
+        disabled={isOffline}
+        aria-disabled={isOffline}
+        className="w-full resize-none bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed"
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
-            if (pending) { e.preventDefault(); return; }
+            if (pending || isOffline) { e.preventDefault(); return; }
             submit(e);
           }
         }}
       />
+
       <input
         ref={fileInputRef}
         type="file"
@@ -284,7 +300,7 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
         <Button
           type="submit"
           size="icon"
-          disabled={(!text.trim() && images.length === 0) || pending}
+          disabled={(!text.trim() && images.length === 0) || pending || isOffline}
           className={`relative h-9 w-9 overflow-hidden rounded-full transition-transform active:scale-95 ${pending ? "send-pending" : ""} ${(text.trim() || images.length) && !pending ? "send-ready" : ""}`}
           style={text.trim() || images.length || pending ? { background: "var(--gradient-brand)" } : undefined}
           aria-label={pending ? "Sending" : "Send message"}
