@@ -12,7 +12,7 @@ export default defineTool({
         type: "text",
         text: [
           "DAP AI is a chat app with two models:",
-          "- DAP AI 4 (pro): most capable, supports images.",
+          "- DAP AI 4 Pro (pro): most capable, supports images.",
           "- DAP AI 4 Lite (free): fast, text-only responses.",
           "Both models are served from a local AI backend behind a relay.",
         ].join("\n"),

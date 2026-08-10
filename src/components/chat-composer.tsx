@@ -31,7 +31,7 @@ interface Props {
 const MODELS = [
   {
     id: "dap-ai-1.0",
-    label: "DAP AI 4",
+    label: "DAP AI 4 Pro",
     description: "Our most capable and ambitious model yet.",
     requiresPro: true,
   },

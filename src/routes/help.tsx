@@ -31,7 +31,7 @@ const FAQS = [
   },
   {
     q: "How do I switch models mid-chat?",
-    a: "You don't need to. If you have Pro messages remaining, DAP AI 4 is used automatically. Once those run out, Lite kicks in. You can upgrade to Pro anytime for more Pro messages.",
+    a: "You don't need to. If you have Pro messages remaining, DAP AI 4 Pro is used automatically. Once those run out, Lite kicks in. You can upgrade to Pro anytime for more Pro messages.",
   },
   {
     q: "Does DAP AI remember my chats?",

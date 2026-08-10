@@ -16,7 +16,7 @@ export const Route = createFileRoute("/about-dap-ai")({
       {
         name: "keywords",
         content:
-          "DAP AI, dap ai, dapai, DAP, DAP AI 4, DAP AI Pro, DAP AI 4 Lite, DAP AI chatbot, DAP AI assistant, free AI chatbot, free AI assistant, free chatbot online, mixture of experts, MoE model, sparse model, expert routing, 7B parameter experts, edge AI, on-device AI, self-hosted AI, private AI, local AI, Jetson Orin Nano AI, RTX 5060 Ti AI, ChatGPT alternative, Claude alternative, Gemini alternative, Copilot alternative, AI for coding, AI code reviewer, AI study buddy, AI career coach, AI trip planner, AI writing assistant, AI homework help, AI math solver, AI essay writer, AI translator, AI summarizer, AI email writer, AI resume builder, AI recipe generator, AI weather assistant, weather today, what is the weather, ask AI anything, chat with AI, talk to AI, best free AI, fastest AI chatbot, no signup AI, AI without login, AI for students, AI for developers, AI for writers, AI for business, AI for teachers, small AI model, cheap AI, low cost AI, offline capable AI, open AI alternative, Devansh AI, DAP AI Dubai, DAP AI UAE, how does AI work, what is a language model, what is an SLM, run AI at home, AI on Jetson, AI on gaming GPU",
+          "DAP AI, dap ai, dapai, DAP, DAP AI 4 Pro, DAP AI Pro, DAP AI 4 Lite, DAP AI chatbot, DAP AI assistant, free AI chatbot, free AI assistant, free chatbot online, mixture of experts, MoE model, sparse model, expert routing, 7B parameter experts, edge AI, on-device AI, self-hosted AI, private AI, local AI, Jetson Orin Nano AI, RTX 5060 Ti AI, ChatGPT alternative, Claude alternative, Gemini alternative, Copilot alternative, AI for coding, AI code reviewer, AI study buddy, AI career coach, AI trip planner, AI writing assistant, AI homework help, AI math solver, AI essay writer, AI translator, AI summarizer, AI email writer, AI resume builder, AI recipe generator, AI weather assistant, weather today, what is the weather, ask AI anything, chat with AI, talk to AI, best free AI, fastest AI chatbot, no signup AI, AI without login, AI for students, AI for developers, AI for writers, AI for business, AI for teachers, small AI model, cheap AI, low cost AI, offline capable AI, open AI alternative, Devansh AI, DAP AI Dubai, DAP AI UAE, how does AI work, what is a language model, what is an SLM, run AI at home, AI on Jetson, AI on gaming GPU",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "DAP AI — Free AI Chatbot & Small Language Model" },
@@ -47,7 +47,7 @@ export const Route = createFileRoute("/about-dap-ai")({
             {
               "@type": "SoftwareApplication",
               name: "DAP AI",
-              alternateName: ["DAP AI 4", "DAP AI Pro", "DAP AI 4 Lite", "dapai", "DAP"],
+              alternateName: ["DAP AI 4 Pro", "DAP AI Pro", "DAP AI 4 Lite", "dapai", "DAP"],
               applicationCategory: "Chatbot",
               operatingSystem: "Web",
               url: "https://dapai.lovable.app",
