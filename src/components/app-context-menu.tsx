@@ -91,30 +91,37 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
     // The right-click's pointerdown dismisses the menu a beat before the
     // contextmenu event lands, so "was it open" has to include "it closed a
     // moment ago because of this very click".
-    const wasOpen = openRef.current || Date.now() - closedAt.current < 200;
-    console.log('[ctx] wasOpen', wasOpen);
+    const wasOpen = openRef.current || Date.now() - closedAt.current < 250;
     if (!wasOpen) return;
 
     const { clientX, clientY } = e;
     const target = e.target as HTMLElement;
     e.preventDefault();
     e.stopPropagation();
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        console.log('[ctx] replay at', clientX, clientY);
-        replaying.current = true;
-        target.dispatchEvent(
-          new MouseEvent("contextmenu", {
-            bubbles: true,
-            cancelable: true,
-            clientX,
-            clientY,
-            button: 2,
-          })
-        );
-        replaying.current = false;
-      });
-    });
+
+    // Wait until the old menu is really gone (its close animation has to
+    // finish before Radix unmounts it, and a reused node keeps the old
+    // position), then replay the right-click so it opens under the cursor.
+    const start = Date.now();
+    const replay = () => {
+      const stillThere = document.querySelector("[data-radix-menu-content]");
+      if (stillThere && Date.now() - start < 600) {
+        requestAnimationFrame(replay);
+        return;
+      }
+      replaying.current = true;
+      target.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX,
+          clientY,
+          button: 2,
+        })
+      );
+      replaying.current = false;
+    };
+    requestAnimationFrame(replay);
   }, []);
 
   return (
