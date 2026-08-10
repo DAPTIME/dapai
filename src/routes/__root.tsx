@@ -224,6 +224,8 @@ function IncognitoToggle() {
 
 function HeaderBar() {
   const { user } = useAuth();
+  const { openUpgrade } = useUpgradeGate();
+
   const fetchProfile = useServerFn(getProfile);
   const profileQuery = useQuery({
     queryKey: ["profile", user?.id],
