@@ -1,3 +1,4 @@
+import { SUPABASE_URL as PUBLIC_SUPABASE_URL } from "@/integrations/supabase/public-config";
 import { defineMcp } from "@lovable.dev/mcp-js";
 import aboutTool from "./tools/about";
 import echoTool from "./tools/echo";
@@ -24,7 +25,7 @@ import echoTool from "./tools/echo";
  */
 const SUPABASE_URL = (
   import.meta.env?.VITE_SUPABASE_URL ??
-  process.env.SUPABASE_URL ??
+  PUBLIC_SUPABASE_URL ??
   ""
 ).replace(/\/+$/, "");
 
