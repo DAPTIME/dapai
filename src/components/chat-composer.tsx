@@ -87,7 +87,6 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
     "free") as Tier;
   const cfg = tierConfig(tier);
   const isPaid = tier !== "free";
-  const canUsePro = !!user && isPaid;
 
   // Live usage-token budget (hidden for the Exclusive tier).
   const fetchQuota = useServerFn(getMyQuota);
