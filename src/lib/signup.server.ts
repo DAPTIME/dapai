@@ -1,5 +1,6 @@
 /** Server-only helpers for the confirm-your-email signup flow. */
 import { sendEmail, confirmEmailHtml } from "./email.server";
+import { resolveSiteUrl } from "./site-url.server";
 
 export const HOLD_MS = 10 * 60 * 1000;
 
@@ -29,7 +30,7 @@ export async function generateSignupLink(opts: {
     password: opts.password,
     options: {
       data: { name: opts.name },
-      redirectTo: `${opts.origin}/?confirmed=1`,
+      redirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1`,
     },
   });
   if (error) throw new Error(error.message);
@@ -57,7 +58,7 @@ export async function sendConfirmation(opts: {
     const { data, error } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
       email: opts.email,
-      options: { redirectTo: `${opts.origin}/?confirmed=1` },
+      options: { redirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1` },
     });
     if (error) throw new Error(error.message);
     link = data?.properties?.action_link;
