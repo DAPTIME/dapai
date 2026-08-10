@@ -310,6 +310,39 @@ export type Database = {
         }
         Relationships: []
       }
+      usage_quota: {
+        Row: {
+          created_at: string
+          day_date: string
+          day_images: number
+          day_tokens: number
+          updated_at: string
+          user_id: string
+          week_start: string
+          week_tokens: number
+        }
+        Insert: {
+          created_at?: string
+          day_date?: string
+          day_images?: number
+          day_tokens?: number
+          updated_at?: string
+          user_id: string
+          week_start?: string
+          week_tokens?: number
+        }
+        Update: {
+          created_at?: string
+          day_date?: string
+          day_images?: number
+          day_tokens?: number
+          updated_at?: string
+          user_id?: string
+          week_start?: string
+          week_tokens?: number
+        }
+        Relationships: []
+      }
       user_memories: {
         Row: {
           content: string
@@ -375,7 +408,7 @@ export type Database = {
       }
     }
     Enums: {
-      account_tier: "free" | "pro"
+      account_tier: "free" | "pro" | "go" | "exclusive"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -504,7 +537,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      account_tier: ["free", "pro"],
+      account_tier: ["free", "pro", "go", "exclusive"],
       app_role: ["admin", "user"],
     },
   },
