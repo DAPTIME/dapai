@@ -271,7 +271,7 @@ function ChangeRecoveryCard({
           <Label className="text-base">Recovery question</Label>
           <p className="mt-1 text-sm text-muted-foreground">
             {hasQuestion
-              ? "Answer your current question, then set a new one."
+              ? "Confirm your password and current answer, then set a new question."
               : "You don't have a recovery question yet. Set one below."}
           </p>
         </div>
@@ -280,6 +280,17 @@ function ChangeRecoveryCard({
       <div className="mt-4 space-y-3">
         {hasQuestion && (
           <>
+            <div className="space-y-2">
+              <Label htmlFor="cur-rec-pw">Current password</Label>
+              <Input
+                id="cur-rec-pw"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label>Current question</Label>
               <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
@@ -297,6 +308,7 @@ function ChangeRecoveryCard({
             </div>
           </>
         )}
+
         <div className="space-y-2">
           <Label htmlFor="new-q">New recovery question</Label>
           <Input
