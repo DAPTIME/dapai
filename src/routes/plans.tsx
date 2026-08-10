@@ -182,6 +182,10 @@ function PlansPage() {
                   <Button variant="outline" className="w-full" disabled>
                     Current plan
                   </Button>
+                ) : id === "free" ? (
+                  <Button asChild variant="outline" className="w-full">
+                    <Link to="/signup">Get started free</Link>
+                  </Button>
                 ) : (
                   <Button
                     variant="outline"
