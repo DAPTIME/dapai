@@ -147,9 +147,6 @@ function Admin() {
           <TabsContent value="beta" className="mt-6">
             <BetaTab />
           </TabsContent>
-          <TabsContent value="emails" className="mt-6">
-            <EmailExemptTab />
-          </TabsContent>
           <TabsContent value="features" className="mt-6 space-y-6">
             <SiteTab />
             <FeaturesTab />
