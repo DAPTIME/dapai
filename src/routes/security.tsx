@@ -14,6 +14,8 @@ import {
   getMyRecoveryQuestion,
   setRecoveryQuestion,
 } from "@/lib/recovery.functions";
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
+
 
 
 export const Route = createFileRoute("/security")({
