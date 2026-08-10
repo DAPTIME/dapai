@@ -11,6 +11,7 @@ import {
   deleteCustomDap,
 } from "@/lib/custom-daps.functions";
 import { useSiteConfig } from "@/lib/site-config";
+import { useUpgradeGate } from "@/lib/tier-gate";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/daps")({
 });
 
 function Daps() {
+  const { requireTier, openUpgrade } = useUpgradeGate();
   const navigate = useNavigate();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -87,10 +89,7 @@ function Daps() {
       navigate({ to: "/login" });
       return;
     }
-    if (!isPro) {
-      toast.error("Custom AI's are a Pro feature. Upgrade in Settings to unlock.");
-      return;
-    }
+    if (!requireTier("pro", "Custom AI's")) return;
     startDap.mutate(id);
   };
 
@@ -133,8 +132,12 @@ function Daps() {
         </p>
         <div className="mt-6 flex justify-center gap-2">
           {user ? (
-            <Button asChild>
-              <Link to="/settings">Upgrade to Pro</Link>
+            <Button
+              className="text-primary-foreground"
+              style={{ background: "var(--gradient-brand)" }}
+              onClick={() => openUpgrade("pro", "Custom AI's")}
+            >
+              Upgrade to Pro
             </Button>
           ) : (
             <>

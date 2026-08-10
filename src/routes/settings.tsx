@@ -58,10 +58,10 @@ function Settings() {
   const [sounds, setSounds] = useLocalToggle("dap.sounds", false);
   const [beta, setBetaRaw] = useLocalToggle("dap.beta", false);
   const { hasTier, requireTier } = useUpgradeGate();
-  const canBeta = hasTier("pro");
+  const canBeta = hasTier("go");
   // Beta features are Pro and up; anyone lower gets the upgrade screen.
   const setBeta = (v: boolean) => {
-    if (v && !requireTier("pro", "Beta features")) return;
+    if (v && !requireTier("go", "Beta features")) return;
     setBetaRaw(v);
   };
   useEffect(() => {
@@ -80,7 +80,7 @@ function Settings() {
     { id: "history", label: "Save chat history", desc: "Keep recent conversations in the sidebar.", checked: history, onChange: setHistory },
     { id: "sounds", label: "Sound effects", desc: "Play subtle sounds on send/receive.", checked: sounds, onChange: setSounds },
     { id: "glass", label: "Liquid Glass", desc: "Frosted, translucent surfaces across the app.", checked: glass, onChange: setGlassRaw },
-    { id: "beta", label: "Beta features", desc: canBeta ? "Try experimental tools early, including AI Memory." : "Pro and up. Try experimental tools early, including AI Memory.", checked: beta && canBeta, onChange: setBeta },
+    { id: "beta", label: "Beta features", desc: canBeta ? "Try experimental tools early, including AI Memory." : "Go plan and up. Try experimental tools early, including AI Memory.", checked: beta && canBeta, onChange: setBeta },
   ];
 
   return (

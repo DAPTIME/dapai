@@ -114,22 +114,23 @@ export function UpgradeGateProvider({ children }: { children: ReactNode }) {
                 : " Sign in with an upgraded account to use it."}
             </DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            DAP AI doesn&apos;t have payments fully set up yet, so please contact
-            the owner and request an upgrade — mention which plan you&apos;d
-            like and the email on your account.
-          </p>
+          <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
+            Hand 5 AED to Devansh in person (or message him) and mention which
+            plan you want — your account gets upgraded straight after.
+          </div>
           <DialogFooter className="gap-2 sm:justify-between">
-            {!user ? (
+            {!user && (
               <Button asChild variant="outline" onClick={() => setDialog(null)}>
                 <Link to="/login">Sign in</Link>
               </Button>
-            ) : (
-              <Button asChild variant="outline" onClick={() => setDialog(null)}>
-                <Link to="/help">Contact the owner</Link>
-              </Button>
             )}
-            <Button onClick={() => setDialog(null)}>Got it</Button>
+            <Button
+              className="text-primary-foreground"
+              style={{ background: "var(--gradient-brand)" }}
+              onClick={() => setDialog(null)}
+            >
+              Got it
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
