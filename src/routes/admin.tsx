@@ -157,21 +157,49 @@ function Admin() {
   );
 }
 
+type TierId = "free" | "go" | "pro" | "exclusive";
+
+const TIER_IDS: TierId[] = ["free", "go", "pro", "exclusive"];
+const TIER_NAMES: Record<TierId, string> = {
+  free: "Free",
+  go: "Go",
+  pro: "Pro",
+  exclusive: "Exclusive",
+};
+
 type AdminUser = {
   id: string;
   email: string | null;
   name: string | null;
-  tier: "free" | "pro";
+  tier: TierId;
   pro_messages_used: number;
   created_at: string;
+  banned?: boolean;
+  emailConfirmed?: boolean;
 };
+
+function TierBadge({ tier }: { tier: TierId }) {
+  const styles: Record<TierId, string> = {
+    free: "bg-muted text-muted-foreground",
+    go: "bg-sky-500/15 text-sky-500",
+    pro: "bg-primary/15 text-primary",
+    exclusive: "bg-amber-500/15 text-amber-500",
+  };
+  return (
+    <span
+      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[tier]}`}
+    >
+      {TIER_NAMES[tier]}
+    </span>
+  );
+}
 
 function UsersTab() {
   const qc = useQueryClient();
   const listUsers = useServerFn(adminListUsers);
   const updateUser = useServerFn(adminUpdateUser);
   const resetPassword = useServerFn(adminResetPassword);
-  
+  const setBan = useServerFn(adminSetBan);
   const deleteUser = useServerFn(adminDeleteUser);
 
   const usersQuery = useQuery({
@@ -183,32 +211,43 @@ function UsersTab() {
   const [pwUser, setPwUser] = useState<AdminUser | null>(null);
   const [viewing, setViewing] = useState<AdminUser | null>(null);
 
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "users"] });
+  const fail = (e: unknown) =>
+    toast.error(e instanceof Error ? e.message : "Failed");
+
   const setTier = useMutation({
-    mutationFn: (vars: { userId: string; tier: "free" | "pro" }) =>
+    mutationFn: (vars: { userId: string; tier: TierId }) =>
       updateUser({
         data: {
           userId: vars.userId,
           tier: vars.tier,
-          resetUsage: vars.tier === "pro",
+          resetUsage: vars.tier !== "free",
         },
       }),
-    onSuccess: () => {
-      toast.success("Tier updated");
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    onSuccess: (_d, vars) => {
+      toast.success(`Plan changed to ${TIER_NAMES[vars.tier]}`);
+      invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: fail,
   });
 
-
-
+  const banMut = useMutation({
+    mutationFn: (vars: { userId: string; banned: boolean }) =>
+      setBan({ data: vars }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.banned ? "User banned" : "User unbanned");
+      invalidate();
+    },
+    onError: fail,
+  });
 
   const deleteUserMut = useMutation({
     mutationFn: (userId: string) => deleteUser({ data: { userId } }),
     onSuccess: () => {
       toast.success("Account deleted.");
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      invalidate();
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+    onError: fail,
   });
 
   const users = (usersQuery.data ?? []) as AdminUser[];
@@ -223,7 +262,11 @@ function UsersTab() {
     );
   });
 
-  const proCount = users.filter((u) => u.tier === "pro").length;
+  const counts = TIER_IDS.map((t) => ({
+    tier: t,
+    n: users.filter((u) => u.tier === t).length,
+  }));
+
   const initials = (u: AdminUser) => {
     const src = (u.name || u.email || "?").trim();
     const parts = src.split(/\s+/);
@@ -234,23 +277,38 @@ function UsersTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Users</h2>
-          <p className="text-sm text-muted-foreground">
-            {users.length} total · {proCount} Pro · {users.length - proCount} Free
-          </p>
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Users</h2>
+            <p className="text-sm text-muted-foreground">
+              {users.length} accounts
+            </p>
+          </div>
+          <div className="sm:w-72">
+            <Input
+              placeholder="Search by name or email…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="sm:w-72">
-          <Input
-            placeholder="Search by name or email…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {counts.map((c) => (
+            <div
+              key={c.tier}
+              className="rounded-xl border border-border bg-muted/30 px-4 py-3"
+            >
+              <div className="text-xl font-semibold">{c.n}</div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                {TIER_NAMES[c.tier]}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <ul className="divide-y divide-border">
           {usersQuery.isLoading && (
             <li className="px-5 py-8 text-center text-sm text-muted-foreground">
@@ -268,23 +326,27 @@ function UsersTab() {
               className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-muted/30"
             >
               <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-primary-foreground"
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-primary-foreground ${
+                  u.banned ? "opacity-40 grayscale" : ""
+                }`}
                 style={{ background: "var(--gradient-brand)" }}
               >
                 {initials(u)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="truncate font-medium">{u.name || "Unnamed"}</span>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
-                      u.tier === "pro"
-                        ? "bg-primary/15 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {u.tier}
-                  </span>
+                  <TierBadge tier={u.tier} />
+                  {u.banned && (
+                    <span className="shrink-0 rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                      Banned
+                    </span>
+                  )}
+                  {u.emailConfirmed === false && (
+                    <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-500">
+                      Unconfirmed
+                    </span>
+                  )}
                 </div>
                 <div className="truncate text-xs text-muted-foreground">
                   {u.email ?? "—"}
@@ -301,31 +363,53 @@ function UsersTab() {
                     <span className="sr-only">Actions</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-52">
                   <DropdownMenuItem onSelect={() => setViewing(u)}>
                     <Eye className="mr-2 h-4 w-4" /> View profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setEditing(u)}>
-                    <Pencil className="mr-2 h-4 w-4" /> Edit details
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setPwUser(u)}>
-                    <KeyRound className="mr-2 h-4 w-4" /> Reset password
-                  </DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Pencil className="mr-2 h-4 w-4" /> Edit details
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onSelect={() => setEditing(u)}>
+                        <Pencil className="mr-2 h-4 w-4" /> Name & email
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setPwUser(u)}>
+                        <KeyRound className="mr-2 h-4 w-4" /> Change password
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Crown className="mr-2 h-4 w-4" /> Change plan
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {TIER_IDS.map((t) => (
+                        <DropdownMenuItem
+                          key={t}
+                          disabled={u.tier === t || setTier.isPending}
+                          onSelect={() => setTier.mutate({ userId: u.id, tier: t })}
+                        >
+                          {u.tier === t ? (
+                            <Check className="mr-2 h-4 w-4 text-primary" />
+                          ) : (
+                            <span className="mr-2 h-4 w-4" />
+                          )}
+                          {TIER_NAMES[t]}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                   <DropdownMenuSeparator />
-                  {u.tier === "free" ? (
-                    <DropdownMenuItem
-                      onSelect={() => setTier.mutate({ userId: u.id, tier: "pro" })}
-                    >
-                      <Crown className="mr-2 h-4 w-4" /> Make Pro
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      onSelect={() => setTier.mutate({ userId: u.id, tier: "free" })}
-                    >
-                      <UserMinus className="mr-2 h-4 w-4" /> Downgrade to Free
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      banMut.mutate({ userId: u.id, banned: !u.banned })
+                    }
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    {u.banned ? "Unban user" : "Ban user"}
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
                     onSelect={() => {
@@ -354,10 +438,10 @@ function UsersTab() {
           try {
             await updateUser({ data: patch });
             toast.success("User updated");
-            qc.invalidateQueries({ queryKey: ["admin", "users"] });
+            invalidate();
             setEditing(null);
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed");
+            fail(e);
           }
         }}
       />
@@ -373,7 +457,7 @@ function UsersTab() {
             toast.success("Password reset");
             setPwUser(null);
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed");
+            fail(e);
           }
         }}
       />
