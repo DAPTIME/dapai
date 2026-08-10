@@ -2263,9 +2263,6 @@ function spinFans(duration) {
       duration,
       ease: "linear",
       loop: true,
-      // Keep the sprite stack on its own layer: the smear stays crisp and
-      // the browser never re-rasterises the whole scene per frame.
-      modifier: (v) => v,
     }),
   );
   fanDuration = duration;
