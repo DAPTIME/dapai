@@ -322,28 +322,23 @@ function Home() {
       </div>
       <div className="border-t border-border bg-background/60 px-4 py-2 backdrop-blur">
 
-        {!siteEnabled || maintenance ? (
-          <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
-            <h2 className="text-lg font-semibold text-foreground">
-              DAP AI is undergoing major reworks
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Please try again later.
-            </p>
-          </div>
-        ) : (
-          <section aria-labelledby="composer-heading">
-            <h2 id="composer-heading" className="sr-only">
-              Message DAP AI
-            </h2>
-            <ChatComposer onSend={handleSend} pending={trialPending} />
-          </section>
-        )}
+        <section aria-labelledby="composer-heading">
+          <h2 id="composer-heading" className="sr-only">
+            Message DAP AI
+          </h2>
+          <ChatComposer
+            onSend={handleSend}
+            pending={trialPending}
+            offline={!siteEnabled || !!maintenance}
+            offlineMessage={siteConfig.offlineMessage}
+          />
+        </section>
         {siteEnabled && !maintenance && (
           <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
             DAP AI is AI and can make mistakes.
           </p>
         )}
+
       </div>
 
 
