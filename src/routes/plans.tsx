@@ -1,7 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile } from "@/lib/chats.functions";
 import { useAuth } from "@/lib/auth";
@@ -172,8 +181,12 @@ function PlansPage() {
                     Current plan
                   </Button>
                 ) : (
-                  <Button asChild variant="outline" className="w-full">
-                    <Link to="/help">How to get {TIER_LABELS[id]}</Link>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setUpgradeAsk(TIER_LABELS[id])}
+                  >
+                    How to get {TIER_LABELS[id]}
                   </Button>
                 )}
               </div>
