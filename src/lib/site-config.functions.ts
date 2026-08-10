@@ -20,7 +20,12 @@ export type FeatureKey = (typeof FEATURE_KEYS)[number];
 export interface SiteConfig {
   enabled: boolean;
   flags: Record<FeatureKey, boolean>;
+  /** Admin-authored text shown in the typing bar while DAP AI is offline. */
+  offlineMessage: string;
 }
+
+export const DEFAULT_OFFLINE_MESSAGE =
+  "DAP AI is offline right now — check back soon.";
 
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
   enabled: true,
@@ -31,6 +36,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     team: true,
     games: true,
   },
+  offlineMessage: DEFAULT_OFFLINE_MESSAGE,
 };
 
 export const getPublicSiteConfig = createServerFn({ method: "GET" }).handler(
@@ -38,17 +44,27 @@ export const getPublicSiteConfig = createServerFn({ method: "GET" }).handler(
     const config: SiteConfig = {
       enabled: true,
       flags: { ...DEFAULT_SITE_CONFIG.flags },
+      offlineMessage: DEFAULT_OFFLINE_MESSAGE,
     };
     try {
       const { supabaseAdmin } = await import(
         "@/integrations/supabase/client.server"
       );
-      const ids = ["site_status", ...FEATURE_KEYS.map((k) => `feature_${k}`)];
+      const ids = [
+        "site_status",
+        "offline_message",
+        ...FEATURE_KEYS.map((k) => `feature_${k}`),
+      ];
       const { data } = await supabaseAdmin
         .from("ai_settings")
         .select("id, system_prompt")
         .in("id", ids);
       for (const row of data ?? []) {
+        if (row.id === "offline_message") {
+          const msg = (row.system_prompt ?? "").trim();
+          if (msg) config.offlineMessage = msg;
+          continue;
+        }
         const on = (row.system_prompt ?? "on").trim().toLowerCase() !== "off";
         if (row.id === "site_status") {
           config.enabled = on;
@@ -60,6 +76,7 @@ export const getPublicSiteConfig = createServerFn({ method: "GET" }).handler(
         }
       }
     } catch (e) {
+
       // Never let a settings lookup take the site down — fail open.
       console.error("[site-config] lookup failed:", (e as Error).message);
     }
