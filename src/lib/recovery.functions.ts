@@ -296,15 +296,18 @@ export const completeAccountSetup = createServerFn({ method: "POST" })
   .inputValidator((i) =>
     z
       .object({
-        newPassword: z.string().min(6).max(200),
+        newPassword: z.string().min(8).max(200),
         question: z.string().trim().min(3).max(200),
         answer: z.string().trim().min(2).max(200),
       })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
+    const { assertPasswordPolicy } = await import("./password-policy");
+    assertPasswordPolicy(data.newPassword);
     const { assertPasswordNotLeaked } = await import("./pwned.server");
     await assertPasswordNotLeaked(data.newPassword);
+
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: pwErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
