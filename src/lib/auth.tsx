@@ -19,7 +19,9 @@ type AuthCtx = {
   ready: boolean;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithProvider: (provider: "google" | "github") => Promise<void>;
   signOut: () => Promise<void>;
+
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
