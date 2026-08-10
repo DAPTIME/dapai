@@ -31,7 +31,7 @@ import {
   adminListUsers,
   adminUpdateUser,
   adminResetPassword,
-  
+  adminSetBan,
   adminDeleteUser,
   adminGetSystemPrompt,
   adminSetSystemPrompt,
@@ -41,10 +41,10 @@ import {
   adminSetSiteStatus,
   getOfflineMessage,
   adminSetOfflineMessage,
-
   getFeatureFlags,
   adminSetFeatureFlag,
 } from "@/lib/admin.functions";
+
 
 const FEATURE_KEYS = ["pro_model", "lite_model", "daps", "team", "games"] as const;
 type FeatureKey = (typeof FEATURE_KEYS)[number];
