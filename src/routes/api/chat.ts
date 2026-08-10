@@ -59,6 +59,7 @@ export const Route = createFileRoute("/api/chat")({
         if (!token) {
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
+        let callerId: string;
         try {
           const { createClient } = await import("@supabase/supabase-js");
           const SUPABASE_URL = PUBLIC_SUPABASE_URL;
@@ -73,6 +74,7 @@ export const Route = createFileRoute("/api/chat")({
           if (error || !data?.claims?.sub) {
             return Response.json({ error: "Unauthorized" }, { status: 401 });
           }
+          callerId = data.claims.sub as string;
         } catch {
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -86,6 +88,57 @@ export const Route = createFileRoute("/api/chat")({
         } catch {
           /* upstream will surface the parse error */
         }
+
+        // Server-side tier gating + admin kill switches, matching the
+        // sendChatMessage server function. Client-supplied `model` is never
+        // trusted on its own.
+        {
+          const { supabaseAdmin } = await import(
+            "@/integrations/supabase/client.server"
+          );
+
+          const { data: status } = await supabaseAdmin
+            .from("ai_settings")
+            .select("system_prompt")
+            .eq("id", "site_status")
+            .maybeSingle();
+          if ((status?.system_prompt ?? "on").trim().toLowerCase() === "off") {
+            return Response.json(
+              { error: "DAP AI is undergoing major reworks. Please try again later." },
+              { status: 503 }
+            );
+          }
+
+          const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("tier")
+            .eq("id", callerId)
+            .maybeSingle();
+          if (model === "dap-ai-1.0" && profile?.tier !== "pro") {
+            // Free/Go tiers are locked to Lite.
+            model = "dap-ai-lite";
+          }
+
+          const flagId =
+            model === "dap-ai-1.0" ? "feature_pro_model" : "feature_lite_model";
+          const { data: flag } = await supabaseAdmin
+            .from("ai_settings")
+            .select("system_prompt")
+            .eq("id", flagId)
+            .maybeSingle();
+          if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
+            return Response.json(
+              {
+                error:
+                  model === "dap-ai-1.0"
+                    ? "DAP AI 4 Pro is currently disabled by the admin."
+                    : "DAP AI 4 Lite is currently disabled by the admin.",
+              },
+              { status: 503 }
+            );
+          }
+        }
+
 
 
         const { url: backend, key, upstreamModel } = backendFor(model);
