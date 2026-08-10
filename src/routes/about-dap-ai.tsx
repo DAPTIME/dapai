@@ -16,7 +16,7 @@ export const Route = createFileRoute("/about-dap-ai")({
       {
         name: "keywords",
         content:
-          "DAP AI, dap ai, dapai, DAP, DAP AI 4 Pro, DAP AI Pro, DAP AI 4 Lite, DAP AI chatbot, DAP AI assistant, free AI chatbot, free AI assistant, free chatbot online, mixture of experts, MoE model, sparse model, expert routing, 7B parameter experts, edge AI, on-device AI, self-hosted AI, private AI, local AI, Jetson Orin Nano AI, RTX 5060 Ti AI, ChatGPT alternative, Claude alternative, Gemini alternative, Copilot alternative, AI for coding, AI code reviewer, AI study buddy, AI career coach, AI trip planner, AI writing assistant, AI homework help, AI math solver, AI essay writer, AI translator, AI summarizer, AI email writer, AI resume builder, AI recipe generator, AI weather assistant, weather today, what is the weather, ask AI anything, chat with AI, talk to AI, best free AI, fastest AI chatbot, no signup AI, AI without login, AI for students, AI for developers, AI for writers, AI for business, AI for teachers, small AI model, cheap AI, low cost AI, offline capable AI, open AI alternative, Devansh AI, DAP AI Dubai, DAP AI UAE, how does AI work, what is a language model, what is an SLM, run AI at home, AI on Jetson, AI on gaming GPU",
+          "chatbot, AI, ai chat, ai chatbot, chat bot, chatbot online, chatbot free, AI assistant, artificial intelligence, artificial intelligence chatbot, ai chat online free, best chatbot, best AI, best AI chatbot, best free chatbot, top AI chatbot, online chatbot, web chatbot, talk to a chatbot, chatbot website, AI bot, smart chatbot, conversational AI, generative AI, LLM, large language model, small language model, AI search, ask AI, AI questions, AI answers, DAP AI, dap ai, dapai, DAP, DAP AI 4 Pro, DAP AI Pro, DAP AI 4 Lite, DAP AI chatbot, DAP AI assistant, free AI chatbot, free AI assistant, free chatbot online, mixture of experts, MoE model, sparse model, expert routing, 7B parameter experts, edge AI, on-device AI, self-hosted AI, private AI, local AI, Jetson Orin Nano AI, RTX 5060 Ti AI, ChatGPT alternative, Claude alternative, Gemini alternative, Copilot alternative, AI for coding, AI code reviewer, AI study buddy, AI career coach, AI trip planner, AI writing assistant, AI homework help, AI math solver, AI essay writer, AI translator, AI summarizer, AI email writer, AI resume builder, AI recipe generator, AI weather assistant, weather today, what is the weather, ask AI anything, chat with AI, talk to AI, best free AI, fastest AI chatbot, no signup AI, AI without login, AI for students, AI for developers, AI for writers, AI for business, AI for teachers, small AI model, cheap AI, low cost AI, offline capable AI, open AI alternative, Devansh AI, DAP AI Dubai, DAP AI UAE, how does AI work, what is a language model, what is an SLM, run AI at home, AI on Jetson, AI on gaming GPU",
       },
       { name: "robots", content: "index, follow" },
       { property: "og:title", content: "DAP AI — Free AI Chatbot & Small Language Model" },
@@ -456,6 +456,45 @@ function AboutDapAi() {
           providers. DAP AI is a small experiment in the opposite direction:
           a useful chatbot, served from a few small machines, that proves
           you don't need a hyperscaler to make AI happen.
+        </p>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">
+          What is a chatbot, and what makes DAP AI one?
+        </h2>
+        <p className="mt-3 text-muted-foreground">
+          A chatbot is a program you talk to in plain language: you type a
+          question, it answers. DAP AI is a free AI chatbot — an online chat
+          bot powered by artificial intelligence that you can open in a
+          browser with no download and no signup to try it. It belongs to the
+          same family of tools as ChatGPT, Claude, Gemini, Copilot, Perplexity
+          and Grok: a conversational AI built on a language model. The
+          difference is scale and ownership — DAP AI is a small
+          mixture-of-experts language model served from hardware we own, not a
+          rented hyperscaler datacenter.
+        </p>
+        <h3 className="mt-6 text-lg font-medium">
+          Free AI chat, in the browser
+        </h3>
+        <p className="mt-2 text-muted-foreground">
+          If you searched for a chatbot, an AI chat, an AI assistant, an
+          artificial intelligence chatbot, the best free chatbot online, or
+          simply &ldquo;AI&rdquo;, DAP AI does what you came for: general
+          question answering, coding help, study and homework help, writing
+          and editing, translation, summarising, brainstorming, recipes,
+          travel planning and everyday advice. Open the chat, type anything,
+          and read the answer.
+        </p>
+        <h3 className="mt-6 text-lg font-medium">
+          Common ways people describe it
+        </h3>
+        <p className="mt-2 text-muted-foreground">
+          AI chatbot · free chatbot · online chatbot · chat bot website · AI
+          chat online free · AI assistant · conversational AI · generative AI
+          chat · large language model chat · small language model · AI
+          question answering · AI search · smart chatbot · virtual assistant ·
+          AI helper · ChatGPT alternative · free AI without login.
         </p>
       </section>
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -77,10 +77,51 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
   }, [onNewChat]);
 
 
+  // Radix's context menu is uncontrolled and only reads the cursor position
+  // when it goes from closed to open. Right-clicking again while it was open
+  // batched the dismiss and the reopen into one render, so the menu never
+  // moved. Here we swallow that second right-click, close the menu for real,
+  // and replay the click on the next frame so it reopens under the cursor.
+  const replaying = useRef(false);
+
+  const handleContextMenuCapture = useCallback((e: React.MouseEvent) => {
+    if (replaying.current) return;
+    const openMenu = document.querySelector(
+      '[data-radix-menu-content][data-state="open"]'
+    );
+    if (!openMenu) return;
+
+    const { clientX, clientY } = e;
+    const target = e.target as HTMLElement;
+    e.preventDefault();
+    e.stopPropagation();
+    // Dismiss the open menu the same way Escape would.
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+    );
+    requestAnimationFrame(() => {
+      replaying.current = true;
+      target.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX,
+          clientY,
+          button: 2,
+        })
+      );
+      replaying.current = false;
+    });
+  }, []);
+
   return (
-    <ContextMenu>
+    // modal={false} keeps the rest of the page interactive while the menu is
+    // open, so the replayed right-click above actually reaches the trigger.
+    <ContextMenu modal={false}>
       <ContextMenuTrigger asChild>
-        <div className="contents">{children}</div>
+        <div className="contents" onContextMenuCapture={handleContextMenuCapture}>
+          {children}
+        </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
         <ContextMenuItem onSelect={onNewChat} className="gap-2">
