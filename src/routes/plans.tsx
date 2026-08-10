@@ -78,6 +78,8 @@ function PlansPage() {
     staleTime: 60_000,
   });
   const currentTier = (profileQuery.data?.tier as Tier | undefined) ?? null;
+  // Payments aren't live yet, so "How to get X" explains the manual upgrade.
+  const [upgradeAsk, setUpgradeAsk] = useState<string | null>(null);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
@@ -194,6 +196,37 @@ function PlansPage() {
           );
         })}
       </div>
+
+      <Dialog
+        open={upgradeAsk !== null}
+        onOpenChange={(open) => !open && setUpgradeAsk(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upgrading to {upgradeAsk}</DialogTitle>
+            <DialogDescription>
+              DAP AI doesn't have payments fully set up yet, so please contact
+              the owner and request an upgrade to {upgradeAsk}. Once approved,
+              your plan is applied to your account instantly — no checkout
+              needed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => setUpgradeAsk(null)}>
+              Close
+            </Button>
+            <Button asChild style={{ background: "var(--gradient-brand)" }}>
+              <a
+                href={EXCLUSIVE_CONTACT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Contact the owner <ExternalLink className="ml-1.5 h-4 w-4" />
+              </a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="mt-10 rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
         <h2 className="text-base font-medium text-foreground">

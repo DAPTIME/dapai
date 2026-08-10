@@ -113,8 +113,7 @@ function Home() {
     refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
-  const proEnabled = flagsQuery.data?.pro_model !== false;
-  const liteEnabled = flagsQuery.data?.lite_model !== false;
+  const flags = flagsQuery.data;
 
   const fetchProfile = useServerFn(getProfile);
   const profileQuery = useQuery({
@@ -125,10 +124,10 @@ function Home() {
     refetchOnWindowFocus: false,
   });
   const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
-  // Free users / anon only have access to Lite. Paid tiers can use either.
-  const maintenance = user && tier !== "free"
-    ? !proEnabled && !liteEnabled
-    : !liteEnabled;
+  // Maintenance = every model this visitor could pick is switched off.
+  const maintenance = CHAT_MODELS.filter((m) =>
+    isModelAllowedForTier(m, tier, !!user)
+  ).every((m) => flags?.[m.flag] === false);
   const [showIntro, setShowIntro] = useState(false);
 
   // Just confirmed their email: notify + play the short DAP AI intro.
