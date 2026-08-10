@@ -83,41 +83,48 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
   // moved. Here we swallow that second right-click, close the menu for real,
   // and replay the click on the next frame so it reopens under the cursor.
   const replaying = useRef(false);
+  const openRef = useRef(false);
+  const closedAt = useRef(0);
 
   const handleContextMenuCapture = useCallback((e: React.MouseEvent) => {
     if (replaying.current) return;
-    const openMenu = document.querySelector(
-      '[data-radix-menu-content][data-state="open"]'
-    );
-    if (!openMenu) return;
+    // The right-click's pointerdown dismisses the menu a beat before the
+    // contextmenu event lands, so "was it open" has to include "it closed a
+    // moment ago because of this very click".
+    const wasOpen = openRef.current || Date.now() - closedAt.current < 200;
+    if (!wasOpen) return;
 
     const { clientX, clientY } = e;
     const target = e.target as HTMLElement;
     e.preventDefault();
     e.stopPropagation();
-    // Dismiss the open menu the same way Escape would.
-    document.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Escape", bubbles: true })
-    );
     requestAnimationFrame(() => {
-      replaying.current = true;
-      target.dispatchEvent(
-        new MouseEvent("contextmenu", {
-          bubbles: true,
-          cancelable: true,
-          clientX,
-          clientY,
-          button: 2,
-        })
-      );
-      replaying.current = false;
+      requestAnimationFrame(() => {
+        replaying.current = true;
+        target.dispatchEvent(
+          new MouseEvent("contextmenu", {
+            bubbles: true,
+            cancelable: true,
+            clientX,
+            clientY,
+            button: 2,
+          })
+        );
+        replaying.current = false;
+      });
     });
   }, []);
 
   return (
     // modal={false} keeps the rest of the page interactive while the menu is
     // open, so the replayed right-click above actually reaches the trigger.
-    <ContextMenu modal={false}>
+    <ContextMenu
+      modal={false}
+      onOpenChange={(o) => {
+        openRef.current = o;
+        if (!o) closedAt.current = Date.now();
+      }}
+    >
       <ContextMenuTrigger asChild>
         <div className="contents" onContextMenuCapture={handleContextMenuCapture}>
           {children}
