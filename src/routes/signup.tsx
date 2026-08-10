@@ -10,6 +10,8 @@ import { useAuth } from "@/lib/auth";
 import { registerAccount, resendConfirmationEmail } from "@/lib/signup.functions";
 import { isValidEmail } from "@/lib/utils";
 import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
+import { SocialAuthButtons } from "@/components/social-auth-buttons";
+
 
 export const Route = createFileRoute("/signup")({
   head: () => ({
@@ -194,6 +196,8 @@ function SignupPage() {
           {busy ? "Creating…" : "Create account"}
         </Button>
       </form>
+      <SocialAuthButtons label="or sign up with" />
+
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link to="/login" className="font-medium text-foreground underline-offset-4 hover:underline">

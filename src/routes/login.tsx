@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { isValidEmail } from "@/lib/utils";
+import { SocialAuthButtons } from "@/components/social-auth-buttons";
+
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -94,6 +96,8 @@ function LoginPage() {
           Forgot password?
         </Link>
       </p>
+      <SocialAuthButtons />
+
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Don't have an account?{" "}
         <Link to="/signup" className="font-medium text-foreground underline-offset-4 hover:underline">
