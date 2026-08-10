@@ -300,7 +300,7 @@ export function ChatComposer({
         <Button
           type="submit"
           size="icon"
-          disabled={(!text.trim() && images.length === 0) || pending}
+          disabled={(!text.trim() && images.length === 0) || pending || isOffline}
           className={`relative h-9 w-9 overflow-hidden rounded-full transition-transform active:scale-95 ${pending ? "send-pending" : ""} ${(text.trim() || images.length) && !pending ? "send-ready" : ""}`}
           style={text.trim() || images.length || pending ? { background: "var(--gradient-brand)" } : undefined}
           aria-label={pending ? "Sending" : "Send message"}
