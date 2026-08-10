@@ -59,7 +59,9 @@ export async function consumeEmailQuota(kind = "email", email?: string | null) {
     .from("email_rate_limits")
     .select("id", { count: "exact", head: true })
     .eq("ip", ip)
+    .not("kind", "like", "attempt:%")
     .gte("created_at", since);
+
 
   if (error) {
     console.error("[rate-limit] lookup failed:", error.message);

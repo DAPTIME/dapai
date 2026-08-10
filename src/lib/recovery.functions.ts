@@ -89,7 +89,7 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
         email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255),
         token: z.string().trim().min(10).max(200),
         answer: z.string().trim().min(1).max(200),
-        newPassword: z.string().min(6).max(200),
+        newPassword: z.string().min(8).max(200),
         newQuestion: z.string().trim().min(3).max(200),
         newAnswer: z.string().trim().min(2).max(200),
       })
@@ -97,9 +97,16 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase();
+    const { consumeAttempt, clearAttempts, RECOVERY_ANSWER_POLICY } =
+      await import("./attempt-limit.server");
+    // Count the guess before checking it, so brute force gets locked out.
+    await consumeAttempt(RECOVERY_ANSWER_POLICY);
+
     const { consumeResetSession } = await import("./reset-session.server");
     await consumeResetSession(email, data.token);
 
+    const { assertPasswordPolicy } = await import("./password-policy");
+    assertPasswordPolicy(data.newPassword, { email });
     const { assertPasswordNotLeaked } = await import("./pwned.server");
     await assertPasswordNotLeaked(data.newPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -127,8 +134,10 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
       })
       .eq("id", row.id);
     if (qErr) throw dbError(qErr);
+    await clearAttempts(RECOVERY_ANSWER_POLICY);
     return { ok: true };
   });
+
 
 
 /** Signed-in: verify the current recovery answer, then update to a new question+answer. */

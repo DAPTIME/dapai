@@ -10,7 +10,7 @@ import {
   createCustomDap,
   deleteCustomDap,
 } from "@/lib/custom-daps.functions";
-import { getFeatureFlags } from "@/lib/admin.functions";
+import { useSiteConfig } from "@/lib/site-config";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -45,18 +45,16 @@ function Daps() {
   const listCustom = useServerFn(listCustomDaps);
   const createCustom = useServerFn(createCustomDap);
   const deleteCustom = useServerFn(deleteCustomDap);
-  const fetchFlags = useServerFn(getFeatureFlags);
+  const siteConfig = useSiteConfig();
   const fetchProfile = useServerFn(getProfile);
-  const flagsQuery = useQuery({
-    queryKey: ["feature-flags"],
-    queryFn: () => fetchFlags(),
-  });
+
   const profileQuery = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: () => fetchProfile(),
     enabled: !!user,
   });
-  const dapsEnabled = flagsQuery.data?.daps !== false;
+  const dapsEnabled = siteConfig.flags.daps;
+
   const isPro = profileQuery.data?.tier === "pro";
 
   const [showForm, setShowForm] = useState(false);

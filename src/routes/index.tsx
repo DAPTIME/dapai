@@ -8,7 +8,7 @@ import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
 import { DapIntro } from "@/components/dap-intro";
 
 import { createChat, getProfile } from "@/lib/chats.functions";
-import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
+import { useSiteConfig } from "@/lib/site-config";
 
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -93,27 +93,11 @@ function Home() {
   const [trial, setTrial] = useState<TrialExchange | null>(null);
   const [trialPending, setTrialPending] = useState(false);
   const create = useServerFn(createChat);
-  const fetchSiteStatus = useServerFn(getSiteStatus);
-  const siteStatus = useQuery({
-    queryKey: ["site-status"],
-    queryFn: () => fetchSiteStatus(),
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: false,
-  });
-  // Optimistic: assume enabled until we explicitly hear otherwise.
-  const siteEnabled = siteStatus.data?.enabled !== false;
+  const siteConfig = useSiteConfig();
+  const siteEnabled = siteConfig.enabled;
+  const proEnabled = siteConfig.flags.pro_model;
+  const liteEnabled = siteConfig.flags.lite_model;
 
-  const fetchFlags = useServerFn(getFeatureFlags);
-  const flagsQuery = useQuery({
-    queryKey: ["feature-flags"],
-    queryFn: () => fetchFlags(),
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: false,
-  });
-  const proEnabled = flagsQuery.data?.pro_model !== false;
-  const liteEnabled = flagsQuery.data?.lite_model !== false;
 
   const fetchProfile = useServerFn(getProfile);
   const profileQuery = useQuery({
@@ -334,7 +318,7 @@ function Home() {
         )}
         {siteEnabled && !maintenance && (
           <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
-            DAP AI may produce inaccurate info.
+            DAP AI is AI and can make mistakes.
           </p>
         )}
       </div>

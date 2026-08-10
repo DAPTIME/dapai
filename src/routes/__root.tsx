@@ -26,6 +26,11 @@ import { AccountMenu } from "@/components/account-menu";
 import { AppContextMenu } from "@/components/app-context-menu";
 import { useTheme } from "@/lib/theme";
 import { getProfile } from "@/lib/chats.functions";
+import {
+  getPublicSiteConfig,
+  DEFAULT_SITE_CONFIG,
+} from "@/lib/site-config.functions";
+
 import appCss from "../styles.css?url";
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -74,8 +79,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
   }),
+  // Loaded during SSR so pages know instantly whether the admin has
+  // disabled the site or a model — no client round trip, no delay.
+  loader: async () => {
+    try {
+      return { siteConfig: await getPublicSiteConfig() };
+    } catch {
+      return { siteConfig: DEFAULT_SITE_CONFIG };
+    }
+  },
   shellComponent: RootShell,
   component: RootComponent,
+
   notFoundComponent: () => (
     <div className="flex min-h-screen items-center justify-center p-6 text-center">
       <div>
