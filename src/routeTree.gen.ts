@@ -36,6 +36,7 @@ import { Route as GamesBreakoutRouteImport } from './routes/games.breakout'
 import { Route as Games2048RouteImport } from './routes/games.2048'
 import { Route as ChatNRouteImport } from './routes/chat.$n'
 import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -184,6 +185,11 @@ const CThreadIdRoute = CThreadIdRouteImport.update({
   path: '/c/$threadId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -270,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
@@ -310,6 +317,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
@@ -352,6 +360,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/chat': typeof ApiChatRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/c/$threadId': typeof CThreadIdRoute
   '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
@@ -395,6 +404,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
+    | '/auth/callback'
     | '/c/$threadId'
     | '/chat/$n'
     | '/games/2048'
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
+    | '/auth/callback'
     | '/c/$threadId'
     | '/chat/$n'
     | '/games/2048'
@@ -476,6 +487,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/api/chat'
+    | '/auth/callback'
     | '/c/$threadId'
     | '/chat/$n'
     | '/games/2048'
@@ -518,6 +530,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiChatRoute: typeof ApiChatRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   CThreadIdRoute: typeof CThreadIdRoute
   ChatNRoute: typeof ChatNRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -716,6 +729,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CThreadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -861,6 +881,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiChatRoute: ApiChatRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   CThreadIdRoute: CThreadIdRoute,
   ChatNRoute: ChatNRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
