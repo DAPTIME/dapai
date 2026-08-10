@@ -74,14 +74,40 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const GREETINGS = (name: string) => [
-  `Hey ${name}, I'm here to help.`,
-  `What's on your mind, ${name}?`,
-  `Ready when you are, ${name}.`,
-  `Let's get into it, ${name}.`,
-  `How can I assist, ${name}?`,
-  `Ask me anything, ${name}.`,
-];
+/**
+ * Signed-in greetings. Time-aware: late-night visitors get night-owl lines,
+ * otherwise a random friendly opener.
+ */
+const GREETINGS = (name: string, hour: number) => {
+  if (hour >= 23 || hour < 5) {
+    return [
+      `Hello, night owl.`,
+      `Still up, ${name}? Let's get it done.`,
+      `Late-night session, ${name}?`,
+    ];
+  }
+  if (hour < 12) {
+    return [
+      `Good morning, ${name}.`,
+      `Morning, ${name} — what's first?`,
+      `Hey ${name}, how may I help?`,
+    ];
+  }
+  if (hour < 18) {
+    return [
+      `Hey ${name}, how may I help?`,
+      `What's popping, ${name}?`,
+      `Good afternoon, ${name}.`,
+      `Ask me anything, ${name}.`,
+    ];
+  }
+  return [
+    `Good evening, ${name}.`,
+    `Hello ${name}, how may I assist you?`,
+    `What's on your mind, ${name}?`,
+  ];
+};
+
 
 type TrialExchange = { userText: string; reply?: string; error?: string };
 
