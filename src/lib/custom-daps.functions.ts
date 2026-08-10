@@ -19,7 +19,8 @@ async function requirePro(
     .select("tier")
     .eq("id", userId)
     .single();
-  if ((profile?.tier as string) !== "pro") {
+  const t = profile?.tier as string | undefined;
+  if (t !== "pro" && t !== "exclusive") {
     throw new Error("Custom AI's are a Pro feature. Upgrade to create or use them.");
   }
 }

@@ -19,8 +19,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { enqueue } from "@/lib/ai-queue";
 import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { resolveOllamaModel } from "@/lib/ollama-models.server";
+import { MSG_SAFETY_BLOCKED, tierConfig } from "@/lib/tiers";
 
-const CHAT_LIMITS = { free: 5, pro: 10 } as const;
+// Chat-memory limits per tier (oldest chats auto-deleted on creation).
+const CHAT_LIMITS = { free: 5, go: 10, pro: 10, exclusive: 25 } as const;
+type TierId = keyof typeof CHAT_LIMITS;
+const asTier = (t: unknown): TierId =>
+  (["free", "go", "pro", "exclusive"] as const).includes(t as TierId)
+    ? (t as TierId)
+    : "free";
 
 // Lite gets a smaller rolling window so its (smaller LM Studio context)
 // never overflows. Pro keeps the full history.
@@ -308,7 +315,8 @@ export const createChat = createServerFn({ method: "POST" })
         .select("tier")
         .eq("id", userId)
         .single();
-      if ((gateProfile?.tier as string) !== "pro") {
+      const gateTier = asTier(gateProfile?.tier);
+      if (gateTier !== "pro" && gateTier !== "exclusive") {
         throw new Error("Custom AI's are a Pro feature. Upgrade to use them.");
       }
     }
@@ -353,7 +361,7 @@ export const createChat = createServerFn({ method: "POST" })
       .select("tier")
       .eq("id", userId)
       .single();
-    const tier = (profile?.tier as "free" | "pro") ?? "free";
+    const tier = asTier(profile?.tier);
     const limit = CHAT_LIMITS[tier];
 
     // Prune oldest chats so that after we insert the new one we sit at
@@ -445,9 +453,13 @@ export const getProfile = createServerFn({ method: "GET" })
       .eq("id", userId)
       .single();
     if (error) throw new Error(error.message);
+    const tier = asTier(data.tier);
     return {
       ...data,
-      chatLimit: CHAT_LIMITS[(data.tier as "free" | "pro") ?? "free"],
+      tier,
+      chatLimit: CHAT_LIMITS[tier],
+      // Client-safe capability summary for the current tier.
+      tierConfig: tierConfig(tier),
     };
   });
 
@@ -502,9 +514,28 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .single();
     if (pErr) throw new Error(pErr.message);
 
+    const tier = asTier(profile.tier);
+    const tierCfg = tierConfig(tier);
+
+    // --- Usage layer: safety hook → prompt cap → usage tokens → images. ---
+    // None of this changes how responses are generated; it only gates and
+    // tracks usage around the existing chat flow.
+    const { assertQuotaAllows, recordUsage, isSafetyBlocked } = await import(
+      "@/lib/quota.server"
+    );
+    if (isSafetyBlocked(data.text)) throw new Error(MSG_SAFETY_BLOCKED);
+
+    const pendingImageCount = data.images?.length ?? 0;
+    const { cost: usageCost } = await assertQuotaAllows({
+      userId,
+      tier,
+      text: data.text,
+      imageCount: pendingImageCount,
+    });
+
     let effectiveModel = data.model;
     let forcedToLite = false;
-    if (data.model === "dap-ai-1.0" && profile.tier !== "pro") {
+    if (data.model === "dap-ai-1.0" && tier === "free") {
       effectiveModel = "dap-ai-lite";
       forcedToLite = true;
     }
@@ -583,10 +614,13 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     }
 
     // Per-user memories (ChatGPT-style). Injected as a system message.
-    const { data: memRows } = await supabase
-      .from("user_memories")
-      .select("content")
-      .order("created_at", { ascending: true });
+    // Memory is a paid-tier feature — Free tier neither reads nor writes it.
+    const { data: memRows } = tierCfg.memory
+      ? await supabase
+          .from("user_memories")
+          .select("content")
+          .order("created_at", { ascending: true })
+      : { data: null as { content: string }[] | null };
     const memoryBlock =
       memRows && memRows.length > 0
         ? `What you remember about this user (use naturally, don't recite):\n${memRows
@@ -617,15 +651,18 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // Auto web-search: a fast classifier decides if the question needs
     // fresh info; if so we run a Firecrawl search and inject the results
     // as system context so the model can answer accurately and cite.
+    // Web search is a paid-tier feature (Free tier never searches).
     let webContext = "";
-    try {
-      const query =
-        data.searchQuery && data.searchQuery.trim().length > 0
-          ? data.searchQuery.trim()
-          : await planWebSearch(data.text);
-      if (query) webContext = await webSearchContext(query);
-    } catch {
-      /* best-effort */
+    if (tierCfg.webSearch) {
+      try {
+        const query =
+          data.searchQuery && data.searchQuery.trim().length > 0
+            ? data.searchQuery.trim()
+            : await planWebSearch(data.text);
+        if (query) webContext = await webSearchContext(query);
+      } catch {
+        /* best-effort */
+      }
     }
 
     const ANTI_SYCOPHANCY =
@@ -761,6 +798,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               model: resolvedModel,
               messages,
               stream: false,
+              // Response ceiling for this user's tier.
+              max_tokens: tierCfg.maxResponseTokens,
               ...(effectiveModel === "dap-ai-lite" ? liteOptions : {}),
             }),
             signal: ctrl.signal,
@@ -820,17 +859,33 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       model: effectiveModel,
     });
 
-    // Auto-extract durable memories from the user's message (best-effort).
+    // Deduct usage tokens + images now that the message went through.
+    // (Exclusive tier is a no-op inside recordUsage.)
     try {
-      const existingMems = (memRows ?? []).map((m) => m.content);
-      const newMems = await extractMemories(data.text, existingMems);
-      if (newMems.length > 0) {
-        await supabase.from("user_memories").insert(
-          newMems.map((content) => ({ user_id: userId, content }))
-        );
-      }
+      await recordUsage({
+        userId,
+        tier,
+        cost: usageCost,
+        imageCount: pendingImageCount,
+      });
     } catch {
-      /* best-effort, ignore */
+      /* never fail the reply on a counter write */
+    }
+
+    // Auto-extract durable memories from the user's message (best-effort).
+    // Only for tiers where the memory feature is enabled.
+    if (tierCfg.memory) {
+      try {
+        const existingMems = (memRows ?? []).map((m) => m.content);
+        const newMems = await extractMemories(data.text, existingMems);
+        if (newMems.length > 0) {
+          await supabase.from("user_memories").insert(
+            newMems.map((content) => ({ user_id: userId, content }))
+          );
+        }
+      } catch {
+        /* best-effort, ignore */
+      }
     }
 
     // Return refreshed view

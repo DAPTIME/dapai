@@ -16,10 +16,18 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile } from "@/lib/chats.functions";
 import { getFeatureFlags } from "@/lib/admin.functions";
+import { getMyQuota } from "@/lib/quota.functions";
+import {
+  MSG_PROMPT_TOO_LONG,
+  estimateTokens,
+  tierConfig,
+  usageCostFor,
+  type Tier,
+} from "@/lib/tiers";
 
 
 export interface QuotaInfo {
-  tier: "free" | "pro";
+  tier: Tier;
 }
 
 interface Props {
@@ -27,21 +35,6 @@ interface Props {
   quotaInfo?: QuotaInfo;
   pending?: boolean;
 }
-
-const MODELS = [
-  {
-    id: "dap-ai-1.0",
-    label: "DAP AI 3.2",
-    description: "Our most capable and ambitious model yet.",
-    requiresPro: true,
-  },
-  {
-    id: "dap-ai-lite",
-    label: "DAP AI Lite 3.2",
-    description: "Fast responses and simple answers.",
-    requiresPro: false,
-  },
-];
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB per image
 
@@ -62,9 +55,37 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
     queryFn: () => fetchProfile(),
     enabled: !!user && !quotaInfo,
   });
-  const tier = quotaInfo?.tier ?? (profileQuery.data?.tier as "free" | "pro" | undefined);
-  const isPro = tier === "pro";
-  const canUsePro = !!user && isPro;
+  const tier = (quotaInfo?.tier ??
+    (profileQuery.data?.tier as Tier | undefined) ??
+    "free") as Tier;
+  const cfg = tierConfig(tier);
+  const isPaid = tier !== "free";
+  const canUsePro = !!user && isPaid;
+
+  // Live usage-token budget (hidden for the Exclusive tier).
+  const fetchQuota = useServerFn(getMyQuota);
+  const quotaQuery = useQuery({
+    queryKey: ["my-quota", user?.id],
+    queryFn: () => fetchQuota(),
+    enabled: !!user,
+    staleTime: 15_000,
+  });
+  const quota = quotaQuery.data;
+
+  const MODELS = [
+    {
+      id: "dap-ai-1.0",
+      label: isPaid ? cfg.productName : "DAP AI 4 Pro",
+      description: cfg.tagline ?? "Our most capable and ambitious model yet.",
+      requiresPro: true,
+    },
+    {
+      id: "dap-ai-lite",
+      label: "DAP AI 4 Lite",
+      description: "Fast responses and simple answers.",
+      requiresPro: false,
+    },
+  ];
 
   const fetchFlags = useServerFn(getFeatureFlags);
   const flagsQuery = useQuery({
@@ -83,6 +104,10 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
   const [model, setModel] = useState<string>(
     canUsePro ? "dap-ai-1.0" : "dap-ai-lite"
   );
+
+  // Per-response image cap for this tier (null = no cap; we still keep a
+  // sane upload ceiling so the payload stays reasonable).
+  const imageCap = cfg.maxImagesPerResponse ?? 4;
 
   // Keep the prompt textarea focused on mount and after each send finishes.
   useEffect(() => {
@@ -114,12 +139,19 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
     if (typeof window !== "undefined") {
       localStorage.setItem("dap.model", resolved);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canUsePro, proEnabled, liteEnabled]);
 
   const handlePickImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    if (images.length >= imageCap) {
+      toast.error(
+        `Your plan allows ${imageCap} image${imageCap === 1 ? "" : "s"} per response.`
+      );
+      return;
+    }
     const next: string[] = [];
-    for (const f of Array.from(files).slice(0, 4 - images.length)) {
+    for (const f of Array.from(files).slice(0, imageCap - images.length)) {
       if (!f.type.startsWith("image/")) {
         toast.error(`${f.name} isn't an image.`);
         continue;
@@ -134,18 +166,25 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
         toast.error(`Couldn't read ${f.name}.`);
       }
     }
-    if (next.length) setImages((prev) => [...prev, ...next].slice(0, 4));
+    if (next.length) setImages((prev) => [...prev, ...next].slice(0, imageCap));
   };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (pending) return;
     if (!text.trim() && images.length === 0) return;
+    // Reject over-long prompts before spending anything.
+    if (user && usageCostFor(text.trim() || "(image)", tier) === null) {
+      toast.error(MSG_PROMPT_TOO_LONG);
+      return;
+    }
     onSend?.(text.trim() || "(image)", images.length ? images : undefined);
     setText("");
     setImages([]);
   };
 
+  const promptTokens = estimateTokens(text);
+  const overPromptCap = promptTokens > cfg.maxPromptTokens;
   const activeModel = MODELS.find((m) => m.id === model) ?? MODELS[1];
 
   return (
@@ -268,6 +307,24 @@ export function ChatComposer({ onSend, quotaInfo, pending }: Props) {
           <span className="ml-2 hidden text-xs text-muted-foreground sm:inline">
             {activeModel.description}
           </span>
+          {user && quota && !quota.unlimited && quota.dayTokensLimit !== null && (
+            <Link
+              to="/plans"
+              title={`Daily usage tokens reset at ${quota.dailyResetsAt}`}
+              className="ml-2 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {Math.max(
+                0,
+                quota.dayTokensLimit - quota.dayTokensUsed
+              ).toLocaleString()}{" "}
+              / {quota.dayTokensLimit} tokens today
+            </Link>
+          )}
+          {user && overPromptCap && (
+            <span className="ml-2 text-xs text-destructive">
+              Prompt too long ({promptTokens}/{cfg.maxPromptTokens})
+            </span>
+          )}
           {!user && (
             <Link
               to="/login"
