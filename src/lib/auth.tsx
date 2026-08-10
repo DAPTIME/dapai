@@ -24,6 +24,11 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
+/** Login sessions expire 5 minutes after sign-in. */
+const SESSION_TTL_MS = 5 * 60 * 1000;
+const SESSION_START_KEY = "dapai.session_started_at";
+
+
 function toUser(u: SupabaseUser | null | undefined): User | null {
   if (!u) return null;
   return {
