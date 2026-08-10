@@ -27,7 +27,11 @@ interface Props {
   onSend?: (text: string, images?: string[]) => void;
   quotaInfo?: QuotaInfo;
   pending?: boolean;
+  /** When true the bar is read-only and shows the admin's offline message. */
+  offline?: boolean;
+  offlineMessage?: string;
 }
+
 
 const MODELS = [
   {
