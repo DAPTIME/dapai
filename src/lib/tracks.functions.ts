@@ -1,7 +1,3 @@
-import {
-  SUPABASE_URL as PUBLIC_SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY as PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-} from "@/integrations/supabase/public-config";
 // Server functions for DAP Track custom tracks, scores, and leaderboards.
 // Tracks are stored as JSON in `custom_tracks.params` (schema unchanged).
 // The JSON shape is TrackData v2 (tile-based). Legacy v1 rows are kept
@@ -34,8 +30,8 @@ const trackDataSchema = z.object({
 const seasonSchema = z.enum(["spring", "summer", "fall", "winter"]);
 
 function publicClient() {
-  const key = PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  return createClient<Database>(PUBLIC_SUPABASE_URL, key, {
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  return createClient<Database>(process.env.SUPABASE_URL!, key, {
     auth: { persistSession: false, autoRefreshToken: false, storage: undefined as unknown as Storage },
     global: {
       fetch: (input, init) => {

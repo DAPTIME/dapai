@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { isValidEmail } from "@/lib/utils";
+import { SocialAuthButtons } from "@/components/social-auth-buttons";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -89,7 +90,12 @@ function LoginPage() {
           {busy ? "Signing in…" : "Sign in"}
         </Button>
       </form>
-      <p className="mt-3 text-center text-sm">
+
+      <div className="mt-6">
+        <SocialAuthButtons />
+      </div>
+
+      <p className="mt-6 text-center text-sm">
         <Link to="/forgot-password" className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
           Forgot password?
         </Link>

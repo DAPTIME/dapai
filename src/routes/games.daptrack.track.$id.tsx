@@ -60,11 +60,7 @@ function TrackPage() {
       });
       return;
     }
-    // Same as the levels page: reload once the row exists, not alongside
-    // the request that creates it.
-    submit({ data: { trackRef, timeMs: ms } })
-      .then(() => setLbKey((k) => k + 1))
-      .catch(() => {});
+    submit({ data: { trackRef, timeMs: ms } }).catch(() => {});
   };
 
   const share = async () => {

@@ -5,7 +5,7 @@
  */
 import { createHash, randomBytes, timingSafeEqual } from "crypto";
 
-export const RESET_TTL_MS = 5 * 60 * 1000;
+export const RESET_TTL_MS = 10 * 60 * 1000;
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -41,7 +41,7 @@ export async function consumeResetSession(email: string, token: string) {
 
   if (expired) {
     throw new Error(
-      "This password reset session has expired. Please start again — resets must be completed within 5 minutes."
+      "This password reset session has expired. Please start again — resets must be completed within 10 minutes."
     );
   }
 

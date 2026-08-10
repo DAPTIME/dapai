@@ -33,14 +33,3 @@ dist-ssr
 
 # Agent worktrees are scratch checkouts, never part of a commit.
 .claude/worktrees/
-
-# Environment files. .env was tracked in this repository, which is fine
-# for the publishable/anon key it held — that key is meant to be public
-# and is protected by row-level security — but it is exactly the wrong
-# place for a service role key, an AI backend key or a Stripe key, all of
-# which the app reads from the environment. Ignored so a secret pasted
-# into .env can never be committed by accident. Names and shapes are
-# documented in .env.example, which is tracked and holds no values.
-.env
-.env.*
-!.env.example

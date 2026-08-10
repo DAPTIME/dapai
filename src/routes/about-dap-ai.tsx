@@ -121,7 +121,7 @@ export const Route = createFileRoute("/about-dap-ai")({
  * bumping this on every change to the reveal guarantees nobody keeps
  * being served the broken copy out of their browser cache.
  */
-const REVEAL_SRC = "/dap-hardware-reveal.html?v=14";
+const REVEAL_SRC = "/dap-hardware-reveal.html?v=15";
 const REVEAL_WEBM = "/dap-hardware-reveal.webm?v=1";
 const REVEAL_MP4 = "/dap-hardware-reveal.mp4?v=1";
 
