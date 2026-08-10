@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -185,6 +185,36 @@ function ForgotPasswordPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="newQuestion">New recovery question</Label>
+            <Input
+              id="newQuestion"
+              required
+              minLength={3}
+              placeholder="e.g. What was my first pet's name?"
+              value={newQuestion}
+              onChange={(e) => setNewQuestion(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="newAnswer">New recovery answer</Label>
+            <Input
+              id="newAnswer"
+              required
+              minLength={2}
+              value={newAnswer}
+              onChange={(e) => setNewAnswer(e.target.value)}
+            />
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Finish within{" "}
+            <span className="font-medium text-foreground">
+              {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
+            </span>{" "}
+            — reset sessions expire after 5 minutes.
+          </p>
 
           <Button type="submit" disabled={busy} className="w-full" style={{ background: "var(--gradient-brand)" }}>
             {busy ? "Saving…" : "Reset password"}
