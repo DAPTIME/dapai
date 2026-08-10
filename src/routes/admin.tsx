@@ -182,7 +182,7 @@ function UsersTab() {
         data: {
           userId: vars.userId,
           tier: vars.tier,
-          resetUsage: vars.tier === "pro",
+          resetUsage: vars.tier !== "free",
         },
       }),
     onSuccess: () => {
