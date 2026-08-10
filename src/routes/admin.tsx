@@ -177,7 +177,7 @@ function UsersTab() {
   const [viewing, setViewing] = useState<AdminUser | null>(null);
 
   const setTier = useMutation({
-    mutationFn: (vars: { userId: string; tier: "free" | "pro" }) =>
+    mutationFn: (vars: { userId: string; tier: Tier }) =>
       updateUser({
         data: {
           userId: vars.userId,
@@ -440,12 +440,12 @@ function EditUserDialog({
     userId: string;
     name?: string;
     email?: string;
-    tier?: "free" | "pro";
+    tier?: Tier;
   }) => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [tier, setTier] = useState<"free" | "pro">("free");
+  const [tier, setTier] = useState<Tier>("free");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -515,7 +515,7 @@ function EditUserDialog({
                 userId: string;
                 name?: string;
                 email?: string;
-                tier?: "free" | "pro";
+                tier?: Tier;
               } = { userId: user.id };
               if (name.trim() && name !== (user.name ?? ""))
                 patch.name = name.trim();
