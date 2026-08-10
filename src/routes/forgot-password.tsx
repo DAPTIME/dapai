@@ -9,6 +9,7 @@ import { isValidEmail } from "@/lib/utils";
 import {
   getRecoveryQuestion,
   resetPasswordWithAnswer,
+  requestAccountReinstatement,
 } from "@/lib/recovery.functions";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -25,8 +26,9 @@ function ForgotPasswordPage() {
   const navigate = useNavigate();
   const getQ = useServerFn(getRecoveryQuestion);
   const reset = useServerFn(resetPasswordWithAnswer);
+  const reinstate = useServerFn(requestAccountReinstatement);
 
-  const [step, setStep] = useState<"email" | "answer">("email");
+  const [step, setStep] = useState<"email" | "answer" | "sent">("email");
   const [email, setEmail] = useState("");
   const [question, setQuestion] = useState<string | null>(null);
   const [answer, setAnswer] = useState("");
@@ -66,7 +68,10 @@ function ForgotPasswordPage() {
     try {
       const res = await getQ({ data: { email } });
       if (!res.question || !res.token) {
-        toast.error("No recovery question is set for this email.");
+        // Lockout case: nothing to ask, so email a 10-minute restore link.
+        await reinstate({ data: { email, origin: window.location.origin } });
+        setStep("sent");
+        toast.success("Check your inbox for a restore-access link.");
         return;
       }
       setQuestion(res.question);
@@ -95,8 +100,9 @@ function ForgotPasswordPage() {
       toast.error("Passwords don't match.");
       return;
     }
-    if (newQuestion.trim().length < 3 || newAnswer.trim().length < 2) {
-      toast.error("Please set a new recovery question and answer.");
+    const changingQuestion = newQuestion.trim().length > 0 || newAnswer.trim().length > 0;
+    if (changingQuestion && (newQuestion.trim().length < 3 || newAnswer.trim().length < 2)) {
+      toast.error("Please fill in both the new recovery question and answer.");
       return;
     }
     setBusy(true);
@@ -108,11 +114,12 @@ function ForgotPasswordPage() {
           token,
           answer,
           newPassword,
-          newQuestion: newQuestion.trim(),
-          newAnswer: newAnswer.trim(),
+          ...(changingQuestion
+            ? { newQuestion: newQuestion.trim(), newAnswer: newAnswer.trim() }
+            : {}),
         },
       });
-      toast.success("Password and recovery question updated. You can sign in now.");
+      toast.success("Password updated. You can sign in now.");
       navigate({ to: "/login" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reset failed");
@@ -129,7 +136,19 @@ function ForgotPasswordPage() {
         Enter your email and we'll ask the recovery question you set up.
       </p>
 
-      {step === "email" ? (
+      {step === "sent" ? (
+        <div className="mt-8 rounded-lg border border-border bg-muted/40 p-4 text-sm">
+          <p className="font-medium text-foreground">Check your inbox</p>
+          <p className="mt-1 text-muted-foreground">
+            If an account exists for <span className="font-medium text-foreground">{email}</span> and it
+            has no recovery question on file, we've emailed a restore-access link. It expires in 10
+            minutes and can only be used once.
+          </p>
+          <Link to="/login" className="mt-3 inline-block text-sm underline underline-offset-4">
+            Back to sign in
+          </Link>
+        </div>
+      ) : step === "email" ? (
         <form onSubmit={onEmailSubmit} className="mt-8 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -187,10 +206,9 @@ function ForgotPasswordPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="newQuestion">New recovery question</Label>
+            <Label htmlFor="newQuestion">New recovery question (optional)</Label>
             <Input
               id="newQuestion"
-              required
               minLength={3}
               placeholder="e.g. What was my first pet's name?"
               value={newQuestion}
@@ -198,10 +216,9 @@ function ForgotPasswordPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="newAnswer">New recovery answer</Label>
+            <Label htmlFor="newAnswer">New recovery answer (optional)</Label>
             <Input
               id="newAnswer"
-              required
               minLength={2}
               value={newAnswer}
               onChange={(e) => setNewAnswer(e.target.value)}
