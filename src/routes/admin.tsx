@@ -63,11 +63,6 @@ const FEATURE_DESCRIPTIONS: Record<FeatureKey, string> = {
   games: "Hide the arcade: the sidebar link, /games and every game inside it.",
 };
 
-import {
-  adminListEmailExempt,
-  adminAddEmailExempt,
-  adminRemoveEmailExempt,
-} from "@/lib/email-exempt.functions";
 
 import {
   listBetaTesters,
