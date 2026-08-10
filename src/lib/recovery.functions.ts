@@ -271,3 +271,103 @@ export const completeAccountSetup = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Public: email a secure, single-use reset link (10 minutes) that lets the
+ * owner of the address set a new password AND a new recovery question.
+ * The link always points at the public site, never at a local dev origin.
+ */
+export const sendPasswordResetLink = createServerFn({ method: "POST" })
+  .inputValidator((i) =>
+    z
+      .object({
+        email: z
+          .string()
+          .trim()
+          .email({ message: "Please enter a valid email address." })
+          .max(255),
+        origin: z.string().trim().url().max(300).optional(),
+      })
+      .parse(i)
+  )
+  .handler(async ({ data }) => {
+    const email = data.email.toLowerCase();
+    const { consumeEmailQuota, requestIp } = await import("./rate-limit.server");
+    await consumeEmailQuota("password-reset");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("profiles")
+      .select("id, name, email")
+      .eq("email", email)
+      .maybeSingle();
+    // Never reveal whether the address exists.
+    if (!row) return { ok: true };
+
+    const { createResetSession } = await import("./reset-session.server");
+    const session = await createResetSession(email, requestIp());
+
+    const { resolveSiteUrl } = await import("./site-url.server");
+    const site = resolveSiteUrl(data.origin ?? null);
+    const link = `${site}/reset-password?token=${encodeURIComponent(session.token)}&email=${encodeURIComponent(email)}`;
+
+    const { sendEmail, resetLinkEmailHtml } = await import("./email.server");
+    const name = (row.name as string | null) || email.split("@")[0]!;
+    await sendEmail({
+      to: email,
+      subject: "Reset your DAP AI password",
+      html: resetLinkEmailHtml({ name, link }),
+      text: `Reset your DAP AI password and recovery question: ${link} (expires in 10 minutes)`,
+    });
+    return { ok: true };
+  });
+
+/**
+ * Public: complete a reset using the emailed single-use token. Ownership of the
+ * inbox is the proof, so no recovery answer is required — but a fresh recovery
+ * question + answer must be set.
+ */
+export const resetPasswordWithLink = createServerFn({ method: "POST" })
+  .inputValidator((i) =>
+    z
+      .object({
+        email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255),
+        token: z.string().trim().min(10).max(200),
+        newPassword: z.string().min(6).max(200),
+        newQuestion: z.string().trim().min(3).max(200),
+        newAnswer: z.string().trim().min(2).max(200),
+      })
+      .parse(i)
+  )
+  .handler(async ({ data }) => {
+    const email = data.email.toLowerCase();
+    const { consumeResetSession } = await import("./reset-session.server");
+    await consumeResetSession(email, data.token);
+
+    const { assertPasswordNotLeaked } = await import("./pwned.server");
+    await assertPasswordNotLeaked(data.newPassword);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+    if (!row) throw new Error("We couldn't find that account.");
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(row.id, {
+      password: data.newPassword,
+    });
+    if (error) throw new Error(error.message);
+
+    const { error: qErr } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        recovery_question: data.newQuestion,
+        recovery_answer_hash: makeStored(data.newAnswer),
+        password_reset_required: false,
+      })
+      .eq("id", row.id);
+    if (qErr) throw new Error(qErr.message);
+    return { ok: true };
+  });
