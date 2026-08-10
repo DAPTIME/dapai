@@ -7,11 +7,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { isValidEmail } from "@/lib/utils";
 import {
-import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
   getRecoveryQuestion,
   resetPasswordWithAnswer,
   sendPasswordResetLink,
 } from "@/lib/recovery.functions";
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({

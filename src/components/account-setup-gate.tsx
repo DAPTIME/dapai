@@ -13,10 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import {
-import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
   completeAccountSetup,
   getAccountSetupStatus,
 } from "@/lib/recovery.functions";
+import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
 
 export function AccountSetupGate() {
   const { user, ready } = useAuth();
