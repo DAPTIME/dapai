@@ -16,6 +16,8 @@ import {
   clearMemories,
 } from "@/lib/memories.functions";
 import { useAuth } from "@/lib/auth";
+import { getProfile } from "@/lib/chats.functions";
+import { tierConfig, type Tier } from "@/lib/tiers";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
