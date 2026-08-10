@@ -16,7 +16,9 @@ import {
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Check } from "lucide-react";
+import { PLANS, SUPPORT_EMAIL, LINKTREE_URL } from "@/lib/plans";
+
 import {
   Dialog,
   DialogContent,
