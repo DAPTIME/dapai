@@ -781,7 +781,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       replyText = `No AI backend configured for ${effectiveModel}. Set ${
         effectiveModel === "dap-ai-1.0"
           ? "AI_BACKEND_URL_PRO"
-          : "AI_BACKEND_URL_LITE"
+          : effectiveModel === "dap-ai-pro-lite"
+            ? "AI_BACKEND_URL_PRO_LITE (or AI_BACKEND_URL_LITE)"
+            : "AI_BACKEND_URL_LITE"
       } to that model's tunnel URL (e.g. https://abcd.ngrok-free.app/v1/chat/completions).`;
     } else {
       // Per-model queue: only one in-flight call per model at a time.
@@ -813,10 +815,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         const timer = setTimeout(() => ctrl.abort(), timeoutMs);
         try {
           let resolvedModel = upstreamModel;
-          if (effectiveModel === "dap-ai-lite") {
+          if (effectiveModel !== "dap-ai-1.0") {
             const resolved = await resolveOllamaModel(backend, key, upstreamModel);
             if (resolved.installed && resolved.installed.length === 0) {
-              return `DAP AI Lite is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
+              return `That model is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
             }
             resolvedModel = resolved.model;
           }
@@ -850,7 +852,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             const snippet = raw.replace(/\s+/g, " ").trim().slice(0, 120);
             const tunnelHint = /ngrok|endpoint (is )?offline|tunnel/i.test(raw)
               ? " The ngrok tunnel URL looks offline or expired — restart `ngrok http 1234` and update AI_BACKEND_URL_" +
-                (effectiveModel === "dap-ai-lite" ? "LITE" : "PRO") +
+                (effectiveModel === "dap-ai-1.0" ? "PRO" : "LITE") +
                 " to the new https URL."
               : "";
             return `AI backend is offline (HTTP ${res.status}). ${snippet}${tunnelHint}`;
@@ -873,7 +875,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         } catch (e) {
           const err = e as Error;
           if (err.name === "AbortError") {
-            return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${effectiveModel === "dap-ai-lite" ? "LITE" : "PRO"} points to the current tunnel), or the model is too slow for this prompt.`;
+            return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${effectiveModel === "dap-ai-1.0" ? "PRO" : "LITE"} points to the current tunnel), or the model is too slow for this prompt.`;
           }
           return `Couldn't reach AI backend: ${err.message}`;
         } finally {
