@@ -3,13 +3,13 @@
  * Providers must be enabled in Supabase → Authentication → Providers with the
  * client ID/secret from Google Cloud, GitHub Developer Settings and Apple.
  */
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Provider } from "@supabase/supabase-js";
 
-type Social = { id: Provider; label: string; icon: JSX.Element };
+type Social = { id: Provider; label: string; icon: ReactElement };
 
 const GoogleIcon = (
   <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
