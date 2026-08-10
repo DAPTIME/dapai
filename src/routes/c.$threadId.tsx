@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
+import type { Tier } from "@/lib/tiers";
 import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
@@ -71,8 +72,8 @@ function ChatPage() {
   });
   const proEnabled = flagsQuery.data?.pro_model !== false;
   const liteEnabled = flagsQuery.data?.lite_model !== false;
-  const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
-  const maintenance = tier === "pro"
+  const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
+  const maintenance = tier !== "free"
     ? !proEnabled && !liteEnabled
     : !liteEnabled;
 
@@ -318,7 +319,7 @@ function ChatPage() {
               pending={busy}
               quotaInfo={
                 profileQuery.data
-                  ? { tier: profileQuery.data.tier as "free" | "pro" }
+                  ? { tier: profileQuery.data.tier as Tier }
                   : undefined
               }
             />

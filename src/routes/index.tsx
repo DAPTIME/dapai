@@ -8,6 +8,7 @@ import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
 import { DapIntro } from "@/components/dap-intro";
 
 import { createChat, getProfile } from "@/lib/chats.functions";
+import type { Tier } from "@/lib/tiers";
 import { getSiteStatus, getFeatureFlags } from "@/lib/admin.functions";
 
 import { useAuth } from "@/lib/auth";
@@ -123,9 +124,9 @@ function Home() {
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
-  const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
-  // Free users / anon only have access to Lite. Pro users can use either.
-  const maintenance = user && tier === "pro"
+  const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
+  // Free users / anon only have access to Lite. Paid tiers can use either.
+  const maintenance = user && tier !== "free"
     ? !proEnabled && !liteEnabled
     : !liteEnabled;
   const [showIntro, setShowIntro] = useState(false);

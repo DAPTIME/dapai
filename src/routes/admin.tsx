@@ -153,7 +153,7 @@ type AdminUser = {
   id: string;
   email: string | null;
   name: string | null;
-  tier: "free" | "pro";
+  tier: Tier;
   pro_messages_used: number;
   created_at: string;
 };
