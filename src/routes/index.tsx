@@ -159,7 +159,7 @@ function Home() {
 
   useEffect(() => {
     const finalName = user?.name || "friend";
-    const list = GREETINGS(finalName);
+    const list = GREETINGS(finalName, new Date().getHours());
     setGreeting(list[Math.floor(Math.random() * list.length)]);
   }, [user]);
 
