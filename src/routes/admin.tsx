@@ -573,24 +573,19 @@ function EditUserDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Tier</Label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={tier === "free" ? "default" : "outline"}
-                onClick={() => setTier("free")}
-              >
-                Free
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={tier === "pro" ? "default" : "outline"}
-                onClick={() => setTier("pro")}
-              >
-                Pro
-              </Button>
+            <Label>Plan</Label>
+            <div className="flex flex-wrap gap-2">
+              {TIER_IDS.map((t) => (
+                <Button
+                  key={t}
+                  type="button"
+                  size="sm"
+                  variant={tier === t ? "default" : "outline"}
+                  onClick={() => setTier(t)}
+                >
+                  {TIER_NAMES[t]}
+                </Button>
+              ))}
             </div>
           </div>
         </div>
@@ -607,8 +602,9 @@ function EditUserDialog({
                 userId: string;
                 name?: string;
                 email?: string;
-                tier?: "free" | "pro";
+                tier?: TierId;
               } = { userId: user.id };
+
               if (name.trim() && name !== (user.name ?? ""))
                 patch.name = name.trim();
               if (email.trim() && email !== (user.email ?? ""))
