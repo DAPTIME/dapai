@@ -267,8 +267,11 @@ function Game2048() {
         <div className="pointer-events-none absolute inset-0 p-2">
           {tiles.map((t) => {
             const pct = 100 / SIZE;
-            const left = `calc(${t.col * pct}% + ${t.col * 0.5}rem)`;
-            const top = `calc(${t.row * pct}% + ${t.row * 0.5}rem)`;
+            // Each 25% step already includes 3/4 of a gap, so a column only
+            // needs the remaining quarter (0.5rem / SIZE) as offset.
+            const step = 0.5 / SIZE;
+            const left = `calc(${t.col * pct}% + ${t.col * step}rem)`;
+            const top = `calc(${t.row * pct}% + ${t.row * step}rem)`;
             const size = `calc(${pct}% - ${(SIZE - 1) * 0.5 / SIZE}rem)`;
             return (
               <div

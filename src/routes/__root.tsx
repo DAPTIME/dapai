@@ -245,7 +245,14 @@ function HeaderBar() {
         {!isPro && (
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="sm">Upgrade</Button>
+              <Button
+                size="sm"
+                className="animate-pulse-glow gap-1 rounded-full px-3 font-semibold text-primary-foreground shadow-md transition-transform hover:scale-105"
+                style={{ background: "var(--gradient-brand)" }}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Upgrade
+              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
