@@ -216,7 +216,7 @@ function UsersTab() {
     );
   });
 
-  const proCount = users.filter((u) => u.tier === "pro").length;
+  const paidCount = users.filter((u) => u.tier !== "free").length;
   const initials = (u: AdminUser) => {
     const src = (u.name || u.email || "?").trim();
     const parts = src.split(/\s+/);
