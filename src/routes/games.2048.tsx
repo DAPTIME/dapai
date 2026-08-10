@@ -154,7 +154,14 @@ function tileColor(v: number) {
 }
 
 function Game2048() {
-  const [board, setBoard] = useState<Board>(() => addRandom(addRandom(emptyBoard())));
+  // Start empty so SSR and the first client render match, then deal the two
+  // starting tiles after mount.
+  const [board, setBoard] = useState<Board>(() => emptyBoard());
+  useEffect(() => {
+    setBoard((b) =>
+      b.flat().some(Boolean) ? b : addRandom(addRandom(emptyBoard()))
+    );
+  }, []);
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(0);
 
@@ -264,7 +271,7 @@ function Game2048() {
         </div>
 
         {/* Animated tiles */}
-        <div className="pointer-events-none absolute inset-0 p-2">
+        <div className="pointer-events-none absolute inset-2">
           {tiles.map((t) => {
             const pct = 100 / SIZE;
             // Each 25% step already includes 3/4 of a gap, so a column only
