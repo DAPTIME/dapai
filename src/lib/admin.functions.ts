@@ -386,6 +386,7 @@ export const getFeatureFlags = createServerFn({ method: "GET" }).handler(
       .in("id", ids);
     const flags: Record<FeatureKey, boolean> = {
       pro_model: true,
+      pro_lite_model: true,
       lite_model: true,
       daps: true,
       team: true,

@@ -26,9 +26,20 @@ type AuthCtx = {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
-/** Login sessions expire 5 minutes after sign-in. */
-const SESSION_TTL_MS = 5 * 60 * 1000;
-const SESSION_START_KEY = "dapai.session_started_at";
+/**
+ * Sign-in is sticky: the session is persisted (and mirrored into a cookie) so
+ * closing the tab and opening a new one keeps you signed in. Only emailed
+ * links (confirm / reset) carry the 10-minute expiry.
+ */
+const SESSION_COOKIE = "dapai_signed_in";
+
+function writeSessionCookie(signedIn: boolean) {
+  if (typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = signedIn
+    ? `${SESSION_COOKIE}=1; Path=/; Max-Age=${60 * 60 * 24 * 365}; SameSite=Lax${secure}`
+    : `${SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+}
 
 
 function toUser(u: SupabaseUser | null | undefined): User | null {
@@ -57,12 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, s) => {
       if (cancelled) return;
-      if (event === "SIGNED_IN" && s) {
-        localStorage.setItem(SESSION_START_KEY, String(Date.now()));
-      }
-      if (event === "SIGNED_OUT") {
-        localStorage.removeItem(SESSION_START_KEY);
-      }
+      if (event === "SIGNED_IN" && s) writeSessionCookie(true);
+      if (event === "SIGNED_OUT") writeSessionCookie(false);
       setSession(s);
       setUser(toUser(s?.user));
       router.invalidate();
@@ -74,31 +81,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error("[auth] getSession error:", error.message);
       }
-      if (data.session) {
-        const started = Number(localStorage.getItem(SESSION_START_KEY) || 0);
-        if (!started) {
-          localStorage.setItem(SESSION_START_KEY, String(Date.now()));
-        }
-      }
+      writeSessionCookie(!!data.session);
       setSession(data.session);
       setUser(toUser(data.session?.user));
       setLoading(false);
       setReady(true);
     });
 
-    // Enforce the 5-minute session lifetime.
-    const timer = window.setInterval(() => {
-      const started = Number(localStorage.getItem(SESSION_START_KEY) || 0);
-      if (!started) return;
-      if (Date.now() - started >= SESSION_TTL_MS) {
-        localStorage.removeItem(SESSION_START_KEY);
-        void supabase.auth.signOut();
-      }
-    }, 15_000);
-
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
       subscription.unsubscribe();
     };
   }, [router, queryClient]);

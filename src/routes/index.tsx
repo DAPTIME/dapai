@@ -158,7 +158,9 @@ function Home() {
   }, []);
 
   useEffect(() => {
-    const finalName = user?.name || "friend";
+    // Address the user by their final name only (e.g. "Devansh Patel" → "Patel").
+    const full = (user?.name || "").trim();
+    const finalName = full ? full.split(/\s+/).pop()! : "friend";
     const list = GREETINGS(finalName, new Date().getHours());
     setGreeting(list[Math.floor(Math.random() * list.length)]);
   }, [user]);
@@ -251,7 +253,7 @@ function Home() {
 
 
           <h1
-            className="text-4xl font-semibold tracking-tight sm:text-5xl"
+            className="pb-2 text-4xl font-semibold leading-[1.25] tracking-tight sm:text-5xl"
             style={{
               backgroundImage: "var(--gradient-text)",
               WebkitBackgroundClip: "text",

@@ -17,9 +17,18 @@ import { dbError } from "./db-error";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { enqueue } from "@/lib/ai-queue";
+import {
+  enqueue,
+  isStopped,
+  clearStopped,
+  markStopped,
+  registerAborter,
+  unregisterAborter,
+} from "@/lib/ai-queue";
 import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { resolveOllamaModel } from "@/lib/ollama-models.server";
+import { MODEL_IDS, modelInfo, type ModelId } from "@/lib/models";
+import { TIER_RANK, type Tier } from "@/lib/tier-gate";
 
 const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 
@@ -28,7 +37,7 @@ const CHAT_LIMITS = { free: 5, pro: 10 } as const;
 const LITE_HISTORY_LIMIT = 12;
 
 const LITE_NO_THINK_PROMPT =
-  "You are DAP AI 4 Lite, also known as the Gemma E2B model. Thinking mode is OFF. Answer with only the final user-facing response. Never write internal reasoning, planning, analysis, scratchpad, self-talk, or sentences like 'I need to'. Do not output <think> tags or explain how you will answer.";
+  "You are a DAP AI 4 Lite-class model. Thinking mode is OFF. Answer with only the final user-facing response. Never write internal reasoning, planning, analysis, scratchpad, self-talk, or sentences like 'I need to'. Do not output <think> tags or explain how you will answer.";
 
 
 /**
@@ -242,7 +251,7 @@ async function webSearchContext(query: string): Promise<string> {
   }
 }
 
-function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
+function backendFor(model: ModelId): {
   url?: string;
   key?: string;
   upstreamModel: string;
@@ -252,6 +261,24 @@ function backendFor(model: "dap-ai-1.0" | "dap-ai-lite"): {
       url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
       key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
       upstreamModel: process.env.AI_BACKEND_MODEL_PRO ?? model,
+    };
+  }
+  if (model === "dap-ai-pro-lite") {
+    // Pro Lite has its own backend when configured, otherwise it shares the
+    // Lite tunnel so it keeps working out of the box.
+    return {
+      url:
+        process.env.AI_BACKEND_URL_PRO_LITE ??
+        process.env.AI_BACKEND_URL_LITE ??
+        process.env.AI_BACKEND_URL,
+      key:
+        process.env.AI_BACKEND_KEY_PRO_LITE ??
+        process.env.AI_BACKEND_KEY_LITE ??
+        process.env.AI_BACKEND_KEY,
+      upstreamModel:
+        process.env.AI_BACKEND_MODEL_PRO_LITE ??
+        process.env.AI_BACKEND_MODEL_LITE ??
+        model,
     };
   }
   return {
@@ -466,7 +493,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .object({
         chatId: z.string().uuid(),
         text: z.string().min(1).max(8000),
-        model: z.enum(["dap-ai-1.0", "dap-ai-lite"]),
+        model: z.enum(MODEL_IDS),
         images: z
           .array(z.string().startsWith("data:image/").max(8_000_000))
           .max(4)
@@ -477,21 +504,43 @@ export const sendChatMessage = createServerFn({ method: "POST" })
   )
 
   .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
+    const { supabase: userClient, userId } = context;
 
     // Ownership gate: the chat must belong to the caller before we write
     // anything referencing its id. The chat_messages INSERT policy only
     // pins user_id, so without this a known/guessed chat UUID could be
     // written into by another signed-in user.
+    //
+    // Admins are allowed to open and reply inside any chat from the admin
+    // console; messages are then attributed to the chat's owner so the
+    // conversation stays coherent for both sides.
+    let supabase = userClient;
+    let ownerId = userId;
     {
-      const { data: ownedChat, error: ownErr } = await supabase
+      const { data: chat, error: ownErr } = await userClient
         .from("chats")
-        .select("id")
+        .select("id, user_id")
         .eq("id", data.chatId)
-        .eq("user_id", userId)
         .maybeSingle();
       if (ownErr) throw dbError(ownErr);
-      if (!ownedChat) throw new Error("Chat not found.");
+      if (chat) {
+        ownerId = chat.user_id;
+      } else {
+        const { assertAdmin } = await import("./admin.server");
+        await assertAdmin(userId);
+        const { supabaseAdmin } = await import(
+          "@/integrations/supabase/client.server"
+        );
+        const { data: anyChat, error: anyErr } = await supabaseAdmin
+          .from("chats")
+          .select("id, user_id")
+          .eq("id", data.chatId)
+          .maybeSingle();
+        if (anyErr) throw dbError(anyErr);
+        if (!anyChat) throw new Error("Chat not found.");
+        ownerId = anyChat.user_id;
+        supabase = supabaseAdmin as unknown as typeof userClient;
+      }
     }
 
 
@@ -516,37 +565,37 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const { data: profile, error: pErr } = await supabase
       .from("profiles")
       .select("tier, pro_messages_used")
-      .eq("id", userId)
+      .eq("id", ownerId)
       .single();
     if (pErr) throw dbError(pErr);
 
-    let effectiveModel = data.model;
+    // Tier gate: downgrade to the best model this account may actually use.
+    const callerTier = ((profile.tier as Tier | undefined) ?? "free") as Tier;
+    const requested = modelInfo(data.model)!;
+    let effectiveModel: ModelId = data.model;
     let forcedToLite = false;
-    if (data.model === "dap-ai-1.0" && profile.tier !== "pro") {
-      effectiveModel = "dap-ai-lite";
+    if (TIER_RANK[callerTier] < TIER_RANK[requested.minTier]) {
+      effectiveModel =
+        TIER_RANK[callerTier] >= TIER_RANK["go"] ? "dap-ai-pro-lite" : "dap-ai-lite";
       forcedToLite = true;
     }
+    const active = modelInfo(effectiveModel)!;
 
     // Enforce per-model feature flags set in the admin console.
     {
       const { supabaseAdmin } = await import(
         "@/integrations/supabase/client.server"
       );
-      const flagId =
-        effectiveModel === "dap-ai-1.0" ? "feature_pro_model" : "feature_lite_model";
       const { data: flag } = await supabaseAdmin
         .from("ai_settings")
         .select("system_prompt")
-        .eq("id", flagId)
+        .eq("id", `feature_${active.flag}`)
         .maybeSingle();
       if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
-        throw new Error(
-          effectiveModel === "dap-ai-1.0"
-            ? "DAP AI 4 Pro is currently disabled by the admin."
-            : "DAP AI 4 Lite is currently disabled by the admin."
-        );
+        throw new Error(`${active.label} is currently disabled by the admin.`);
       }
     }
+
 
 
     const imageCount = data.images?.length ?? 0;
@@ -555,14 +604,25 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         ? `${data.text}\n\n_(📎 ${imageCount} image${imageCount > 1 ? "s" : ""} attached)_`
         : data.text;
 
+    // Record the sender's IP alongside the message (admin console only).
+    let senderIp: string | null = null;
+    try {
+      const { requestIp } = await import("./rate-limit.server");
+      senderIp = requestIp();
+    } catch {
+      /* best-effort */
+    }
+
     const { error: insUserErr } = await supabase.from("chat_messages").insert({
       chat_id: data.chatId,
-      user_id: userId,
+      user_id: ownerId,
       role: "user",
       content: storedUserContent,
       model: effectiveModel,
+      ip: senderIp,
     });
     if (insUserErr) throw dbError(insUserErr);
+
 
 
     const { data: chatRow } = await supabase
@@ -628,9 +688,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // Meta-prompt layer: a fast Lovable AI model drafts a per-message
     // system addendum on top of the admin base + DAP prompt.
     const metaPrompt =
-      effectiveModel === "dap-ai-lite"
-        ? ""
-        : await generateMetaPrompt(data.text, systemPrompt, dapName);
+      active.lite ? "" : await generateMetaPrompt(data.text, systemPrompt, dapName);
 
     // Auto web-search: a fast classifier decides if the question needs
     // fresh info; if so we run a Firecrawl search and inject the results
@@ -650,7 +708,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       "Accuracy rules: (1) NEVER invent specific numbers, stats, dates, names, prices, or version numbers. If you don't actually know the exact value, say \"I'm not sure\" or \"I don't have that info\" — do not guess and do not output a plausible-looking number. (2) For niche topics (specific games, mods, private projects, internal tools, fan communities) assume the user knows more than you. If the user states a value, trust it and use it going forward unless web search results clearly contradict it. (3) If web search results are present above, prefer them over both your training data and the user's claim, and cite [1], [2] when relevant.";
 
     const messages: Array<{ role: "user" | "assistant" | "system"; content: unknown }> = [
-      ...(effectiveModel === "dap-ai-lite"
+      ...(active.lite
         ? [
             {
               role: "system" as const,
@@ -683,14 +741,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       // context window.
       ...(() => {
         const all = history ?? [];
-        if (effectiveModel !== "dap-ai-lite") return all;
+        if (!active.lite) return all;
         const sys = all.filter((m) => m.role === "system");
         const rest = all.filter((m) => m.role !== "system");
         return [...sys, ...rest.slice(-LITE_HISTORY_LIMIT)];
       })().map((m) => ({
         role: m.role as "user" | "assistant" | "system",
         content:
-          effectiveModel === "dap-ai-lite" && m.role === "assistant"
+          active.lite && m.role === "assistant"
             ? sanitizeLiteReply(m.content)
             : (m.content as unknown),
       })),
@@ -703,7 +761,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // Lite (Gemma E2B) is text-only — drop images to avoid hanging the
     // backend with a payload it can't process.
     const visionImages =
-      effectiveModel === "dap-ai-lite" ? [] : (data.images ?? []);
+      active.lite ? [] : (data.images ?? []);
     if (visionImages.length > 0) {
       for (let i = messages.length - 1; i >= 0; i--) {
         if (messages[i].role === "user") {
@@ -728,9 +786,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     let replyText = "";
     if (!backend) {
       replyText = `No AI backend configured for ${effectiveModel}. Set ${
-        effectiveModel === "dap-ai-1.0"
-          ? "AI_BACKEND_URL_PRO"
-          : "AI_BACKEND_URL_LITE"
+        active.lite ? "AI_BACKEND_URL_LITE" : "AI_BACKEND_URL_PRO"
       } to that model's tunnel URL (e.g. https://abcd.ngrok-free.app/v1/chat/completions).`;
     } else {
       // Per-model queue: only one in-flight call per model at a time.
@@ -757,15 +813,19 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           },
         };
 
+        // The user may have hit Stop while this request waited in line.
+        if (isStopped(data.chatId)) return "__DAP_STOPPED__";
+
         const ctrl = new AbortController();
+        registerAborter(data.chatId, ctrl);
         const timeoutMs = 90_000;
         const timer = setTimeout(() => ctrl.abort(), timeoutMs);
         try {
           let resolvedModel = upstreamModel;
-          if (effectiveModel === "dap-ai-lite") {
+          if (active.lite) {
             const resolved = await resolveOllamaModel(backend, key, upstreamModel);
             if (resolved.installed && resolved.installed.length === 0) {
-              return `DAP AI 4 Lite is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
+              return `${active.label} is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
             }
             resolvedModel = resolved.model;
           }
@@ -779,7 +839,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               model: resolvedModel,
               messages,
               stream: false,
-              ...(effectiveModel === "dap-ai-lite" ? liteOptions : {}),
+              ...(active.lite ? liteOptions : {}),
             }),
             signal: ctrl.signal,
           });
@@ -797,7 +857,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             const snippet = raw.replace(/\s+/g, " ").trim().slice(0, 120);
             const tunnelHint = /ngrok|endpoint (is )?offline|tunnel/i.test(raw)
               ? " The ngrok tunnel URL looks offline or expired — restart `ngrok http 1234` and update AI_BACKEND_URL_" +
-                (effectiveModel === "dap-ai-lite" ? "LITE" : "PRO") +
+                (active.lite ? "LITE" : "PRO") +
                 " to the new https URL."
               : "";
             return `AI backend is offline (HTTP ${res.status}). ${snippet}${tunnelHint}`;
@@ -819,20 +879,39 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           return out;
         } catch (e) {
           const err = e as Error;
+          if (err.name === "AbortError" && isStopped(data.chatId)) {
+            return "__DAP_STOPPED__";
+          }
           if (err.name === "AbortError") {
-            return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${effectiveModel === "dap-ai-lite" ? "LITE" : "PRO"} points to the current tunnel), or the model is too slow for this prompt.`;
+            return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${active.lite ? "LITE" : "PRO"} points to the current tunnel), or the model is too slow for this prompt.`;
           }
           return `Couldn't reach AI backend: ${err.message}`;
         } finally {
           clearTimeout(timer);
+          unregisterAborter(data.chatId);
         }
       });
+    }
+
+    if (replyText === "__DAP_STOPPED__") {
+      clearStopped(data.chatId);
+      const { data: stoppedMsgs } = await supabase
+        .from("chat_messages")
+        .select("id, role, content, model, created_at")
+        .eq("chat_id", data.chatId)
+        .order("created_at", { ascending: true });
+      return {
+        messages: stoppedMsgs ?? [],
+        forcedToLite,
+        effectiveModel,
+        stopped: true,
+      };
     }
 
     // Insert assistant message
     await supabase.from("chat_messages").insert({
       chat_id: data.chatId,
-      user_id: userId,
+      user_id: ownerId,
       role: "assistant",
       content: replyText,
       model: effectiveModel,
@@ -844,7 +923,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       const newMems = await extractMemories(data.text, existingMems);
       if (newMems.length > 0) {
         await supabase.from("user_memories").insert(
-          newMems.map((content) => ({ user_id: userId, content }))
+          newMems.map((content) => ({ user_id: ownerId, content }))
         );
       }
     } catch {
@@ -858,10 +937,33 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: true });
 
+    clearStopped(data.chatId);
+
     return {
       messages: messagesOut ?? [],
       forcedToLite,
       effectiveModel,
+      stopped: false,
     };
+  });
+
+/**
+ * Interrupt the in-flight (or queued) reply for a chat so the next person in
+ * the per-model queue can go ahead.
+ */
+export const stopChatMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
+  .handler(async ({ context, data }) => {
+    const { supabase } = context;
+    const { data: owned, error } = await supabase
+      .from("chats")
+      .select("id")
+      .eq("id", data.chatId)
+      .maybeSingle();
+    if (error) throw dbError(error);
+    if (!owned) throw new Error("Chat not found.");
+    markStopped(data.chatId);
+    return { ok: true };
   });
 

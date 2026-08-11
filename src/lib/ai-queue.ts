@@ -25,3 +25,33 @@ export function enqueue<T>(key: string, task: Task<T>): Promise<T> {
   );
   return next;
 }
+
+/**
+ * Interrupt support. A chat can be marked "stopped" while its request is
+ * queued or in flight; sendChatMessage checks the flag before dialing the
+ * backend and aborts the upstream fetch, letting the next person in the
+ * per-model queue go ahead.
+ */
+const stopped = new Map<string, number>();
+const aborters = new Map<string, AbortController>();
+
+export function markStopped(chatId: string) {
+  stopped.set(chatId, Date.now());
+  aborters.get(chatId)?.abort();
+}
+
+export function isStopped(chatId: string) {
+  return stopped.has(chatId);
+}
+
+export function clearStopped(chatId: string) {
+  stopped.delete(chatId);
+}
+
+export function registerAborter(chatId: string, ctrl: AbortController) {
+  aborters.set(chatId, ctrl);
+}
+
+export function unregisterAborter(chatId: string) {
+  aborters.delete(chatId);
+}

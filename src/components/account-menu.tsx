@@ -62,7 +62,8 @@ export function AccountMenu() {
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Account"
-          className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-primary-foreground"
+          title="Account"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-primary-foreground ring-offset-2 ring-offset-background transition-all duration-200 hover:scale-105 hover:ring-2 hover:ring-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           style={
             avatarUrl ? undefined : { background: "var(--gradient-brand)" }
           }

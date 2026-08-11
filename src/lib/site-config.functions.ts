@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 export const FEATURE_KEYS = [
   "pro_model",
+  "pro_lite_model",
   "lite_model",
   "daps",
   "team",
@@ -31,6 +32,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
   enabled: true,
   flags: {
     pro_model: true,
+    pro_lite_model: true,
     lite_model: true,
     daps: true,
     team: true,

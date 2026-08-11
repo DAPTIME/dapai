@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile } from "@/lib/chats.functions";
-import { useUpgradeGate } from "@/lib/tier-gate";
+import { useUpgradeGate, TIER_LABEL } from "@/lib/tier-gate";
+import { MODELS } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
 
 
@@ -33,20 +34,7 @@ interface Props {
 }
 
 
-const MODELS = [
-  {
-    id: "dap-ai-1.0",
-    label: "DAP AI 4 Pro",
-    description: "Our most capable and ambitious model yet.",
-    requiresPro: true,
-  },
-  {
-    id: "dap-ai-lite",
-    label: "DAP AI 4 Lite",
-    description: "Fast responses and simple answers.",
-    requiresPro: false,
-  },
-];
+
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB per image
 
@@ -72,29 +60,29 @@ export function ChatComposer({
     queryKey: ["profile", user?.id],
     queryFn: () => fetchProfile(),
     enabled: !!user && !quotaInfo,
+    staleTime: 60_000,
   });
-  const tier = quotaInfo?.tier ?? (profileQuery.data?.tier as "free" | "pro" | undefined);
-  const isPro = tier === "pro";
-  const canUsePro = !!user && isPro;
-  const { requireTier } = useUpgradeGate();
+  const { requireTier, hasTier } = useUpgradeGate();
 
   const siteConfig = useSiteConfig();
-  const proEnabled = siteConfig.flags.pro_model;
-  const liteEnabled = siteConfig.flags.lite_model;
   const isOffline = offline || !siteConfig.enabled;
-  const offlineText =
-    offlineMessage?.trim() || siteConfig.offlineMessage;
+  const offlineText = offlineMessage?.trim() || siteConfig.offlineMessage;
 
-
-
+  const flagOn = (id: string) => {
+    const m = MODELS.find((mm) => mm.id === id);
+    return m ? siteConfig.flags[m.flag] !== false : false;
+  };
+  const allowed = (id: string) => {
+    const m = MODELS.find((mm) => mm.id === id);
+    if (!m) return false;
+    return hasTier(m.minTier) && flagOn(m.id);
+  };
 
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [model, setModel] = useState<string>(
-    canUsePro ? "dap-ai-1.0" : "dap-ai-lite"
-  );
+  const [model, setModel] = useState<string>("dap-ai-lite");
 
   // Keep the prompt textarea focused on mount and after each send finishes.
   useEffect(() => {
@@ -104,29 +92,25 @@ export function ChatComposer({
     if (!pending) textareaRef.current?.focus();
   }, [pending]);
 
+  // Resolve the best model the account is actually allowed to use.
   useEffect(() => {
     const saved =
       typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
-    const isAllowed = (id: string) => {
-      const m = MODELS.find((mm) => mm.id === id);
-      if (!m) return false;
-      if (m.requiresPro && !canUsePro) return false;
-      if (m.id === "dap-ai-1.0" && !proEnabled) return false;
-      if (m.id === "dap-ai-lite" && !liteEnabled) return false;
-      return true;
-    };
-    const preferred = canUsePro && proEnabled ? "dap-ai-1.0" : "dap-ai-lite";
-    let resolved: string;
-    if (saved && isAllowed(saved)) resolved = saved;
-    else if (isAllowed(preferred)) resolved = preferred;
-    else if (isAllowed("dap-ai-lite")) resolved = "dap-ai-lite";
-    else if (isAllowed("dap-ai-1.0")) resolved = "dap-ai-1.0";
-    else resolved = preferred;
+    const best =
+      [...MODELS].reverse().find((m) => allowed(m.id))?.id ?? "dap-ai-lite";
+    const resolved = saved && allowed(saved) ? saved : best;
     setModel(resolved);
     if (typeof window !== "undefined") {
       localStorage.setItem("dap.model", resolved);
     }
-  }, [canUsePro, proEnabled, liteEnabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    user?.id,
+    profileQuery.data?.tier,
+    siteConfig.flags.lite_model,
+    siteConfig.flags.pro_lite_model,
+    siteConfig.flags.pro_model,
+  ]);
 
   const handlePickImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -158,7 +142,7 @@ export function ChatComposer({
     setImages([]);
   };
 
-  const activeModel = MODELS.find((m) => m.id === model) ?? MODELS[1];
+  const activeModel = MODELS.find((m) => m.id === model) ?? MODELS[0];
 
   return (
     <form
@@ -214,13 +198,13 @@ export function ChatComposer({
       <div className="flex items-center justify-between px-2 pb-1">
         <div className="flex items-center gap-1 text-muted-foreground">
           {(() => {
-            const liteSelected = model === "dap-ai-lite";
+            const liteSelected = activeModel.lite;
             const imgTitle = liteSelected
-              ? "DAP AI 4 Lite doesn't support images yet"
+              ? `${activeModel.label} doesn't support images yet`
               : "Attach image";
             const onClick = () => {
               if (liteSelected) {
-                toast.error("DAP AI 4 Lite doesn't support images yet.");
+                toast.error(`${activeModel.label} doesn't support images yet.`);
                 return;
               }
               fileInputRef.current?.click();
@@ -242,41 +226,38 @@ export function ChatComposer({
               const next = e.target.value;
               const m = MODELS.find((mm) => mm.id === next);
               if (!m) return;
+              if (!flagOn(m.id)) return;
               // Selecting a locked model pops the upgrade screen instead of
               // silently doing nothing.
-              if (m.requiresPro && !canUsePro) {
-                requireTier("pro", m.label);
+              if (!hasTier(m.minTier)) {
+                requireTier(m.minTier, m.label);
                 return;
               }
-              if (m.id === "dap-ai-1.0" && !proEnabled) return;
-              if (m.id === "dap-ai-lite" && !liteEnabled) return;
               setModel(next);
-              if (typeof window !== "undefined") localStorage.setItem("dap.model", next);
+              if (typeof window !== "undefined")
+                localStorage.setItem("dap.model", next);
             }}
             className="ml-2 rounded-md bg-transparent px-2 py-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring/40"
             aria-label="Select model"
             title={activeModel.description}
           >
             {MODELS.map((m) => {
-              const proLock = m.requiresPro && !canUsePro;
-              const offline =
-                (m.id === "dap-ai-1.0" && !proEnabled) ||
-                (m.id === "dap-ai-lite" && !liteEnabled);
-              const disabled = offline;
-              const suffix = offline
+              const modelOffline = !flagOn(m.id);
+              const locked = !hasTier(m.minTier);
+              const suffix = modelOffline
                 ? " — offline for maintenance"
-                : proLock
+                : locked
                   ? !user
                     ? " — sign in required"
-                    : " — Pro only"
+                    : ` — ${TIER_LABEL[m.minTier]} only`
                   : "";
               return (
                 <option
                   key={m.id}
                   value={m.id}
-                  disabled={disabled}
+                  disabled={modelOffline}
                   className="bg-card text-foreground"
-                  title={offline ? "Disabled by admin" : m.description}
+                  title={modelOffline ? "Disabled by admin" : m.description}
                 >
                   {m.label}
                   {suffix}

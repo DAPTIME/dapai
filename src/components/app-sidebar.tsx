@@ -33,10 +33,9 @@ import {
 import { useAuth } from "@/lib/auth";
 import {
   listChats,
-  createChat,
   deleteChat,
 } from "@/lib/chats.functions";
-import { useIncognito, isIncognitoNow } from "@/lib/use-incognito";
+import { useIncognito } from "@/lib/use-incognito";
 import { useSiteConfig } from "@/lib/site-config";
 
 const main = [
@@ -53,7 +52,6 @@ export function AppSidebar() {
   const qc = useQueryClient();
   const incognito = useIncognito();
   const list = useServerFn(listChats);
-  const create = useServerFn(createChat);
   const remove = useServerFn(deleteChat);
 
   const siteConfig = useSiteConfig();
@@ -67,14 +65,6 @@ export function AppSidebar() {
     queryKey: ["chats", user?.id ?? "anon"],
     queryFn: () => list(),
     enabled: !!user && !incognito,
-  });
-
-  const createMut = useMutation({
-    mutationFn: () => create({ data: { incognito: isIncognitoNow() } }),
-    onSuccess: (chat) => {
-      qc.invalidateQueries({ queryKey: ["chats"] });
-      navigate({ to: "/c/$threadId", params: { threadId: chat.id } });
-    },
   });
 
   const deleteMut = useMutation({
@@ -116,7 +106,9 @@ export function AppSidebar() {
                       navigate({ to: "/login" });
                       return;
                     }
-                    createMut.mutate();
+                    // A new chat starts from the home screen; the thread is
+                    // created once the first message is sent.
+                    navigate({ to: "/" });
                   }}
                   className="group/item transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
                 >
