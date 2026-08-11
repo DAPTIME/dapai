@@ -84,6 +84,33 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
+/**
+ * What to tell the owner when the admin check could not be answered. The
+ * three failures need three different fixes, and "something went wrong" sends
+ * you looking in the wrong place.
+ */
+function checkFailureMessage(query: {
+  isError: boolean;
+  error: unknown;
+  data?: { problem?: string; detail?: string };
+}) {
+  if (query.data?.problem === "config") {
+    return `The server is missing ${query.data.detail ?? "a Supabase environment variable"}, so it could not look up your role. Set it in the deployment's environment variables — it is in the Supabase dashboard under Project Settings → API → service_role.`;
+  }
+  if (query.data?.problem === "database") {
+    return `The database refused the role lookup${
+      query.data.detail && query.data.detail !== "unreachable"
+        ? ` (Postgres ${query.data.detail})`
+        : ""
+    }. The server log has the full error.`;
+  }
+  const message = query.error instanceof Error ? query.error.message : "";
+  if (message.includes("Unauthorized")) {
+    return "Your session was not accepted, so the console stayed closed. Signing out and back in usually fixes this.";
+  }
+  return "The server could not verify your account, so the console stayed closed. This is a server problem, not a permission one.";
+}
+
 function Admin() {
   const { user, ready } = useAuth();
   const amIAdmin = useServerFn(adminAmIAdmin);
@@ -118,7 +145,7 @@ function Admin() {
         <div className="mt-12 flex justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
-      ) : meQuery.isError ? (
+      ) : meQuery.isError || meQuery.data?.problem ? (
         // The check itself failed, so we genuinely do not know whether this
         // account is an admin. Saying "not authorized" here would blame the
         // visitor for a server problem.
@@ -126,12 +153,7 @@ function Admin() {
           <p className="flex items-center gap-2 font-medium text-foreground">
             <Lock className="h-4 w-4" /> Couldn't check your access
           </p>
-          <p className="mt-1">
-            The server could not verify your account, so the console stayed
-            closed. This is a configuration problem, not a permission one —
-            check that SUPABASE_SERVICE_ROLE_KEY is set in the deployment's
-            environment variables.
-          </p>
+          <p className="mt-1">{checkFailureMessage(meQuery)}</p>
           <p className="mt-3">
             <Button
               size="sm"
@@ -146,11 +168,10 @@ function Admin() {
       ) : !meQuery.data?.isAdmin ? (
         <div className="mt-10 rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-sm text-muted-foreground">
           <p className="flex items-center gap-2 font-medium text-foreground">
-            <Lock className="h-4 w-4" /> Restricted area
+            <Lock className="h-4 w-4" /> Owner only
           </p>
           <p className="mt-1">
-            This console is restricted to the site owner. Your account is not
-            authorized.
+            Sorry — this console is reserved only for the site's owner.
           </p>
           {!user ? (
             <p className="mt-1">You are not signed in on this device.</p>

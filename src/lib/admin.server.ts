@@ -1,8 +1,26 @@
-import { dbError } from "./db-error";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export function getAdminClient() {
   return supabaseAdmin;
+}
+
+/** Why an admin check could not be answered. */
+export type AdminCheckProblem = "config" | "database";
+
+/**
+ * Thrown when the check itself failed, as opposed to succeeding with "no".
+ * `detail` is safe to show a signed-in caller: an env var name or a Postgres
+ * error code, never a message that maps out the schema. The full error goes
+ * to the server log.
+ */
+export class AdminCheckError extends Error {
+  constructor(
+    readonly problem: AdminCheckProblem,
+    readonly detail: string,
+  ) {
+    super(`admin check failed (${problem}): ${detail}`);
+    this.name = "AdminCheckError";
+  }
 }
 
 /**
@@ -16,16 +34,32 @@ export function getAdminClient() {
  * a server that never managed to ask.
  */
 export async function isAdminUser(userId: string): Promise<boolean> {
-  // Admin is whoever holds an "admin" row in public.user_roles, so the owner
-  // can promote/demote people straight from Supabase.
-  const { data, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (error) throw dbError(error, "isAdminUser");
-  return !!data;
+  try {
+    // Admin is whoever holds an "admin" row in public.user_roles, so the
+    // owner can promote and demote people straight from Supabase.
+    const { data, error } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (error) {
+      console.error("[admin] role lookup failed:", error.code, error.message, error.details);
+      throw new AdminCheckError("database", error.code ?? "unknown");
+    }
+    return !!data;
+  } catch (e) {
+    if (e instanceof AdminCheckError) throw e;
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[admin] role lookup threw:", message);
+    // client.server.ts throws this exact phrase when the service role key or
+    // the project URL is absent from the deployment environment.
+    if (message.includes("Missing Supabase environment variable")) {
+      throw new AdminCheckError("config", "SUPABASE_SERVICE_ROLE_KEY");
+    }
+    throw new AdminCheckError("database", "unreachable");
+  }
 }
 
 export async function assertAdmin(userId: string) {
