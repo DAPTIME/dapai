@@ -6,7 +6,8 @@ import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
-import { getChat, sendChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
+import { getChat, sendChatMessage, stopChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
+import { modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
@@ -31,6 +32,7 @@ function ChatPage() {
   const fetchChat = useServerFn(getChat);
   const fetchProfile = useServerFn(getProfile);
   const send = useServerFn(sendChatMessage);
+  const stop = useServerFn(stopChatMessage);
   const planSearch = useServerFn(planSearchForMessage);
   const [searchingWeb, setSearchingWeb] = useState(false);
   const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
@@ -72,8 +74,7 @@ function ChatPage() {
         (typeof window !== "undefined"
           ? localStorage.getItem("dap.model")
           : null) || "dap-ai-1.0";
-      const effective: "dap-ai-1.0" | "dap-ai-lite" =
-        model === "dap-ai-lite" ? "dap-ai-lite" : "dap-ai-1.0";
+      const effective = (modelInfo(model)?.id ?? "dap-ai-lite") as ModelId;
 
       // Optimistically show the user's message in the transcript right away
       // so they don't stare at a blank "Thinking…" while we wait for the model.
@@ -306,6 +307,10 @@ function ChatPage() {
             <ChatComposer
               onSend={(text, images) => sendMut.mutate({ text, images })}
               pending={busy}
+              onStop={() => {
+                void stop({ data: { chatId: threadId } }).catch(() => {});
+                toast.info("Stopping…");
+              }}
               quotaInfo={
                 profileQuery.data
                   ? { tier: profileQuery.data.tier as "free" | "pro" }
