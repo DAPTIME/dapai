@@ -6,7 +6,13 @@ import { dbError } from "./db-error";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertAdmin, getAdminClient, isAdminUser } from "@/lib/admin.server";
+import {
+  assertAdmin,
+  getAdminClient,
+  isAdminUser,
+  AdminCheckError,
+  type AdminCheckProblem,
+} from "@/lib/admin.server";
 import { FEATURE_KEYS, MODEL_IDS, type FeatureKey } from "@/lib/admin-config";
 import { DEFAULT_OFFLINE_MESSAGE } from "@/lib/site-config.functions";
 
@@ -161,15 +167,31 @@ export const adminSetTier = createServerFn({ method: "POST" })
 
 
 /**
- * Errors are not swallowed here. A failed lookup — no service role key, no
- * database — is a different thing from an account without the role, and the
- * console needs to be able to say which one happened.
+ * A failed lookup — no service role key, no database — is a different thing
+ * from an account without the role, and the console needs to say which one
+ * happened. The failure is returned rather than thrown so the page gets the
+ * reason instead of an opaque request error.
  */
 export const adminAmIAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    return { isAdmin: await isAdminUser(context.userId) };
-  });
+  .handler(
+    async ({
+      context,
+    }): Promise<{
+      isAdmin: boolean;
+      problem?: AdminCheckProblem;
+      detail?: string;
+    }> => {
+      try {
+        return { isAdmin: await isAdminUser(context.userId) };
+      } catch (e) {
+        if (e instanceof AdminCheckError) {
+          return { isAdmin: false, problem: e.problem, detail: e.detail };
+        }
+        throw e;
+      }
+    },
+  );
 
 export const adminUpdateUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
