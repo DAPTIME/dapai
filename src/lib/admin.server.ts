@@ -35,20 +35,21 @@ export class AdminCheckError extends Error {
  */
 export async function isAdminUser(userId: string): Promise<boolean> {
   try {
-    // Admin is whoever holds an "admin" row in public.user_roles, so the
-    // owner can promote and demote people straight from Supabase.
+    // Admin is the site_admin checkbox on the account's profile row — one
+    // column, tickable straight from the Supabase table editor. A trigger
+    // mirrors it into user_roles, which is what the RLS policies read, but
+    // this is the source of truth and the only thing the console consults.
     const { data, error } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
+      .from("profiles")
+      .select("site_admin")
+      .eq("id", userId)
       .maybeSingle();
 
     if (error) {
       console.error("[admin] role lookup failed:", error.code, error.message, error.details);
       throw new AdminCheckError("database", error.code ?? "unknown");
     }
-    return !!data;
+    return data?.site_admin === true;
   } catch (e) {
     if (e instanceof AdminCheckError) throw e;
     const message = e instanceof Error ? e.message : String(e);
