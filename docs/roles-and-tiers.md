@@ -4,24 +4,34 @@ Two separate systems, often confused because both look like "levels".
 
 | | Where it lives | What it controls | How to change it |
 | --- | --- | --- | --- |
-| **Role** | `public.user_roles` (`admin` / `user`) | Access to `/admin`: users, system prompt, every chat, feature flags | SQL (below) |
-| **Tier** | `profiles.tier` (`free` / `go` / `pro` / `exclusive`) | Which models an account can use, token quota, chat memory | Admin console → **Users** → ⋯ → **Change plan**, or SQL |
+| **Admin** | `profiles.site_admin` (boolean) | Access to `/admin`: users, system prompt, every chat, feature flags | Tick the checkbox in the Table Editor |
+| **Tier** | `profiles.tier` (`free` / `go` / `pro` / `exclusive`) | Which models an account can use, token quota, chat memory | Admin console → **Users** → ⋯ → **Change plan**, or the Table Editor |
 
-A role is not a tier. Making someone `pro` gives them a bigger plan; it does not
-let them into the console. Making someone `admin` opens the console; it does not
+Admin is not a tier. Making someone `pro` gives them a bigger plan; it does not
+let them into the console. Ticking `site_admin` opens the console; it does not
 change their quota.
 
-> **There is exactly one admin, and the database enforces it.** A trigger on
-> `public.user_roles` refuses the `admin` role for any account other than
-> `pancholiadevansh@gmail.com`. Everything below about *granting* admin will be
-> rejected until that rule is changed — see
-> [Changing who the admin is](#changing-who-the-admin-is). Tiers are not
-> affected; set those for anyone.
+## Making someone an admin
 
-## Doing it from the Supabase dashboard
+**Table Editor → `profiles` → the `site_admin` column.** It is `false` for
+everyone. Tick it for the accounts you want. That is the whole procedure — the
+site reads that column and nothing else.
 
-There is an `admin` schema with one editable view, `admin.users`, that puts
-both in one place — no joins, no SQL.
+`public.user_roles` still exists and still holds `admin` rows, because RLS
+policies across the schema call `has_role(auth.uid(), 'admin')`. A trigger
+mirrors the checkbox into it, one-way. **Do not edit `user_roles` by hand** —
+the next write to `site_admin` will overwrite whatever you put there. Two
+tables that write to each other eventually disagree, and then nobody can say
+which one is right.
+
+Nobody can tick it for themselves: `authenticated` holds `UPDATE` on only
+`(name, avatar_url)` of `profiles`, so `site_admin` is unreachable over the
+API, and `prevent_profile_privileged_updates()` rejects it as a second layer.
+
+## The combined view
+
+There is also an `admin` schema with one editable view, `admin.users`, that
+puts accounts, plans and admin in one place.
 
 **Table Editor → schema dropdown (top left, usually says `public`) → `admin`
 → `users`.** One row per account, with `email`, `name`, `tier`, `is_admin`,
@@ -30,7 +40,7 @@ both in one place — no joins, no SQL.
 Edit a cell and it saves:
 
 - **`tier`** — pick `free`, `go`, `pro` or `exclusive`. Writes to `profiles.tier`.
-- **`is_admin`** — tick or untick. Writes a row into or out of `public.user_roles`.
+- **`is_admin`** — tick or untick. Writes `profiles.site_admin`.
 - **`name`** — writes to `profiles.name`.
 
 `email`, `roles` and the timestamps are read-only. Changing an email is refused
@@ -67,59 +77,20 @@ granted nothing on it. Only the dashboard (`postgres`) and the server's
 service-role key can read or write it. **If you ever move these into `public`,
 you publish your whole user list.**
 
-## Changing who the admin is
+## Signup bootstrap
 
-`public.enforce_single_admin()` holds the address. A trigger on
-`public.user_roles` calls it before every insert and update, so a grant to any
-other account is refused — from the view, from `admin.set_admin`, from raw SQL,
-from a future migration, from the service role. There is no way around it that
-does not go through the function.
-
-To hand the role to a different address, change it there and grant it:
-
-```sql
-create or replace function public.enforce_single_admin()
-returns trigger language plpgsql security definer set search_path to 'public'
-as $$
-declare v_email text;
-begin
-  if new.role <> 'admin' then return new; end if;
-  select lower(email) into v_email from auth.users where id = new.user_id;
-  if v_email is distinct from lower('NEW-OWNER@example.com') then   -- <- here
-    raise exception 'The admin role is reserved for the site owner. To change who that is, edit public.enforce_single_admin().';
-  end if;
-  return new;
-end $$;
-```
-
-Then `select admin.set_admin('NEW-OWNER@example.com');` and remove the old one.
-Do it in that order — the last-admin guard will not let you drop the old admin
-until a second one exists.
-
-To allow more than one admin, drop the trigger:
-
-```sql
-drop trigger user_roles_single_admin on public.user_roles;
-```
-
-Note the address is written into two places: this function, and
-`public.handle_new_user()`, which grants admin at signup if no admin exists
-yet. Change both, or a rebuilt database will bootstrap the wrong account.
+`public.handle_new_user()` ticks `site_admin` for one address —
+`pancholiadevansh@gmail.com` — and only when no admin exists yet. That is
+purely so a rebuilt database has someone who can open the console; once any
+admin exists the branch can never fire again. If you ever change your email,
+change it there too.
 
 ## The underlying tables, if you prefer
 
 ```sql
--- grant admin
-insert into public.user_roles (user_id, role)
-select id, 'admin'::public.app_role
-from auth.users
-where lower(email) = lower('person@example.com')
-on conflict (user_id, role) do nothing;
-
--- revoke admin
-delete from public.user_roles
-where role = 'admin'
-  and user_id in (select id from auth.users where lower(email) = lower('person@example.com'));
+-- make an admin (this is all the checkbox does)
+update public.profiles set site_admin = true
+where lower(email) = lower('person@example.com');
 
 -- set a plan
 update public.profiles
@@ -127,14 +98,12 @@ set tier = 'pro'::public.account_tier   -- free | go | pro | exclusive
 where lower(email) = lower('person@example.com');
 ```
 
-`auth.users` rather than `public.profiles` on purpose: the profile row is
-created by a trigger and can be missing, but the auth row always exists for
-anyone who has signed up.
+Both bypass the last-admin guard, which lives in `admin.set_admin` and the
+view's trigger rather than on the table. Untick the last admin this way and
+the console is shut until you set the column back.
 
-These bypass the last-admin guard, because that guard lives in
-`admin.set_admin` and the view's trigger. They do **not** bypass the
-single-admin rule — that one is a trigger on the table itself, so the grant
-above is refused for anyone but the owner.
+Do **not** insert or delete `public.user_roles` rows by hand. The trigger on
+`profiles.site_admin` owns that table's `admin` rows and will overwrite you.
 
 Plans can also be changed without touching the database at all: admin console →
 **Users** tab → ⋯ on the row → **Change plan**.
@@ -156,12 +125,14 @@ from auth.users where lower(email) = lower('person@example.com')
 on conflict (user_id, role) do nothing;
 ```
 
-`admin.users` shows it in the `roles` column immediately. At that point the role
-exists and grants **nothing**. Permissions are not derived from the name —
-every gate is written explicitly, in one of two places:
+A role other than `admin` is yours to manage in `user_roles` directly — the
+sync trigger only touches `admin` rows. `admin.users` shows it in the `roles`
+column immediately. At that point the role exists and grants **nothing**.
+Permissions are not derived from the name — every gate is written explicitly,
+in one of two places:
 
 - **In the app**, `isAdminUser` / `assertAdmin` in `src/lib/admin.server.ts`
-  check for the `admin` row specifically. A manager tier would need its own
+  read `profiles.site_admin` specifically. A manager level would need its own
   check, and every server function it should reach would need to call it.
 - **In the database**, RLS policies call `public.has_role(auth.uid(), 'admin')`.
   A policy that should also admit managers has to say so.

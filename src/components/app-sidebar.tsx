@@ -15,7 +15,7 @@ import {
   Gamepad2,
 } from "lucide-react";
 
-const ADMIN_EMAIL = "pancholiadevansh@gmail.com";
+import { adminAmIAdmin } from "@/lib/admin.functions";
 import logo from "@/assets/logo.png.asset.json";
 import {
   Sidebar,
@@ -53,6 +53,16 @@ export function AppSidebar() {
   const incognito = useIncognito();
   const list = useServerFn(listChats);
   const remove = useServerFn(deleteChat);
+
+  // Same query key as the account menu, so both read one cached answer.
+  const amIAdmin = useServerFn(adminAmIAdmin);
+  const adminQuery = useQuery({
+    queryKey: ["admin", "me"],
+    queryFn: () => amIAdmin(),
+    enabled: !!user,
+    retry: false,
+  });
+  const isAdmin = adminQuery.data?.isAdmin === true;
 
   const siteConfig = useSiteConfig();
   // Admins can switch the arcade off; drop its link when they have.
@@ -199,7 +209,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="pb-4">
         <SidebarMenu>
-          {user?.email?.toLowerCase() === ADMIN_EMAIL && (
+          {isAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild

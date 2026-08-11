@@ -279,6 +279,7 @@ export type Database = {
           pro_messages_used: number
           recovery_answer_hash: string | null
           recovery_question: string | null
+          site_admin: boolean
           tier: Database["public"]["Enums"]["account_tier"]
           updated_at: string
         }
@@ -292,6 +293,7 @@ export type Database = {
           pro_messages_used?: number
           recovery_answer_hash?: string | null
           recovery_question?: string | null
+          site_admin?: boolean
           tier?: Database["public"]["Enums"]["account_tier"]
           updated_at?: string
         }
@@ -305,6 +307,7 @@ export type Database = {
           pro_messages_used?: number
           recovery_answer_hash?: string | null
           recovery_question?: string | null
+          site_admin?: boolean
           tier?: Database["public"]["Enums"]["account_tier"]
           updated_at?: string
         }
