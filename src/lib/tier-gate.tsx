@@ -14,7 +14,7 @@ import {
   type ReactNode,
 } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Sparkles, Check } from "lucide-react";
 import { PLANS, SUPPORT_EMAIL, LINKTREE_URL } from "@/lib/plans";
@@ -30,22 +30,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { getProfile } from "@/lib/chats.functions";
+import { TIER_RANK, TIER_LABEL, type Tier } from "@/lib/tier-rank";
+import { downgradeOwnTier } from "@/lib/tier.functions";
 
-export type Tier = "free" | "go" | "pro" | "exclusive";
-
-export const TIER_RANK: Record<Tier, number> = {
-  free: 0,
-  go: 1,
-  pro: 2,
-  exclusive: 3,
-};
-
-export const TIER_LABEL: Record<Tier, string> = {
-  free: "Free",
-  go: "Go",
-  pro: "Pro",
-  exclusive: "Exclusive",
-};
+// The ladder itself lives in tier-rank.ts so the server-side downgrade
+// endpoint can share it without importing a React component. Re-exported
+// here because plenty of callers already import them from this module.
+export { TIER_RANK, TIER_LABEL, type Tier } from "@/lib/tier-rank";
 
 interface GateCtx {
   tier: Tier;
@@ -126,6 +117,29 @@ function UpgradeDialog({
   onClose: () => void;
 }) {
   const [claiming, setClaiming] = useState<Tier | null>(null);
+  const [leaving, setLeaving] = useState<Tier | null>(null);
+  const [downgrading, setDowngrading] = useState(false);
+  const [downgradeErr, setDowngradeErr] = useState<string | null>(null);
+  const downgrade = useServerFn(downgradeOwnTier);
+  const queryClient = useQueryClient();
+
+  const confirmDowngrade = async () => {
+    if (!leaving) return;
+    setDowngrading(true);
+    setDowngradeErr(null);
+    try {
+      await downgrade({ data: { tier: leaving } });
+      // The plan is read through the profile query, so refetching it is
+      // what makes the cards redraw against the new tier.
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
+      setLeaving(null);
+      onClose();
+    } catch (e) {
+      setDowngradeErr(e instanceof Error ? e.message : "Could not change your plan.");
+    } finally {
+      setDowngrading(false);
+    }
+  };
 
   return (
     <>
@@ -148,6 +162,12 @@ function UpgradeDialog({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {PLANS.map((plan) => {
               const isCurrent = currentTier === plan.id;
+              /* Below the plan the account is already on. Free is included
+                 here, so someone on Exclusive can actually step all the way
+                 back down rather than hitting a disabled button. */
+              const isDown =
+                !!currentTier &&
+                TIER_RANK[plan.id as Tier] < TIER_RANK[currentTier];
               const recommended =
                 (min && plan.id === min) || (!min && plan.highlight);
               return (
@@ -184,6 +204,18 @@ function UpgradeDialog({
                       <Button variant="outline" className="w-full" disabled>
                         Your current plan
                       </Button>
+                    ) : isDown ? (
+                      /* Downgrades are self-service and reversible only by
+                         asking, so they are deliberately quiet: an outline
+                         button rather than the brand gradient, which is
+                         reserved for moving up. */
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setLeaving(plan.id as Tier)}
+                      >
+                        Downgrade to {plan.name}
+                      </Button>
                     ) : plan.id === "free" ? (
                       <Button variant="outline" className="w-full" disabled>
                         Included for everyone
@@ -210,6 +242,55 @@ function UpgradeDialog({
               </Button>
             </DialogFooter>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Leaving a plan. Named after the plan being left rather than the
+          one being joined, because that is what the moment is about. */}
+      <Dialog
+        open={!!leaving}
+        onOpenChange={(o) => {
+          if (!o && !downgrading) { setLeaving(null); setDowngradeErr(null); }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              We&rsquo;re sad to see you go from{" "}
+              {currentTier ? TIER_LABEL[currentTier] : "your plan"}
+            </DialogTitle>
+            <DialogDescription>
+              You&rsquo;ll move to {leaving ? TIER_LABEL[leaving] : ""} and keep
+              your chats, custom AIs and game records. Anything above{" "}
+              {leaving ? TIER_LABEL[leaving] : ""} stops straight away.
+            </DialogDescription>
+          </DialogHeader>
+
+          <p className="text-sm text-muted-foreground">
+            Changed your mind later? Getting back up is a conversation rather
+            than a button — email{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="font-medium text-primary underline">
+              {SUPPORT_EMAIL}
+            </a>{" "}
+            and we&rsquo;ll sort it out.
+          </p>
+
+          {downgradeErr && (
+            <p className="text-sm text-destructive">{downgradeErr}</p>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setLeaving(null); setDowngradeErr(null); }}
+              disabled={downgrading}
+            >
+              Stay on {currentTier ? TIER_LABEL[currentTier] : "my plan"}
+            </Button>
+            <Button onClick={confirmDowngrade} disabled={downgrading}>
+              {downgrading ? "Working…" : "Proceed"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
