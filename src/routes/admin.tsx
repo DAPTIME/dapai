@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 import type { ModelId } from "@/lib/models";
 import { sendChatMessage } from "@/lib/chats.functions";
 import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check } from "lucide-react";
@@ -84,8 +85,17 @@ export const Route = createFileRoute("/admin")({
 });
 
 function Admin() {
+  const { user, ready } = useAuth();
   const amIAdmin = useServerFn(adminAmIAdmin);
-  const meQuery = useQuery({ queryKey: ["admin", "me"], queryFn: () => amIAdmin() });
+  // Waiting for the session before asking: without a token the server
+  // function throws Unauthorized, which would render as a server error on
+  // every hard refresh of this page.
+  const meQuery = useQuery({
+    queryKey: ["admin", "me"],
+    queryFn: () => amIAdmin(),
+    enabled: !!user,
+    retry: false,
+  });
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -104,9 +114,34 @@ function Admin() {
         </div>
       </header>
 
-      {meQuery.isLoading ? (
+      {!ready || meQuery.isLoading ? (
         <div className="mt-12 flex justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      ) : meQuery.isError ? (
+        // The check itself failed, so we genuinely do not know whether this
+        // account is an admin. Saying "not authorized" here would blame the
+        // visitor for a server problem.
+        <div className="mt-10 rounded-2xl border border-dashed border-destructive/40 bg-destructive/5 p-6 text-sm text-muted-foreground">
+          <p className="flex items-center gap-2 font-medium text-foreground">
+            <Lock className="h-4 w-4" /> Couldn't check your access
+          </p>
+          <p className="mt-1">
+            The server could not verify your account, so the console stayed
+            closed. This is a configuration problem, not a permission one —
+            check that SUPABASE_SERVICE_ROLE_KEY is set in the deployment's
+            environment variables.
+          </p>
+          <p className="mt-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => meQuery.refetch()}
+              disabled={meQuery.isFetching}
+            >
+              {meQuery.isFetching ? "Checking…" : "Try again"}
+            </Button>
+          </p>
         </div>
       ) : !meQuery.data?.isAdmin ? (
         <div className="mt-10 rounded-2xl border border-dashed border-border bg-muted/40 p-6 text-sm text-muted-foreground">
@@ -117,6 +152,11 @@ function Admin() {
             This console is restricted to the site owner. Your account is not
             authorized.
           </p>
+          {!user ? (
+            <p className="mt-1">You are not signed in on this device.</p>
+          ) : (
+            <p className="mt-1">Signed in as {user.email}.</p>
+          )}
         </div>
       ) : (
         <Tabs defaultValue="users" className="mt-8">

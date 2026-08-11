@@ -27,6 +27,7 @@ export function AccountMenu() {
     queryKey: ["admin", "me"],
     queryFn: () => amIAdmin(),
     enabled: !!user,
+    retry: false,
   });
   const isAdmin = adminQuery.data?.isAdmin === true;
   const profile = useMyProfile();
