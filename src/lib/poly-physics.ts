@@ -10,6 +10,15 @@ export const STEP = 1 / 120;
 
 export const MAX_SPEED = 46;      // world units/s on tarmac
 export const ENGINE = 34;         // forward acceleration
+
+/**
+ * Multiplier on ENGINE only. It changes how hard the car pulls, never
+ * how fast it ends up going: the ceiling is MAX_SPEED, and the headroom
+ * term below already fades the push to nothing as the car approaches it.
+ * So a bigger engine reaches 100 km/h sooner and not one km/h past it.
+ */
+export type CarTuning = { engineScale?: number };
+export const STOCK_TUNING: CarTuning = { engineScale: 1 };
 export const REVERSE = 16;
 export const BRAKE = 60;
 export const ROLL_DRAG = 0.5;     // linear rolling resistance
@@ -85,7 +94,13 @@ export function resetCar(car: CarState, x: number, y: number, z: number, yaw: nu
  * lateral component in the car's own frame, which is what gives the
  * handbrake its slide and the tyres their bite.
  */
-export function stepCar(car: CarState, input: CarInput, dt: number, sampler: Sampler): StepResult {
+export function stepCar(
+  car: CarState,
+  input: CarInput,
+  dt: number,
+  sampler: Sampler,
+  tuning: CarTuning = STOCK_TUNING,
+): StepResult {
   const surf = sampler.at(car.x, car.z, car.y);
   const onRoad = surf.onRoad;
 
@@ -112,8 +127,22 @@ export function stepCar(car: CarState, input: CarInput, dt: number, sampler: Sam
   if (car.grounded) {
     const maxSpeed = onRoad ? MAX_SPEED : OFF_MAX;
     if (input.throttle > 0) {
-      const headroom = Math.max(0, 1 - Math.max(0, vf) / maxSpeed);
-      vf += ENGINE * headroom * dt;
+      /* Constant pull up to a hard ceiling, rather than a push that
+         faded as the car approached one.
+         The old model multiplied ENGINE by (1 - v/maxSpeed), which
+         reaches zero exactly where the drag is strongest — so the car
+         settled at 26.5 u/s, about 58 km/h, and MAX_SPEED was a number
+         it could never actually touch. Worse for what this needs to
+         support: because nothing was clamping, a bigger engine simply
+         found a higher balance point, so a stronger car had a higher
+         top speed and not merely a quicker one.
+         Now the engine pushes at full value and the ceiling is enforced
+         outright, which makes the cap shared by construction: engineScale
+         changes how soon maxSpeed arrives and can never change what it
+         is. The clamp sits before the boost pads below, so those still
+         lift the car past it as they always did. */
+      vf += ENGINE * (tuning.engineScale ?? 1) * dt;
+      if (vf > maxSpeed) vf = maxSpeed;
     } else if (input.throttle < 0) {
       vf -= (vf > 0.5 ? BRAKE : REVERSE) * dt;
     }

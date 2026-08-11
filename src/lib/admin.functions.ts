@@ -6,7 +6,7 @@ import { dbError } from "./db-error";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertAdmin, getAdminClient } from "@/lib/admin.server";
+import { assertAdmin, getAdminClient, isAdminUser } from "@/lib/admin.server";
 import { FEATURE_KEYS, MODEL_IDS, type FeatureKey } from "@/lib/admin-config";
 import { DEFAULT_OFFLINE_MESSAGE } from "@/lib/site-config.functions";
 
@@ -160,15 +160,15 @@ export const adminSetTier = createServerFn({ method: "POST" })
   });
 
 
+/**
+ * Errors are not swallowed here. A failed lookup — no service role key, no
+ * database — is a different thing from an account without the role, and the
+ * console needs to be able to say which one happened.
+ */
 export const adminAmIAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    try {
-      await assertAdmin(context.userId);
-      return { isAdmin: true };
-    } catch {
-      return { isAdmin: false };
-    }
+    return { isAdmin: await isAdminUser(context.userId) };
   });
 
 export const adminUpdateUser = createServerFn({ method: "POST" })

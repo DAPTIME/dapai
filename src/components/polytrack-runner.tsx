@@ -14,7 +14,14 @@ import {
   type GhostSample, type Medal, type Sampler, type Season, type Theme,
 } from "@/lib/polytrack-engine";
 import { isTrackData, type TrackData, type Tile } from "@/lib/track-validation";
-import { createCar, resetCar, stepCar, STEP, SPEED_TO_KMH, MAX_SPEED } from "@/lib/poly-physics";
+import {
+  createCar, resetCar, stepCar, STEP, SPEED_TO_KMH, MAX_SPEED,
+  STOCK_TUNING, type CarTuning,
+} from "@/lib/poly-physics";
+import { getRacePerks } from "@/lib/race-perks.functions";
+import { useAuth } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { KeybindEditor, useGameControls } from "@/lib/game-controls";
 import { useTouchControls, isTouchOnly } from "@/lib/use-compact-screen";
 import { Mesher, type V3 } from "@/lib/poly-mesh";
@@ -102,6 +109,21 @@ export function PolyTrackRunner(props: Props) {
   // its size, so the key editor stays for compact laptops and hides only
   // where there is nothing to type on.
   const hasKeyboard = !isTouchOnly();
+
+  /* Car tuning comes from the server, which decides who gets what; the
+     client only receives a number. It is read through a ref because the
+     simulation loop is built once in an effect and must not be torn down
+     and rebuilt mid-race just because a query resolved. */
+  const { user } = useAuth();
+  const fetchPerks = useServerFn(getRacePerks);
+  const perksQuery = useQuery({
+    queryKey: ["race-perks", user?.id],
+    queryFn: () => fetchPerks(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+  const tuningRef = useRef<CarTuning>(STOCK_TUNING);
+  tuningRef.current = perksQuery.data ?? STOCK_TUNING;
 
   const apiRef = useRef<EngineApi | null>(null);
   const timerRef = useRef<HTMLDivElement | null>(null);
@@ -343,7 +365,7 @@ export function PolyTrackRunner(props: Props) {
           throttle: (p.gas ? 1 : 0) - (p.brake ? 1 : 0),
           steer: (p.left ? 1 : 0) - (p.right ? 1 : 0),
           drift: !!p.handbrake,
-        }, dt, sampler);
+        }, dt, sampler, tuningRef.current);
         const onRoad = res.onRoad;
 
         // Progress: checkpoints, then the finish line.
