@@ -49,12 +49,32 @@ export const adminGetChat = createServerFn({ method: "POST" })
         .single(),
       supabaseAdmin
         .from("chat_messages")
-        .select("id, role, content, model, created_at")
+        .select("id, role, content, model, ip, created_at")
         .eq("chat_id", data.chatId)
         .order("created_at", { ascending: true }),
     ]);
     if (error) throw dbError(error);
     return { chat, messages: messages ?? [] };
+  });
+
+/** Admins can delete any user's chat (and its messages) from the console. */
+export const adminDeleteChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const supabaseAdmin = getAdminClient();
+    const { error: msgErr } = await supabaseAdmin
+      .from("chat_messages")
+      .delete()
+      .eq("chat_id", data.chatId);
+    if (msgErr) throw dbError(msgErr);
+    const { error } = await supabaseAdmin
+      .from("chats")
+      .delete()
+      .eq("id", data.chatId);
+    if (error) throw dbError(error);
+    return { ok: true };
   });
 
 const TIERS = ["free", "go", "pro", "exclusive"] as const;

@@ -36,6 +36,7 @@ import {
   adminGetSystemPrompt,
   adminSetSystemPrompt,
   adminListAllChats,
+  adminDeleteChat,
   adminGetChat,
   getSiteStatus,
   adminSetSiteStatus,
@@ -694,6 +695,11 @@ function SystemPromptTab() {
         model="dap-ai-1.0"
         title="DAP AI 4 Pro"
         description="Used when the Pro model is selected. Falls back to the legacy global prompt if left empty."
+      />
+      <SystemPromptEditor
+        model="dap-ai-pro-lite"
+        title="DAP AI 4 Pro Lite"
+        description="Used when the Pro Lite model is selected. Falls back to the legacy global prompt if left empty."
       />
       <SystemPromptEditor
         model="dap-ai-lite"
