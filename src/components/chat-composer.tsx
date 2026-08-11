@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Send,
+  Square,
   Paperclip,
   Image as ImageIcon,
   Sparkles,
@@ -28,6 +29,8 @@ interface Props {
   onSend?: (text: string, images?: string[]) => void;
   quotaInfo?: QuotaInfo;
   pending?: boolean;
+  /** Called when the user interrupts an in-flight reply. */
+  onStop?: () => void;
   /** When true the bar is read-only and shows the admin's offline message. */
   offline?: boolean;
   offlineMessage?: string;
@@ -51,6 +54,7 @@ export function ChatComposer({
   onSend,
   quotaInfo,
   pending,
+  onStop,
   offline,
   offlineMessage,
 }: Props) {
@@ -278,20 +282,34 @@ export function ChatComposer({
             </Link>
           )}
         </div>
-        <Button
-          type="submit"
-          size="icon"
-          disabled={(!text.trim() && images.length === 0) || pending || isOffline}
-          className={`relative h-9 w-9 overflow-hidden rounded-full transition-transform active:scale-95 ${pending ? "send-pending" : ""} ${(text.trim() || images.length) && !pending ? "send-ready" : ""}`}
-          style={text.trim() || images.length || pending ? { background: "var(--gradient-brand)" } : undefined}
-          aria-label={pending ? "Sending" : "Send message"}
-        >
-          {pending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </Button>
+        {pending && onStop ? (
+          <Button
+            type="button"
+            size="icon"
+            onClick={onStop}
+            className="relative h-9 w-9 rounded-full transition-transform active:scale-95"
+            style={{ background: "var(--gradient-brand)" }}
+            aria-label="Stop generating"
+            title="Stop generating"
+          >
+            <Square className="h-3.5 w-3.5 fill-current" />
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            size="icon"
+            disabled={(!text.trim() && images.length === 0) || pending || isOffline}
+            className={`relative h-9 w-9 overflow-hidden rounded-full transition-transform active:scale-95 ${pending ? "send-pending" : ""} ${(text.trim() || images.length) && !pending ? "send-ready" : ""}`}
+            style={text.trim() || images.length || pending ? { background: "var(--gradient-brand)" } : undefined}
+            aria-label={pending ? "Sending" : "Send message"}
+          >
+            {pending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
     </form>
   );
