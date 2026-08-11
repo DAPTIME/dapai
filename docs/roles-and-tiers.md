@@ -11,6 +11,13 @@ A role is not a tier. Making someone `pro` gives them a bigger plan; it does not
 let them into the console. Making someone `admin` opens the console; it does not
 change their quota.
 
+> **There is exactly one admin, and the database enforces it.** A trigger on
+> `public.user_roles` refuses the `admin` role for any account other than
+> `pancholiadevansh@gmail.com`. Everything below about *granting* admin will be
+> rejected until that rule is changed — see
+> [Changing who the admin is](#changing-who-the-admin-is). Tiers are not
+> affected; set those for anyone.
+
 ## Doing it from the Supabase dashboard
 
 There is an `admin` schema with one editable view, `admin.users`, that puts
@@ -60,6 +67,45 @@ granted nothing on it. Only the dashboard (`postgres`) and the server's
 service-role key can read or write it. **If you ever move these into `public`,
 you publish your whole user list.**
 
+## Changing who the admin is
+
+`public.enforce_single_admin()` holds the address. A trigger on
+`public.user_roles` calls it before every insert and update, so a grant to any
+other account is refused — from the view, from `admin.set_admin`, from raw SQL,
+from a future migration, from the service role. There is no way around it that
+does not go through the function.
+
+To hand the role to a different address, change it there and grant it:
+
+```sql
+create or replace function public.enforce_single_admin()
+returns trigger language plpgsql security definer set search_path to 'public'
+as $$
+declare v_email text;
+begin
+  if new.role <> 'admin' then return new; end if;
+  select lower(email) into v_email from auth.users where id = new.user_id;
+  if v_email is distinct from lower('NEW-OWNER@example.com') then   -- <- here
+    raise exception 'The admin role is reserved for the site owner. To change who that is, edit public.enforce_single_admin().';
+  end if;
+  return new;
+end $$;
+```
+
+Then `select admin.set_admin('NEW-OWNER@example.com');` and remove the old one.
+Do it in that order — the last-admin guard will not let you drop the old admin
+until a second one exists.
+
+To allow more than one admin, drop the trigger:
+
+```sql
+drop trigger user_roles_single_admin on public.user_roles;
+```
+
+Note the address is written into two places: this function, and
+`public.handle_new_user()`, which grants admin at signup if no admin exists
+yet. Change both, or a rebuilt database will bootstrap the wrong account.
+
 ## The underlying tables, if you prefer
 
 ```sql
@@ -85,8 +131,10 @@ where lower(email) = lower('person@example.com');
 created by a trigger and can be missing, but the auth row always exists for
 anyone who has signed up.
 
-These bypass the last-admin guard, because the guard lives in `admin.set_admin`
-and the view's trigger. Going around it is your own risk.
+These bypass the last-admin guard, because that guard lives in
+`admin.set_admin` and the view's trigger. They do **not** bypass the
+single-admin rule — that one is a trigger on the table itself, so the grant
+above is refused for anyone but the owner.
 
 Plans can also be changed without touching the database at all: admin console →
 **Users** tab → ⋯ on the row → **Change plan**.
