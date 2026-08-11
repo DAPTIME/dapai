@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { ModelId } from "@/lib/models";
+import { sendChatMessage } from "@/lib/chats.functions";
 import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check } from "lucide-react";
 import {
   DropdownMenu,
@@ -776,8 +777,11 @@ function SystemPromptEditor({
 }
 
 function ChatsTab() {
+  const qc = useQueryClient();
   const listAll = useServerFn(adminListAllChats);
   const getOne = useServerFn(adminGetChat);
+  const removeChat = useServerFn(adminDeleteChat);
+  const send = useServerFn(sendChatMessage);
 
   const chatsQuery = useQuery({
     queryKey: ["admin", "all-chats"],
@@ -785,10 +789,32 @@ function ChatsTab() {
   });
 
   const [openId, setOpenId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
   const detail = useQuery({
     queryKey: ["admin", "chat", openId],
     queryFn: () => getOne({ data: { chatId: openId! } }),
     enabled: !!openId,
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => removeChat({ data: { chatId: id } }),
+    onSuccess: () => {
+      toast.success("Chat deleted");
+      setOpenId(null);
+      qc.invalidateQueries({ queryKey: ["admin", "all-chats"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const reply = useMutation({
+    mutationFn: (text: string) =>
+      send({ data: { chatId: openId!, text, model: "dap-ai-lite" } }),
+    onSuccess: () => {
+      setDraft("");
+      qc.invalidateQueries({ queryKey: ["admin", "chat", openId] });
+      qc.invalidateQueries({ queryKey: ["admin", "all-chats"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const chats = chatsQuery.data ?? [];
@@ -797,7 +823,8 @@ function ChatsTab() {
     <div className="rounded-2xl border border-border bg-card p-5">
       <h2 className="text-lg font-semibold">All chats</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Every user's chats. Click one to read the conversation.
+        Every user's chats. Open one to read it, see the sender's IP per
+        message, reply inside it, or delete it.
       </p>
       {chatsQuery.error && (
         <div className="mt-3 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
@@ -811,21 +838,47 @@ function ChatsTab() {
           </div>
         )}
         {chats.map((c) => (
-          <button
+          <div
             key={c.id}
-            onClick={() => setOpenId(c.id)}
-            className="block w-full border-b border-border px-3 py-2 text-left text-sm hover:bg-muted/40"
+            className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm hover:bg-muted/40"
           >
-            <div className="truncate font-medium">{c.title}</div>
-            <div className="text-xs text-muted-foreground">
-              {c.user_name || c.user_email || c.user_id.slice(0, 8)} ·{" "}
-              {new Date(c.updated_at).toLocaleString()}
-            </div>
-          </button>
+            <button
+              onClick={() => setOpenId(c.id)}
+              className="min-w-0 flex-1 text-left"
+            >
+              <div className="truncate font-medium">{c.title}</div>
+              <div className="text-xs text-muted-foreground">
+                {c.user_name || c.user_email || c.user_id.slice(0, 8)} ·{" "}
+                {new Date(c.updated_at).toLocaleString()}
+              </div>
+            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              aria-label="Delete chat"
+              disabled={del.isPending}
+              onClick={() => {
+                if (confirm("Delete this chat and all of its messages?")) {
+                  del.mutate(c.id);
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         ))}
       </div>
 
-      <Dialog open={!!openId} onOpenChange={(o) => !o && setOpenId(null)}>
+      <Dialog
+        open={!!openId}
+        onOpenChange={(o) => {
+          if (!o) {
+            setOpenId(null);
+            setDraft("");
+          }
+        }}
+      >
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Chat conversation</DialogTitle>
@@ -845,13 +898,32 @@ function ChatsTab() {
               )}
               {detail.data.messages.map((m) => (
                 <div key={m.id} className="rounded-md border border-border p-2">
-                  <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
-                    {m.role}
-                    {m.model ? ` · ${m.model}` : ""}
+                  <div className="mb-1 flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    <span>{m.role}</span>
+                    {m.model ? <span>· {m.model}</span> : null}
+                    <span className="ml-auto rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] normal-case">
+                      IP: {m.ip ?? "unknown"}
+                    </span>
                   </div>
                   <div className="whitespace-pre-wrap text-sm">{m.content}</div>
                 </div>
               ))}
+
+              <div className="flex items-end gap-2 border-t border-border pt-3">
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Reply in this chat as the user…"
+                  rows={2}
+                  className="flex-1 resize-none rounded-md border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+                <Button
+                  disabled={!draft.trim() || reply.isPending}
+                  onClick={() => reply.mutate(draft.trim())}
+                >
+                  {reply.isPending ? "Sending…" : "Send"}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
