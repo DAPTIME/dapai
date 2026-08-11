@@ -715,7 +715,7 @@ function SystemPromptEditor({
   title,
   description,
 }: {
-  model: "dap-ai-1.0" | "dap-ai-lite";
+  model: ModelId;
   title: string;
   description: string;
 }) {
