@@ -113,7 +113,15 @@ SET banned = true
 WHERE lower(email) = lower('hassan_mahmood_1@hotmail.com');
 
 -- ── Dashboard surface ───────────────────────────────────────────────────
-CREATE OR REPLACE VIEW admin.users AS
+--
+-- Dropped and rebuilt rather than replaced: CREATE OR REPLACE VIEW can only
+-- append columns, never insert one into the middle of the list, and `banned`
+-- belongs next to is_admin rather than tacked on the end. Postgres rejects
+-- the replace outright — "cannot change name of view column". Dropping takes
+-- the INSTEAD OF trigger with it, so that is recreated below.
+DROP VIEW IF EXISTS admin.users;
+
+CREATE VIEW admin.users AS
 SELECT
   u.id,
   u.email,
@@ -130,6 +138,9 @@ SELECT
   u.created_at
 FROM auth.users u
 LEFT JOIN public.profiles p ON p.id = u.id;
+
+COMMENT ON VIEW admin.users IS
+  'Editable. Change tier, or tick is_admin / banned, and the write is routed to public.profiles. email and id are read-only.';
 
 CREATE OR REPLACE FUNCTION admin.users_update()
 RETURNS trigger
@@ -208,7 +219,7 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS users_update ON admin.users;
+-- No DROP needed: dropping the view above already took the old trigger.
 CREATE TRIGGER users_update
   INSTEAD OF UPDATE ON admin.users
   FOR EACH ROW EXECUTE FUNCTION admin.users_update();
