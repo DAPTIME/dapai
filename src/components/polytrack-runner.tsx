@@ -785,9 +785,12 @@ function TouchPad({ press, onRespawn }: { press: (a: Action, on: boolean) => voi
   const cls = "h-16 select-none rounded-xl bg-muted/70 text-lg font-semibold active:bg-primary/40";
   return (
     <div className="mt-3 grid grid-cols-4 gap-2">
-      <button className={cls} {...hold("left")}>◀</button>
-      <button className={cls} {...hold("brake")}>▼</button>
+      {/* Forward, reverse, then the steering pair with left before right,
+          so the two pedals sit together on one side and the two steers on
+          the other rather than interleaved as they were. */}
       <button className={cls} {...hold("gas")}>▲</button>
+      <button className={cls} {...hold("brake")}>▼</button>
+      <button className={cls} {...hold("left")}>◀</button>
       <button className={cls} {...hold("right")}>▶</button>
       <button className={`${cls} col-span-2 h-12 text-sm`} {...hold("handbrake")}>Drift</button>
       <button className={`${cls} col-span-2 h-12 text-sm`} onClick={onRespawn}>Respawn</button>
