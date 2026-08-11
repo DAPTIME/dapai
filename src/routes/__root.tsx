@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { UpgradeGateProvider, useUpgradeGate } from "@/lib/tier-gate";
 import { AccountSetupGate } from "@/components/account-setup-gate";
+import { SuspendedGate } from "@/components/suspended-gate";
 
 import { AccountMenu } from "@/components/account-menu";
 import { AppContextMenu } from "@/components/app-context-menu";
@@ -169,6 +170,7 @@ function RootComponent() {
               </div>
             </div>
             <AccountSetupGate />
+            <SuspendedGate />
             <Toaster />
 
           </SidebarProvider>

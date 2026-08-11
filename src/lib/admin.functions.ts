@@ -93,12 +93,13 @@ export const adminListUsers = createServerFn({ method: "GET" })
     const supabaseAdmin = getAdminClient();
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select("id, email, name, tier, pro_messages_used, created_at")
+      .select("id, email, name, tier, pro_messages_used, created_at, banned")
       .order("created_at", { ascending: false });
     if (error) throw dbError(error);
 
-    // Ban state + email confirmation live on the auth user, not the profile.
-    const banned = new Set<string>();
+    // Ban state is profiles.banned now — the same checkbox the table editor
+    // shows — so it comes back with the row above. Email confirmation still
+    // only exists on the auth user.
     const unconfirmed = new Set<string>();
     try {
       const { data: authList } = await supabaseAdmin.auth.admin.listUsers({
@@ -106,8 +107,6 @@ export const adminListUsers = createServerFn({ method: "GET" })
         perPage: 1000,
       });
       for (const u of authList?.users ?? []) {
-        const until = (u as { banned_until?: string | null }).banned_until;
-        if (until && new Date(until).getTime() > Date.now()) banned.add(u.id);
         if (!u.email_confirmed_at) unconfirmed.add(u.id);
       }
     } catch (e) {
@@ -116,7 +115,7 @@ export const adminListUsers = createServerFn({ method: "GET" })
 
     return (data ?? []).map((p) => ({
       ...p,
-      banned: banned.has(p.id),
+      banned: p.banned === true,
       emailConfirmed: !unconfirmed.has(p.id),
     }));
   });
@@ -131,10 +130,13 @@ export const adminSetBan = createServerFn({ method: "POST" })
     if (data.userId === context.userId)
       throw new Error("You can't ban your own admin account.");
     const supabaseAdmin = getAdminClient();
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(
-      data.userId,
-      { ban_duration: data.banned ? "876000h" : "none" }
-    );
+    // Write the column, not the Auth API. A trigger mirrors it into
+    // auth.users.banned_until, so the console button and the table editor
+    // checkbox are the same switch rather than two that can disagree.
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ banned: data.banned })
+      .eq("id", data.userId);
     if (error) throw dbError(error);
     return { ok: true };
   });

@@ -76,6 +76,26 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
       throw new Error('Unauthorized: No user ID found in token');
     }
 
+    // A ban writes auth.users.banned_until, which stops Supabase issuing or
+    // refreshing tokens — but an access token already in the browser stays
+    // cryptographically valid until it expires, so that alone leaves a window
+    // of up to an hour. Checking the column here closes it: the ban applies
+    // to the next request, not the next hour.
+    //
+    // Read with the caller's own client, so this keeps working when the
+    // service role key is absent. RLS lets an account read its own profile.
+    // Only an explicit `true` blocks — a failed lookup must not lock out the
+    // whole site.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('banned')
+      .eq('id', data.claims.sub)
+      .maybeSingle();
+
+    if (profile?.banned === true) {
+      throw new Error('Your account has been suspended.');
+    }
+
     return next({
       context: {
         supabase,
