@@ -16,7 +16,7 @@ import {
 import { isTrackData, type TrackData, type Tile } from "@/lib/track-validation";
 import { createCar, resetCar, stepCar, STEP, SPEED_TO_KMH, MAX_SPEED } from "@/lib/poly-physics";
 import { KeybindEditor, useGameControls } from "@/lib/game-controls";
-import { useCompactScreen, isTouchOnly } from "@/lib/use-compact-screen";
+import { useTouchControls, isTouchOnly } from "@/lib/use-compact-screen";
 import { Mesher, type V3 } from "@/lib/poly-mesh";
 
 type Action = "left" | "right" | "gas" | "brake" | "handbrake" | "reset" | "restart" | "pause" | "camera" | "fullscreen";
@@ -35,7 +35,7 @@ const DEFAULTS: Record<Action, string[]> = {
 };
 const LABELS: Record<Action, string> = {
   left: "Steer left", right: "Steer right", gas: "Accelerate",
-  brake: "Brake / reverse", handbrake: "Drift", reset: "Respawn at checkpoint",
+  brake: "Brake / reverse", handbrake: "Drift", reset: "Respawn at checkpoint (tap twice to restart)",
   restart: "Restart run", pause: "Pause", camera: "Camera",
   fullscreen: "Fullscreen",
 };
@@ -47,6 +47,9 @@ const CAMERA_MODES: CameraMode[] = ["chase", "hood", "far"];
 /** Lens at a standstill, and how far it opens up at full chat. */
 const FOV_BASE = 68;
 const FOV_RUSH = 13;
+
+/** Two resets closer together than this count as a double tap. */
+const DOUBLE_TAP_MS = 500;
 
 export type RunResult = {
   timeMs: number;
@@ -90,9 +93,11 @@ export function PolyTrackRunner(props: Props) {
   const [offRoad, setOffRoad] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [best, setBest] = useState<number | null>(null);
-  /* On-screen controls follow the screen, not just the viewport width.
-     A small touch laptop or tablet needs them as much as a phone does. */
-  const compact = useCompactScreen();
+  /* On-screen controls follow the screen, not just the viewport width —
+     and the player can overrule the guess, which is the only thing that
+     works on an iPad set to request the desktop site. */
+  const touch = useTouchControls();
+  const compact = touch.show;
   // A device with a fine pointer has a keyboard worth rebinding, whatever
   // its size, so the key editor stays for compact laptops and hides only
   // where there is nothing to type on.
@@ -543,14 +548,28 @@ export function PolyTrackRunner(props: Props) {
       let raf = requestAnimationFrame(frame);
 
       // ── Discrete keys ──────────────────────────────────────────────
+      let lastReset = 0;
       const onKey = (e: KeyboardEvent) => {
         const target = e.target as HTMLElement | null;
         if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
         if (controlsRef.current.capture) return;
+        // A held key repeats; that is one press, not a double tap.
+        if (e.repeat) return;
         const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
         const bind = controlsRef.current.bindings;
         const hit = (action: Action) => bind[action]?.some((k) => (k.length === 1 ? k.toLowerCase() : k) === key);
-        if (hit("reset")) { e.preventDefault(); respawn(); }
+        if (hit("reset")) {
+          e.preventDefault();
+          /* One press puts you back on the last checkpoint; two inside
+             DOUBLE_TAP_MS restart the run. The respawn fires on the first
+             press rather than waiting to see whether a second arrives —
+             holding the common action back half a second to watch for the
+             rare one would put lag on every recovery. A restart simply
+             supersedes the respawn that preceded it. */
+          const now = performance.now();
+          if (now - lastReset < DOUBLE_TAP_MS) { lastReset = 0; restart(); }
+          else { lastReset = now; respawn(); }
+        }
         else if (hit("restart")) { e.preventDefault(); restart(); }
         else if (hit("pause")) { e.preventDefault(); togglePause(); }
         else if (hit("camera")) { e.preventDefault(); cycleCamera(); }
@@ -610,10 +629,24 @@ export function PolyTrackRunner(props: Props) {
         <div className="min-w-0">
           <div className="truncate text-lg font-semibold">{title}</div>
           <div className="hidden text-xs text-muted-foreground sm:block">
-            WASD / Arrows · Space drift · R respawn · T restart · F fullscreen · C camera · Esc pause
+            WASD / Arrows · Space drift · R respawn (RR restart) · T restart · F fullscreen · C camera · Esc pause
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={touch.mode === "auto" ? "secondary" : "default"}
+            onClick={touch.cycle}
+            title={
+              touch.mode === "auto"
+                ? "Touch controls: automatic — tap to force on"
+                : touch.mode === "on"
+                  ? "Touch controls: always on — tap to force off"
+                  : "Touch controls: off — tap to go back to automatic"
+            }
+          >
+            🎮 {touch.mode === "auto" ? (compact ? "Auto · on" : "Auto · off") : touch.mode === "on" ? "On" : "Off"}
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => apiRef.current?.toggleFullscreen()}
                   title="Fullscreen (F)">⛶</Button>
           <Button size="sm" variant="secondary" onClick={() => apiRef.current?.cycleCamera()}>
@@ -752,9 +785,12 @@ function TouchPad({ press, onRespawn }: { press: (a: Action, on: boolean) => voi
   const cls = "h-16 select-none rounded-xl bg-muted/70 text-lg font-semibold active:bg-primary/40";
   return (
     <div className="mt-3 grid grid-cols-4 gap-2">
-      <button className={cls} {...hold("left")}>◀</button>
-      <button className={cls} {...hold("brake")}>▼</button>
+      {/* Forward, reverse, then the steering pair with left before right,
+          so the two pedals sit together on one side and the two steers on
+          the other rather than interleaved as they were. */}
       <button className={cls} {...hold("gas")}>▲</button>
+      <button className={cls} {...hold("brake")}>▼</button>
+      <button className={cls} {...hold("left")}>◀</button>
       <button className={cls} {...hold("right")}>▶</button>
       <button className={`${cls} col-span-2 h-12 text-sm`} {...hold("handbrake")}>Drift</button>
       <button className={`${cls} col-span-2 h-12 text-sm`} onClick={onRespawn}>Respawn</button>
