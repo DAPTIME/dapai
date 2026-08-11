@@ -645,7 +645,7 @@ export function PolyTrackRunner(props: Props) {
                   : "Touch controls: off — tap to go back to automatic"
             }
           >
-            🎮 {touch.mode === "auto" ? (compact ? "Auto · on" : "Auto · off") : touch.mode === "on" ? "On" : "Off"}
+            🎮 Buttons: {touch.mode === "auto" ? (compact ? "auto (on)" : "auto (off)") : touch.mode === "on" ? "on" : "off"}
           </Button>
           <Button size="sm" variant="secondary" onClick={() => apiRef.current?.toggleFullscreen()}
                   title="Fullscreen (F)">⛶</Button>
@@ -682,12 +682,12 @@ export function PolyTrackRunner(props: Props) {
               <div className="opacity-80">🎯 {formatMs(goal)}</div>
             </div>
           </div>
-          <div className="absolute bottom-3 left-3 flex items-baseline gap-1">
+          <div className={`absolute left-3 flex items-baseline gap-1 ${compact ? "bottom-[10.5rem]" : "bottom-3"}`}>
             <span ref={speedRef} className="text-2xl font-bold tabular-nums sm:text-3xl">0</span>
             <span className="text-xs opacity-80">km/h</span>
           </div>
           {offRoad && phase === "running" && (
-            <div className="absolute bottom-3 right-3 rounded-md bg-amber-500/80 px-2 py-1 text-xs font-semibold text-black">
+            <div className={`absolute right-3 rounded-md bg-amber-500/80 px-2 py-1 text-xs font-semibold text-black ${compact ? "bottom-[10.5rem]" : "bottom-3"}`}>
               Off track — press R
             </div>
           )}
@@ -699,7 +699,11 @@ export function PolyTrackRunner(props: Props) {
         {phase === "ready" && (
           <div className="pointer-events-none absolute inset-0 grid place-items-center bg-black/40 text-center text-white">
             <div>
-              <div className="text-xl font-semibold">Press W / ↑ to start</div>
+              {/* Naming keys to someone holding a tablet is no help; when
+                  the pad is up, point at the button that is actually there. */}
+              <div className="text-xl font-semibold">
+                {compact ? "Tap ▲ to start" : "Press W / ↑ to start"}
+              </div>
               <div className="mt-1 text-xs opacity-80">
                 {best != null ? "Your ghost is on track — chase it." : "Set a time and your ghost will race you next lap."}
               </div>
@@ -749,9 +753,13 @@ export function PolyTrackRunner(props: Props) {
             {err}
           </div>
         )}
-      </div>
 
-      {compact && <TouchPad press={press} onRespawn={() => apiRef.current?.respawn()} />}
+        {/* Controls sit on the game rather than under it. Below the canvas
+            they ate a third of a phone screen and put the thumbs off the
+            picture; over it they cost nothing but the strip of foreground
+            they cover, which is the least useful part of a chase view. */}
+        {compact && <TouchPad press={press} onRespawn={() => apiRef.current?.respawn()} />}
+      </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span className="font-semibold text-foreground">Medals</span>
@@ -782,18 +790,29 @@ function TouchPad({ press, onRespawn }: { press: (a: Action, on: boolean) => voi
     onPointerCancel: () => press(a, false),
     onLostPointerCapture: () => press(a, false),
   });
-  const cls = "h-16 select-none rounded-xl bg-muted/70 text-lg font-semibold active:bg-primary/40";
+  /* Translucent so the track still reads underneath, and generous: a
+     thumb is about 45px of contact, so a 5rem target is comfortable
+     without aiming. The container ignores pointer events so a drag that
+     misses a button still reaches the game. */
+  const base =
+    "pointer-events-auto flex select-none items-center justify-center rounded-2xl " +
+    "border border-white/25 bg-black/45 font-semibold text-white backdrop-blur-sm " +
+    "transition-colors active:bg-primary/70 active:border-white/50";
+  const big = `${base} h-20 flex-1 text-3xl`;
+  const small = `${base} h-11 flex-1 text-sm`;
   return (
-    <div className="mt-3 grid grid-cols-4 gap-2">
-      {/* Forward, reverse, then the steering pair with left before right,
-          so the two pedals sit together on one side and the two steers on
-          the other rather than interleaved as they were. */}
-      <button className={cls} {...hold("gas")}>▲</button>
-      <button className={cls} {...hold("brake")}>▼</button>
-      <button className={cls} {...hold("left")}>◀</button>
-      <button className={cls} {...hold("right")}>▶</button>
-      <button className={`${cls} col-span-2 h-12 text-sm`} {...hold("handbrake")}>Drift</button>
-      <button className={`${cls} col-span-2 h-12 text-sm`} onClick={onRespawn}>Respawn</button>
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col gap-2 p-3">
+      <div className="flex gap-2">
+        <button className={small} {...hold("handbrake")}>Drift</button>
+        <button className={small} onClick={onRespawn}>Respawn</button>
+      </div>
+      {/* Forward, reverse, then the steering pair with left before right. */}
+      <div className="flex gap-2">
+        <button className={big} {...hold("gas")}>▲</button>
+        <button className={big} {...hold("brake")}>▼</button>
+        <button className={big} {...hold("left")}>◀</button>
+        <button className={big} {...hold("right")}>▶</button>
+      </div>
     </div>
   );
 }
