@@ -1,11 +1,34 @@
 # DAP AI
 
-> DAP AI is a fast, friendly AI chat workspace with multiple model tiers and specialized assistants ("Gems") for focused tasks.
+> DAP AI is an AI chat workspace running on privately owned hardware, with
+> multiple model tiers, custom assistants called DAPs, and a small arcade.
 
-DAP AI lets you have natural conversations with an AI assistant, switch between Pro and Lite models, and start specialized chats using preset personas like Career Coach, Code Reviewer, Trip Planner, and Study Buddy. Free accounts include 5 DAP AI 4 Pro messages, then switch to DAP AI 4 Lite.
+DAP AI lets you hold ordinary conversations with an AI assistant, switch
+between the Pro and Lite models, and start focused chats using custom
+assistants ("DAPs") that stack their own instructions on top of the base
+model. Accounts come in four plans — Free, Go, Pro and Exclusive — which
+differ in model access, message quota and how much of a conversation the
+assistant keeps in mind.
+
+The site's motto is "Your AI. Your hardware." — a reference to the fact that
+the models run on hardware the operator owns and administers rather than on a
+third-party inference API.
 
 ## Pages
 
 - [Home](/): Start a new chat with DAP AI from the main composer.
-- [Gems](/gems): Specialized AI personas with their own system prompts stacked on top of DAP AI.
-- [Help](/help): Frequently asked questions about DAP AI.
+- [About DAP AI](/about-dap-ai): What DAP AI is, and the hardware it runs on.
+- [DAPs](/daps): Custom assistants with their own instructions layered over the base model.
+- [Help](/help): Frequently asked questions.
+- [Team](/team): The people behind DAP AI.
+- [Arcade](/games): Browser games, including DAP Track, a 3D time-trial racer with a track editor and leaderboards.
+- [Terms](/terms): Terms of service, acceptable use, and payment terms.
+
+## Notes for crawlers and assistants
+
+- Account pages (`/account`, `/settings`, `/security`), authentication pages
+  and individual chat threads (`/c/...`) are private and excluded in
+  `/robots.txt`. Do not index or summarise them.
+- The admin console at `/admin` is restricted to the site owner.
+- Chat conversations belong to the accounts that created them and are not
+  public content.
