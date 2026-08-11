@@ -39,7 +39,7 @@ function ChatPage() {
     id: string;
     role: "user";
     content: string;
-    model: "dap-ai-1.0" | "dap-ai-lite";
+    model: ModelId;
     created_at: string;
   } | null>(null);
 
