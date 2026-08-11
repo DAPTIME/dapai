@@ -40,6 +40,40 @@ export async function generateSignupLink(opts: {
   return link;
 }
 
+/**
+ * Deliver the confirmation email. Resend is the primary sender; if Resend
+ * refuses the recipient (e.g. the shared onboarding sender can only reach the
+ * account owner until a domain is verified), fall back to Supabase's own
+ * built-in confirmation email so signup never dead-ends.
+ */
+export async function deliverConfirmation(opts: {
+  email: string;
+  name: string;
+  link: string;
+}) {
+  try {
+    await sendEmail({
+      to: opts.email,
+      subject: "Confirm your DAP AI account",
+      html: confirmEmailHtml({ name: opts.name, link: opts.link }),
+      text: `Confirm your DAP AI account: ${opts.link} (expires in 10 minutes)`,
+    });
+    return { via: "resend" as const };
+  } catch (e) {
+    console.error("[signup] Resend delivery failed, falling back to Supabase:", (e as Error).message);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.resend({
+      type: "signup",
+      email: opts.email,
+    });
+    if (error) {
+      console.error("[signup] Supabase fallback failed:", error.message);
+      throw e;
+    }
+    return { via: "supabase" as const };
+  }
+}
+
 export async function sendConfirmation(opts: {
   email: string;
   name: string;
@@ -66,10 +100,5 @@ export async function sendConfirmation(opts: {
   }
   if (!link) throw new Error("Could not create a confirmation link.");
 
-  await sendEmail({
-    to: opts.email,
-    subject: "Confirm your DAP AI account",
-    html: confirmEmailHtml({ name: opts.name, link }),
-    text: `Confirm your DAP AI account: ${link} (expires in 10 minutes)`,
-  });
+  await deliverConfirmation({ email: opts.email, name: opts.name, link });
 }

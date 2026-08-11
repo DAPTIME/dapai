@@ -40,8 +40,7 @@ export const registerAccount = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { makeStored } = await import("./recovery-hash.server");
-    const { sendEmail, confirmEmailHtml } = await import("./email.server");
-    const { HOLD_MS, findUserByEmail, generateSignupLink, sendConfirmation } =
+    const { HOLD_MS, findUserByEmail, generateSignupLink, sendConfirmation, deliverConfirmation } =
       await import("./signup.server");
 
     const existing = await findUserByEmail(email);
@@ -81,12 +80,7 @@ export const registerAccount = createServerFn({ method: "POST" })
         .eq("id", created.id);
     }
 
-    await sendEmail({
-      to: email,
-      subject: "Confirm your DAP AI account",
-      html: confirmEmailHtml({ name, link }),
-      text: `Hi ${name}, confirm your DAP AI account: ${link} (expires in 10 minutes)`,
-    });
+    await deliverConfirmation({ email, name, link });
 
     return { ok: true, pending: true };
   });
