@@ -296,20 +296,77 @@
 }
 
 
-/* Liquid Glass effect (toggle in Settings) */
+/* ===== Liquid Glass (toggle in Settings) =====
+   Apple-style: heavy refraction blur, specular top rim, inner glow,
+   soft outer shadow and a slow travelling sheen. */
 .liquid-glass header,
 .liquid-glass [data-sidebar="sidebar"],
 .liquid-glass [data-slot="dialog-content"],
 .liquid-glass [data-slot="popover-content"],
-.liquid-glass [data-slot="dropdown-menu-content"] {
-  background-color: color-mix(in oklab, var(--background) 55%, transparent) !important;
-  backdrop-filter: blur(18px) saturate(160%);
-  border-color: color-mix(in oklab, var(--foreground) 12%, transparent);
+.liquid-glass [data-slot="dropdown-menu-content"],
+.liquid-glass [data-slot="select-content"],
+.liquid-glass .bg-card,
+.liquid-glass .glass-surface {
+  position: relative;
+  isolation: isolate;
+  background-image:
+    linear-gradient(
+      160deg,
+      color-mix(in oklab, var(--foreground) 10%, transparent) 0%,
+      transparent 42%,
+      color-mix(in oklab, var(--foreground) 5%, transparent) 100%
+    );
+  background-color: color-mix(in oklab, var(--background) 42%, transparent) !important;
+  backdrop-filter: blur(28px) saturate(190%) brightness(1.08);
+  border-color: color-mix(in oklab, var(--foreground) 16%, transparent) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 34%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, white 10%, transparent),
+    inset 0 0 24px color-mix(in oklab, white 6%, transparent),
+    0 10px 40px -12px color-mix(in oklab, black 45%, transparent);
 }
-.liquid-glass .bg-card {
-  background-color: color-mix(in oklab, var(--card) 65%, transparent);
-  backdrop-filter: blur(14px) saturate(140%);
+
+/* Travelling specular sheen — the "liquid" part. */
+.liquid-glass header::after,
+.liquid-glass [data-sidebar="sidebar"]::after,
+.liquid-glass [data-slot="dialog-content"]::after,
+.liquid-glass .glass-surface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    color-mix(in oklab, white 16%, transparent) 46%,
+    color-mix(in oklab, white 4%, transparent) 56%,
+    transparent 70%
+  );
+  background-size: 260% 260%;
+  animation: liquid-sheen 9s ease-in-out infinite;
 }
+
+@keyframes liquid-sheen {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-glass header::after,
+  .liquid-glass [data-sidebar="sidebar"]::after,
+  .liquid-glass [data-slot="dialog-content"]::after,
+  .liquid-glass .glass-surface::after {
+    animation: none;
+  }
+}
+
 
 /* ===== Arcade / games animations ===== */
 @keyframes tile-drop {
