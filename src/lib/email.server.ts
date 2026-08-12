@@ -4,9 +4,25 @@
  */
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
 
+/** Resend's shared sandbox sender. Only ever reaches the account owner. */
+const SANDBOX_SENDER = "DAP AI <onboarding@resend.dev>";
+
 /** Sender address. Override with the RESEND_FROM secret once a domain is verified. */
 export function senderAddress() {
-  return process.env["RESEND_FROM"] || "DAP AI <onboarding@resend.dev>";
+  return process.env["RESEND_FROM"] || SANDBOX_SENDER;
+}
+
+/**
+ * Whether mail is still going out through Resend's shared sandbox address.
+ *
+ * Verifying a domain in Resend does not change this on its own — the app
+ * keeps sending from onboarding@resend.dev until RESEND_FROM names an
+ * address at that domain, and Resend refuses to deliver sandbox mail to
+ * anyone but the account owner. So "domain verified but password resets
+ * still fail" is exactly what an unset RESEND_FROM looks like.
+ */
+export function usingSandboxSender() {
+  return senderAddress() === SANDBOX_SENDER;
 }
 
 export async function sendEmail(opts: {
@@ -41,12 +57,26 @@ export async function sendEmail(opts: {
   if (!res.ok) {
     const body = await res.text();
     console.error(`[email] Resend request failed [${res.status}]: ${body}`);
-    // Resend only lets the shared onboarding@resend.dev sender deliver to the
-    // account owner. Until a domain is verified, say so in plain language
-    // instead of leaking the provider payload.
+    // Resend only lets the shared onboarding@resend.dev sender deliver to
+    // the account owner. Say so in plain language rather than leaking the
+    // provider payload.
     if (res.status === 403 && /testing emails|own email address|verify a domain/i.test(body)) {
+      if (usingSandboxSender()) {
+        // The old message blamed an unverified domain, which sends the
+        // operator to Resend to verify one they may already have. The
+        // actual gap is that nothing told the app to use it.
+        console.error(
+          `[email] Still sending as ${SANDBOX_SENDER}. Verifying a domain in Resend does not switch this over — ` +
+            `set the RESEND_FROM environment variable to an address at the verified domain, ` +
+            `e.g. RESEND_FROM="DAP AI <noreply@yourdomain.com>".`
+        );
+        throw new Error(
+          "DAP AI can't email that address yet — the site is still sending from Resend's shared test address, " +
+            "which only reaches the account owner. Please contact DAPAI.support@gmail.com."
+        );
+      }
       throw new Error(
-        "DAP AI can't email that address yet — a sending domain still needs to be verified. Please contact DAPAI.support@gmail.com."
+        "DAP AI can't email that address yet — the sending domain hasn't finished verifying. Please contact DAPAI.support@gmail.com."
       );
     }
     throw new Error(
