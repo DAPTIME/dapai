@@ -188,10 +188,20 @@ export const adminAmIAdmin = createServerFn({ method: "GET" })
         return { isAdmin: await isAdminUser(context.userId) };
       } catch (e) {
         if (e instanceof AdminCheckError) {
+          // Service-role path unavailable (missing key / db hiccup). The
+          // caller can still read their OWN profile row under RLS, which is
+          // the same source of truth, so admins are not locked out.
+          const { data } = await context.supabase
+            .from("profiles")
+            .select("site_admin")
+            .eq("id", context.userId)
+            .maybeSingle();
+          if (data?.site_admin === true) return { isAdmin: true };
           return { isAdmin: false, problem: e.problem, detail: e.detail };
         }
         throw e;
       }
+
     },
   );
 
