@@ -33,16 +33,47 @@ function emptyBoard(): Board {
   return Array.from({ length: SIZE }, () => Array<Tile | null>(SIZE).fill(null));
 }
 
-function addRandom(board: Board): Board {
+export type Mode = "easy" | "hard";
+
+/**
+ * How awkward a spot is for the player: tiles that match a neighbour are
+ * a gift, and a tile dropped in the middle of the board blocks more lines
+ * than one tucked in a corner. Hard mode picks the worst spot it can find
+ * instead of a random one, and deals 4s more often.
+ */
+function awkwardness(board: Board, r: number, c: number): number {
+  let score = 0;
+  const mid = (SIZE - 1) / 2;
+  score -= (Math.abs(r - mid) + Math.abs(c - mid)) * 0.6; // centre is nastier
+  for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+    const nr = r + dr, nc = c + dc;
+    if (nr < 0 || nc < 0 || nr >= SIZE || nc >= SIZE) continue;
+    const n = board[nr][nc];
+    if (!n) continue;
+    // Splitting two tiles that could have merged is the cruellest option.
+    score += n.value <= 4 ? 1.4 : 0.8;
+  }
+  return score;
+}
+
+function addRandom(board: Board, mode: Mode = "easy"): Board {
   const spots: [number, number][] = [];
   for (let r = 0; r < SIZE; r++)
     for (let c = 0; c < SIZE; c++) if (!board[r][c]) spots.push([r, c]);
   if (!spots.length) return board;
-  const [r, c] = spots[Math.floor(Math.random() * spots.length)];
+  let [r, c] = spots[Math.floor(Math.random() * spots.length)];
+  if (mode === "hard") {
+    let bestScore = -Infinity;
+    for (const [sr, sc] of spots) {
+      // A dash of randomness keeps hard mode from being memorisable.
+      const value = awkwardness(board, sr, sc) + Math.random() * 0.5;
+      if (value > bestScore) { bestScore = value; r = sr; c = sc; }
+    }
+  }
   const nb = board.map((row) => row.slice());
   nb[r][c] = {
     id: TILE_ID++,
-    value: Math.random() < 0.9 ? 2 : 4,
+    value: Math.random() < (mode === "hard" ? 0.6 : 0.9) ? 2 : 4,
     row: r,
     col: c,
     isNew: true,
@@ -157,7 +188,12 @@ function Game2048() {
   // Start empty so SSR and the first client render match, then deal the two
   // starting tiles after mount.
   const [board, setBoard] = useState<Board>(() => emptyBoard());
+  const [mode, setMode] = useState<Mode>("easy");
+  const modeRef = useRef<Mode>("easy");
+  modeRef.current = mode;
   useEffect(() => {
+    const saved = localStorage.getItem("dap.2048.mode");
+    if (saved === "hard") setMode("hard");
     setBoard((b) =>
       b.flat().some(Boolean) ? b : addRandom(addRandom(emptyBoard()))
     );
@@ -182,7 +218,7 @@ function Game2048() {
       const { board: next, gained, moved } = move(b, dir);
       if (!moved) return b;
       setScore((s) => s + gained);
-      return addRandom(next);
+      return addRandom(next, modeRef.current);
     });
   }, []);
 
@@ -230,10 +266,18 @@ function Game2048() {
     };
   }, [doMove]);
 
-  const reset = () => {
+  const reset = useCallback((next: Mode = modeRef.current) => {
     TILE_ID = 1;
-    setBoard(addRandom(addRandom(emptyBoard())));
+    setBoard(addRandom(addRandom(emptyBoard(), next), next));
     setScore(0);
+  }, []);
+
+  /** Switching difficulty starts a fresh board — the two aren't comparable. */
+  const pickMode = (next: Mode) => {
+    setMode(next);
+    modeRef.current = next;
+    localStorage.setItem("dap.2048.mode", next);
+    reset(next);
   };
 
   const tiles = useMemo(() => {
@@ -252,7 +296,27 @@ function Game2048() {
       <div className="mt-2 flex items-center justify-between text-sm">
         <div>Score: <span className="font-semibold">{score}</span></div>
         <div>Best: <span className="font-semibold">{best}</span></div>
-        <Button size="sm" variant="secondary" onClick={reset}>New game</Button>
+        <Button size="sm" variant="secondary" onClick={() => reset()}>New game</Button>
+      </div>
+
+      <div className="mt-3 flex items-center gap-2 text-xs">
+        <span className="text-muted-foreground">Difficulty:</span>
+        {(["easy", "hard"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => pickMode(m)}
+            className={`rounded-md border px-2.5 py-1 capitalize transition-colors ${
+              mode === m
+                ? "border-primary bg-primary/10 font-semibold text-foreground"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {m === "easy" ? "🙂 Easy" : "😈 Hard"}
+          </button>
+        ))}
+        <span className="text-muted-foreground">
+          {mode === "hard" ? "Tiles land where they hurt." : "Classic spawns."}
+        </span>
       </div>
 
       <div
