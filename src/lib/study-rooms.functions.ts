@@ -86,12 +86,13 @@ export const joinStudyRoom = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { data: room, error } = await supabase
-      .from("study_rooms")
-      .select("id, code, name, is_open")
-      .eq("code", data.code.toUpperCase())
-      .maybeSingle();
+    // RLS hides rooms you haven't joined, so resolve the code through the
+    // narrow lookup function instead of a broad table read.
+    const { data: rows, error } = await supabase.rpc("find_study_room_by_code", {
+      _code: data.code.toUpperCase(),
+    });
     if (error) throw dbError(error);
+    const room = (rows ?? [])[0] ?? null;
     if (!room) throw new Error("No study room with that code.");
     if (!room.is_open) throw new Error("That study room has been closed.");
     const { error: joinError } = await supabase
@@ -115,13 +116,24 @@ export const getStudyRoom = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { data: room, error } = await supabase
+    const { data: lookup, error } = await supabase.rpc(
+      "find_study_room_by_code",
+      { _code: data.code.toUpperCase() }
+    );
+    if (error) throw dbError(error);
+    const found = (lookup ?? [])[0] ?? null;
+    if (!found) throw new Error("No study room with that code.");
+    const { data: full } = await supabase
       .from("study_rooms")
       .select("id, code, name, host_id, model, is_open, created_at")
-      .eq("code", data.code.toUpperCase())
+      .eq("id", found.id)
       .maybeSingle();
-    if (error) throw dbError(error);
-    if (!room) throw new Error("No study room with that code.");
+    const room = full ?? {
+      ...found,
+      host_id: null as string | null,
+      model: "dap-ai-lite",
+      created_at: null as string | null,
+    };
 
     const { data: members } = await supabase
       .from("study_room_members")
