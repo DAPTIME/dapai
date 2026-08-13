@@ -14,6 +14,9 @@ import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { trackAiReply } from "@/lib/ai-reply-notifier";
+import { FlashcardsDialog } from "@/components/flashcards-dialog";
+import { Button } from "@/components/ui/button";
+import { Brain, GraduationCap, Layers, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/c/$threadId")({
   head: () => ({
@@ -36,12 +39,27 @@ function ChatPage() {
   const stop = useServerFn(stopChatMessage);
   const planSearch = useServerFn(planSearchForMessage);
   const [searchingWeb, setSearchingWeb] = useState(false);
+  const [studyMode, setStudyMode] = useState(false);
+  const [cardsOpen, setCardsOpen] = useState(false);
+
+  // Study Mode is remembered per chat.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setStudyMode(localStorage.getItem(`dap.study.${threadId}`) === "1");
+  }, [threadId]);
+  const toggleStudy = (v: boolean) => {
+    setStudyMode(v);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`dap.study.${threadId}`, v ? "1" : "0");
+    }
+  };
   const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
     id: string;
     role: "user";
     content: string;
     model: ModelId;
     created_at: string;
+    memory_used: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -90,6 +108,7 @@ function ChatPage() {
         content: storedContent,
         model: effective,
         created_at: new Date().toISOString(),
+        memory_used: false,
       };
       setOptimisticUserMessage(optimistic);
       qc.setQueryData(["chat", threadId], (prev: any) => {
@@ -125,6 +144,7 @@ function ChatPage() {
             images,
             model: effective,
             searchQuery,
+            studyMode,
           },
         });
         // Fire a module-level notifier so the top-of-screen toast still
@@ -212,9 +232,48 @@ function ChatPage() {
     <div className="chat-page-enter flex h-[calc(100vh-3.5rem)] flex-col">
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-          <h1 className="text-lg font-semibold text-foreground">
-            {chatQuery.data?.chat?.title || "Chat"}
-          </h1>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h1 className="text-lg font-semibold text-foreground">
+              {chatQuery.data?.chat?.title || "Chat"}
+            </h1>
+            <div className="flex items-center gap-2">
+              <span
+                title="Answered by DAP AI models running on our own local hardware — not a third-party AI cloud."
+                className="inline-flex items-center gap-1 rounded-full border bg-card px-2.5 py-1 text-[11px] font-medium text-foreground"
+                style={{ borderColor: "color-mix(in oklab, var(--primary) 45%, transparent)" }}
+              >
+                <ShieldCheck className="h-3 w-3" /> Private
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant={studyMode ? "default" : "outline"}
+                className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                aria-pressed={studyMode}
+                onClick={() => toggleStudy(!studyMode)}
+                {...(studyMode ? { style: { background: "var(--gradient-brand)" } } : {})}
+              >
+                <GraduationCap className="h-3.5 w-3.5" />
+                Study Mode
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                onClick={() => setCardsOpen(true)}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                Flashcards
+              </Button>
+            </div>
+          </div>
+          {studyMode && (
+            <p className="rounded-xl border border-dashed border-border bg-card/60 p-3 text-xs text-muted-foreground">
+              Study Mode is on — DAP AI will tutor you one step at a time and
+              won't hand over the full answer up front.
+            </p>
+          )}
           {dapName && (
             <div className="flex items-center justify-center">
               <span
@@ -257,6 +316,14 @@ function ChatPage() {
                     <MarkdownMessage
                       content={m.model === "dap-ai-lite" ? sanitizeLiteReply(m.content) : m.content}
                     />
+                    {m.memory_used && (
+                      <span
+                        title="DAP AI used facts from your Memory Vault for this reply."
+                        className="mt-2 inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
+                      >
+                        <Brain className="h-3 w-3" /> Memory used
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -293,6 +360,16 @@ function ChatPage() {
           )}
         </div>
       </div>
+      <FlashcardsDialog
+        chatId={threadId}
+        model={
+          ((typeof window !== "undefined"
+            ? (localStorage.getItem("dap.model") as ModelId | null)
+            : null) ?? "dap-ai-lite") as ModelId
+        }
+        open={cardsOpen}
+        onOpenChange={setCardsOpen}
+      />
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
         {!siteEnabled || maintenance ? (
           <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">
