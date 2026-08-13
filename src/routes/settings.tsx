@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Brain, Plus, Trash2, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/lib/theme";
+import { InstallAppButton } from "@/components/install-app-button";
+
 import {
   listMemories,
   addMemory,
