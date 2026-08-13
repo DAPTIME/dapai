@@ -134,10 +134,10 @@ export function ArtifactPanel({
 }
 
 function ArtifactBody({ artifact }: { artifact: Artifact }) {
+  // Hooks run unconditionally; the branch happens after.
+  const doc = useMemo(() => artifactDocument(artifact), [artifact]);
   if (artifact.kind === "chart") return <ChartArtifact code={artifact.code} />;
   if (artifact.kind === "quiz") return <QuizArtifact code={artifact.code} />;
-
-  const doc = useMemoDoc(artifact);
   return (
     <iframe
       key={artifact.id}
@@ -147,10 +147,6 @@ function ArtifactBody({ artifact }: { artifact: Artifact }) {
       className="h-full min-h-[420px] w-full border-0 bg-[#0b0f17]"
     />
   );
-}
-
-function useMemoDoc(artifact: Artifact) {
-  return useMemo(() => artifactDocument(artifact), [artifact]);
 }
 
 function ChartArtifact({ code }: { code: string }) {
