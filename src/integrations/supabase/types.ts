@@ -126,32 +126,47 @@ export type Database = {
       }
       custom_daps: {
         Row: {
+          author_name: string
           created_at: string
           description: string
           emoji: string
           id: string
+          install_count: number
+          mcp_url: string | null
           name: string
           opener: string
+          published: boolean
+          source_id: string | null
           system_prompt: string
           user_id: string
         }
         Insert: {
+          author_name?: string
           created_at?: string
           description?: string
           emoji?: string
           id?: string
+          install_count?: number
+          mcp_url?: string | null
           name: string
           opener?: string
+          published?: boolean
+          source_id?: string | null
           system_prompt: string
           user_id: string
         }
         Update: {
+          author_name?: string
           created_at?: string
           description?: string
           emoji?: string
           id?: string
+          install_count?: number
+          mcp_url?: string | null
           name?: string
           opener?: string
+          published?: boolean
+          source_id?: string | null
           system_prompt?: string
           user_id?: string
         }
@@ -369,6 +384,103 @@ export type Database = {
         }
         Relationships: []
       }
+      study_room_members: {
+        Row: {
+          display_name: string
+          joined_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          display_name?: string
+          joined_at?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          display_name?: string
+          joined_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_room_members_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "study_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_room_messages: {
+        Row: {
+          author_name: string
+          content: string
+          created_at: string
+          id: string
+          role: string
+          room_id: string
+          user_id: string | null
+        }
+        Insert: {
+          author_name?: string
+          content: string
+          created_at?: string
+          id?: string
+          role?: string
+          room_id: string
+          user_id?: string | null
+        }
+        Update: {
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          room_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_room_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "study_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_rooms: {
+        Row: {
+          code: string
+          created_at: string
+          host_id: string
+          id: string
+          is_open: boolean
+          model: string
+          name: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          host_id: string
+          id?: string
+          is_open?: boolean
+          model?: string
+          name?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          host_id?: string
+          id?: string
+          is_open?: boolean
+          model?: string
+          name?: string
+        }
+        Relationships: []
+      }
       track_scores: {
         Row: {
           best_time_ms: number
@@ -499,6 +611,11 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      install_custom_dap: { Args: { _source_id: string }; Returns: string }
+      is_room_member: {
+        Args: { _room_id: string; _user_id: string }
         Returns: boolean
       }
     }
