@@ -26,7 +26,9 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RoomsIndexRouteImport } from './routes/rooms.index'
 import { Route as GamesIndexRouteImport } from './routes/games.index'
+import { Route as RoomsCodeRouteImport } from './routes/rooms.$code'
 import { Route as GamesStuntRouteImport } from './routes/games.stunt'
 import { Route as GamesSpacewarRouteImport } from './routes/games.spacewar'
 import { Route as GamesSnakeRouteImport } from './routes/games.snake'
@@ -135,10 +137,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoomsIndexRoute = RoomsIndexRouteImport.update({
+  id: '/rooms/',
+  path: '/rooms/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GamesIndexRoute = GamesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => GamesRoute,
+} as any)
+const RoomsCodeRoute = RoomsCodeRouteImport.update({
+  id: '/rooms/$code',
+  path: '/rooms/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const GamesStuntRoute = GamesStuntRouteImport.update({
   id: '/stunt',
@@ -286,7 +298,9 @@ export interface FileRoutesByFullPath {
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
   '/games/stunt': typeof GamesStuntRoute
+  '/rooms/$code': typeof RoomsCodeRoute
   '/games/': typeof GamesIndexRoute
+  '/rooms/': typeof RoomsIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
@@ -327,7 +341,9 @@ export interface FileRoutesByTo {
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
   '/games/stunt': typeof GamesStuntRoute
+  '/rooms/$code': typeof RoomsCodeRoute
   '/games': typeof GamesIndexRoute
+  '/rooms': typeof RoomsIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
@@ -370,7 +386,9 @@ export interface FileRoutesById {
   '/games/snake': typeof GamesSnakeRoute
   '/games/spacewar': typeof GamesSpacewarRoute
   '/games/stunt': typeof GamesStuntRoute
+  '/rooms/$code': typeof RoomsCodeRoute
   '/games/': typeof GamesIndexRoute
+  '/rooms/': typeof RoomsIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
@@ -414,7 +432,9 @@ export interface FileRouteTypes {
     | '/games/snake'
     | '/games/spacewar'
     | '/games/stunt'
+    | '/rooms/$code'
     | '/games/'
+    | '/rooms/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
     | '/games/daptrack/browse'
@@ -455,7 +475,9 @@ export interface FileRouteTypes {
     | '/games/snake'
     | '/games/spacewar'
     | '/games/stunt'
+    | '/rooms/$code'
     | '/games'
+    | '/rooms'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
     | '/games/daptrack/browse'
@@ -497,7 +519,9 @@ export interface FileRouteTypes {
     | '/games/snake'
     | '/games/spacewar'
     | '/games/stunt'
+    | '/rooms/$code'
     | '/games/'
+    | '/rooms/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/lite-try'
     | '/games/daptrack/browse'
@@ -533,6 +557,8 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   CThreadIdRoute: typeof CThreadIdRoute
   ChatNRoute: typeof ChatNRoute
+  RoomsCodeRoute: typeof RoomsCodeRoute
+  RoomsIndexRoute: typeof RoomsIndexRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicLiteTryRoute: typeof ApiPublicLiteTryRoute
   ApiPublicHooksCleanupOldChatsRoute: typeof ApiPublicHooksCleanupOldChatsRoute
@@ -659,12 +685,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rooms/': {
+      id: '/rooms/'
+      path: '/rooms'
+      fullPath: '/rooms/'
+      preLoaderRoute: typeof RoomsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/games/': {
       id: '/games/'
       path: '/'
       fullPath: '/games/'
       preLoaderRoute: typeof GamesIndexRouteImport
       parentRoute: typeof GamesRoute
+    }
+    '/rooms/$code': {
+      id: '/rooms/$code'
+      path: '/rooms/$code'
+      fullPath: '/rooms/$code'
+      preLoaderRoute: typeof RoomsCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/games/stunt': {
       id: '/games/stunt'
@@ -884,6 +924,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   CThreadIdRoute: CThreadIdRoute,
   ChatNRoute: ChatNRoute,
+  RoomsCodeRoute: RoomsCodeRoute,
+  RoomsIndexRoute: RoomsIndexRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicLiteTryRoute: ApiPublicLiteTryRoute,
   ApiPublicHooksCleanupOldChatsRoute: ApiPublicHooksCleanupOldChatsRoute,

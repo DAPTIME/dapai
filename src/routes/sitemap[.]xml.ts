@@ -29,6 +29,7 @@ export const Route = createFileRoute("/sitemap.xml")({
           // content, and they are the ones people search for by name —
           // nobody googles "AI workspace", plenty of people google the name
           // of a game.
+          { path: "/rooms", changefreq: "weekly", priority: "0.7" },
           { path: "/games", changefreq: "weekly", priority: "0.7" },
           { path: "/games/daptrack", changefreq: "weekly", priority: "0.7" },
           { path: "/games/daptrack/browse", changefreq: "weekly", priority: "0.5" },

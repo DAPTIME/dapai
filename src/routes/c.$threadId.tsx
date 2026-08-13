@@ -16,7 +16,9 @@ import { MarkdownMessage } from "@/components/markdown-message";
 import { trackAiReply } from "@/lib/ai-reply-notifier";
 import { FlashcardsDialog } from "@/components/flashcards-dialog";
 import { Button } from "@/components/ui/button";
-import { Brain, GraduationCap, Layers, ShieldCheck } from "lucide-react";
+import { Brain, GraduationCap, Layers, PanelRight, ShieldCheck } from "lucide-react";
+import { ArtifactPanel } from "@/components/artifact-panel";
+import { extractArtifacts, type Artifact } from "@/lib/artifacts";
 
 export const Route = createFileRoute("/c/$threadId")({
   head: () => ({
@@ -41,6 +43,8 @@ function ChatPage() {
   const [searchingWeb, setSearchingWeb] = useState(false);
   const [studyMode, setStudyMode] = useState(false);
   const [cardsOpen, setCardsOpen] = useState(false);
+  const [artifactId, setArtifactId] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   // Study Mode is remembered per chat.
   useEffect(() => {
@@ -223,6 +227,16 @@ function ChatPage() {
     );
   const busy = sendMut.isPending;
 
+  // Artifacts: anything runnable/renderable DAP AI produced in this thread.
+  const artifacts: Artifact[] = visible.flatMap((m) =>
+    m.role === "assistant" ? extractArtifacts(m.id, m.content) : []
+  );
+  const showPanel = panelOpen && artifacts.length > 0;
+  const openArtifact = (id: string) => {
+    setArtifactId(id);
+    setPanelOpen(true);
+  };
+
   // Detect an active DAP from the first system message ("[DAP: Name]\n...").
   const firstSystem = messages.find((m) => m.role === "system");
   const dapMatch = firstSystem?.content.match(/^\[DAP:\s*([^\]\n]+)\]/);
@@ -230,7 +244,8 @@ function ChatPage() {
 
   return (
     <div className="chat-page-enter flex h-[calc(100vh-3.5rem)] flex-col">
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex min-h-0 flex-1">
+        <div className={`min-w-0 flex-1 overflow-y-auto ${showPanel ? "hidden md:block" : ""}`}>
         <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h1 className="text-lg font-semibold text-foreground">
@@ -266,6 +281,20 @@ function ChatPage() {
                 <Layers className="h-3.5 w-3.5" />
                 Flashcards
               </Button>
+              {artifacts.length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={showPanel ? "default" : "outline"}
+                  className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                  aria-pressed={showPanel}
+                  onClick={() => setPanelOpen((o) => !o)}
+                  {...(showPanel ? { style: { background: "var(--gradient-brand)" } } : {})}
+                >
+                  <PanelRight className="h-3.5 w-3.5" />
+                  Artifacts ({artifacts.length})
+                </Button>
+              )}
             </div>
           </div>
           {studyMode && (
@@ -316,6 +345,18 @@ function ChatPage() {
                     <MarkdownMessage
                       content={m.model === "dap-ai-lite" ? sanitizeLiteReply(m.content) : m.content}
                     />
+                    {extractArtifacts(m.id, m.content).length > 0 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 h-7 gap-1.5 rounded-full px-3 text-xs"
+                        onClick={() => openArtifact(extractArtifacts(m.id, m.content)[0]!.id)}
+                      >
+                        <PanelRight className="h-3.5 w-3.5" />
+                        Open in side panel
+                      </Button>
+                    )}
                     {m.memory_used && (
                       <span
                         title="DAP AI used facts from your Memory Vault for this reply."
@@ -359,6 +400,17 @@ function ChatPage() {
             </div>
           )}
         </div>
+        </div>
+        {showPanel && (
+          <div className="w-full md:w-[440px] md:shrink-0">
+            <ArtifactPanel
+              artifacts={artifacts}
+              activeId={artifactId}
+              onSelect={setArtifactId}
+              onClose={() => setPanelOpen(false)}
+            />
+          </div>
+        )}
       </div>
       <FlashcardsDialog
         chatId={threadId}

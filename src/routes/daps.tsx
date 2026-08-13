@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Sparkles, Plus, Trash2, X, Lock, Crown } from "lucide-react";
+import { Sparkles, Plus, Trash2, X, Lock, Crown, Store, Download, Globe, Check } from "lucide-react";
 import { useState } from "react";
 import { DAPS } from "@/lib/daps";
 import { createChat, getProfile } from "@/lib/chats.functions";
@@ -9,6 +9,9 @@ import {
   listCustomDaps,
   createCustomDap,
   deleteCustomDap,
+  setCustomDapPublished,
+  listMarketplaceDaps,
+  installMarketplaceDap,
 } from "@/lib/custom-daps.functions";
 import { useSiteConfig } from "@/lib/site-config";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
@@ -49,6 +52,9 @@ function Daps() {
   const listCustom = useServerFn(listCustomDaps);
   const createCustom = useServerFn(createCustomDap);
   const deleteCustom = useServerFn(deleteCustomDap);
+  const setPublished = useServerFn(setCustomDapPublished);
+  const listMarket = useServerFn(listMarketplaceDaps);
+  const installDap = useServerFn(installMarketplaceDap);
   const siteConfig = useSiteConfig();
   const fetchProfile = useServerFn(getProfile);
 
@@ -69,6 +75,37 @@ function Daps() {
     queryKey: ["custom-daps"],
     queryFn: () => listCustom(),
     enabled: !!user && dapsEnabled && isPro,
+  });
+
+  const marketQuery = useQuery({
+    queryKey: ["daps-marketplace"],
+    queryFn: () => listMarket(),
+    enabled: !!user && dapsEnabled && isPro,
+  });
+
+  const publishMut = useMutation({
+    mutationFn: (vars: { id: string; published: boolean; authorName?: string }) =>
+      setPublished({ data: vars }),
+    onSuccess: (_r, vars) => {
+      qc.invalidateQueries({ queryKey: ["custom-daps"] });
+      qc.invalidateQueries({ queryKey: ["daps-marketplace"] });
+      toast.success(
+        vars.published
+          ? "Published to the marketplace."
+          : "Removed from the marketplace."
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const installMut = useMutation({
+    mutationFn: (sourceId: string) => installDap({ data: { sourceId } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["custom-daps"] });
+      qc.invalidateQueries({ queryKey: ["daps-marketplace"] });
+      toast.success("Installed — it's now in your Custom AI's.");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const startDap = useMutation({
@@ -219,6 +256,32 @@ function Daps() {
                     </p>
                   )}
                 </button>
+                <div className="mt-3 flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant={c.published ? "default" : "outline"}
+                    className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                    disabled={publishMut.isPending}
+                    {...(c.published
+                      ? { style: { background: "var(--gradient-brand)" } }
+                      : {})}
+                    onClick={() =>
+                      publishMut.mutate({
+                        id: c.id,
+                        published: !c.published,
+                        authorName: user?.name || undefined,
+                      })
+                    }
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    {c.published ? "Published" : "Publish"}
+                  </Button>
+                  {c.published && (
+                    <span className="text-xs text-muted-foreground">
+                      {c.install_count} install{c.install_count === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
                 <button
                   onClick={() => {
                     if (confirm(`Delete "${c.name}"?`)) removeCustom.mutate(c.id);
@@ -233,6 +296,76 @@ function Daps() {
           </div>
         </section>
       )}
+
+      <section className="mt-10">
+        <h2 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          <Store className="h-3.5 w-3.5" /> Marketplace
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Custom AI's and MCP tools published by other Pro users. Install one and
+          it appears in your own list.
+        </p>
+        {marketQuery.data && marketQuery.data.length > 0 ? (
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            {marketQuery.data.map((m) => (
+              <div
+                key={m.id}
+                className="rounded-2xl border border-border bg-card p-5 transition hover:border-ring/40"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{m.emoji}</span>
+                  <h3 className="font-medium">{m.name}</h3>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {m.install_count} install{m.install_count === 1 ? "" : "s"}
+                  </span>
+                </div>
+                {m.description && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {m.description}
+                  </p>
+                )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  by {m.author_name}
+                  {m.mcp_url ? " · includes an MCP tool" : ""}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  {m.mine ? (
+                    <span className="text-xs text-muted-foreground">
+                      Your listing
+                    </span>
+                  ) : m.installed ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <Check className="h-3.5 w-3.5" /> Installed
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                      disabled={installMut.isPending}
+                      onClick={() => installMut.mutate(m.id)}
+                    >
+                      <Download className="h-3.5 w-3.5" /> Install
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 rounded-full px-3 text-xs"
+                    onClick={() => launch(`custom:${m.id}`)}
+                  >
+                    Try it
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Nothing published yet. Publish one of yours to start the directory.
+          </p>
+        )}
+      </section>
 
       <section className="mt-10">
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
