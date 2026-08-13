@@ -261,7 +261,9 @@ function HeaderBar() {
         <span className="truncate text-sm font-medium text-muted-foreground">DAP AI</span>
       </div>
       <div className="flex min-w-0 shrink items-center gap-2">
+        <InstallAppButton />
         <IncognitoToggle />
+
         {!isPro && (
           <Button
             size="sm"
