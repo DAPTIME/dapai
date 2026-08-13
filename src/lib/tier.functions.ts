@@ -1,3 +1,4 @@
+import { dbError } from "./db-error";
 /**
  * Letting an account lower its own plan.
  *
@@ -39,7 +40,7 @@ export const downgradeOwnTier = createServerFn({ method: "POST" })
       .select("tier")
       .eq("id", context.userId)
       .maybeSingle();
-    if (readErr) throw new Error(readErr.message);
+    if (readErr) throw dbError(readErr);
     if (!row) throw new Error("Profile not found");
 
     const from = (row.tier ?? "free") as Tier;
@@ -55,7 +56,7 @@ export const downgradeOwnTier = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ tier: to })
       .eq("id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) throw dbError(error);
 
     return { from, to };
   });
