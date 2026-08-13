@@ -1,23 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { Brain, Plus, Trash2, Moon, Sun } from "lucide-react";
+import { Brain, Moon, ShieldCheck, Sun } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { InstallAppButton } from "@/components/install-app-button";
+import { MemoryVault } from "@/components/memory-vault";
 
-import {
-  listMemories,
-  addMemory,
-  deleteMemory,
-  clearMemories,
-} from "@/lib/memories.functions";
-import { useAuth } from "@/lib/auth";
 import { useUpgradeGate } from "@/lib/tier-gate";
 
 export const Route = createFileRoute("/settings")({
