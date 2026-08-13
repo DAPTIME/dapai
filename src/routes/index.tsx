@@ -269,12 +269,14 @@ function Home() {
 
           {!user && ready && (
             <p className="mt-2 text-sm text-muted-foreground">
+              A free AI chatbot — your first message needs no signup.{" "}
               <Link to="/signup" className="font-medium text-foreground underline">
                 Create an account
               </Link>{" "}
               to save chats and use DAP AI 4 Pro.
             </p>
           )}
+
 
           <div className="mt-4 w-full">
             {trial ? (
