@@ -146,7 +146,10 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   // Mount the theme effect so the persisted choice is applied + synced.
   useTheme();
+  // Installability: registers only in the published app (see register-sw).
+  useEffect(() => registerServiceWorker(), []);
   useEffect(() => {
+
     if (typeof document === "undefined") return;
     const apply = () => document.documentElement.classList.toggle("liquid-glass", localStorage.getItem("dap.glass") === "1");
     apply();
