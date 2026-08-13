@@ -26,7 +26,10 @@ import { SuspendedGate } from "@/components/suspended-gate";
 
 import { AccountMenu } from "@/components/account-menu";
 import { AppContextMenu } from "@/components/app-context-menu";
+import { InstallAppButton } from "@/components/install-app-button";
+import { registerServiceWorker } from "@/lib/register-sw";
 import { useTheme } from "@/lib/theme";
+
 import { getProfile } from "@/lib/chats.functions";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import {
@@ -43,7 +46,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "DAP AI — Free AI Chatbot" },
       { name: "application-name", content: "DAP AI" },
       { name: "apple-mobile-web-app-title", content: "DAP AI" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "theme-color", content: "#090d15" },
       { property: "og:site_name", content: "DAP AI" },
+
 
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -60,9 +68,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
-      { rel: "apple-touch-icon", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
+
     scripts: [
       {
         type: "application/ld+json",
@@ -136,7 +146,10 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   // Mount the theme effect so the persisted choice is applied + synced.
   useTheme();
+  // Installability: registers only in the published app (see register-sw).
+  useEffect(() => registerServiceWorker(), []);
   useEffect(() => {
+
     if (typeof document === "undefined") return;
     const apply = () => document.documentElement.classList.toggle("liquid-glass", localStorage.getItem("dap.glass") === "1");
     apply();
@@ -254,7 +267,9 @@ function HeaderBar() {
         <span className="truncate text-sm font-medium text-muted-foreground">DAP AI</span>
       </div>
       <div className="flex min-w-0 shrink items-center gap-2">
+        <InstallAppButton />
         <IncognitoToggle />
+
         {!isPro && (
           <Button
             size="sm"
