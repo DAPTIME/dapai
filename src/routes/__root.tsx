@@ -26,7 +26,10 @@ import { SuspendedGate } from "@/components/suspended-gate";
 
 import { AccountMenu } from "@/components/account-menu";
 import { AppContextMenu } from "@/components/app-context-menu";
+import { InstallAppButton } from "@/components/install-app-button";
+import { registerServiceWorker } from "@/lib/register-sw";
 import { useTheme } from "@/lib/theme";
+
 import { getProfile } from "@/lib/chats.functions";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import {
