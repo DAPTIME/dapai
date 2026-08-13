@@ -11,7 +11,9 @@ import { MEDAL_META, formatMs, recordPersonalBest, type Season } from "@/lib/pol
 import { getTrack, submitScore } from "@/lib/tracks.functions";
 
 export const Route = createFileRoute("/games/daptrack/track/$id")({
-  head: () => ({ meta: [{ title: "Community Track — DAP Track" }] }),
+  head: ({ params }) => ({
+    meta: [{ title: `Track ${params.id} — DAP Track community` }],
+  }),
   component: TrackPage,
 });
 

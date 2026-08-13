@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 export const Route = createFileRoute("/chat/$n")({
   head: () => ({
     meta: [
-      { title: "Chat — DAP AI" },
+      { title: "Chat shortcut — DAP AI" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

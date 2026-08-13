@@ -18,7 +18,7 @@ import { trackAiReply } from "@/lib/ai-reply-notifier";
 export const Route = createFileRoute("/c/$threadId")({
   head: () => ({
     meta: [
-      { title: "Chat — DAP AI" },
+      { title: "Your conversation — DAP AI" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
