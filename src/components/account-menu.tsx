@@ -1,3 +1,4 @@
+import { firstName } from "@/lib/utils";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -54,7 +55,7 @@ export function AccountMenu() {
     );
   }
 
-  const displayName = profile.data?.name || user.name || user.email;
+  const displayName = firstName(profile.data?.name || user.name || user.email);
   const initials = displayName.slice(0, 1).toUpperCase();
   const avatarUrl = profile.data?.avatarUrl;
 
