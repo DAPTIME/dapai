@@ -105,14 +105,18 @@ function Settings() {
           </div>
         ))}
 
+        <PrivacyRow />
+
         {beta && canBeta ? (
-          <MemorySection />
+          <MemoryVault />
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-card/50 p-5 text-sm text-muted-foreground">
             <div className="flex items-center gap-2 font-medium text-foreground">
-              <Brain className="h-4 w-4" /> AI Memory
+              <Brain className="h-4 w-4" /> Memory Vault
             </div>
-            <p className="mt-1">Enable Beta features above to try AI Memory.</p>
+            <p className="mt-1">
+              Enable Beta features above to open your Memory Vault.
+            </p>
           </div>
         )}
       </div>
