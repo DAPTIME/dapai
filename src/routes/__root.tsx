@@ -43,7 +43,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "DAP AI — Free AI Chatbot" },
       { name: "application-name", content: "DAP AI" },
       { name: "apple-mobile-web-app-title", content: "DAP AI" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "theme-color", content: "#090d15" },
       { property: "og:site_name", content: "DAP AI" },
+
 
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -60,9 +65,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
-      { rel: "apple-touch-icon", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
+
     scripts: [
       {
         type: "application/ld+json",
