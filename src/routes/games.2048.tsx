@@ -366,7 +366,7 @@ function Game2048() {
           <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/70 backdrop-blur-sm animate-game-over-in">
             <div className="text-center">
               <div className="text-2xl font-bold">Game over</div>
-              <Button className="mt-3" onClick={reset}>Play again</Button>
+              <Button className="mt-3" onClick={() => reset()}>Play again</Button>
             </div>
           </div>
         )}
