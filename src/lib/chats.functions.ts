@@ -36,6 +36,13 @@ const CHAT_LIMITS: Record<Tier, number> = { free: 5, go: 10, pro: 25, exclusive:
 // never overflows. Pro keeps the full history.
 const LITE_HISTORY_LIMIT = 12;
 
+/**
+ * Study Mode: turn the assistant into a Socratic tutor that never hands over
+ * the whole answer up front.
+ */
+const STUDY_MODE_PROMPT =
+  "STUDY MODE IS ON. Act as a Socratic tutor, not an answer machine. Rules: (1) Never give the full answer or final solution up front. (2) Work in ONE small step per reply, then stop and ask a single question that makes the student do the next step. (3) If the student is stuck, give a hint or a simpler sub-question — still not the answer. (4) If they get something wrong, say what's off and ask a question that leads them to fix it. (5) Only reveal the complete answer if the student explicitly asks for it twice, or has clearly reached it themselves — then confirm and summarise briefly. (6) Keep replies short (under 120 words) and encouraging. This overrides any instruction to be comprehensive.";
+
 const LITE_NO_THINK_PROMPT =
   "You are a DAP AI 4 Lite-class model. Thinking mode is OFF. Answer with only the final user-facing response. Never write internal reasoning, planning, analysis, scratchpad, self-talk, or sentences like 'I need to'. Do not output <think> tags or explain how you will answer.";
 
@@ -500,6 +507,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           .max(4)
           .optional(),
         searchQuery: z.string().min(1).max(200).optional(),
+        /** Study Mode: Socratic tutoring, one step at a time. */
+        studyMode: z.boolean().optional(),
       })
       .parse(i)
   )
@@ -665,6 +674,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const { data: memRows } = await supabase
       .from("user_memories")
       .select("content")
+      .eq("enabled", true)
       .order("created_at", { ascending: true });
     const memoryBlock =
       memRows && memRows.length > 0
@@ -735,6 +745,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         ? [{ role: "system" as const, content: webContext }]
         : []),
       { role: "system" as const, content: ANTI_SYCOPHANCY },
+      ...(data.studyMode ? [{ role: "system" as const, content: STUDY_MODE_PROMPT }] : []),
 
 
       // Keep the system message at the head (for DAP context) and trim
@@ -916,6 +927,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       role: "assistant",
       content: replyText,
       model: effectiveModel,
+      memory_used: memoryBlock.length > 0,
     });
 
     // Auto-extract durable memories from the user's message (best-effort).
