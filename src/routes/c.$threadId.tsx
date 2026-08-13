@@ -42,6 +42,7 @@ function ChatPage() {
     content: string;
     model: ModelId;
     created_at: string;
+    memory_used: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -90,6 +91,7 @@ function ChatPage() {
         content: storedContent,
         model: effective,
         created_at: new Date().toISOString(),
+        memory_used: false,
       };
       setOptimisticUserMessage(optimistic);
       qc.setQueryData(["chat", threadId], (prev: any) => {
