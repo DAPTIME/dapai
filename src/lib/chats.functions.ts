@@ -462,7 +462,7 @@ export const getChat = createServerFn({ method: "GET" })
           .single(),
         supabase
           .from("chat_messages")
-          .select("id, role, content, model, created_at")
+          .select("id, role, content, model, created_at, memory_used")
           .eq("chat_id", data.chatId)
           .order("created_at", { ascending: true }),
       ]);
@@ -909,7 +909,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       clearStopped(data.chatId);
       const { data: stoppedMsgs } = await supabase
         .from("chat_messages")
-        .select("id, role, content, model, created_at")
+        .select("id, role, content, model, created_at, memory_used")
         .eq("chat_id", data.chatId)
         .order("created_at", { ascending: true });
       return {
@@ -946,7 +946,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // Return refreshed view
     const { data: messagesOut } = await supabase
       .from("chat_messages")
-      .select("id, role, content, model, created_at")
+      .select("id, role, content, model, created_at, memory_used")
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: true });
 
