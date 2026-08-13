@@ -6,5 +6,6 @@ Disallow: /login
 Disallow: /signup
 Disallow: /forgot-password
 Disallow: /c/
+Disallow: /rooms/
 
 Sitemap: https://dapai.lovable.app/sitemap.xml
