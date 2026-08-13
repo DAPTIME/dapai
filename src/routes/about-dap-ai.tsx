@@ -78,7 +78,7 @@ export const Route = createFileRoute("/about-dap-ai")({
                   name: "Is DAP AI free?",
                   acceptedAnswer: {
                     "@type": "Answer",
-                    text: "Yes. DAP AI 4 Lite is free forever. DAP AI 4 Pro unlocks longer memory, custom personas (Gems), web search, and image input.",
+                    text: "Yes. DAP AI 4 Lite is free forever, with no signup needed for your first message. DAP AI 4 Pro unlocks longer memory, custom personas (Gems), web search, and image input.",
                   },
                 },
                 {
@@ -86,7 +86,7 @@ export const Route = createFileRoute("/about-dap-ai")({
                   name: "Is DAP AI a ChatGPT, Claude, or Gemini alternative?",
                   acceptedAnswer: {
                     "@type": "Answer",
-                    text: "Yes — DAP AI is a lightweight alternative to ChatGPT, Claude, Gemini, and Copilot. It's smaller and faster, designed to run on consumer hardware instead of hyperscaler datacenters.",
+                    text: "Yes — DAP AI is a lightweight alternative to ChatGPT, Claude, Gemini, Copilot, Perplexity and Grok. It's smaller and faster, designed to run on consumer hardware instead of hyperscaler datacenters.",
                   },
                 },
                 {
@@ -94,7 +94,63 @@ export const Route = createFileRoute("/about-dap-ai")({
                   name: "What can I use DAP AI for?",
                   acceptedAnswer: {
                     "@type": "Answer",
-                    text: "Coding help, code review, studying, homework, math, essay writing, email drafting, resume writing, trip planning, recipes, translation, summarization, career coaching, and everyday questions.",
+                    text: "Coding help, code review, studying, homework, math, essay writing, email drafting, resume writing, trip planning, recipes, translation, summarization, career coaching, weather, news, and everyday questions.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Do I need to sign up or log in to use DAP AI?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "No. You can try DAP AI 4 Lite instantly in your browser with no account, no signup, and no login for your first message. Create a free account only if you want to save chats and unlock Pro.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "What is a small language model (SLM)?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "A small language model is an AI model with fewer parameters than flagship models like GPT-4, making it faster and cheaper to run. DAP AI uses a mixture of small experts so answers stay quick while covering a wide range of topics.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "What is a mixture of experts (MoE)?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "A mixture of experts is a model design where many specialist sub-models (experts) exist, but only the few best suited to your question actually run on each reply. This keeps responses fast and cheap while the full pool covers far more topics than any single model that size.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Is DAP AI private and secure?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Your messages stay on hardware we control — they are not forwarded to OpenAI, Anthropic, or Google. DAP AI runs on hardware we own, not a rented hyperscaler cloud.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Can DAP AI help with homework and studying?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Yes. DAP AI can explain concepts, solve math problems, check grammar, summarize articles, write essays, translate text, and tutor you across school and university subjects.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "Can DAP AI write code?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Yes. DAP AI can write and review Python, JavaScript, TypeScript, HTML, CSS, SQL, and many other languages, explain error messages, and help debug code.",
+                  },
+                },
+                {
+                  "@type": "Question",
+                  name: "What hardware does DAP AI run on?",
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "DAP AI runs on an NVIDIA RTX 5060 Ti gaming GPU and two NVIDIA Jetson Orin Nano edge boards — consumer hardware, not datacenter cards. No server farm, no enterprise contract.",
                   },
                 },
               ],
