@@ -28,20 +28,21 @@ import logo from "@/assets/logo.png.asset.json";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "DAP AI — Free AI Chatbot" },
+      { title: "DAP AI — The only chatbot you'll ever need" },
       {
         name: "description",
         content:
-          "DAP AI is a fast, friendly AI chatbot and workspace for answers, writing, studying, coding, and custom AI assistants called DAPs.",
+          "Start chatting with DAP AI free, no signup needed for your first message. Ask questions, write, study, code, and build custom AI assistants called DAPs.",
       },
       { name: "keywords", content: "DAP AI, DAPAI, AI chatbot, free AI chat, AI assistant, DAPs" },
-      { property: "og:title", content: "DAP AI — Free AI Chatbot" },
+      { property: "og:title", content: "Chat with DAP AI — free, no signup for your first message" },
       {
         property: "og:description",
         content:
-          "Chat with DAP AI for fast answers, writing help, studying, coding, and custom AI assistants.",
+          "Try DAP AI instantly in your browser: answers, writing help, studying, coding, custom DAP assistants and the DAP arcade.",
       },
       { property: "og:url", content: "https://dapai.lovable.app/" },
+
       {
         property: "og:image",
         content:
@@ -268,12 +269,14 @@ function Home() {
 
           {!user && ready && (
             <p className="mt-2 text-sm text-muted-foreground">
+              A free AI chatbot — your first message needs no signup.{" "}
               <Link to="/signup" className="font-medium text-foreground underline">
                 Create an account
               </Link>{" "}
               to save chats and use DAP AI 4 Pro.
             </p>
           )}
+
 
           <div className="mt-4 w-full">
             {trial ? (
