@@ -55,10 +55,7 @@ function RoomPage() {
 
   const roomId = roomQuery.data?.room?.id;
   const joined = roomQuery.data?.room?.joined;
-  const me = firstName(
-    user?.user_metadata?.["display_name"] ?? user?.user_metadata?.["full_name"] ?? user?.email,
-    "Guest"
-  );
+  const me = firstName(user?.name ?? user?.email, "Guest");
 
   // Live transcript + presence/typing over Supabase Realtime.
   useEffect(() => {
