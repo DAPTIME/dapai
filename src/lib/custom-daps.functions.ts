@@ -33,7 +33,7 @@ export const listCustomDaps = createServerFn({ method: "GET" })
     await requirePro(supabase, userId);
     const { data, error } = await supabase
       .from("custom_daps")
-      .select("id, name, description, emoji, system_prompt, opener, created_at")
+      .select("id, name, description, emoji, system_prompt, opener, created_at, published, install_count, author_name, mcp_url")
       .order("created_at", { ascending: false });
     if (error) throw dbError(error);
     return data ?? [];
@@ -55,7 +55,7 @@ export const createCustomDap = createServerFn({ method: "POST" })
         system_prompt: data.systemPrompt,
         opener: data.opener,
       })
-      .select("id, name, description, emoji, system_prompt, opener, created_at")
+      .select("id, name, description, emoji, system_prompt, opener, created_at, published, install_count, author_name, mcp_url")
       .single();
     if (error) throw dbError(error);
     return row;
