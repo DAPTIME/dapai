@@ -9,6 +9,8 @@ import {
 // readable but cannot be edited or re-published.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { type Tier } from "@/lib/tier-rank";
+import { TRACK_QUOTA } from "@/lib/track-quota";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -103,6 +105,29 @@ export const getMyTrack = createServerFn({ method: "GET" })
     return row;
   });
 
+/** The signed-in account's build allowance and how much of it is used. */
+export const getTrackQuota = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("tier")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const tier = ((profile?.tier as Tier) ?? "free");
+    const { count } = await context.supabase
+      .from("custom_tracks")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", context.userId);
+    const limit = TRACK_QUOTA[tier];
+    return {
+      tier,
+      used: count ?? 0,
+      limit: Number.isFinite(limit) ? limit : null,
+      canCreate: (count ?? 0) < limit,
+    };
+  });
+
 export const createTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
@@ -116,6 +141,31 @@ export const createTrack = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const err = validateTrack(data.params);
     if (err) throw new Error(err);
+
+    // The build allowance is checked here, server side, because the editor
+    // is only the polite half of the rule.
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("tier")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const tier = ((profile?.tier as Tier) ?? "free");
+    const limit = TRACK_QUOTA[tier];
+    if (limit <= 0) {
+      throw new Error(
+        "Building levels is a Go feature. Upgrade to create your own tracks."
+      );
+    }
+    const { count } = await context.supabase
+      .from("custom_tracks")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", context.userId);
+    if ((count ?? 0) >= limit) {
+      throw new Error(
+        `Your plan can keep ${limit} track${limit === 1 ? "" : "s"}. Delete one or upgrade for more.`
+      );
+    }
+
     const params = toTrackData(data.params)!;
     const { data: row, error } = await context.supabase
       .from("custom_tracks")
@@ -147,6 +197,31 @@ export const updateTrack = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const err = validateTrack(data.params);
     if (err) throw new Error(err);
+
+    // The build allowance is checked here, server side, because the editor
+    // is only the polite half of the rule.
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("tier")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const tier = ((profile?.tier as Tier) ?? "free");
+    const limit = TRACK_QUOTA[tier];
+    if (limit <= 0) {
+      throw new Error(
+        "Building levels is a Go feature. Upgrade to create your own tracks."
+      );
+    }
+    const { count } = await context.supabase
+      .from("custom_tracks")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", context.userId);
+    if ((count ?? 0) >= limit) {
+      throw new Error(
+        `Your plan can keep ${limit} track${limit === 1 ? "" : "s"}. Delete one or upgrade for more.`
+      );
+    }
+
     const params = toTrackData(data.params)!;
     const { error } = await context.supabase
       .from("custom_tracks")

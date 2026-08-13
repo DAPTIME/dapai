@@ -10,6 +10,7 @@ import { DapIntro } from "@/components/dap-intro";
 
 import { createChat, getProfile } from "@/lib/chats.functions";
 import { useSiteConfig } from "@/lib/site-config";
+import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -131,12 +132,11 @@ function Home() {
     queryKey: ["profile", user?.id],
     queryFn: () => fetchProfile(),
     enabled: !!user,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 15_000,
   });
-  const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
+  const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
   // Free users / anon only have access to Lite. Pro users can use either.
-  const maintenance = user && tier === "pro"
+  const maintenance = user && TIER_RANK[tier] >= TIER_RANK.pro
     ? !proEnabled && !liteEnabled
     : !liteEnabled;
   const [showIntro, setShowIntro] = useState(false);

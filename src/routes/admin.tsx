@@ -15,9 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import type { ModelId } from "@/lib/models";
 import { sendChatMessage } from "@/lib/chats.functions";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,8 +35,6 @@ import {
   adminResetPassword,
   adminSetBan,
   adminDeleteUser,
-  adminGetSystemPrompt,
-  adminSetSystemPrompt,
   adminListAllChats,
   adminDeleteChat,
   adminGetChat,
@@ -50,22 +47,32 @@ import {
 } from "@/lib/admin.functions";
 
 
-const FEATURE_KEYS = ["pro_model", "lite_model", "daps", "team", "games"] as const;
-type FeatureKey = (typeof FEATURE_KEYS)[number];
-const FEATURE_LABELS: Record<FeatureKey, string> = {
-  pro_model: "DAP AI 4 Pro",
-  lite_model: "DAP AI 4 Lite",
-  daps: "Custom AI's",
-  team: "Our Team page",
-  games: "Games (DAP Arcade)",
-};
-const FEATURE_DESCRIPTIONS: Record<FeatureKey, string> = {
+import {
+  FEATURE_GROUPS,
+  FEATURE_LABELS,
+  type FeatureKey,
+} from "@/lib/admin-config";
+
+const FEATURE_DESCRIPTIONS: Partial<Record<FeatureKey, string>> = {
   pro_model: "Block sending messages with the DAP AI 4 Pro model.",
+  pro_lite_model: "Block sending messages with the DAP AI 4 Pro Lite model.",
   lite_model: "Block sending messages with the DAP AI 4 Lite model.",
   daps: "Hide the /daps page and disable starting Custom AI chats.",
   team: "Hide the /team page.",
-  games: "Hide the arcade: the sidebar link, /games and every game inside it.",
+  games: "Hide the whole arcade: the sidebar link, /games and every game.",
 };
+
+/** The console's sections, in the order they appear. */
+const SECTIONS = [
+  { id: "users", label: "Users", icon: Shield },
+  { id: "chats", label: "All Chats", icon: MessageSquare },
+  { id: "beta", label: "Beta Testers", icon: Users },
+  { id: "site", label: "Site", icon: Power },
+  { id: "models", label: "Models", icon: Cpu },
+  { id: "pages", label: "Pages", icon: Eye },
+  { id: "games", label: "Games", icon: Gamepad2 },
+] as const;
+type SectionId = (typeof SECTIONS)[number]["id"];
 
 
 import {
@@ -113,6 +120,7 @@ function checkFailureMessage(query: {
 
 function Admin() {
   const { user, ready } = useAuth();
+  const [section, setSection] = useState<SectionId>("users");
   const amIAdmin = useServerFn(adminAmIAdmin);
   // Waiting for the session before asking: without a token the server
   // function throws Unauthorized, which would render as a server error on
@@ -180,30 +188,37 @@ function Admin() {
           )}
         </div>
       ) : (
-        <Tabs defaultValue="users" className="mt-8">
-          <TabsList>
-            <TabsTrigger value="users">
-              <Shield className="mr-2 h-4 w-4" /> Users
-            </TabsTrigger>
-            <TabsTrigger value="prompt">
-              <Cpu className="mr-2 h-4 w-4" /> System Prompt
-            </TabsTrigger>
-            <TabsTrigger value="chats">
-              <MessageSquare className="mr-2 h-4 w-4" /> All Chats
-            </TabsTrigger>
-            <TabsTrigger value="beta">
-              <Users className="mr-2 h-4 w-4" /> Beta Testers
-            </TabsTrigger>
-            <TabsTrigger value="features">
-              <Power className="mr-2 h-4 w-4" /> Site & Features
-            </TabsTrigger>
+        <Tabs
+          value={section}
+          onValueChange={(v) => setSection(v as SectionId)}
+          className="mt-8"
+        >
+          {/* A phone can't hold seven tabs, so it gets a picker instead. */}
+          <div className="md:hidden">
+            <Label htmlFor="admin-section" className="text-xs text-muted-foreground">
+              Section
+            </Label>
+            <select
+              id="admin-section"
+              value={section}
+              onChange={(e) => setSection(e.target.value as SectionId)}
+              className="mt-1 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm"
+            >
+              {SECTIONS.map((sec) => (
+                <option key={sec.id} value={sec.id}>{sec.label}</option>
+              ))}
+            </select>
+          </div>
+          <TabsList className="hidden md:inline-flex">
+            {SECTIONS.map((sec) => (
+              <TabsTrigger key={sec.id} value={sec.id}>
+                <sec.icon className="mr-2 h-4 w-4" /> {sec.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="users" className="mt-6">
             <UsersTab />
-          </TabsContent>
-          <TabsContent value="prompt" className="mt-6">
-            <SystemPromptTab />
           </TabsContent>
           <TabsContent value="chats" className="mt-6">
             <ChatsTab />
@@ -211,9 +226,29 @@ function Admin() {
           <TabsContent value="beta" className="mt-6">
             <BetaTab />
           </TabsContent>
-          <TabsContent value="features" className="mt-6 space-y-6">
+          <TabsContent value="site" className="mt-6 space-y-6">
             <SiteTab />
-            <FeaturesTab />
+          </TabsContent>
+          <TabsContent value="models" className="mt-6">
+            <FeatureList
+              title="Models"
+              description="Turn an individual DAP AI model off for everyone."
+              keys={FEATURE_GROUPS.models}
+            />
+          </TabsContent>
+          <TabsContent value="pages" className="mt-6">
+            <FeatureList
+              title="Pages & features"
+              description="Anyone using a page you turn off is sent back to the home page."
+              keys={FEATURE_GROUPS.pages}
+            />
+          </TabsContent>
+          <TabsContent value="games" className="mt-6">
+            <FeatureList
+              title="Individual games"
+              description="Turn a single arcade game off without closing the whole arcade."
+              keys={FEATURE_GROUPS.games}
+            />
           </TabsContent>
         </Tabs>
       )}
@@ -751,92 +786,6 @@ function ResetPasswordDialog({
   );
 }
 
-function SystemPromptTab() {
-  return (
-    <div className="space-y-6">
-      <SystemPromptEditor
-        model="dap-ai-1.0"
-        title="DAP AI 4 Pro"
-        description="Used when the Pro model is selected. Falls back to the legacy global prompt if left empty."
-      />
-      <SystemPromptEditor
-        model="dap-ai-pro-lite"
-        title="DAP AI 4 Pro Lite"
-        description="Used when the Pro Lite model is selected. Falls back to the legacy global prompt if left empty."
-      />
-      <SystemPromptEditor
-        model="dap-ai-lite"
-        title="DAP AI 4 Lite"
-        description="Used when the Lite model is selected. Falls back to the legacy global prompt if left empty."
-      />
-    </div>
-  );
-}
-
-function SystemPromptEditor({
-  model,
-  title,
-  description,
-}: {
-  model: ModelId;
-  title: string;
-  description: string;
-}) {
-  const qc = useQueryClient();
-  const getPrompt = useServerFn(adminGetSystemPrompt);
-  const setPrompt = useServerFn(adminSetSystemPrompt);
-
-  const promptQuery = useQuery({
-    queryKey: ["admin", "system-prompt", model],
-    queryFn: () => getPrompt({ data: { model } }),
-  });
-
-  const [draft, setDraft] = useState("");
-  useEffect(() => {
-    if (promptQuery.data) setDraft(promptQuery.data.systemPrompt);
-  }, [promptQuery.data]);
-
-  const save = useMutation({
-    mutationFn: () =>
-      setPrompt({ data: { model, systemPrompt: draft } }),
-    onSuccess: () => {
-      toast.success(`${title} prompt saved`);
-      qc.invalidateQueries({ queryKey: ["admin", "system-prompt", model] });
-    },
-    onError: (e) =>
-      toast.error(e instanceof Error ? e.message : "Failed to save"),
-  });
-
-  return (
-    <div className="space-y-5 rounded-2xl border border-border bg-card p-6">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor={`sysprompt-${model}`} className="text-base font-semibold">
-            {title}
-          </Label>
-          <code className="text-xs text-muted-foreground">{model}</code>
-        </div>
-        <textarea
-          id={`sysprompt-${model}`}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={10}
-          placeholder="You are DAP AI…"
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      <Button
-        onClick={() => save.mutate()}
-        disabled={save.isPending || promptQuery.isLoading}
-        style={{ background: "var(--gradient-brand)" }}
-      >
-        {save.isPending ? "Saving…" : "Save"}
-      </Button>
-    </div>
-  );
-}
-
 function ChatsTab() {
   const qc = useQueryClient();
   const listAll = useServerFn(adminListAllChats);
@@ -1199,7 +1148,15 @@ function OfflineMessageEditor() {
 }
 
 
-function FeaturesTab() {
+function FeatureList({
+  title,
+  description,
+  keys,
+}: {
+  title: string;
+  description: string;
+  keys: readonly FeatureKey[];
+}) {
   const qc = useQueryClient();
   const fetchFlags = useServerFn(getFeatureFlags);
   const setFlag = useServerFn(adminSetFeatureFlag);
@@ -1227,18 +1184,16 @@ function FeaturesTab() {
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
-      <h2 className="text-lg font-semibold">Features & models</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Turn individual models, pages, or features on or off for everyone.
-      </p>
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
 
       <ul className="mt-5 divide-y divide-border">
-        {FEATURE_KEYS.map((key) => {
+        {keys.map((key) => {
           const enabled = flags ? flags[key] : true;
           return (
             <li
               key={key}
-              className="flex items-center gap-4 py-4"
+              className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-4"
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -1249,11 +1204,14 @@ function FeaturesTab() {
                   />
                   <span className="font-medium">{FEATURE_LABELS[key]}</span>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {FEATURE_DESCRIPTIONS[key]}
-                </p>
+                {FEATURE_DESCRIPTIONS[key] && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {FEATURE_DESCRIPTIONS[key]}
+                  </p>
+                )}
               </div>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => toggle.mutate({ key, enabled: !enabled })}
                 disabled={flagsQuery.isLoading || toggle.isPending}
                 variant={enabled ? "outline" : "default"}

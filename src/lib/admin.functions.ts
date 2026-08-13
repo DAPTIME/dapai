@@ -300,63 +300,6 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
 
 
 
-export const adminGetSystemPrompt = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i) =>
-    z
-      .object({ model: z.enum(MODEL_IDS).optional() })
-      .parse(i ?? {})
-  )
-  .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
-    const supabaseAdmin = getAdminClient();
-    const id: string = data.model ?? "global";
-    const { data: row, error } = await supabaseAdmin
-      .from("ai_settings")
-      .select("system_prompt, updated_at")
-      .eq("id", id)
-      .maybeSingle();
-    if (error) throw dbError(error);
-    // Fallback to legacy "global" row when a per-model prompt isn't set yet.
-    let systemPrompt = row?.system_prompt ?? "";
-    let updatedAt = row?.updated_at ?? null;
-    if (!row && data.model) {
-      const { data: legacy } = await supabaseAdmin
-        .from("ai_settings")
-        .select("system_prompt, updated_at")
-        .eq("id", "global")
-        .maybeSingle();
-      systemPrompt = legacy?.system_prompt ?? "";
-      updatedAt = legacy?.updated_at ?? null;
-    }
-    return { systemPrompt, updatedAt };
-  });
-
-export const adminSetSystemPrompt = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i) =>
-    z
-      .object({
-        systemPrompt: z.string().max(8000),
-        model: z.enum(MODEL_IDS).optional(),
-      })
-      .parse(i)
-  )
-  .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
-    const supabaseAdmin = getAdminClient();
-    const id: string = data.model ?? "global";
-    const { error } = await supabaseAdmin
-      .from("ai_settings")
-      .upsert({
-        id,
-        system_prompt: data.systemPrompt,
-        updated_at: new Date().toISOString(),
-      });
-    if (error) throw dbError(error);
-    return { ok: true };
-  });
-
 /**
  * Site enable/disable. Stored in ai_settings (id="site_status"),
  * using the system_prompt column to hold "on" or "off".
@@ -438,14 +381,9 @@ export const getFeatureFlags = createServerFn({ method: "GET" }).handler(
       .from("ai_settings")
       .select("id, system_prompt")
       .in("id", ids);
-    const flags: Record<FeatureKey, boolean> = {
-      pro_model: true,
-      pro_lite_model: true,
-      lite_model: true,
-      daps: true,
-      team: true,
-      games: true,
-    };
+    const flags = Object.fromEntries(
+      FEATURE_KEYS.map((k) => [k, true])
+    ) as Record<FeatureKey, boolean>;
     for (const row of data ?? []) {
       const key = row.id.replace(/^feature_/, "") as FeatureKey;
       if ((FEATURE_KEYS as readonly string[]).includes(key)) {

@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSiteConfig } from "@/lib/site-config";
+import { useFeatureGuard } from "@/lib/feature-guard";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/team")({
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/team")({
 function TeamPage() {
   const siteConfig = useSiteConfig();
   const teamEnabled = siteConfig.flags.team;
+  const teamEnabledOff = useFeatureGuard(teamEnabled ? null : "team");
 
   const betaQuery = useQuery({
     queryKey: ["beta-testers"],
@@ -45,6 +47,7 @@ function TeamPage() {
     enabled: teamEnabled,
   });
 
+  if (teamEnabledOff) return null;
   if (!teamEnabled) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">

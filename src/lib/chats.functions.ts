@@ -28,9 +28,9 @@ import {
 import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { resolveOllamaModel } from "@/lib/ollama-models.server";
 import { MODEL_IDS, modelInfo, type ModelId } from "@/lib/models";
-import { TIER_RANK, type Tier } from "@/lib/tier-gate";
+import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 
-const CHAT_LIMITS = { free: 5, pro: 10 } as const;
+const CHAT_LIMITS: Record<Tier, number> = { free: 5, go: 10, pro: 25, exclusive: 100 };
 
 // Lite gets a smaller rolling window so its (smaller LM Studio context)
 // never overflows. Pro keeps the full history.
@@ -336,7 +336,8 @@ export const createChat = createServerFn({ method: "POST" })
         .select("tier")
         .eq("id", userId)
         .single();
-      if ((gateProfile?.tier as string) !== "pro") {
+      const gateTier = ((gateProfile?.tier as Tier) ?? "free");
+      if (TIER_RANK[gateTier] < TIER_RANK.pro) {
         throw new Error("Custom AI's are a Pro feature. Upgrade to use them.");
       }
     }
@@ -381,7 +382,7 @@ export const createChat = createServerFn({ method: "POST" })
       .select("tier")
       .eq("id", userId)
       .single();
-    const tier = (profile?.tier as "free" | "pro") ?? "free";
+    const tier = (profile?.tier as Tier) ?? "free";
     const limit = CHAT_LIMITS[tier];
 
     // Prune oldest chats so that after we insert the new one we sit at
@@ -475,7 +476,7 @@ export const getProfile = createServerFn({ method: "GET" })
     if (error) throw dbError(error);
     return {
       ...data,
-      chatLimit: CHAT_LIMITS[(data.tier as "free" | "pro") ?? "free"],
+      chatLimit: CHAT_LIMITS[(data.tier as Tier) ?? "free"],
     };
   });
 

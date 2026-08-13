@@ -56,7 +56,7 @@ export function UpgradeGateProvider({ children }: { children: ReactNode }) {
     queryKey: ["profile", user?.id],
     queryFn: () => fetchProfile(),
     enabled: !!user,
-    staleTime: 60_000,
+    staleTime: 15_000,
   });
 
   const [dialog, setDialog] = useState<{ min?: Tier; feature?: string } | null>(

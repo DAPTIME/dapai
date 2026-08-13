@@ -17,12 +17,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile } from "@/lib/chats.functions";
 import { useUpgradeGate, TIER_LABEL } from "@/lib/tier-gate";
+import { type Tier } from "@/lib/tier-rank";
 import { MODELS } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
 
 
 export interface QuotaInfo {
-  tier: "free" | "pro";
+  tier: Tier;
 }
 
 interface Props {
