@@ -3,7 +3,7 @@ import { useState } from "react";
 import { EditorCanvas } from "@/components/track-editor/editor-canvas";
 import { STARTER_DOC, placeTile, type EditorDoc } from "@/lib/track-editor-model";
 
-export const Route = createFileRoute("/__editor-probe")({ component: Probe });
+export const Route = createFileRoute("/editor-probe")({ component: Probe });
 
 function Probe() {
   const [doc, setDoc] = useState<EditorDoc>(STARTER_DOC);

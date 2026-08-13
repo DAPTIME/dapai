@@ -21,6 +21,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as GamesRouteImport } from './routes/games'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as EditorProbeRouteImport } from './routes/editor-probe'
 import { Route as DapsRouteImport } from './routes/daps'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountRouteImport } from './routes/account'
@@ -108,6 +109,11 @@ const GamesRoute = GamesRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditorProbeRoute = EditorProbeRouteImport.update({
+  id: '/editor-probe',
+  path: '/editor-probe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DapsRoute = DapsRouteImport.update({
@@ -261,6 +267,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
+  '/editor-probe': typeof EditorProbeRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/games': typeof GamesRouteWithChildren
   '/help': typeof HelpRoute
@@ -303,6 +310,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
+  '/editor-probe': typeof EditorProbeRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
@@ -345,6 +353,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/daps': typeof DapsRoute
+  '/editor-probe': typeof EditorProbeRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/games': typeof GamesRouteWithChildren
   '/help': typeof HelpRoute
@@ -389,6 +398,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/daps'
+    | '/editor-probe'
     | '/forgot-password'
     | '/games'
     | '/help'
@@ -431,6 +441,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/daps'
+    | '/editor-probe'
     | '/forgot-password'
     | '/help'
     | '/login'
@@ -472,6 +483,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/daps'
+    | '/editor-probe'
     | '/forgot-password'
     | '/games'
     | '/help'
@@ -515,6 +527,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
   DapsRoute: typeof DapsRoute
+  EditorProbeRoute: typeof EditorProbeRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   GamesRoute: typeof GamesRouteWithChildren
   HelpRoute: typeof HelpRoute
@@ -622,6 +635,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editor-probe': {
+      id: '/editor-probe'
+      path: '/editor-probe'
+      fullPath: '/editor-probe'
+      preLoaderRoute: typeof EditorProbeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/daps': {
@@ -865,6 +885,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
   DapsRoute: DapsRoute,
+  EditorProbeRoute: EditorProbeRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   GamesRoute: GamesRouteWithChildren,
   HelpRoute: HelpRoute,
