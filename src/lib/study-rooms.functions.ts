@@ -51,7 +51,7 @@ export const createStudyRoom = createServerFn({ method: "POST" })
     const model = (modelInfo(data.model ?? "")?.id ?? "dap-ai-lite") as ModelId;
 
     let room: { id: string; code: string } | null = null;
-    let lastError: unknown = null;
+    let lastError: { message?: string } | null = null;
     for (let attempt = 0; attempt < 5 && !room; attempt++) {
       const { data: row, error } = await supabase
         .from("study_rooms")
@@ -64,7 +64,7 @@ export const createStudyRoom = createServerFn({ method: "POST" })
         .select("id, code")
         .single();
       if (error) {
-        lastError = error;
+        lastError = error as { message?: string };
         continue;
       }
       room = row;
