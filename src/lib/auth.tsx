@@ -44,12 +44,24 @@ function writeSessionCookie(signedIn: boolean) {
 
 function toUser(u: SupabaseUser | null | undefined): User | null {
   if (!u) return null;
+  /* Every provider labels the person differently: email signup writes
+     `name`, Google writes `full_name`/`given_name`, GitHub writes
+     `user_name`/`preferred_username`. Reading only `name` is why the same
+     account showed one name on the home page and another elsewhere. */
+  const m = (u.user_metadata ?? {}) as Record<string, unknown>;
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = m[k];
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+    return "";
+  };
   return {
     id: u.id,
     email: u.email ?? "",
     name:
-      (u.user_metadata?.name as string | undefined) ||
-      (u.email ? u.email.split("@")[0] : "friend"),
+      pick("name", "full_name", "given_name", "user_name", "preferred_username", "nickname") ||
+      (u.email ? u.email.split("@")[0]! : "friend"),
   };
 }
 
