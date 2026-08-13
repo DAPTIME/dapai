@@ -1,6 +1,7 @@
 import { dbError } from "./db-error";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const DapInput = z.object({
@@ -20,7 +21,7 @@ async function requirePro(
     .select("tier")
     .eq("id", userId)
     .single();
-  if ((profile?.tier as string) !== "pro") {
+  if (TIER_RANK[(profile?.tier as Tier) ?? "free"] < TIER_RANK.pro) {
     throw new Error("Custom AI's are a Pro feature. Upgrade to create or use them.");
   }
 }

@@ -15,6 +15,14 @@ export const FEATURE_KEYS = [
   "daps",
   "team",
   "games",
+  "game_2048",
+  "game_snake",
+  "game_spacewar",
+  "game_daptrack",
+  "game_river",
+  "game_flappy",
+  "game_breakout",
+  "game_stunt",
 ] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
@@ -37,6 +45,14 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     daps: true,
     team: true,
     games: true,
+    game_2048: true,
+    game_snake: true,
+    game_spacewar: true,
+    game_daptrack: true,
+    game_river: true,
+    game_flappy: true,
+    game_breakout: true,
+    game_stunt: true,
   },
   offlineMessage: DEFAULT_OFFLINE_MESSAGE,
 };

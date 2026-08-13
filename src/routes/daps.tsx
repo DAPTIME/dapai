@@ -11,6 +11,8 @@ import {
   deleteCustomDap,
 } from "@/lib/custom-daps.functions";
 import { useSiteConfig } from "@/lib/site-config";
+import { TIER_RANK, type Tier } from "@/lib/tier-rank";
+import { useFeatureGuard } from "@/lib/feature-guard";
 import { useUpgradeGate } from "@/lib/tier-gate";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -56,8 +58,10 @@ function Daps() {
     enabled: !!user,
   });
   const dapsEnabled = siteConfig.flags.daps;
+  const dapsEnabledOff = useFeatureGuard(dapsEnabled ? null : "daps");
 
-  const isPro = profileQuery.data?.tier === "pro";
+  const isPro =
+    TIER_RANK[(profileQuery.data?.tier as Tier) ?? "free"] >= TIER_RANK.pro;
 
   const [showForm, setShowForm] = useState(false);
 
@@ -93,6 +97,7 @@ function Daps() {
     startDap.mutate(id);
   };
 
+  if (dapsEnabledOff) return null;
   if (!dapsEnabled) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-24 text-center">

@@ -9,6 +9,7 @@ import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, stopChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
 import { modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
+import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
@@ -63,8 +64,8 @@ function ChatPage() {
   const proEnabled = siteConfig.flags.pro_model;
   const liteEnabled = siteConfig.flags.lite_model;
 
-  const tier = (profileQuery.data?.tier as "free" | "pro" | undefined) ?? "free";
-  const maintenance = tier === "pro"
+  const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
+  const maintenance = TIER_RANK[tier] >= TIER_RANK.pro
     ? !proEnabled && !liteEnabled
     : !liteEnabled;
 
@@ -313,7 +314,7 @@ function ChatPage() {
               }}
               quotaInfo={
                 profileQuery.data
-                  ? { tier: profileQuery.data.tier as "free" | "pro" }
+                  ? { tier: profileQuery.data.tier as Tier }
                   : undefined
               }
             />

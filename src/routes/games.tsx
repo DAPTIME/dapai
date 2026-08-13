@@ -1,8 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { Gamepad2, Lock } from "lucide-react";
+import { Gamepad2 } from "lucide-react";
 import { useSiteConfig } from "@/lib/site-config";
+import { GAME_FLAGS, gameFlagFor, useFeatureGuard } from "@/lib/feature-guard";
 import { GameFocusLock } from "@/components/game-focus-lock";
 
 const GAMES_DESCRIPTION =
@@ -64,33 +63,23 @@ const GAMES = [
   { to: "/games/river" as const, label: "River Crosser", emoji: "🐸" },
   { to: "/games/flappy" as const, label: "Flappy", emoji: "🐤" },
   { to: "/games/breakout" as const, label: "Brick Breaker", emoji: "🧱" },
+  { to: "/games/stunt" as const, label: "Stunt Racer", emoji: "🛞" },
 ] as const;
 
 function GamesLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const siteConfig = useSiteConfig();
 
-  // Gating the layout covers every game and the track editor with it.
-  if (!siteConfig.flags.games) {
+  // The arcade switch and the per-game switches both send you home the
+  // moment the admin flips them, even in the middle of a run.
+  const gameFlag = gameFlagFor(pathname);
+  const arcadeOff = useFeatureGuard(siteConfig.flags.games ? null : "games");
+  const gameOff = useFeatureGuard(siteConfig.flags.games ? gameFlag : null);
+  if (arcadeOff || gameOff) return null;
 
-    return (
-      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
-        <div
-          className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-primary-foreground"
-          style={{ background: "var(--gradient-brand)" }}
-        >
-          <Lock className="h-6 w-6" />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Arcade temporarily disabled</h1>
-        <p className="mt-3 text-muted-foreground">
-          The games section is turned off right now. Please check back soon.
-        </p>
-        <Link to="/" className="mt-6 inline-block rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground">
-          Back to DAP AI
-        </Link>
-      </div>
-    );
-  }
+  const visible = GAMES.filter(
+    (g) => siteConfig.flags[GAME_FLAGS[g.to]] !== false
+  );
 
   return (
     <div className="flex min-h-[calc(100vh-3.5rem)] flex-col md:flex-row">
@@ -102,7 +91,7 @@ function GamesLayout() {
           <Gamepad2 className="h-4 w-4 text-primary" /> Arcade
         </Link>
         <nav className="flex gap-2 overflow-x-auto md:flex-col md:overflow-visible">
-          {GAMES.map((g) => {
+          {visible.map((g) => {
             const active = pathname === g.to;
             return (
               <Link

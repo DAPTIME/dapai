@@ -3,6 +3,7 @@ import {
   SUPABASE_PUBLISHABLE_KEY as PUBLIC_SUPABASE_PUBLISHABLE_KEY,
 } from "@/integrations/supabase/public-config";
 import { createFileRoute } from "@tanstack/react-router";
+import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { enqueue } from "@/lib/ai-queue";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 
@@ -114,7 +115,8 @@ export const Route = createFileRoute("/api/chat")({
             .select("tier")
             .eq("id", callerId)
             .maybeSingle();
-          if (model === "dap-ai-1.0" && profile?.tier !== "pro") {
+          const callerRank = TIER_RANK[(profile?.tier as Tier) ?? "free"];
+          if (model === "dap-ai-1.0" && callerRank < TIER_RANK.pro) {
             // Free/Go tiers are locked to Lite.
             model = "dap-ai-lite";
           }

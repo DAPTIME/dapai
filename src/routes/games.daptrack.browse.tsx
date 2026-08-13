@@ -10,7 +10,10 @@ import { THEMES, formatMs, type Season } from "@/lib/polytrack-engine";
 import { TrackThumbnail } from "@/components/track-thumbnail";
 import {
   listPublicTracks, listMyTracks, publishTrack, unpublishTrack, deleteTrack,
+  getTrackQuota,
 } from "@/lib/tracks.functions";
+import { Leaderboard } from "@/components/track-leaderboard";
+import { useUpgradeGate } from "@/lib/tier-gate";
 
 export const Route = createFileRoute("/games/daptrack/browse")({
   head: () => ({
@@ -48,6 +51,12 @@ function BrowsePage() {
   const publish = useServerFn(publishTrack);
   const unpublish = useServerFn(unpublishTrack);
   const remove = useServerFn(deleteTrack);
+  const fetchQuota = useServerFn(getTrackQuota);
+  const { requireTier } = useUpgradeGate();
+  const [quota, setQuota] = useState<{
+    used: number; limit: number | null; canCreate: boolean;
+  } | null>(null);
+  const [openBoard, setOpenBoard] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>("community");
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
@@ -76,6 +85,27 @@ function BrowsePage() {
   useEffect(() => { loadCommunity(); }, [loadCommunity]);
   useEffect(() => { if (userId !== undefined) loadMine(); }, [userId, loadMine]);
 
+  useEffect(() => {
+    if (!userId) { setQuota(null); return; }
+    fetchQuota({}).then(setQuota).catch(() => setQuota(null));
+  }, [userId, fetchQuota, mine]);
+
+  /** Building is a paid feature, and each plan keeps a fixed number. */
+  const startNewTrack = () => {
+    if (!userId) { void navigate({ to: "/login" }); return; }
+    if (quota && !quota.canCreate) {
+      if (quota.limit === 0) {
+        requireTier("go", "Building DAP Track levels");
+      } else {
+        toast.error(
+          `Your plan keeps ${quota.limit} tracks. Delete one or upgrade for more.`
+        );
+      }
+      return;
+    }
+    void navigate({ to: "/games/daptrack/editor", search: {} });
+  };
+
   const rows = tab === "community" ? community : mine;
 
   const visible = useMemo(() => {
@@ -102,10 +132,19 @@ function BrowsePage() {
         <div>
           <h1 className="text-2xl font-bold">🏁 DAP Track Levels</h1>
           <p className="mt-1 text-sm text-muted-foreground">Race what the community built, or manage your own tracks.</p>
+          {quota && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {quota.limit === null
+                ? `Unlimited tracks · ${quota.used} built`
+                : quota.limit === 0
+                  ? "Your plan can't build levels — Go keeps 3, Pro 10, Exclusive unlimited."
+                  : `${quota.used} / ${quota.limit} tracks used on your plan`}
+            </p>
+          )}
         </div>
         <div className="flex gap-2 text-sm">
           <Link to="/games/daptrack" className="rounded-lg border border-border px-3 py-1.5 hover:border-primary">← DAP Track</Link>
-          <Link to="/games/daptrack/editor" search={{}} className="rounded-lg bg-primary px-3 py-1.5 text-primary-foreground hover:opacity-90">+ New track</Link>
+          <button onClick={startNewTrack} className="rounded-lg bg-primary px-3 py-1.5 text-primary-foreground hover:opacity-90">+ New track</button>
         </div>
       </div>
 
@@ -167,9 +206,9 @@ function BrowsePage() {
           <p className="text-sm text-muted-foreground">
             {q || seasonFilter !== "all" ? "No tracks match those filters." : tab === "mine" ? "You haven't built a track yet." : "No public tracks yet."}
           </p>
-          <Link to="/games/daptrack/editor" search={{}} className="mt-3 inline-block rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground">
+          <button onClick={startNewTrack} className="mt-3 inline-block rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground">
             Open the editor
-          </Link>
+          </button>
         </div>
       )}
 
@@ -196,6 +235,17 @@ function BrowsePage() {
                   <span>🎯 {formatMs(t.goal)}</span>
                   <span>▶ {t.play_count}</span>
                 </div>
+                <button
+                  onClick={() => setOpenBoard(openBoard === t.id ? null : t.id)}
+                  className="mt-2 text-xs text-muted-foreground hover:text-primary"
+                >
+                  🏆 {openBoard === t.id ? "Hide leaderboard" : "Leaderboard"}
+                </button>
+                {openBoard === t.id && (
+                  <div className="mt-2 animate-fade-in">
+                    <Leaderboard trackRef={`custom:${t.id}`} />
+                  </div>
+                )}
                 {tab === "mine" && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     <Button size="sm" variant="secondary" className="h-7 px-2 text-xs"

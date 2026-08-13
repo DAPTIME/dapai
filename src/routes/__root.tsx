@@ -28,6 +28,7 @@ import { AccountMenu } from "@/components/account-menu";
 import { AppContextMenu } from "@/components/app-context-menu";
 import { useTheme } from "@/lib/theme";
 import { getProfile } from "@/lib/chats.functions";
+import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import {
   getPublicSiteConfig,
   DEFAULT_SITE_CONFIG,
@@ -234,7 +235,9 @@ function HeaderBar() {
     queryFn: () => fetchProfile(),
     enabled: !!user,
   });
-  const isPro = profileQuery.data?.tier === "pro";
+  const isPro =
+    TIER_RANK[(profileQuery.data?.tier as Tier | undefined) ?? "free"] >=
+    TIER_RANK.pro;
 
   /* The two groups inside the header were flex items with nothing
      stopping them growing, so on a phone the account controls pushed it
