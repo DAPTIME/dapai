@@ -52,9 +52,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/66282eb6-e53c-4f21-9d65-92a76922cf37" },
       { property: "og:title", content: "DAP AI — Free AI Chatbot" },
       { name: "twitter:title", content: "DAP AI — Free AI Chatbot" },
-      { name: "description", content: "The next step in ultra small AI" },
-      { property: "og:description", content: "The next step in ultra small AI" },
-      { name: "twitter:description", content: "The next step in ultra small AI" },
+      { name: "description", content: "DAP AI (dapai) — the only AI chatbot you'll ever need. Free DAP AI chat, DAP arcade games and more." },
+      { property: "og:description", content: "DAP AI (dapai) — the only AI chatbot you'll ever need. Free DAP AI chat, DAP arcade games and more." },
+      { name: "twitter:description", content: "DAP AI (dapai) — the only AI chatbot you'll ever need. Free DAP AI chat, DAP arcade games and more." },
+      { name: "keywords", content: "DAP AI, dapai, dap ai, dap, DAP, AI, ai chat, ai chatbot, dapai chat, dap chatbot, free AI, DAP AI 4 Pro, DAP AI 4 Lite, DAP arcade, DAP Track" },
+
     ],
     links: [
       { rel: "stylesheet", href: appCss },
