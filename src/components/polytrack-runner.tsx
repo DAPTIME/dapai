@@ -1119,9 +1119,10 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
   let seed = track.tiles.length * 9301 + 49297;
   const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
   const b = sampler.bounds;
-  for (let i = 0; i < 34; i++) {
-    const gx = b.minX - 7 + rnd() * (b.maxX - b.minX + 14);
-    const gz = b.minZ - 7 + rnd() * (b.maxZ - b.minZ + 14);
+  for (let i = 0; i < 150; i++) {
+    const gx = b.minX - 9 + rnd() * (b.maxX - b.minX + 18);
+    const gz = b.minZ - 9 + rnd() * (b.maxZ - b.minZ + 18);
+    const kind = rnd();
     const h = 1.5 + rnd() * 1.7;
     const half = 0.8 + rnd() * 0.6;
     const wx = sampler.worldX(gx), wz = sampler.worldZ(gz);
@@ -1133,10 +1134,38 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
     const clear = [[0, 0], [-pad, 0], [pad, 0], [0, -pad], [0, pad]]
       .every(([ox, oz]) => sampler.columnAt(wx + ox, wz + oz).length === 0);
     if (!clear) continue;
-    // Two stacked tiers read as a deliberate low-poly conifer rather
-    // than a stray triangle on the ground.
-    props.pyramid(wx, TERRAIN_Y, wz, half, h * 0.66);
-    props.pyramid(wx, TERRAIN_Y + h * 0.34, wz, half * 0.68, h * 0.7);
+
+    if (kind < 0.62) {
+      // Two stacked tiers read as a deliberate low-poly conifer rather
+      // than a stray triangle on the ground. Some grow in little clumps,
+      // which is how trees actually turn up.
+      const clump = rnd() < 0.35 ? 3 : 1;
+      for (let k = 0; k < clump; k++) {
+        const ox = k === 0 ? 0 : (rnd() - 0.5) * 3.4;
+        const oz = k === 0 ? 0 : (rnd() - 0.5) * 3.4;
+        const s = k === 0 ? 1 : 0.6 + rnd() * 0.4;
+        props.pyramid(wx + ox, TERRAIN_Y, wz + oz, half * s, h * 0.66 * s);
+        props.pyramid(wx + ox, TERRAIN_Y + h * 0.34 * s, wz + oz, half * 0.68 * s, h * 0.7 * s);
+      }
+    } else if (kind < 0.82) {
+      // Boulders: a squat tapered block with a cap, low enough to read as
+      // part of the ground rather than an obstacle.
+      const rh = 0.5 + rnd() * 0.7;
+      props.frustum(wx, wz, TERRAIN_Y, TERRAIN_Y + rh, half * 0.9, half * 0.8, half * 0.45, half * 0.5);
+      props.pyramid(wx, TERRAIN_Y + rh, wz, half * 0.47, rh * 0.5);
+    } else if (kind < 0.94) {
+      // Bushes — a couple of tiny overlapping mounds.
+      for (let k = 0; k < 2 + Math.floor(rnd() * 2); k++) {
+        props.pyramid(
+          wx + (rnd() - 0.5) * 1.6, TERRAIN_Y, wz + (rnd() - 0.5) * 1.6,
+          0.42 + rnd() * 0.26, 0.4 + rnd() * 0.4,
+        );
+      }
+    } else {
+      // The occasional tall marker post breaks up the skyline.
+      props.frustum(wx, wz, TERRAIN_Y, TERRAIN_Y + 2.6 + rnd() * 1.6, 0.16, 0.16, 0.12, 0.12);
+      props.box(wx, TERRAIN_Y + 3.1, wz, 0.9, 0.32, 0.14);
+    }
   }
 
   // ── Gates: start, finish, checkpoints ─────────────────────────────
