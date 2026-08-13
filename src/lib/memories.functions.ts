@@ -62,11 +62,11 @@ export const updateMemory = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase } = context;
-    const patch: Record<string, unknown> = {
+    const patch = {
       updated_at: new Date().toISOString(),
+      ...(data.content !== undefined ? { content: data.content } : {}),
+      ...(data.enabled !== undefined ? { enabled: data.enabled } : {}),
     };
-    if (data.content !== undefined) patch.content = data.content;
-    if (data.enabled !== undefined) patch.enabled = data.enabled;
     const { data: row, error } = await supabase
       .from("user_memories")
       .update(patch)
