@@ -70,14 +70,9 @@ export async function sendEmail(opts: {
             `set the RESEND_FROM environment variable to an address at the verified domain, ` +
             `e.g. RESEND_FROM="DAP AI <noreply@yourdomain.com>".`
         );
-        throw new Error(
-          "DAP AI can't email that address yet — the site is still sending from Resend's shared test address, " +
-            "which only reaches the account owner. Please contact DAPAI.support@gmail.com."
-        );
+        throw new Error("BRANDED_SENDER_BLOCKED: sandbox sender can only reach the account owner");
       }
-      throw new Error(
-        "DAP AI can't email that address yet — the sending domain hasn't finished verifying. Please contact DAPAI.support@gmail.com."
-      );
+      throw new Error("BRANDED_SENDER_BLOCKED: sender rejected the recipient");
     }
     throw new Error(
       `We couldn't send that email right now. Please try again in a minute.`

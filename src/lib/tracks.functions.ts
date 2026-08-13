@@ -252,8 +252,12 @@ export const getLeaderboard = createServerFn({ method: "GET" })
     z.object({ trackRef: z.string().min(3).max(80), limit: z.number().int().min(1).max(50).optional() }).parse(i)
   )
   .handler(async ({ data }) => {
-    const supabase = publicClient();
-    const { data: rows, error } = await supabase.rpc("get_track_leaderboard", {
+    /* The leaderboard helper is deliberately NOT callable from the browser
+       (that grant trips the security scanner), so this read goes through the
+       trusted server client. The helper itself still hides times for private
+       tracks. Guests get the same public board as signed-in players. */
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin.rpc("get_track_leaderboard", {
       _track_ref: data.trackRef,
       _limit: data.limit ?? 20,
     });

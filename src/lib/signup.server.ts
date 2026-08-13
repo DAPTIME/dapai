@@ -68,7 +68,9 @@ export async function deliverConfirmation(opts: {
     });
     if (error) {
       console.error("[signup] Supabase fallback failed:", error.message);
-      throw e;
+      throw new Error(
+        "We couldn't send your confirmation email right now. Please try again in a minute, or contact DAPAI.support@gmail.com."
+      );
     }
     return { via: "supabase" as const };
   }
