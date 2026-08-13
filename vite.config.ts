@@ -21,6 +21,9 @@ export default defineConfig({
         strategies: "generateSW",
         registerType: "autoUpdate",
         filename: "sw.js",
+        // TanStack Start's client bundle lands in dist/client; without this the
+        // worker would be written outside the served directory.
+        outDir: "dist/client",
         // src/lib/register-sw.ts is the only registrar (guarded for previews).
         injectRegister: null,
         // Never emit a service worker in dev or Lovable preview.
