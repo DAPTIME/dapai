@@ -1,4 +1,4 @@
-// DAP Track tile-grid track editor.
+// DAP Track level editor — pan/zoom canvas, selection tools, real persistence.
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -11,39 +11,58 @@ import { toast } from "sonner";
 import { THEMES, drawTrackThumbnail, formatMs, type Season } from "@/lib/polytrack-engine";
 import {
   analyzeTrack, autoLevel, toTrackData, validateForPublish, validateName,
-  MAX_LEVEL, MAX_TILES,
-  type TileType, type Tile, type Rot, type TrackData,
+  MAX_LEVEL, MAX_TILES, TILE_TYPES,
+  type TileType, type Rot, type TrackData,
 } from "@/lib/track-validation";
+import {
+  EMPTY_DOC, STARTER_DOC, deleteSelection, duplicateSelection, eraseAt, keyOf,
+  moveSelection, placeTile, retypeSelection, rotateSelection, selectedTiles,
+  setSelection, updateTile, type EditorDoc,
+} from "@/lib/track-editor-model";
+import { EditorCanvas, TILE_COLOR, TILE_GLYPH, type EditorTool } from "@/components/track-editor/editor-canvas";
 import { PolyTrackRunner } from "@/components/polytrack-runner";
-import { createTrack, updateTrack, publishTrack, unpublishTrack, deleteTrack, getMyTrack, listMyTracks } from "@/lib/tracks.functions";
+import { createTrack, updateTrack, publishTrack, unpublishTrack, deleteTrack, getMyTrack } from "@/lib/tracks.functions";
 
 const searchSchema = z.object({ id: z.string().uuid().optional() });
 
 export const Route = createFileRoute("/games/daptrack/editor")({
   validateSearch: (s) => searchSchema.parse(s),
-  head: () => ({ meta: [{ title: "Track Editor — DAP Track" }] }),
+  head: () => ({
+    meta: [
+      { title: "Track Editor — DAP Track" },
+      { name: "description", content: "Build, test, and publish your own DAP Track levels with the tile editor." },
+      { property: "og:title", content: "Track Editor — DAP Track" },
+      { property: "og:description", content: "Build, test, and publish your own DAP Track levels." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: EditorPage,
 });
 
 const SEASONS: Season[] = ["spring", "summer", "fall", "winter"];
 
-type Tool = TileType | "erase";
-
-const TOOLS: { tool: Tool; label: string; icon: string; hint: string }[] = [
-  { tool: "straight", label: "Straight", icon: "▮", hint: "Plain road" },
-  { tool: "curveL", label: "Left", icon: "↰", hint: "90° left" },
-  { tool: "curveR", label: "Right", icon: "↱", hint: "90° right" },
-  { tool: "rampUp", label: "Ramp up", icon: "↗", hint: "Climb one level" },
-  { tool: "rampDown", label: "Ramp down", icon: "↘", hint: "Drop one level" },
-  { tool: "jump", label: "Jump", icon: "⤴", hint: "Kicker — launches the car" },
-  { tool: "boost", label: "Boost", icon: "»", hint: "Speed pad" },
-  { tool: "checkpoint", label: "Checkpoint", icon: "◆", hint: "Must be driven through" },
-  { tool: "start", label: "Start", icon: "S", hint: "One per track" },
-  { tool: "finish", label: "Finish", icon: "F", hint: "One per track" },
-  { tool: "erase", label: "Erase", icon: "✕", hint: "Remove a piece" },
+const PIECES: { type: TileType; label: string; hint: string }[] = [
+  { type: "straight", label: "Straight", hint: "Plain road" },
+  { type: "curveL", label: "Left", hint: "90° left" },
+  { type: "curveR", label: "Right", hint: "90° right" },
+  { type: "rampUp", label: "Ramp up", hint: "Climb one level" },
+  { type: "rampDown", label: "Ramp down", hint: "Drop one level" },
+  { type: "jump", label: "Jump", hint: "Kicker — launches the car" },
+  { type: "boost", label: "Boost", hint: "Speed pad" },
+  { type: "checkpoint", label: "Checkpoint", hint: "Must be driven through" },
+  { type: "start", label: "Start", hint: "One per track" },
+  { type: "finish", label: "Finish", hint: "One per track" },
 ];
 
 const ROT_LABEL: Record<Rot, string> = { 0: "↓", 1: "→", 2: "↑", 3: "←" };
+
+const TOOL_BUTTONS: { tool: EditorTool; label: string; icon: string; key: string }[] = [
+  { tool: "paint", label: "Paint", icon: "🖌", key: "B" },
+  { tool: "select", label: "Select", icon: "⬚", key: "V" },
+  { tool: "erase", label: "Erase", icon: "✕", key: "X" },
+  { tool: "pan", label: "Pan", icon: "✋", key: "H" },
+];
 
 /** Author time in seconds → the millisecond range the server accepts. */
 function clampGoal(seconds: string | number): number {
@@ -52,37 +71,34 @@ function clampGoal(seconds: string | number): number {
   return Math.round(Math.max(2, Math.min(600, n)) * 1000);
 }
 
-const GRID_W = 16, GRID_H = 13;
-const DEFAULT_DATA: TrackData = {
-  version: 3,
-  tiles: [
-    { type: "start", x: 3, y: 0, z: 9, rot: 1 },
-    { type: "straight", x: 4, y: 0, z: 9, rot: 1 },
-    { type: "straight", x: 5, y: 0, z: 9, rot: 1 },
-    { type: "finish", x: 6, y: 0, z: 9, rot: 1 },
-  ],
-};
+const fingerprint = (d: TrackData, name: string, season: string, goal: number) =>
+  JSON.stringify([name.trim(), season, goal, [...d.tiles].map((t) => [t.type, t.x, t.y, t.z, t.rot]).sort()]);
 
 function EditorPage() {
   const { id } = useSearch({ from: "/games/daptrack/editor" });
   const navigate = useNavigate();
+
   const [userId, setUserId] = useState<string | null | undefined>(undefined);
   const [name, setName] = useState("My Track");
   const [season, setSeason] = useState<Season>("spring");
-  const [data, setData] = useState<TrackData>(DEFAULT_DATA);
-  const [past, setPast] = useState<TrackData[]>([]);
-  const [future, setFuture] = useState<TrackData[]>([]);
   const [goalText, setGoalText] = useState("30");
   const [isPublic, setIsPublic] = useState(false);
+
+  const [doc, setDoc] = useState<EditorDoc>(STARTER_DOC);
+  const [past, setPast] = useState<EditorDoc[]>([]);
+  const [future, setFuture] = useState<EditorDoc[]>([]);
+
+  const [tool, setTool] = useState<EditorTool>("paint");
+  const [activeType, setActiveType] = useState<TileType>("straight");
+  const [rot, setRot] = useState<Rot>(1);
+  const [level, setLevel] = useState(0);
+  const [showGhosts, setShowGhosts] = useState(true);
+
   const [loading, setLoading] = useState(!!id);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [tool, setTool] = useState<Tool>("straight");
-  const [rot, setRot] = useState<Rot>(1);
-  const [level, setLevel] = useState(0);
-  const [myTracks, setMyTracks] = useState<Awaited<ReturnType<typeof listMyTracks>>>([]);
+  const [savedMark, setSavedMark] = useState<string | null>(null);
 
-  const fetchMine = useServerFn(listMyTracks);
   const fetchTrack = useServerFn(getMyTrack);
   const create = useServerFn(createTrack);
   const update = useServerFn(updateTrack);
@@ -90,45 +106,64 @@ function EditorPage() {
   const unpublish = useServerFn(unpublishTrack);
   const remove = useServerFn(deleteTrack);
 
-  useEffect(() => { supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null)); }, []);
-  useEffect(() => {
-    if (!userId) return;
-    fetchMine({}).then((rows) => setMyTracks(rows)).catch(() => {});
-  }, [userId, fetchMine, saving]);
+  const goal = clampGoal(goalText);
+  const data = doc.data;
+  const report = useMemo(() => analyzeTrack(data), [data]);
+  const nameErr = validateName(name);
+  const mark = fingerprint(data, name, season, goal);
+  const dirty = savedMark !== null ? savedMark !== mark : true;
 
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null)); }, []);
+
+  /* ── load ───────────────────────────────────────────────────────── */
   useEffect(() => {
-    if (!id || !userId) { setLoading(false); return; }
+    if (!userId) { setLoading(false); return; }
+    if (!id) {
+      setDoc(STARTER_DOC); setPast([]); setFuture([]);
+      setName("My Track"); setSeason("spring"); setGoalText("30"); setIsPublic(false);
+      setSavedMark(null); setLoading(false);
+      return;
+    }
     setLoading(true);
     fetchTrack({ data: { id } })
       .then((row) => {
+        const parsed = toTrackData(row.params);
         setName(row.name);
         setSeason(row.season as Season);
         setGoalText((row.goal / 1000).toString());
         setIsPublic(row.is_public);
         setPast([]); setFuture([]);
-        const parsed = toTrackData(row.params);
-        if (parsed) setData(parsed);
-        else { setData(DEFAULT_DATA); toast.warning("This is a legacy track. Rebuild it in the new editor to save."); }
+        if (parsed) {
+          setDoc({ data: parsed, selection: [] });
+          setSavedMark(fingerprint(parsed, row.name, row.season, row.goal));
+        } else {
+          setDoc(EMPTY_DOC);
+          setSavedMark(null);
+          toast.warning("This is a legacy track. Rebuild it in the new editor to save.");
+        }
       })
       .catch((e: Error) => toast.error(e.message))
       .finally(() => setLoading(false));
   }, [id, userId, fetchTrack]);
 
-  const commit = useCallback((next: TrackData | ((prev: TrackData) => TrackData)) => {
-    setData((prev) => {
-      const value = typeof next === "function" ? next(prev) : next;
-      if (value === prev) return prev;
-      setPast((p) => [...p.slice(-59), prev]);
+  /* ── history ────────────────────────────────────────────────────── */
+  const commit = useCallback((fn: (prev: EditorDoc) => EditorDoc) => {
+    setDoc((prev) => {
+      const next = fn(prev);
+      if (next === prev) return prev;
+      // Selection-only changes shouldn't burn an undo step.
+      if (next.data === prev.data) return next;
+      setPast((p) => [...p.slice(-79), prev]);
       setFuture([]);
-      return value;
+      return next;
     });
   }, []);
 
   const undo = useCallback(() => {
     setPast((p) => {
       if (p.length === 0) return p;
-      const prev = p[p.length - 1];
-      setData((cur) => { setFuture((f) => [cur, ...f.slice(0, 59)]); return prev; });
+      const prev = p[p.length - 1]!;
+      setDoc((cur) => { setFuture((f) => [cur, ...f.slice(0, 79)]); return prev; });
       return p.slice(0, -1);
     });
   }, []);
@@ -136,79 +171,152 @@ function EditorPage() {
   const redo = useCallback(() => {
     setFuture((f) => {
       if (f.length === 0) return f;
-      const next = f[0];
-      setData((cur) => { setPast((p) => [...p, cur]); return next; });
+      const next = f[0]!;
+      setDoc((cur) => { setPast((p) => [...p, cur]); return next; });
       return f.slice(1);
     });
   }, []);
 
-  // Grid cells hold every deck in the column, tallest last.
-  const columns = useMemo(() => {
-    const m = new Map<string, Tile[]>();
-    for (const t of data.tiles) {
-      const k = `${t.x},${t.z}`;
-      const col = m.get(k);
-      if (col) col.push(t); else m.set(k, [t]);
+  /* ── mutations ──────────────────────────────────────────────────── */
+  const handlePaint = useCallback(
+    (x: number, z: number) => commit((d) => placeTile(d, x, z, level, activeType, rot)),
+    [commit, level, activeType, rot]
+  );
+  const handleErase = useCallback(
+    (x: number, z: number) => commit((d) => eraseAt(d, x, z, level)),
+    [commit, level]
+  );
+  const handleSelect = useCallback(
+    (keys: string[], additive: boolean) =>
+      setDoc((d) => setSelection(d, additive ? Array.from(new Set([...d.selection, ...keys])) : keys)),
+    []
+  );
+  const handleMove = useCallback((dx: number, dz: number) => commit((d) => moveSelection(d, dx, dz)), [commit]);
+
+  const selection = useMemo(() => selectedTiles(doc), [doc]);
+  const single = selection.length === 1 ? selection[0]! : null;
+
+  /* ── save / publish ─────────────────────────────────────────────── */
+  const save = useCallback(async (): Promise<string | null> => {
+    const err = validateName(name);
+    if (err) { toast.error(err); return null; }
+    if (report.error) { toast.error(report.error); return null; }
+    setSaving(true);
+    try {
+      if (id) {
+        await update({ data: { id, name, season, params: data, goal } });
+        setIsPublic(false);
+        setSavedMark(fingerprint(data, name, season, goal));
+        toast.success("Saved. Republish when ready.");
+        return id;
+      }
+      const { id: newId } = await create({ data: { name, season, params: data, goal } });
+      setSavedMark(fingerprint(data, name, season, goal));
+      toast.success("Track created.");
+      navigate({ to: "/games/daptrack/editor", search: { id: newId } });
+      return newId;
+    } catch (e) {
+      toast.error((e as Error).message);
+      return null;
+    } finally {
+      setSaving(false);
     }
-    for (const col of m.values()) col.sort((a, b) => a.y - b.y);
-    return m;
-  }, [data]);
+  }, [id, name, season, data, goal, report.error, create, update, navigate]);
 
-  const report = useMemo(() => analyzeTrack(data), [data]);
-  const goal = clampGoal(goalText);
+  const doPublish = async () => {
+    let target = id;
+    if (dirty || !target) {
+      const saved = await save();
+      if (!saved) return;
+      target = saved;
+    }
+    const err = validateForPublish(name, data);
+    if (err) { toast.error(err); return; }
+    if (report.warning && !confirm(`${report.warning}\n\nPublish anyway?`)) return;
+    try {
+      await publish({ data: { id: target } });
+      setIsPublic(true);
+      toast.success("Track is public!");
+    } catch (e) { toast.error((e as Error).message); }
+  };
 
-  const placeTile = useCallback((x: number, z: number, forceTool?: Tool) => {
-    const active = forceTool ?? tool;
-    commit((prev) => {
-      // Editing only ever touches the level you're working on, so an
-      // overpass and the road under it stay independent.
-      const here = prev.tiles.find((t) => t.x === x && t.z === z && t.y === level);
-      if (active === "erase") {
-        // Nothing on this level? Take the topmost deck instead, so erase
-        // never feels like it did nothing.
-        const target = here ?? prev.tiles
-          .filter((t) => t.x === x && t.z === z)
-          .sort((a, b) => b.y - a.y)[0];
-        if (!target) return prev;
-        return { version: 3, tiles: prev.tiles.filter((t) => t !== target) };
-      }
-      if (!here && prev.tiles.length >= MAX_TILES) return prev;
+  const doUnpublish = async () => {
+    if (!id) return;
+    try { await unpublish({ data: { id } }); setIsPublic(false); toast.success("Unpublished."); }
+    catch (e) { toast.error((e as Error).message); }
+  };
 
-      let tiles = prev.tiles.filter((t) => t !== here);
-      // Start and finish are unique — placing a new one moves it.
-      if (active === "start") tiles = tiles.filter((t) => t.type !== "start");
-      if (active === "finish") tiles = tiles.filter((t) => t.type !== "finish");
-      // Clicking an identical piece spins it instead of replacing it.
-      if (here && here.type === active && here.rot === rot) {
-        tiles.push({ ...here, rot: (((here.rot + 1) % 4) as Rot) });
-      } else {
-        tiles.push({ type: active, x, y: level, z, rot });
-      }
-      return { version: 3, tiles };
-    });
-  }, [commit, tool, rot, level]);
+  const doDelete = async () => {
+    if (!id) return;
+    if (!confirm("Delete this track? This cannot be undone.")) return;
+    try {
+      await remove({ data: { id } });
+      toast.success("Track deleted.");
+      navigate({ to: "/games/daptrack/browse" });
+    } catch (e) { toast.error((e as Error).message); }
+  };
 
-  // Keyboard shortcuts — number keys pick a piece, Q/E spin it.
+  const share = async () => {
+    if (!id) { toast.error("Save the track first."); return; }
+    const url = `${window.location.origin}/games/daptrack/track/${id}`;
+    try { await navigator.clipboard.writeText(url); toast.success("Link copied!"); }
+    catch { toast.info(url); }
+  };
+
+  /* ── keyboard shortcuts ─────────────────────────────────────────── */
+  const saveRef = useRef(save);
+  saveRef.current = save;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase();
+
+      if (mod && k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+      if (mod && k === "y") { e.preventDefault(); redo(); return; }
+      if (mod && k === "s") { e.preventDefault(); void saveRef.current(); return; }
+      if (mod && k === "d") { e.preventDefault(); commit((d) => duplicateSelection(d)); return; }
+      if (mod && k === "a") {
         e.preventDefault();
-        if (e.shiftKey) redo(); else undo();
+        setDoc((d) => setSelection(d, d.data.tiles.filter((t) => t.y === level).map(keyOf)));
         return;
       }
-      if (e.key >= "1" && e.key <= "9") {
-        const t = TOOLS[Number(e.key) - 1];
-        if (t) setTool(t.tool);
-      } else if (e.key.toLowerCase() === "q") setRot((r) => (((r + 3) % 4) as Rot));
-      else if (e.key.toLowerCase() === "e") setRot((r) => (((r + 1) % 4) as Rot));
-      else if (e.key === "[") setLevel((l) => Math.max(0, l - 1));
-      else if (e.key === "]") setLevel((l) => Math.min(MAX_LEVEL, l + 1));
+      if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); commit(deleteSelection); return; }
+      if (e.key === "Escape") { setDoc((d) => setSelection(d, [])); return; }
+
+      if (e.key >= "1" && e.key <= "9") { const p = PIECES[Number(e.key) - 1]; if (p) { setActiveType(p.type); setTool("paint"); } return; }
+      if (e.key === "0") { setActiveType("finish"); setTool("paint"); return; }
+      if (k === "b") { setTool("paint"); return; }
+      if (k === "v") { setTool("select"); return; }
+      if (k === "x") { setTool("erase"); return; }
+      if (k === "h") { setTool("pan"); return; }
+      if (k === "q" || k === "e") {
+        const step = k === "e" ? 1 : -1;
+        if (doc.selection.length > 0) commit((d) => rotateSelection(d, step));
+        else setRot((r) => (((r + (step === 1 ? 1 : 3)) % 4) as Rot));
+        return;
+      }
+      if (e.key === "[") { setLevel((l) => Math.max(0, l - 1)); return; }
+      if (e.key === "]") { setLevel((l) => Math.min(MAX_LEVEL, l + 1)); return; }
+      if (e.key.startsWith("Arrow") && doc.selection.length > 0) {
+        e.preventDefault();
+        const dx = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        const dz = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+        commit((d) => moveSelection(d, dx, dz));
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+  }, [undo, redo, commit, doc.selection.length, level]);
+
+  /* ── unsaved-work guard ─────────────────────────────────────────── */
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   if (userId === undefined) return <div className="p-4 text-sm text-muted-foreground">Loading…</div>;
   if (userId === null) {
@@ -220,47 +328,6 @@ function EditorPage() {
       </div>
     );
   }
-
-  const save = async () => {
-    const nameErr = validateName(name);
-    if (nameErr) { toast.error(nameErr); return; }
-    if (report.error) { toast.error(report.error); return; }
-    setSaving(true);
-    try {
-      if (id) {
-        await update({ data: { id, name, season, params: data, goal } });
-        toast.success("Saved. Republish when ready.");
-        setIsPublic(false);
-      } else {
-        const { id: newId } = await create({ data: { name, season, params: data, goal } });
-        toast.success("Track saved.");
-        navigate({ to: "/games/daptrack/editor", search: { id: newId } });
-      }
-    } catch (e) { toast.error((e as Error).message); }
-    finally { setSaving(false); }
-  };
-  const doPublish = async () => {
-    if (!id) { toast.error("Save first."); return; }
-    const err = validateForPublish(name, data);
-    if (err) { toast.error(err); return; }
-    if (report.warning && !confirm(`${report.warning}\n\nPublish anyway?`)) return;
-    try { await publish({ data: { id } }); setIsPublic(true); toast.success("Track is public!"); }
-    catch (e) { toast.error((e as Error).message); }
-  };
-  const doUnpublish = async () => { if (!id) return; await unpublish({ data: { id } }); setIsPublic(false); toast.success("Unpublished."); };
-  const doDelete = async () => {
-    if (!id) return;
-    if (!confirm("Delete this track?")) return;
-    await remove({ data: { id } });
-    navigate({ to: "/games/daptrack/editor", search: {} });
-    setData(DEFAULT_DATA); setPast([]); setFuture([]); setName("My Track"); setIsPublic(false);
-  };
-  const share = async () => {
-    if (!id) return;
-    const url = `${window.location.origin}/games/daptrack/track/${id}`;
-    try { await navigator.clipboard.writeText(url); toast.success("Link copied!"); }
-    catch { toast.info(url); }
-  };
 
   if (testing) {
     return (
@@ -281,87 +348,126 @@ function EditorPage() {
     );
   }
 
-  const nameErr = validateName(name);
-
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 animate-fade-in lg:grid-cols-[minmax(0,1fr)_280px]">
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">✏️ Track Editor</h1>
-          <Link to="/games/daptrack" className="text-sm text-muted-foreground hover:text-foreground">← DAP Track</Link>
+    <div className="mx-auto grid max-w-7xl gap-5 animate-fade-in lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="min-w-0">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl font-bold">✏️ Track Editor</h1>
+            <p className="text-xs text-muted-foreground">
+              {loading ? "Loading track…" : id ? (dirty ? "Unsaved changes" : "All changes saved") : "New track"}
+            </p>
+          </div>
+          <div className="flex gap-2 text-sm">
+            <Link to="/games/daptrack/browse" className="rounded-lg border border-border px-3 py-1.5 hover:border-primary">Levels</Link>
+            <Link to="/games/daptrack" className="rounded-lg border border-border px-3 py-1.5 hover:border-primary">← DAP Track</Link>
+          </div>
         </div>
 
-        <div className="mb-2 flex flex-wrap gap-1">
-          {TOOLS.map((t, i) => (
+        {/* Tools */}
+        <div className="mb-2 flex flex-wrap items-center gap-1">
+          {TOOL_BUTTONS.map((t) => (
             <button
               key={t.tool}
               onClick={() => setTool(t.tool)}
-              title={`${t.hint}${i < 9 ? ` (${i + 1})` : ""}`}
-              className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+              title={`${t.label} (${t.key})`}
+              className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
                 tool === t.tool ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
               }`}
             >
               <span className="mr-1">{t.icon}</span>{t.label}
             </button>
           ))}
+          <span className="mx-1 h-5 w-px bg-border" />
+          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={undo} disabled={past.length === 0}>↶ Undo</Button>
+          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={redo} disabled={future.length === 0}>↷ Redo</Button>
+          <Button
+            size="sm" variant="ghost" className="h-7 px-2"
+            onClick={() => { commit((d) => ({ data: autoLevel(d.data), selection: [] })); toast.success("Heights levelled along the track."); }}
+          >⛰ Auto-level</Button>
+          <button
+            onClick={() => setShowGhosts((v) => !v)}
+            className={`rounded-md border px-2 py-1 text-xs ${showGhosts ? "border-primary bg-primary/10" : "border-border"}`}
+            title="Show pieces on other levels"
+          >👁 Other levels</button>
         </div>
 
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+        {/* Pieces */}
+        <div className="mb-2 flex flex-wrap gap-1">
+          {PIECES.map((p, i) => (
+            <button
+              key={p.type}
+              onClick={() => {
+                if (doc.selection.length > 0 && tool === "select") commit((d) => retypeSelection(d, p.type));
+                else { setActiveType(p.type); setTool("paint"); }
+              }}
+              title={`${p.hint} (${i === 9 ? 0 : i + 1})`}
+              className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${
+                activeType === p.type && tool === "paint" ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+              }`}
+            >
+              <span className="grid h-4 w-4 place-items-center rounded-sm text-[10px] font-bold text-white" style={{ backgroundColor: TILE_COLOR[p.type] }}>
+                {TILE_GLYPH[p.type]}
+              </span>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Facing + level */}
+        <div className="mb-2 flex flex-wrap items-center gap-3 text-xs">
           <div className="flex items-center gap-1">
             <span className="text-muted-foreground">Facing</span>
             {([0, 1, 2, 3] as Rot[]).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRot(r)}
-                className={`h-7 w-7 rounded border text-sm ${rot === r ? "border-primary bg-primary/10" : "border-border"}`}
-              >
+              <button key={r} onClick={() => setRot(r)}
+                className={`h-7 w-7 rounded border text-sm ${rot === r ? "border-primary bg-primary/10" : "border-border"}`}>
                 {ROT_LABEL[r]}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-1">
             <span className="text-muted-foreground">Level</span>
-            <button
-              className="h-7 w-7 rounded border border-border disabled:opacity-40"
-              onClick={() => setLevel((l) => Math.max(0, l - 1))}
-              disabled={level === 0}
-              title="Go down a level"
-            >−</button>
+            <button className="h-7 w-7 rounded border border-border disabled:opacity-40"
+              onClick={() => setLevel((l) => Math.max(0, l - 1))} disabled={level === 0}>−</button>
             <span className="w-6 text-center font-semibold tabular-nums">{level}</span>
-            <button
-              className="h-7 w-7 rounded border border-border disabled:opacity-40"
-              onClick={() => setLevel((l) => Math.min(MAX_LEVEL, l + 1))}
-              disabled={level === MAX_LEVEL}
-              title="Go up a level"
-            >+</button>
+            <button className="h-7 w-7 rounded border border-border disabled:opacity-40"
+              onClick={() => setLevel((l) => Math.min(MAX_LEVEL, l + 1))} disabled={level === MAX_LEVEL}>+</button>
           </div>
-          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={undo} disabled={past.length === 0}>↶ Undo</Button>
-          <Button size="sm" variant="ghost" className="h-7 px-2" onClick={redo} disabled={future.length === 0}>↷ Redo</Button>
-          <Button
-            size="sm" variant="ghost" className="h-7 px-2"
-            onClick={() => { commit(autoLevel(data)); toast.success("Heights levelled along the track."); }}
-          >
-            ⛰ Auto-level
-          </Button>
-          <span className="ml-auto text-muted-foreground">
-            {data.tiles.length}/{MAX_TILES} pieces · drag to paint · right-click erases · Q/E rotate · [ ] change level
-          </span>
+          <span className="text-muted-foreground">{data.tiles.length}/{MAX_TILES} pieces</span>
+          {doc.selection.length > 0 && (
+            <span className="rounded bg-primary/10 px-2 py-0.5 text-primary">{doc.selection.length} selected</span>
+          )}
         </div>
 
-        <GridEditor width={GRID_W} height={GRID_H} columns={columns} level={level} onPaint={placeTile} />
+        <EditorCanvas
+          data={data}
+          level={level}
+          selection={doc.selection}
+          tool={tool}
+          activeType={activeType}
+          rot={rot}
+          showGhosts={showGhosts}
+          onPaint={handlePaint}
+          onErase={handleErase}
+          onSelect={handleSelect}
+          onMoveSelection={handleMove}
+        />
+
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          Wheel zooms · space or middle-drag pans · right-drag erases · <b>V</b> select, drag to marquee, arrows nudge,
+          Ctrl+D duplicate, Del remove · <b>Q/E</b> rotate · <b>[ ]</b> change level · <b>Ctrl+S</b> save
+        </p>
 
         {report.error && <p className="mt-2 text-xs font-medium text-destructive">⚠ {report.error}</p>}
-        {!report.error && report.warning && (
-          <p className="mt-2 text-xs font-medium text-amber-500">⚠ {report.warning}</p>
-        )}
+        {!report.error && report.warning && <p className="mt-2 text-xs font-medium text-amber-500">⚠ {report.warning}</p>}
         {!report.error && !report.warning && (
           <p className="mt-2 text-xs text-emerald-500">
             ✓ Drivable — {report.walk.path.length} pieces from start to finish, {report.walk.checkpoints.length} checkpoint(s).
           </p>
         )}
-        {loading && <p className="mt-2 text-sm text-muted-foreground">Loading track…</p>}
       </div>
 
+      {/* Inspector */}
       <div className="space-y-4">
         <div className="rounded-lg border border-border bg-card/40 p-3">
           <div className="flex gap-3">
@@ -376,6 +482,57 @@ function EditorPage() {
             </div>
           </div>
         </div>
+
+        {/* Selection properties */}
+        {doc.selection.length > 0 && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">
+                {single ? "Piece" : `${doc.selection.length} pieces`}
+              </h3>
+              <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setDoc((d) => setSelection(d, []))}>clear</button>
+            </div>
+            {single && (
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-xs">Type</Label>
+                  <select
+                    value={single.type}
+                    onChange={(e) => commit((d) => updateTile(d, keyOf(single), { type: e.target.value as TileType }))}
+                    className="mt-1 h-8 w-full rounded-md border border-border bg-background px-2 text-sm"
+                  >
+                    {TILE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["x", "z", "y"] as const).map((axis) => (
+                    <div key={axis}>
+                      <Label className="text-xs">{axis === "y" ? "level" : axis}</Label>
+                      <Input
+                        className="h-8"
+                        type="number"
+                        value={single[axis]}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          if (!Number.isFinite(v)) return;
+                          commit((d) => updateTile(d, keyOf(single), { [axis]: v } as Record<string, number>));
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="mt-2 flex flex-wrap gap-1">
+              <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={() => commit((d) => rotateSelection(d, 1))}>↻ Rotate</Button>
+              <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={() => commit((d) => duplicateSelection(d))}>⧉ Duplicate</Button>
+              <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={() => commit((d) => moveSelection(d, 0, 0, 1))} disabled={level >= MAX_LEVEL}>▲ Level up</Button>
+              <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={() => commit((d) => moveSelection(d, 0, 0, -1))}>▼ Level down</Button>
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive" onClick={() => commit(deleteSelection)}>Delete</Button>
+            </div>
+          </div>
+        )}
+
         <div>
           <Label>Name</Label>
           <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
@@ -408,103 +565,29 @@ function EditorPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-2">
-          <Button onClick={save} disabled={saving || !!report.error}>{id ? "Save" : "Create"}</Button>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button onClick={() => void save()} disabled={saving || !!report.error || !dirty}>
+            {saving ? "Saving…" : id ? "Save" : "Create"}
+          </Button>
           <Button variant="secondary" onClick={() => setTesting(true)} disabled={!!report.error}>🏁 Test drive</Button>
-          {id && !isPublic && <Button variant="outline" onClick={doPublish}>Publish</Button>}
+          {!isPublic && <Button variant="outline" onClick={doPublish}>Publish</Button>}
           {id && isPublic && <Button variant="outline" onClick={doUnpublish}>Unpublish</Button>}
           {id && <Button variant="ghost" onClick={share}>Copy link</Button>}
           {id && <Button variant="ghost" className="text-destructive" onClick={doDelete}>Delete</Button>}
         </div>
         {id && (
           <p className="text-xs text-muted-foreground">
-            {isPublic ? "🌐 Public." : "🔒 Private. Editing a public track unpublishes it."}
+            {isPublic ? "🌐 Public — anyone with the link can race it." : "🔒 Private. Editing a public track unpublishes it."}
           </p>
         )}
-
-        <div className="pt-4">
-          <h3 className="mb-2 text-sm font-semibold">Your tracks</h3>
-          {myTracks.length === 0 && <p className="text-xs text-muted-foreground">No tracks yet.</p>}
-          <div className="space-y-1">
-            {myTracks.map((t) => (
-              <button key={t.id} onClick={() => navigate({ to: "/games/daptrack/editor", search: { id: t.id } })}
-                className={`flex w-full items-center justify-between rounded-md border px-2 py-1.5 text-left text-sm hover:border-primary ${t.id === id ? "border-primary bg-primary/5" : "border-border"}`}>
-                <span className="truncate">{THEMES[t.season as Season].emoji} {t.name}</span>
-                <span className="text-xs text-muted-foreground">{t.is_public ? "🌐" : "🔒"}</span>
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => {
-              navigate({ to: "/games/daptrack/editor", search: {} });
-              setName("New Track"); setData(DEFAULT_DATA); setPast([]); setFuture([]); setIsPublic(false);
-            }}
-            className="mt-2 w-full rounded-md border border-dashed border-border px-2 py-1.5 text-sm text-muted-foreground hover:border-primary hover:text-foreground">
-            + New track
-          </button>
-        </div>
+        <Link
+          to="/games/daptrack/editor"
+          search={{}}
+          className="block rounded-md border border-dashed border-border px-3 py-2 text-center text-xs text-muted-foreground hover:border-primary hover:text-foreground"
+        >
+          + Start a new track
+        </Link>
       </div>
-    </div>
-  );
-}
-
-function GridEditor({ width, height, columns, level, onPaint }: {
-  width: number; height: number;
-  columns: Map<string, Tile[]>;
-  level: number;
-  onPaint: (x: number, z: number, forceTool?: Tool) => void;
-}) {
-  const cellSize = 32;
-  // Painting is pointer-driven so a drag lays a whole run of road.
-  const painting = useRef<Tool | null>(null);
-
-  useEffect(() => {
-    const stop = () => { painting.current = null; };
-    window.addEventListener("pointerup", stop);
-    window.addEventListener("pointercancel", stop);
-    return () => {
-      window.removeEventListener("pointerup", stop);
-      window.removeEventListener("pointercancel", stop);
-    };
-  }, []);
-
-  return (
-    <div
-      className="relative overflow-auto rounded-lg border border-border bg-muted/20 p-2"
-      onContextMenu={(e) => e.preventDefault()}
-    >
-        <div className="grid w-max" style={{ gridTemplateColumns: `repeat(${width}, ${cellSize}px)` }}>
-          {Array.from({ length: width * height }).map((_, i) => {
-            const x = i % width;
-            const z = Math.floor(i / width);
-            const col = columns.get(`${x},${z}`) ?? [];
-            const here = col.find((t) => t.y === level);
-            // Decks on other levels stay faintly visible so you can line
-            // an overpass up with the road it crosses.
-            const others = col.filter((t) => t.y !== level);
-            return (
-              <button
-                key={i}
-                onPointerDown={(e) => {
-                  const erase = e.button === 2 || e.ctrlKey;
-                  painting.current = erase ? "erase" : null;
-                  onPaint(x, z, erase ? "erase" : undefined);
-                }}
-                onPointerEnter={(e) => {
-                  if (e.buttons === 0) return;
-                  onPaint(x, z, painting.current ?? undefined);
-                }}
-                onContextMenu={(e) => e.preventDefault()}
-                className="relative border border-border/40 bg-background/40 transition-colors hover:bg-primary/10"
-                style={{ width: cellSize, height: cellSize }}
-                aria-label={`Tile ${x},${z}`}
-              >
-                {others.map((t) => <TileIcon key={t.y} tile={t} ghost />)}
-                {here && <TileIcon tile={here} />}
-              </button>
-            );
-          })}
-        </div>
     </div>
   );
 }
@@ -513,50 +596,6 @@ const LEGEND: Array<[string, string]> = [
   ["#22c55e", "Start"], ["#ef4444", "Finish"], ["#3b82f6", "Checkpoint"],
   ["#06b6d4", "Boost"], ["#a855f7", "Ramp"], ["#c026d3", "Jump"],
 ];
-
-const TILE_COLOR: Record<TileType, string> = {
-  start: "#22c55e",
-  finish: "#ef4444",
-  checkpoint: "#3b82f6",
-  boost: "#06b6d4",
-  rampUp: "#a855f7",
-  rampDown: "#a855f7",
-  jump: "#c026d3",
-  curveL: "#64748b",
-  curveR: "#64748b",
-  straight: "#94a3b8",
-};
-
-const TILE_GLYPH: Record<TileType, string> = {
-  straight: "▮", curveL: "↰", curveR: "↱", rampUp: "↗", rampDown: "↘",
-  jump: "⤴", boost: "»", checkpoint: "◆", start: "S", finish: "F",
-};
-
-function TileIcon({ tile, ghost = false }: { tile: Tile; ghost?: boolean }) {
-  return (
-    <span
-      className="absolute inset-0 grid place-items-center text-sm font-bold text-white"
-      style={{
-        backgroundColor: TILE_COLOR[tile.type],
-        // The grid's +z runs down the screen, so a +rot turn reads clockwise.
-        transform: `rotate(${tile.rot * 90}deg)`,
-        transition: "transform 0.12s",
-        opacity: ghost ? 0.22 : 1,
-      }}
-      title={`${tile.type} facing ${ROT_LABEL[tile.rot]} · level ${tile.y}`}
-    >
-      {TILE_GLYPH[tile.type]}
-      {tile.y > 0 && !ghost && (
-        <span
-          className="absolute right-0 top-0 rounded-bl bg-black/60 px-0.5 text-[9px] leading-tight"
-          style={{ transform: `rotate(${-tile.rot * 90}deg)` }}
-        >
-          {tile.y}
-        </span>
-      )}
-    </span>
-  );
-}
 
 function ThumbCanvas({ data, season }: { data: TrackData; season: Season }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
