@@ -87,8 +87,19 @@ function Settings() {
     <div className="mx-auto max-w-2xl px-6 py-12">
       <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
       <div className="mt-8 space-y-6">
+        <div className="flex items-start justify-between rounded-2xl border border-border bg-card p-5">
+          <div>
+            <Label className="text-base">Install DAP AI</Label>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add DAP AI to your device as an app. If you've already installed
+              it, or your browser doesn't support it, nothing shows here.
+            </p>
+          </div>
+          <InstallAppButton variant="outline" />
+        </div>
         <ThemeRow />
         {rows.map((row) => (
+
           <div key={row.id} className="flex items-start justify-between rounded-2xl border border-border bg-card p-5">
             <div>
               <Label htmlFor={row.id} className="text-base">{row.label}</Label>
