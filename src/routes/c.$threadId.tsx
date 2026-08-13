@@ -14,6 +14,9 @@ import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { trackAiReply } from "@/lib/ai-reply-notifier";
+import { FlashcardsDialog } from "@/components/flashcards-dialog";
+import { Button } from "@/components/ui/button";
+import { Brain, GraduationCap, Layers, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/c/$threadId")({
   head: () => ({
@@ -36,6 +39,20 @@ function ChatPage() {
   const stop = useServerFn(stopChatMessage);
   const planSearch = useServerFn(planSearchForMessage);
   const [searchingWeb, setSearchingWeb] = useState(false);
+  const [studyMode, setStudyMode] = useState(false);
+  const [cardsOpen, setCardsOpen] = useState(false);
+
+  // Study Mode is remembered per chat.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setStudyMode(localStorage.getItem(`dap.study.${threadId}`) === "1");
+  }, [threadId]);
+  const toggleStudy = (v: boolean) => {
+    setStudyMode(v);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`dap.study.${threadId}`, v ? "1" : "0");
+    }
+  };
   const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
     id: string;
     role: "user";
