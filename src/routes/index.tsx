@@ -234,8 +234,9 @@ function Home() {
     <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden">
       {showIntro && <DapIntro onClose={() => setShowIntro(false)} />}
 
-      <div className="flex-1 overflow-hidden">
-        <div className="relative mx-auto flex h-full max-w-3xl flex-col items-center justify-center px-4 py-4 text-center">
+      <div className="flex-1 overflow-y-auto">
+        <div className="relative mx-auto flex min-h-full max-w-3xl flex-col items-center justify-center px-4 py-4 text-center">
+
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 -z-10 home-aurora"
@@ -261,21 +262,40 @@ function Home() {
               color: "transparent",
             }}
           >
-            {user && greeting
-              ? greeting
-              : "The only chatbot you'll ever need"}
+            {user && greeting ? greeting : "DAP AI — Free AI Chatbot"}
           </h1>
 
-
           {!user && ready && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              A free AI chatbot — your first message needs no signup.{" "}
-              <Link to="/signup" className="font-medium text-foreground underline">
-                Create an account
-              </Link>{" "}
-              to save chats and use DAP AI 4 Pro.
-            </p>
+            <>
+              <p className="text-base font-medium text-foreground sm:text-lg">
+                The only chatbot you'll ever need.
+              </p>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                DAP AI is a free AI chat assistant — ask questions, get answers,
+                write and edit text, study and revise, debug code, and build your
+                own custom AI assistants called DAPs. Your first message needs no
+                signup;{" "}
+                <Link to="/signup" className="font-medium text-foreground underline">
+                  create a free account
+                </Link>{" "}
+                to save chats, use DAP AI 4 Pro and play the DAP arcade.
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                <Link to="/about-dap-ai" className="underline">
+                  What DAP AI can do
+                </Link>
+                {" · "}
+                <Link to="/games" className="underline">
+                  DAP arcade
+                </Link>
+                {" · "}
+                <Link to="/help" className="underline">
+                  Help
+                </Link>
+              </p>
+            </>
           )}
+
 
 
           <div className="mt-4 w-full">
