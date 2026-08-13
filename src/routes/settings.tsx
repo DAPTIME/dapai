@@ -161,3 +161,38 @@ function ThemeRow() {
     </div>
   );
 }
+
+/**
+ * Private / Local explainer. DAP AI's inference runs on hardware owned by
+ * the site operator, not on a third-party AI cloud — this spells that out.
+ */
+function PrivacyRow() {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-5">
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-primary-foreground"
+        style={{ background: "var(--gradient-brand)" }}
+      >
+        <ShieldCheck className="h-5 w-5" />
+      </div>
+      <div>
+        <div className="flex items-center gap-2">
+          <Label className="text-base">Private by design</Label>
+          <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium text-foreground"
+            style={{ borderColor: "color-mix(in oklab, var(--primary) 45%, transparent)" }}
+          >
+            <ShieldCheck className="h-3 w-3" /> Private
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your chats are answered by DAP AI models running on our own local
+          hardware — not rented from a big AI cloud. Nothing you type is sold,
+          and your conversations, memories and flashcards are stored against
+          your account only, so no other user (or model provider) can read
+          them. You'll see a <strong className="font-medium text-foreground">Private</strong>{" "}
+          badge on every chat as a reminder.
+        </p>
+      </div>
+    </div>
+  );
+}
