@@ -362,20 +362,27 @@ export function EditorCanvas(props: EditorCanvasProps) {
     }
   };
 
-  const onWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
+  // React's onWheel is passive, so zoom is bound natively to keep the page
+  // from scrolling under the editor.
+  useEffect(() => {
     const node = canvasRef.current;
     if (!node) return;
-    const r = node.getBoundingClientRect();
-    const mx = e.clientX - r.left;
-    const my = e.clientY - r.top;
-    setCam((c) => {
-      const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, c.scale * (e.deltaY < 0 ? 1.12 : 0.89)));
-      if (next === c.scale) return c;
-      const k = next / c.scale;
-      return { scale: next, panX: mx - (mx - c.panX) * k, panZ: my - (my - c.panZ) * k };
-    });
-  };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const r = node.getBoundingClientRect();
+      const mx = e.clientX - r.left;
+      const my = e.clientY - r.top;
+      setCam((c) => {
+        const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, c.scale * (e.deltaY < 0 ? 1.12 : 0.89)));
+        if (next === c.scale) return c;
+        const k = next / c.scale;
+        return { scale: next, panX: mx - (mx - c.panX) * k, panZ: my - (my - c.panZ) * k };
+      });
+    };
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, []);
+
 
   const cursor =
     tool === "pan" || spaceHeld ? "grab" : tool === "erase" ? "crosshair" : tool === "paint" ? "cell" : "default";
