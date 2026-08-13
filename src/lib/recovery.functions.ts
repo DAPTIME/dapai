@@ -367,13 +367,28 @@ export const sendPasswordResetLink = createServerFn({ method: "POST" })
 
     const { sendEmail, resetLinkEmailHtml } = await import("./email.server");
     const name = (row.name as string | null) || email.split("@")[0]!;
-    await sendEmail({
-      to: email,
-      subject: "Reset your DAP AI password",
-      html: resetLinkEmailHtml({ name, link }),
-      text: `Reset your DAP AI password and recovery question: ${link} (expires in 10 minutes)`,
-    });
-    return { ok: true };
+    try {
+      await sendEmail({
+        to: email,
+        subject: "Reset your DAP AI password",
+        html: resetLinkEmailHtml({ name, link }),
+        text: `Reset your DAP AI password and recovery question: ${link} (expires in 10 minutes)`,
+      });
+      return { ok: true };
+    } catch (e) {
+      /* Never dead-end a password reset because the branded sender is
+         unavailable — fall back to Supabase's own recovery email, exactly
+         like signup already does for confirmations. */
+      console.error("[reset] branded email failed, falling back to Supabase:", (e as Error).message);
+      const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+        redirectTo: `${site}/reset-password`,
+      });
+      if (error) {
+        console.error("[reset] Supabase fallback failed:", error.message);
+        throw e;
+      }
+      return { ok: true, via: "supabase" as const };
+    }
   });
 
 /**
