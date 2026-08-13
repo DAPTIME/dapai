@@ -158,10 +158,8 @@ function Home() {
   }, []);
 
   useEffect(() => {
-    // Address the user by their final name only (e.g. "Devansh Patel" → "Patel").
-    const full = (user?.name || "").trim();
-    const finalName = full ? full.split(/\s+/).pop()! : "friend";
-    const list = GREETINGS(finalName, new Date().getHours());
+    // One shared rule site-wide: first name only, whatever the sign-up method.
+    const list = GREETINGS(firstName(user?.name || user?.email), new Date().getHours());
     setGreeting(list[Math.floor(Math.random() * list.length)]);
   }, [user]);
 
