@@ -597,6 +597,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_study_room_by_code: {
+        Args: { _code: string }
+        Returns: {
+          code: string
+          id: string
+          is_open: boolean
+          name: string
+        }[]
+      }
       get_track_leaderboard: {
         Args: { _limit?: number; _track_ref: string }
         Returns: {
