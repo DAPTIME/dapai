@@ -401,7 +401,6 @@ export function EditorCanvas(props: EditorCanvasProps) {
         onPointerUp={endGesture}
         onPointerCancel={endGesture}
         onPointerLeave={() => { setHover(null); onCursor?.(null); }}
-        onWheel={onWheel}
         onContextMenu={(e) => e.preventDefault()}
       />
       <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-background/80 px-2 py-1 text-[11px] text-muted-foreground backdrop-blur">
