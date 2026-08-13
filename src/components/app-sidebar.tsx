@@ -13,6 +13,7 @@ import {
   Info,
   Users,
   Gamepad2,
+  Users2,
 } from "lucide-react";
 
 import { adminAmIAdmin } from "@/lib/admin.functions";
@@ -40,6 +41,7 @@ import { useSiteConfig } from "@/lib/site-config";
 
 const main = [
   { title: "Custom AI's", url: "/daps", icon: Sparkles },
+  { title: "Study Rooms", url: "/rooms", icon: Users2 },
   { title: "Games", url: "/games", icon: Gamepad2 },
   { title: "Our Team", url: "/team", icon: Users },
 ] as const;
