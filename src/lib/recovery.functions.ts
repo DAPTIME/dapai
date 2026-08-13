@@ -385,7 +385,9 @@ export const sendPasswordResetLink = createServerFn({ method: "POST" })
       });
       if (error) {
         console.error("[reset] Supabase fallback failed:", error.message);
-        throw e;
+        throw new Error(
+          "We couldn't send your reset email right now. Please try again in a minute, or contact DAPAI.support@gmail.com."
+        );
       }
       return { ok: true, via: "supabase" as const };
     }
