@@ -37,7 +37,7 @@ export function useFeatureGuard(key: FeatureKey | null | undefined): boolean {
 
   useEffect(() => {
     if (!off) return;
-    toast.info(`Sorry, the admin has turned off ${label} for now.`);
+    toast.info(`${label} is under maintenance right now.`);
     void navigate({ to: "/", replace: true });
   }, [off, label, navigate]);
 

@@ -180,7 +180,7 @@ export function ChatComposer({
         rows={2}
         disabled={isOffline}
         aria-disabled={isOffline}
-        className="w-full resize-none bg-transparent px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none disabled:cursor-not-allowed"
+        className="w-full resize-none bg-transparent px-4 py-3 text-lg font-semibold text-foreground placeholder:font-semibold placeholder:text-foreground/70 focus:outline-none disabled:cursor-not-allowed sm:text-xl"
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             if (pending || isOffline) { e.preventDefault(); return; }
