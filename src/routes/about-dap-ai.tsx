@@ -483,7 +483,7 @@ function AboutDapAi() {
         <div className="mt-4 space-y-4 text-muted-foreground">
           <div>
             <h3 className="font-medium text-foreground">Is DAP AI free?</h3>
-            <p>Yes. DAP AI 4 Lite is free forever. Pro unlocks longer memory, custom personas, web search, and image input.</p>
+            <p>Yes. DAP AI 4 Lite is free forever, with no signup needed for your first message. Pro unlocks longer memory, custom personas, web search, and image input.</p>
           </div>
           <div>
             <h3 className="font-medium text-foreground">Can DAP AI tell me the weather?</h3>
@@ -491,17 +491,103 @@ function AboutDapAi() {
           </div>
           <div>
             <h3 className="font-medium text-foreground">Is DAP AI a ChatGPT alternative?</h3>
-            <p>Yes. It's a lightweight alternative to ChatGPT, Claude, Gemini, and Copilot, designed to run on consumer hardware rather than a hyperscaler datacenter.</p>
+            <p>Yes. It's a lightweight alternative to ChatGPT, Claude, Gemini, Copilot, Perplexity, and Grok, designed to run on consumer hardware rather than a hyperscaler datacenter.</p>
           </div>
           <div>
             <h3 className="font-medium text-foreground">Do I need to sign up?</h3>
-            <p>You can try DAP AI 4 Lite without an account. Sign up to save chats and unlock Pro features.</p>
+            <p>No. You can try DAP AI 4 Lite instantly in your browser with no account, no signup, and no login for your first message. Create a free account only to save chats and unlock Pro.</p>
           </div>
           <div>
             <h3 className="font-medium text-foreground">Is my data private?</h3>
             <p>Your messages stay on hardware we control — they aren't forwarded to OpenAI, Anthropic, or Google.</p>
           </div>
+          <div>
+            <h3 className="font-medium text-foreground">What is a small language model (SLM)?</h3>
+            <p>A small language model is an AI with fewer parameters than flagship models like GPT-4, making it faster and cheaper to run. DAP AI uses a mixture of small experts so answers stay quick while covering a wide range of topics.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">What is a mixture of experts (MoE)?</h3>
+            <p>It's a model design where many specialist sub-models (experts) exist, but only the few best suited to your question actually run on each reply — keeping responses fast and cheap while the full pool covers far more topics than any single model that size.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Can DAP AI write and review code?</h3>
+            <p>Yes. DAP AI can write and review Python, JavaScript, TypeScript, HTML, CSS, SQL and many other languages, explain error messages, and help debug code.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">Can DAP AI help with homework and studying?</h3>
+            <p>Yes — it can explain concepts, solve math problems, check grammar, summarize articles, write essays, translate text, and tutor you across school and university subjects.</p>
+          </div>
+          <div>
+            <h3 className="font-medium text-foreground">What hardware does DAP AI run on?</h3>
+            <p>An NVIDIA RTX 5060 Ti gaming GPU and two NVIDIA Jetson Orin Nano edge boards — consumer hardware, not datacenter cards.</p>
+          </div>
         </div>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-2xl font-semibold">Everyday questions DAP AI answers</h2>
+        <p className="mt-3 text-muted-foreground">
+          DAP AI is a general-purpose chatbot, so the simplest way to
+          understand it is by the kinds of things people ask it every day.
+          Here are real examples, grouped by topic — if you'd type any of
+          these into a search engine, DAP AI can answer them directly in chat.
+        </p>
+
+        <h3 className="mt-6 text-lg font-medium">Weather & news</h3>
+        <ul className="mt-2 list-disc space-y-1 pl-6 text-muted-foreground">
+          <li>What's the weather today?</li>
+          <li>What's the weather tomorrow in Dubai?</li>
+          <li>Will it rain this weekend?</li>
+          <li>What's the temperature right now?</li>
+          <li>Latest news headlines</li>
+          <li>What happened in the world today?</li>
+        </ul>
+
+        <h3 className="mt-6 text-lg font-medium">Coding & tech</h3>
+        <ul className="mt-2 list-disc space-y-1 pl-6 text-muted-foreground">
+          <li>Write a Python function to sort a list</li>
+          <li>Review my JavaScript code</li>
+          <li>Explain this error message</li>
+          <li>How do I center a div in CSS?</li>
+          <li>Write a SQL query to join two tables</li>
+          <li>What should I learn next in web development?</li>
+        </ul>
+
+        <h3 className="mt-6 text-lg font-medium">Study & homework</h3>
+        <ul className="mt-2 list-disc space-y-1 pl-6 text-muted-foreground">
+          <li>Help me with my math homework</li>
+          <li>Solve this algebra problem</li>
+          <li>Explain quantum physics simply</li>
+          <li>What is photosynthesis?</li>
+          <li>Summarize this chapter for me</li>
+          <li>Translate this sentence to Spanish</li>
+        </ul>
+
+        <h3 className="mt-6 text-lg font-medium">Writing & work</h3>
+        <ul className="mt-2 list-disc space-y-1 pl-6 text-muted-foreground">
+          <li>Write an essay about climate change</li>
+          <li>Draft a professional email</li>
+          <li>Fix the grammar in this paragraph</li>
+          <li>Help me write my resume</li>
+          <li>Career advice for a software engineer</li>
+          <li>Generate startup ideas</li>
+        </ul>
+
+        <h3 className="mt-6 text-lg font-medium">Lifestyle & fun</h3>
+        <ul className="mt-2 list-disc space-y-1 pl-6 text-muted-foreground">
+          <li>Give me a recipe for chicken curry</li>
+          <li>Plan a 3-day trip to Tokyo</li>
+          <li>Build me a workout routine</li>
+          <li>Write a poem about the ocean</li>
+          <li>Tell me a joke</li>
+          <li>Suggest a name for my new project</li>
+        </ul>
+
+        <p className="mt-4 text-muted-foreground">
+          Weather, news, code, homework, recipes, travel, writing — if you'd
+          ask ChatGPT, Claude, Gemini, Copilot, Perplexity, or Grok, you can
+          ask DAP AI.
+        </p>
       </section>
 
       <section className="mt-10">
