@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.get_track_leaderboard(text, integer) TO anon, authenticated;
