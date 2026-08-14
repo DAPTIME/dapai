@@ -1,4 +1,4 @@
-import { Outlet, createRootRouteWithContext, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, createRootRouteWithContext, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -274,13 +274,15 @@ function HeaderBar() {
 
         {!isPro && (
           <Button
+            asChild
             size="sm"
             className="animate-pulse-glow gap-1 rounded-full px-3 font-semibold text-primary-foreground shadow-md transition-transform hover:scale-105"
             style={{ background: "var(--gradient-brand)" }}
-            onClick={() => openUpgrade()}
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            Upgrade
+            <Link to="/account">
+              <Sparkles className="h-3.5 w-3.5" />
+              Upgrade
+            </Link>
           </Button>
         )}
 

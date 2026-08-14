@@ -1,4 +1,5 @@
 import { dbError } from "./db-error";
+import { CHAT_HISTORY_LIMIT as CHAT_LIMITS } from "@/lib/usage-limits";
 /**
  * Server functions for chats. All run as the authenticated user so RLS
  * scopes every read/write to that user's rows.
@@ -30,7 +31,7 @@ import { resolveOllamaModel } from "@/lib/ollama-models.server";
 import { MODEL_IDS, modelInfo, type ModelId } from "@/lib/models";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 
-const CHAT_LIMITS: Record<Tier, number> = { free: 5, go: 10, pro: 25, exclusive: 100 };
+
 
 // Lite gets a smaller rolling window so its (smaller LM Studio context)
 // never overflows. Pro keeps the full history.
