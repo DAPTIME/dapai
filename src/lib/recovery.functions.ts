@@ -285,9 +285,12 @@ export const getAccountSetupStatus = createServerFn({ method: "GET" })
       .eq("id", userId)
       .maybeSingle();
     return {
-      needsSetup:
-        !!row?.password_reset_required || !row?.recovery_question,
+      // Only legacy accounts flagged during the backend move are gated.
+      // A missing recovery question alone must never block the app —
+      // social (Google/GitHub) signups start without one by design.
+      needsSetup: !!row?.password_reset_required,
       question: row?.recovery_question ?? null,
+
     };
   });
 
