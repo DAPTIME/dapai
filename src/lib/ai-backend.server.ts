@@ -6,6 +6,13 @@
 import { resolveOllamaModel } from "@/lib/ollama-models.server";
 import { modelInfo, type ModelId } from "@/lib/models";
 
+export class AiBackendUnavailableError extends Error {
+  constructor() {
+    super("AI backend unavailable");
+    this.name = "AiBackendUnavailableError";
+  }
+}
+
 export function backendFor(model: ModelId): {
   url?: string;
   key?: string;
@@ -52,7 +59,7 @@ export async function completeOnce(
 ): Promise<string> {
   const info = modelInfo(model);
   const { url, key, upstreamModel } = backendFor(model);
-  if (!url) throw new Error(`No AI backend configured for ${model}.`);
+  if (!url) throw new AiBackendUnavailableError();
 
   let resolvedModel = upstreamModel;
   if (info?.lite) {
@@ -82,16 +89,34 @@ export async function completeOnce(
       signal: ctrl.signal,
     });
     const raw = await res.text();
+    if (!res.ok) {
+      console.error(
+        `[ai-backend] ${model} returned HTTP ${res.status}: ${raw.replace(/\s+/g, " ").trim().slice(0, 200)}`
+      );
+      throw new AiBackendUnavailableError();
+    }
     try {
       const json = JSON.parse(raw) as {
         choices?: { message?: { content?: string } }[];
         message?: { content?: string };
+        error?: string | { message?: string };
       };
-      return (
-        json?.choices?.[0]?.message?.content ?? json?.message?.content ?? ""
-      );
+      const content =
+        json?.choices?.[0]?.message?.content ?? json?.message?.content;
+      if (typeof content !== "string" || !content.trim()) {
+        const providerError =
+          typeof json.error === "string" ? json.error : json.error?.message;
+        console.error(
+          `[ai-backend] ${model} returned no reply: ${providerError?.slice(0, 200) ?? "empty response"}`
+        );
+        throw new AiBackendUnavailableError();
+      }
+      return content;
     } catch {
-      return raw;
+      console.error(
+        `[ai-backend] ${model} returned non-JSON: ${raw.replace(/\s+/g, " ").trim().slice(0, 200)}`
+      );
+      throw new AiBackendUnavailableError();
     }
   } finally {
     clearTimeout(timer);

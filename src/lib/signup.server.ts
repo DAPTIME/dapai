@@ -116,14 +116,17 @@ export async function sendConfirmation(opts: {
       origin: opts.origin,
     });
   } else {
+    // Existing unconfirmed users must use Supabase's resend operation.
+    // generateLink({ type: "magiclink" }) is a sign-in link, not an email
+    // confirmation link, and can leave the account in the wrong state.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
+    const { error } = await supabaseAdmin.auth.resend({
+      type: "signup",
       email: opts.email,
-      options: { redirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1` },
+      options: { emailRedirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1` },
     });
     if (error) throw dbError(error);
-    link = data?.properties?.action_link;
+    return;
   }
   if (!link) throw new Error("Could not create a confirmation link.");
 

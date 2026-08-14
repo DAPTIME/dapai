@@ -211,19 +211,49 @@ export const Route = createFileRoute("/api/chat")({
               body: outgoingBody,
             });
             let text = await res.text();
+            if (!res.ok) {
+              console.error(
+                `[api/chat] Backend HTTP ${res.status}: ${text.replace(/\s+/g, " ").trim().slice(0, 200)}`
+              );
+              return Response.json(
+                { error: "Sorry, DAP AI is offline right now." },
+                { status: 502 }
+              );
+            }
+            let parsedResponse: {
+              choices?: { message?: { content?: string } }[];
+              message?: { content?: string };
+              error?: string | { message?: string };
+            };
+            try {
+              parsedResponse = JSON.parse(text);
+            } catch {
+              console.error(
+                `[api/chat] Backend returned non-JSON: ${text.replace(/\s+/g, " ").trim().slice(0, 200)}`
+              );
+              return Response.json(
+                { error: "Sorry, DAP AI is offline right now." },
+                { status: 502 }
+              );
+            }
+            const content =
+              parsedResponse.choices?.[0]?.message?.content ??
+              parsedResponse.message?.content;
+            if (typeof content !== "string" || !content.trim()) {
+              console.error("[api/chat] Backend returned no assistant content.");
+              return Response.json(
+                { error: "Sorry, DAP AI is offline right now." },
+                { status: 502 }
+              );
+            }
             if (model === "dap-ai-lite") {
-              try {
-                const json = JSON.parse(text);
-                const content = json?.choices?.[0]?.message?.content ?? json?.message?.content;
-                if (typeof content === "string") {
-                  const cleaned = sanitizeLiteReply(content);
-                  if (json?.choices?.[0]?.message) json.choices[0].message.content = cleaned;
-                  else if (json?.message) json.message.content = cleaned;
-                  text = JSON.stringify(json);
-                }
-              } catch {
-                text = sanitizeLiteReply(text);
+              const cleaned = sanitizeLiteReply(content);
+              if (parsedResponse.choices?.[0]?.message) {
+                parsedResponse.choices[0].message.content = cleaned;
+              } else if (parsedResponse.message) {
+                parsedResponse.message.content = cleaned;
               }
+              text = JSON.stringify(parsedResponse);
             }
             return new Response(text, {
               status: res.status,

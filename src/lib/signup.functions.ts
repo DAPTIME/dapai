@@ -30,7 +30,7 @@ export const registerAccount = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase();
-    const name = data.name?.trim() || email.split("@")[0]!;
+    const name = data.name?.trim() || email.split("@")[0] || "there";
 
     const { consumeEmailQuota } = await import("./rate-limit.server");
     await consumeEmailQuota("signup", email);
@@ -56,15 +56,10 @@ export const registerAccount = createServerFn({ method: "POST" })
           "An account with this email already exists. Try signing in instead."
         );
       }
-      if (Date.now() - existing.createdAt < HOLD_MS) {
-        await sendConfirmation({
-          email,
-          name,
-          origin: data.origin,
-          password: data.password,
-        });
-        return { ok: true, pending: true };
-      }
+      // Supabase cannot generate another `signup` link for an existing
+      // unconfirmed address; it returns email_exists. Recreate the held
+      // account so this submission gets one fresh, valid confirmation link.
+      // This also clears stale unconfirmed accounts left by a failed sender.
       await supabaseAdmin.auth.admin.deleteUser(existing.id);
     }
 
@@ -141,7 +136,7 @@ export const resendConfirmationEmail = createServerFn({ method: "POST" })
     if (!existing || existing.confirmed) return { ok: true };
     await sendConfirmation({
       email,
-      name: existing.name || email.split("@")[0]!,
+      name: existing.name || email.split("@")[0] || "there",
       origin: data.origin,
     });
     return { ok: true };
