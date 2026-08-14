@@ -206,6 +206,7 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
         roomId: z.string().uuid(),
         text: z.string().trim().min(1).max(4000),
         askAi: z.boolean().optional().default(true),
+        model: z.enum(MODEL_IDS).optional(),
       })
       .parse(i)
   )
@@ -220,6 +221,23 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
     if (!room) throw new Error("That study room no longer exists.");
     if (!room.is_open) throw new Error("That study room has been closed.");
 
+    // The reply runs on the sender's plan: they pick the model, it must be
+    // allowed by their own tier, and the usage counts against their account.
+    const { data: me } = await supabase
+      .from("profiles")
+      .select("tier, pro_messages_used")
+      .eq("id", userId)
+      .maybeSingle();
+    const myTier = ((me?.tier as Tier | null) ?? "free") as Tier;
+    const requested = (data.model ?? room.model ?? "dap-ai-lite") as ModelId;
+    const info = modelInfo(requested) ?? modelInfo("dap-ai-lite")!;
+    if (TIER_RANK[myTier] < TIER_RANK[info.minTier]) {
+      throw new Error(
+        `${info.label} needs the ${info.minTier} plan. Pick another model or upgrade.`
+      );
+    }
+    const chosen = info.id;
+
     const author = await displayName(supabase, userId);
     const { error } = await supabase.from("study_room_messages").insert({
       room_id: data.roomId,
@@ -229,6 +247,7 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
       content: data.text,
     });
     if (error) throw dbError(error);
+
 
     if (!data.askAi) return { ok: true, replied: false };
 
