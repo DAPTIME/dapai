@@ -10,6 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { firstName } from "@/lib/utils";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { MODELS, type ModelId } from "@/lib/models";
+import { TIER_RANK } from "@/lib/tier-rank";
+import { useUpgradeGate } from "@/lib/tier-gate";
 import {
   getStudyRoom,
   joinStudyRoom,
@@ -37,6 +40,11 @@ function RoomPage() {
   const post = useServerFn(postStudyRoomMessage);
   const setOpen = useServerFn(setStudyRoomOpen);
 
+  const { tier: myTier } = useUpgradeGate();
+  const allowedModels = MODELS.filter(
+    (m) => TIER_RANK[myTier] >= TIER_RANK[m.minTier]
+  );
+  const [model, setModel] = useState<ModelId>("dap-ai-lite");
   const [text, setText] = useState("");
   const [typing, setTyping] = useState<string[]>([]);
   const [online, setOnline] = useState<string[]>([]);
@@ -117,7 +125,7 @@ function RoomPage() {
 
   const sendMut = useMutation({
     mutationFn: (value: string) =>
-      post({ data: { roomId: roomId!, text: value, askAi: true } }),
+      post({ data: { roomId: roomId!, text: value, askAi: true, model } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["study-room", code] }),
     onError: (e: Error) => toast.error(e.message),
   });
@@ -259,6 +267,26 @@ function RoomPage() {
           sendMut.mutate(value);
         }}
       >
+        <div className="mx-auto mb-2 flex max-w-3xl items-center gap-2">
+          <label htmlFor="room-model" className="text-xs text-muted-foreground">
+            Model
+          </label>
+          <select
+            id="room-model"
+            value={model}
+            onChange={(e) => setModel(e.target.value as ModelId)}
+            className="rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground"
+          >
+            {allowedModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-muted-foreground">
+            Replies you ask for use your plan.
+          </span>
+        </div>
         <div className="mx-auto flex max-w-3xl gap-2">
           <Input
             value={text}

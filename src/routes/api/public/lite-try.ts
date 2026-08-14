@@ -72,8 +72,7 @@ export const Route = createFileRoute("/api/public/lite-try")({
           if (resolved.installed && resolved.installed.length === 0) {
             return new Response(
               JSON.stringify({
-                error:
-                  "DAP AI Lite is unreachable: the Ollama server has no models installed.",
+                error: "Sorry, DAP AI is offline right now.",
               }),
               { status: 503, headers: { "Content-Type": "application/json" } }
             );
@@ -124,18 +123,23 @@ export const Route = createFileRoute("/api/public/lite-try")({
           } catch {
             return new Response(
               JSON.stringify({
-                error: "DAP AI Lite is offline right now. Please try again later.",
+                error: "Sorry, DAP AI is offline right now.",
               }),
               { status: 502, headers: { "Content-Type": "application/json" } }
             );
           }
           const errStr =
             typeof json?.error === "string" ? json.error : json?.error?.message;
-          let out =
-            json?.choices?.[0]?.message?.content ??
-            json?.message?.content ??
-            errStr ??
-            "(empty response)";
+          const content =
+            json?.choices?.[0]?.message?.content ?? json?.message?.content;
+          if (!content) {
+            console.error(`[lite-try] no content from backend: ${errStr ?? raw.slice(0, 200)}`);
+            return new Response(
+              JSON.stringify({ error: "Sorry, DAP AI is offline right now." }),
+              { status: 502, headers: { "Content-Type": "application/json" } }
+            );
+          }
+          let out = content;
           out = sanitizeLiteReply(out);
           return new Response(JSON.stringify({ reply: out }), {
             status: 200,
@@ -148,7 +152,7 @@ export const Route = createFileRoute("/api/public/lite-try")({
               error:
                 err.name === "AbortError"
                   ? "DAP AI Lite took too long to respond. Please try again."
-                  : `Couldn't reach DAP AI Lite: ${err.message}`,
+                  : "Sorry, DAP AI is offline right now.",
             }),
             { status: 504, headers: { "Content-Type": "application/json" } }
           );

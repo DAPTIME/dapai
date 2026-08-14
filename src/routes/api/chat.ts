@@ -147,11 +147,7 @@ export const Route = createFileRoute("/api/chat")({
         if (!backend) {
           return Response.json(
             {
-              error: `No backend configured for ${model}. Set ${
-                model === "dap-ai-lite"
-                  ? "AI_BACKEND_URL_LITE"
-                  : "AI_BACKEND_URL_PRO"
-              }.`,
+              error: "Sorry, DAP AI is offline right now.",
             },
             { status: 503 }
           );
@@ -238,7 +234,7 @@ export const Route = createFileRoute("/api/chat")({
             });
           } catch (e) {
             return Response.json(
-              { error: `Could not reach backend: ${(e as Error).message}` },
+              { error: "Sorry, DAP AI is offline right now." },
               { status: 502 }
             );
           }

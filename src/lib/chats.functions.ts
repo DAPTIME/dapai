@@ -794,12 +794,15 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
 
     const { url: backend, key, upstreamModel } = backendFor(effectiveModel);
+    const { offlineMessage } = await import("./offline-message.server");
 
     let replyText = "";
     if (!backend) {
-      replyText = `No AI backend configured for ${effectiveModel}. Set ${
-        active.lite ? "AI_BACKEND_URL_LITE" : "AI_BACKEND_URL_PRO"
-      } to that model's tunnel URL (e.g. https://abcd.ngrok-free.app/v1/chat/completions).`;
+      console.error(
+        `[chat] No AI backend configured for ${effectiveModel} (missing AI_BACKEND_URL_${active.lite ? "LITE" : "PRO"}).`
+      );
+      replyText = await offlineMessage();
+
     } else {
       // Per-model queue: only one in-flight call per model at a time.
       replyText = await enqueue(`model:${effectiveModel}`, async () => {
@@ -837,8 +840,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           if (active.lite) {
             const resolved = await resolveOllamaModel(backend, key, upstreamModel);
             if (resolved.installed && resolved.installed.length === 0) {
-              return `${active.label} is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
+              console.error(
+                `[chat] ${active.label} backend has no models installed.`
+              );
+              return await offlineMessage();
             }
+
             resolvedModel = resolved.model;
           }
           const res = await fetch(backend, {
@@ -864,29 +871,28 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           try {
             json = JSON.parse(raw);
           } catch {
-            // Upstream returned non-JSON (HTML/text). Usually means the
-            // ngrok tunnel URL expired or LM Studio isn't running.
-            const snippet = raw.replace(/\s+/g, " ").trim().slice(0, 120);
-            const tunnelHint = /ngrok|endpoint (is )?offline|tunnel/i.test(raw)
-              ? " The ngrok tunnel URL looks offline or expired — restart `ngrok http 1234` and update AI_BACKEND_URL_" +
-                (active.lite ? "LITE" : "PRO") +
-                " to the new https URL."
-              : "";
-            return `AI backend is offline (HTTP ${res.status}). ${snippet}${tunnelHint}`;
+            // Upstream returned non-JSON (ngrok error page, HTML, plain text).
+            console.error(
+              `[chat] Non-JSON from backend (HTTP ${res.status}): ${raw.replace(/\s+/g, " ").trim().slice(0, 200)}`
+            );
+            return await offlineMessage();
           }
           const errStr =
             typeof json?.error === "string"
               ? json.error
               : json?.error?.message;
-          let out =
-            json?.choices?.[0]?.message?.content ??
-            json?.message?.content ??
-            errStr ??
-            "(empty response)";
+          const content =
+            json?.choices?.[0]?.message?.content ?? json?.message?.content;
+          if (!content) {
+            console.error(
+              `[chat] Backend returned no content (HTTP ${res.status}): ${errStr ?? raw.slice(0, 200)}`
+            );
+            return await offlineMessage();
+          }
           // Always strip <think>/reasoning blocks and system-prompt
           // echoes — Pro can leak them too depending on which checkpoint
           // is loaded in LM Studio.
-          out = sanitizeLiteReply(out);
+          let out = sanitizeLiteReply(content);
           if (hasLiteReasoningLeak(out)) out = sanitizeLiteReply(out);
           return out;
         } catch (e) {
@@ -894,10 +900,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           if (err.name === "AbortError" && isStopped(data.chatId)) {
             return "__DAP_STOPPED__";
           }
+          console.error(`[chat] Backend request failed: ${err.name}: ${err.message}`);
           if (err.name === "AbortError") {
-            return `Backend didn't respond within ${Math.round(timeoutMs / 1000)}s. Your computer may not have received the request (check ngrok is running and AI_BACKEND_URL_${active.lite ? "LITE" : "PRO"} points to the current tunnel), or the model is too slow for this prompt.`;
+            return "DAP AI took too long to reply. Please try again.";
           }
-          return `Couldn't reach AI backend: ${err.message}`;
+          return await offlineMessage();
+
         } finally {
           clearTimeout(timer);
           unregisterAborter(data.chatId);

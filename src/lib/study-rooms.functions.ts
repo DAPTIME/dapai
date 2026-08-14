@@ -12,7 +12,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { dbError } from "./db-error";
 import { firstName } from "./utils";
 import { completeOnce } from "./ai-backend.server";
-import { modelInfo, type ModelId } from "./models";
+import { modelInfo, MODEL_IDS, type ModelId } from "./models";
+import { TIER_RANK } from "./tier-rank";
+import type { Tier } from "./tier-gate";
+
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -206,6 +209,7 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
         roomId: z.string().uuid(),
         text: z.string().trim().min(1).max(4000),
         askAi: z.boolean().optional().default(true),
+        model: z.enum(MODEL_IDS).optional(),
       })
       .parse(i)
   )
@@ -220,6 +224,23 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
     if (!room) throw new Error("That study room no longer exists.");
     if (!room.is_open) throw new Error("That study room has been closed.");
 
+    // The reply runs on the sender's plan: they pick the model, it must be
+    // allowed by their own tier, and the usage counts against their account.
+    const { data: me } = await supabase
+      .from("profiles")
+      .select("tier, pro_messages_used")
+      .eq("id", userId)
+      .maybeSingle();
+    const myTier = ((me?.tier as Tier | null) ?? "free") as Tier;
+    const requested = (data.model ?? room.model ?? "dap-ai-lite") as ModelId;
+    const info = modelInfo(requested) ?? modelInfo("dap-ai-lite")!;
+    if (TIER_RANK[myTier] < TIER_RANK[info.minTier]) {
+      throw new Error(
+        `${info.label} needs the ${info.minTier} plan. Pick another model or upgrade.`
+      );
+    }
+    const chosen = info.id;
+
     const author = await displayName(supabase, userId);
     const { error } = await supabase.from("study_room_messages").insert({
       room_id: data.roomId,
@@ -229,6 +250,7 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
       content: data.text,
     });
     if (error) throw dbError(error);
+
 
     if (!data.askAi) return { ok: true, replied: false };
 
@@ -248,11 +270,12 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
           : { role: "user" as const, content: `${m.author_name}: ${m.content}` }
       );
 
+    const { offlineMessage } = await import("./offline-message.server");
     let reply = "";
     try {
       reply = (
         await completeOnce(
-          (room.model ?? "dap-ai-lite") as ModelId,
+          chosen,
           [
             {
               role: "system",
@@ -265,11 +288,20 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
         )
       ).trim();
     } catch (e) {
-      throw new Error(
-        e instanceof Error ? e.message : "DAP AI couldn't reply in this room."
+      console.error(
+        `[rooms] ${chosen} reply failed:`,
+        e instanceof Error ? e.message : e
       );
+      throw new Error(await offlineMessage());
     }
-    if (!reply) return { ok: true, replied: false };
+    if (!reply) throw new Error(await offlineMessage());
+
+    // Count the reply against the sender's own usage.
+    await supabase
+      .from("profiles")
+      .update({ pro_messages_used: (me?.pro_messages_used ?? 0) + 1 })
+      .eq("id", userId);
+
 
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
