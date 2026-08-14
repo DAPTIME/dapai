@@ -92,9 +92,17 @@ export async function deliverConfirmation(opts: {
       email: opts.email,
     });
     if (error) {
-      console.error("[signup] Supabase fallback failed:", error.message);
+      // Both senders are down, and they fail for different reasons — the
+      // first is usually an unset RESEND_FROM, the second Supabase's own
+      // hourly cap on its built-in mail. Log both so the cause is
+      // recoverable from the server log rather than guessed at.
+      console.error(
+        "[signup] both senders failed. resend:", (e as Error).message,
+        "| supabase:", error.message
+      );
       throw new Error(
-        "We couldn't send your confirmation email right now. Please try again in a minute, or contact DAPAI.support@gmail.com."
+        "Your account was created, but we couldn't send the confirmation email. " +
+          "Use \u201cResend email\u201d in a minute, or contact DAPAI.support@gmail.com."
       );
     }
     return { via: "supabase" as const };

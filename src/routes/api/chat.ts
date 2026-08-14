@@ -5,6 +5,13 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { enqueue } from "@/lib/ai-queue";
+import {
+  TIER_LIMITS,
+  MAX_IMAGES_PER_PROMPT,
+  costOfPrompt,
+  estimateTokens,
+} from "@/lib/usage-limits";
+import type { ModelId } from "@/lib/models";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 
 const LITE_NO_THINK_PROMPT =
@@ -119,6 +126,82 @@ export const Route = createFileRoute("/api/chat")({
           if (model === "dap-ai-1.0" && callerRank < TIER_RANK.pro) {
             // Free/Go tiers are locked to Lite.
             model = "dap-ai-lite";
+          }
+
+          /* Usage tokens. This route reaches the model directly, so it
+             needs the same charge sendChatMessage applies — otherwise it
+             is a free door standing beside a locked one.
+
+             Charged through a client carrying the caller's own JWT,
+             because charge_usage keys on auth.uid(); the service-role
+             client would spend nobody's allowance. */
+          {
+            const tier = ((profile?.tier as Tier) ?? "free") as Tier;
+            const limits = TIER_LIMITS[tier];
+
+            let promptText = "";
+            let images = 0;
+            try {
+              const body = JSON.parse(raw) as {
+                messages?: Array<{ role?: string; content?: unknown }>;
+              };
+              const last = [...(body.messages ?? [])].reverse().find((m) => m.role === "user");
+              if (typeof last?.content === "string") {
+                promptText = last.content;
+              } else if (Array.isArray(last?.content)) {
+                for (const part of last.content as Array<{ type?: string; text?: string }>) {
+                  if (part?.type === "text" && typeof part.text === "string") promptText += part.text;
+                  if (part?.type === "image_url") images += 1;
+                }
+              }
+            } catch {
+              /* an unparseable body is the backend's problem, not the ledger's */
+            }
+
+            if (images > MAX_IMAGES_PER_PROMPT) {
+              return Response.json(
+                { error: `Please attach at most ${MAX_IMAGES_PER_PROMPT} image per message.` },
+                { status: 400 }
+              );
+            }
+            const promptTokens = estimateTokens(promptText);
+            if (promptTokens > limits.maxPromptTokens) {
+              return Response.json(
+                {
+                  error: `That message is too long for your plan — about ${promptTokens} tokens against a ${limits.maxPromptTokens} limit.`,
+                },
+                { status: 400 }
+              );
+            }
+
+            const cost = costOfPrompt({
+              tier,
+              model: model as ModelId,
+              promptTokens,
+              hasImage: images > 0,
+            });
+
+            const { createClient } = await import("@supabase/supabase-js");
+            const asCaller = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
+              auth: { persistSession: false, autoRefreshToken: false },
+              global: { headers: { Authorization: `Bearer ${token}` } },
+            });
+            const { data: charged, error: chargeErr } = await asCaller
+              .rpc("charge_usage", { _cost: cost, _images: Math.min(images, 1) })
+              .maybeSingle();
+            if (chargeErr) {
+              console.error("[api/chat] charge_usage failed:", chargeErr.message);
+              return Response.json(
+                { error: "We couldn't check your usage allowance. Please try again." },
+                { status: 503 }
+              );
+            }
+            if (charged && (charged as { ok?: boolean }).ok === false) {
+              return Response.json(
+                { error: (charged as { reason?: string }).reason ?? "You have used up your allowance." },
+                { status: 429 }
+              );
+            }
           }
 
           const flagId =

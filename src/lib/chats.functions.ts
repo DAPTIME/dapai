@@ -1,5 +1,11 @@
 import { dbError } from "./db-error";
-import { CHAT_HISTORY_LIMIT as CHAT_LIMITS } from "@/lib/usage-limits";
+import {
+  CHAT_HISTORY_LIMIT as CHAT_LIMITS,
+  TIER_LIMITS,
+  MAX_IMAGES_PER_PROMPT,
+  costOfPrompt,
+  estimateTokens,
+} from "@/lib/usage-limits";
 /**
  * Server functions for chats. All run as the authenticated user so RLS
  * scopes every read/write to that user's rows.
@@ -610,6 +616,41 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
 
     const imageCount = data.images?.length ?? 0;
+
+    /* Usage tokens. Charged before the model is called, because a reply
+       that arrives after the allowance ran out is a reply we gave away.
+       The prompt cap is checked first so an over-long message is refused
+       outright rather than billed at the top band and then rejected. */
+    {
+      const limits = TIER_LIMITS[callerTier];
+      if (imageCount > MAX_IMAGES_PER_PROMPT) {
+        throw new Error(`Please attach at most ${MAX_IMAGES_PER_PROMPT} image per message.`);
+      }
+      const promptTokens = estimateTokens(data.text);
+      if (promptTokens > limits.maxPromptTokens) {
+        throw new Error(
+          `That message is too long for your plan — about ${promptTokens} tokens against a ${limits.maxPromptTokens} limit. Shorten it, or upgrade for more room.`
+        );
+      }
+
+      const cost = costOfPrompt({
+        tier: callerTier,
+        model: effectiveModel,
+        promptTokens,
+        hasImage: imageCount > 0,
+      });
+
+      // charge_usage does the check and the debit under a row lock, so two
+      // messages sent at once cannot both spend the last token.
+      const { data: charged, error: chargeErr } = await supabase
+        .rpc("charge_usage", { _cost: cost, _images: Math.min(imageCount, 1) })
+        .maybeSingle();
+      if (chargeErr) throw dbError(chargeErr, "charge_usage");
+      if (charged && charged.ok === false) {
+        throw new Error(charged.reason ?? "You have used up your allowance.");
+      }
+    }
+
     const storedUserContent =
       imageCount > 0
         ? `${data.text}\n\n_(📎 ${imageCount} image${imageCount > 1 ? "s" : ""} attached)_`
