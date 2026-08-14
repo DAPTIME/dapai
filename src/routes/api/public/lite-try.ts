@@ -72,8 +72,7 @@ export const Route = createFileRoute("/api/public/lite-try")({
           if (resolved.installed && resolved.installed.length === 0) {
             return new Response(
               JSON.stringify({
-                error:
-                  "DAP AI Lite is unreachable: the Ollama server has no models installed.",
+                error: "Sorry, DAP AI is offline right now.",
               }),
               { status: 503, headers: { "Content-Type": "application/json" } }
             );
@@ -124,7 +123,7 @@ export const Route = createFileRoute("/api/public/lite-try")({
           } catch {
             return new Response(
               JSON.stringify({
-                error: "DAP AI Lite is offline right now. Please try again later.",
+                error: "Sorry, DAP AI is offline right now.",
               }),
               { status: 502, headers: { "Content-Type": "application/json" } }
             );
@@ -148,7 +147,7 @@ export const Route = createFileRoute("/api/public/lite-try")({
               error:
                 err.name === "AbortError"
                   ? "DAP AI Lite took too long to respond. Please try again."
-                  : `Couldn't reach DAP AI Lite: ${err.message}`,
+                  : "Sorry, DAP AI is offline right now.",
             }),
             { status: 504, headers: { "Content-Type": "application/json" } }
           );
