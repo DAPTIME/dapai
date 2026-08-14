@@ -40,8 +40,14 @@ export const registerAccount = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { makeStored } = await import("./recovery-hash.server");
-    const { HOLD_MS, findUserByEmail, generateSignupLink, sendConfirmation, deliverConfirmation } =
-      await import("./signup.server");
+    const {
+      HOLD_MS,
+      findUserByEmail,
+      generateSignupLink,
+      sendConfirmation,
+      deliverConfirmation,
+      isEmailExists,
+    } = await import("./signup.server");
 
     const existing = await findUserByEmail(email);
     if (existing) {
@@ -62,12 +68,38 @@ export const registerAccount = createServerFn({ method: "POST" })
       await supabaseAdmin.auth.admin.deleteUser(existing.id);
     }
 
-    const link = await generateSignupLink({
-      email,
-      password: data.password,
-      name,
-      origin: data.origin,
-    });
+    let link: string;
+    try {
+      link = await generateSignupLink({
+        email,
+        password: data.password,
+        name,
+        origin: data.origin,
+      });
+    } catch (e) {
+      if (!isEmailExists(e)) {
+        console.error("[signup] link generation failed:", (e as Error).message);
+        throw new Error(
+          "We couldn't start your signup right now. Please try again in a minute."
+        );
+      }
+      // The address exists after all (stale/unlisted account). Remove it when
+      // it was never confirmed, then try once more; otherwise tell the user.
+      const again = await findUserByEmail(email);
+      if (again && !again.confirmed) {
+        await supabaseAdmin.auth.admin.deleteUser(again.id);
+        link = await generateSignupLink({
+          email,
+          password: data.password,
+          name,
+          origin: data.origin,
+        });
+      } else {
+        throw new Error(
+          "An account with this email already exists. Try signing in instead, or use “Forgot password”."
+        );
+      }
+    }
 
     const created = await findUserByEmail(email);
     if (created) {
@@ -84,6 +116,7 @@ export const registerAccount = createServerFn({ method: "POST" })
 
     return { ok: true, pending: true };
   });
+
 
 export const resendConfirmationEmail = createServerFn({ method: "POST" })
   .inputValidator((i) =>
