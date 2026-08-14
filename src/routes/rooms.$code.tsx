@@ -90,9 +90,9 @@ function RoomPage() {
             content: string;
             created_at: string;
           };
-          qc.setQueryData<Awaited<ReturnType<typeof fetchRoom>>>(
+          qc.setQueryData(
             ["study-room", code],
-            (current) => {
+            (current: Awaited<ReturnType<typeof fetchRoom>> | undefined) => {
               if (
                 !current ||
                 !("isHost" in current.room) ||
