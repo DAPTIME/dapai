@@ -383,9 +383,13 @@ export const sendPasswordResetLink = createServerFn({ method: "POST" })
          unavailable — fall back to Supabase's own recovery email, exactly
          like signup already does for confirmations. */
       console.error("[reset] branded email failed, falling back to Supabase:", (e as Error).message);
+      // Keep our own single-use token/email on the redirect target: Supabase
+      // delivers its material in the URL fragment, which /reset-password does
+      // not read, so without these query params the link dead-ends.
       const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-        redirectTo: `${site}/reset-password`,
+        redirectTo: link,
       });
+
       if (error) {
         console.error("[reset] Supabase fallback failed:", error.message);
         throw new Error(
