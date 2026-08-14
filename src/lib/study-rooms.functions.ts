@@ -147,6 +147,21 @@ export const getStudyRoom = createServerFn({ method: "POST" })
     );
     if (!isMember) return { room: { ...room, joined: false }, members: [], messages: [] };
 
+    // Repair old memberships saved as "Guest" and keep room identity synced
+    // with the caller's current profile name.
+    const currentName = await displayName(supabase, userId);
+    const callerMembership = (members ?? []).find(
+      (member: { user_id: string }) => member.user_id === userId
+    );
+    if (callerMembership?.display_name !== currentName) {
+      await supabase
+        .from("study_room_members")
+        .update({ display_name: currentName })
+        .eq("room_id", room.id)
+        .eq("user_id", userId);
+      if (callerMembership) callerMembership.display_name = currentName;
+    }
+
     const { data: messages } = await supabase
       .from("study_room_messages")
       .select("id, user_id, author_name, role, content, created_at")
@@ -154,10 +169,20 @@ export const getStudyRoom = createServerFn({ method: "POST" })
       .order("created_at", { ascending: true })
       .limit(200);
 
+    const normalizedMessages = (messages ?? []).map((message: any) => {
+      if (message.role === "assistant") return message;
+      const member = (members ?? []).find(
+        (candidate: { user_id: string }) => candidate.user_id === message.user_id
+      );
+      return member?.display_name
+        ? { ...message, author_name: member.display_name }
+        : message;
+    });
+
     return {
       room: { ...room, joined: true, isHost: room.host_id === userId },
       members: members ?? [],
-      messages: messages ?? [],
+      messages: normalizedMessages,
     };
   });
 
