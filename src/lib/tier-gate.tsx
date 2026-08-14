@@ -353,12 +353,8 @@ function UpgradeDialog({
               className="text-primary-foreground"
               style={{ background: "var(--gradient-brand)" }}
             >
-              <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
-                  `DAP AI ${claiming ? TIER_LABEL[claiming] : ""} upgrade request`
-                )}`}
-              >
-                Email us
+              <a href={LINKTREE_URL} target="_blank" rel="noreferrer">
+                Get in touch
               </a>
             </Button>
           </DialogFooter>

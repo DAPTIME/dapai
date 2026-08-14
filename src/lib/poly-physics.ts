@@ -9,7 +9,7 @@ import { TERRAIN_Y, type Sampler, type Surface } from "./polytrack-engine";
 export const STEP = 1 / 120;
 
 export const MAX_SPEED = 46;      // world units/s on tarmac
-export const ENGINE = 34;         // forward acceleration
+export const ENGINE = 29;         // forward acceleration
 
 /**
  * Multiplier on ENGINE. Since the push fades with headroom rather than

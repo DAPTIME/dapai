@@ -66,4 +66,10 @@ export const PLANS: Plan[] = [
 ];
 
 export const SUPPORT_EMAIL = "dapai.support@gmail.com";
-export const LINKTREE_URL = "https://n.ee/daptime";
+/**
+ * Every outbound "reach us" link on the site. It read "https://n.ee/daptime"
+ * — the host had lost its "linktr" — so the upgrade dialog's link went
+ * nowhere. One constant now, used by the footer too, so the two cannot
+ * drift again.
+ */
+export const LINKTREE_URL = "https://linktr.ee/DAPTIME";
