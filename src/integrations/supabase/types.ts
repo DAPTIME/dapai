@@ -184,6 +184,8 @@ export type Database = {
           play_count: number
           season: string
           updated_at: string
+          verified_at: string | null
+          verified_time_ms: number | null
         }
         Insert: {
           created_at?: string
@@ -196,6 +198,8 @@ export type Database = {
           play_count?: number
           season: string
           updated_at?: string
+          verified_at?: string | null
+          verified_time_ms?: number | null
         }
         Update: {
           created_at?: string
@@ -208,6 +212,8 @@ export type Database = {
           play_count?: number
           season?: string
           updated_at?: string
+          verified_at?: string | null
+          verified_time_ms?: number | null
         }
         Relationships: []
       }
@@ -316,6 +322,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           banned: boolean
+          car: Json | null
           created_at: string
           email: string | null
           id: string
@@ -331,6 +338,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           banned?: boolean
+          car?: Json | null
           created_at?: string
           email?: string | null
           id: string
@@ -346,6 +354,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           banned?: boolean
+          car?: Json | null
           created_at?: string
           email?: string | null
           id?: string
@@ -591,6 +600,22 @@ export type Database = {
           name: string
           rank: number
         }[]
+      }
+      set_track_published: {
+        Args: { _id: string; _public: boolean }
+        Returns: boolean
+      }
+      verify_own_track: {
+        Args: { _id: string; _time_ms: number }
+        Returns: string
+      }
+      tier_rank: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
+      }
+      track_quota: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
       }
       has_role: {
         Args: {

@@ -11,6 +11,7 @@ import { DapIntro } from "@/components/dap-intro";
 import { createChat, getProfile } from "@/lib/chats.functions";
 import { useSiteConfig } from "@/lib/site-config";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
+import { MODELS } from "@/lib/models";
 
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -136,10 +137,15 @@ function Home() {
     staleTime: 15_000,
   });
   const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
-  // Free users / anon only have access to Lite. Pro users can use either.
-  const maintenance = user && TIER_RANK[tier] >= TIER_RANK.pro
-    ? !proEnabled && !liteEnabled
-    : !liteEnabled;
+  // Offline only when *no* model this account may use is switched on.
+  // Spelling the tiers out by hand kept getting it wrong: the pair of
+  // branches this replaces judged everyone below Pro on the Lite flag
+  // alone, so a Go account — which may also use Pro Lite — was told the
+  // site was down whenever Lite was off. Deriving it from MODELS means a
+  // new model or tier cannot reintroduce that.
+  const maintenance = !MODELS.some(
+    (m) => TIER_RANK[tier] >= TIER_RANK[m.minTier] && siteConfig.flags[m.flag] !== false,
+  );
   const [showIntro, setShowIntro] = useState(false);
 
   // Just confirmed their email: notify + play the short DAP AI intro.

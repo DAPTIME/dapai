@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, stopChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
-import { modelInfo, type ModelId } from "@/lib/models";
+import { MODELS, modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { useAuth } from "@/lib/auth";
@@ -87,9 +87,15 @@ function ChatPage() {
   const liteEnabled = siteConfig.flags.lite_model;
 
   const tier = (profileQuery.data?.tier as Tier | undefined) ?? "free";
-  const maintenance = TIER_RANK[tier] >= TIER_RANK.pro
-    ? !proEnabled && !liteEnabled
-    : !liteEnabled;
+  // Offline only when *no* model this account may use is switched on.
+  // Spelling the tiers out by hand kept getting it wrong: the pair of
+  // branches this replaces judged everyone below Pro on the Lite flag
+  // alone, so a Go account — which may also use Pro Lite — was told the
+  // site was down whenever Lite was off. Deriving it from MODELS means a
+  // new model or tier cannot reintroduce that.
+  const maintenance = !MODELS.some(
+    (m) => TIER_RANK[tier] >= TIER_RANK[m.minTier] && siteConfig.flags[m.flag] !== false,
+  );
 
   const sendMut = useMutation({
     mutationFn: async ({ text, images }: { text: string; images?: string[] }) => {

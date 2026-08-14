@@ -56,7 +56,7 @@ export const listMyTracks = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("custom_tracks")
-      .select("id, name, season, is_public, goal, play_count, created_at, updated_at, params")
+      .select("id, name, season, is_public, goal, play_count, created_at, updated_at, params, verified_at, verified_time_ms")
       .eq("owner_id", context.userId)
       .order("updated_at", { ascending: false });
     if (error) throw dbError(error);
@@ -83,7 +83,7 @@ export const getTrack = createServerFn({ method: "GET" })
     const supabase = publicClient();
     const { data: row, error } = await supabase
       .from("custom_tracks")
-      .select("id, name, season, params, goal, is_public, play_count, owner_id, created_at")
+      .select("id, name, season, params, goal, is_public, play_count, owner_id, created_at, verified_at, verified_time_ms")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw dbError(error);
@@ -97,7 +97,7 @@ export const getMyTrack = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("custom_tracks")
-      .select("id, name, season, params, goal, is_public, play_count, owner_id, created_at")
+      .select("id, name, season, params, goal, is_public, play_count, owner_id, created_at, verified_at, verified_time_ms")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw dbError(error);
@@ -179,7 +179,12 @@ export const createTrack = createServerFn({ method: "POST" })
       })
       .select("id")
       .single();
-    if (error) throw dbError(error);
+    if (error) {
+      // 23514: the per-plan quota trigger. Its message is written for the
+      // person reading it, so it survives the sanitiser.
+      if (error.code === "23514") throw new Error(error.message);
+      throw dbError(error);
+    }
     return { id: row.id };
   });
 
@@ -230,7 +235,6 @@ export const updateTrack = createServerFn({ method: "POST" })
         season: data.season,
         params,
         goal: data.goal,
-        is_public: false,
       })
       .eq("id", data.id)
       .eq("owner_id", context.userId);
@@ -257,20 +261,29 @@ export const publishTrack = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: row, error: fErr } = await context.supabase
       .from("custom_tracks")
-      .select("name, params, owner_id")
+      .select("name, params, owner_id, verified_at")
       .eq("id", data.id)
       .maybeSingle();
     if (fErr) throw dbError(fErr);
     if (!row) throw new Error("Track not found");
     if (row.owner_id !== context.userId) throw new Error("Not your track");
+    if (!row.verified_at) {
+      throw new Error(
+        "Drive your track to the finish before publishing it."
+      );
+    }
     const err = validateForPublish(row.name, row.params);
     if (err) throw new Error(err);
-    const { error } = await context.supabase
-      .from("custom_tracks")
-      .update({ is_public: true })
-      .eq("id", data.id)
-      .eq("owner_id", context.userId);
-    if (error) throw dbError(error);
+
+    // set_track_published re-checks ownership and verification in the
+    // database. This is the only path to is_public: the column is not in
+    // the UPDATE grant, so a direct PATCH cannot publish an unverified
+    // track even with a valid key.
+    const { error } = await context.supabase.rpc("set_track_published", {
+      _id: data.id,
+      _public: true,
+    });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
@@ -278,13 +291,40 @@ export const unpublishTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("custom_tracks")
-      .update({ is_public: false })
-      .eq("id", data.id)
-      .eq("owner_id", context.userId);
-    if (error) throw dbError(error);
+    const { error } = await context.supabase.rpc("set_track_published", {
+      _id: data.id,
+      _public: false,
+    });
+    if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+/**
+ * Mark a track as driven by the person who built it.
+ *
+ * Worth being straight about what this can and cannot do. The simulation
+ * runs in the browser, so this call reports a finish rather than proving
+ * one; someone determined can invoke it with a time they never drove. What
+ * it does buy: publishing has exactly one route, that route is owner-only
+ * and time-bounded in the database, and any later edit clears the flag —
+ * so a published track has at least been claimed as drivable by its author
+ * in its current form.
+ */
+export const verifyTrack = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({
+      id: z.string().uuid(),
+      timeMs: z.number().int().min(500).max(600_000),
+    }).parse(i)
+  )
+  .handler(async ({ data, context }) => {
+    const { data: at, error } = await context.supabase.rpc("verify_own_track", {
+      _id: data.id,
+      _time_ms: data.timeMs,
+    });
+    if (error) throw new Error(error.message);
+    return { verifiedAt: at as string, timeMs: data.timeMs };
   });
 
 export const submitScore = createServerFn({ method: "POST" })
