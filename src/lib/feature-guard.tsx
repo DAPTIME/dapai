@@ -16,6 +16,25 @@ export const GAME_FLAGS: Record<string, FeatureKey> = {
   "/games/stunt": "game_stunt",
 };
 
+const PAGE_FLAGS: Array<[string, FeatureKey]> = [
+  ["/daps", "daps"],
+  ["/rooms", "rooms"],
+  ["/team", "team"],
+  ["/account", "account"],
+  ["/settings", "settings"],
+  ["/security", "security"],
+  ["/help", "help"],
+  ["/terms", "terms"],
+  ["/about-dap-ai", "about"],
+  ["/games", "games"],
+];
+
+export function pageFlagFor(pathname: string): FeatureKey | null {
+  return PAGE_FLAGS.find(([path]) =>
+    pathname === path || pathname.startsWith(`${path}/`)
+  )?.[1] ?? null;
+}
+
 /** The flag for a pathname inside the arcade, if any. */
 export function gameFlagFor(pathname: string): FeatureKey | null {
   const hit = Object.keys(GAME_FLAGS).find(
