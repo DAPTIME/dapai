@@ -95,7 +95,7 @@ function RoomPage() {
             (current) => {
               if (
                 !current ||
-                !current.room.joined ||
+                !("isHost" in current.room) ||
                 current.messages.some((message) => message.id === incoming.id)
               ) {
                 return current;
