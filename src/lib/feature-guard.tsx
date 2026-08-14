@@ -13,7 +13,6 @@ export const GAME_FLAGS: Record<string, FeatureKey> = {
   "/games/river": "game_river",
   "/games/flappy": "game_flappy",
   "/games/breakout": "game_breakout",
-  "/games/stunt": "game_stunt",
 };
 
 const PAGE_FLAGS: Array<[string, FeatureKey]> = [

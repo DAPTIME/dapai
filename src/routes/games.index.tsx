@@ -11,7 +11,7 @@ export const Route = createFileRoute("/games/")({
       {
         name: "description",
         content:
-          "Play eight free games right in your browser: 2048, Snake, Spacewar, DAP Track 3D time trials, River Crosser, Flappy, Brick Breaker and Stunt Racer.",
+          "Play seven free games right in your browser: 2048, Snake, Spacewar, DAP Track 3D time trials, River Crosser, Flappy and Brick Breaker.",
       },
       { property: "og:title", content: "DAP Arcade — 8 free games in your browser" },
       {
@@ -35,7 +35,6 @@ const GAMES = [
   { to: "/games/river" as const, label: "River Crosser", emoji: "🐸", desc: "Hop cars and logs — don't drown." },
   { to: "/games/flappy" as const, label: "Flappy", emoji: "🐤", desc: "Tap to flap between pipes." },
   { to: "/games/breakout" as const, label: "Brick Breaker", emoji: "🧱", desc: "Bounce, smash, clear the wall." },
-  { to: "/games/stunt" as const, label: "Stunt Racer", emoji: "🏁", desc: "3D time-trial with loops, ramps & editor." },
 ];
 
 function GamesHome() {
