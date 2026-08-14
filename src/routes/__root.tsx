@@ -29,6 +29,7 @@ import { AppContextMenu } from "@/components/app-context-menu";
 import { InstallAppButton } from "@/components/install-app-button";
 import { registerServiceWorker } from "@/lib/register-sw";
 import { useTheme } from "@/lib/theme";
+import { LINKTREE_URL } from "@/lib/plans";
 import { pageFlagFor, useFeatureGuard } from "@/lib/feature-guard";
 
 import { getProfile } from "@/lib/chats.functions";
@@ -319,12 +320,12 @@ function SiteFooter() {
   return (
     <footer className="border-t border-border px-6 py-6 text-center">
       <a
-        href="https://linktr.ee/daptime"
+        href={LINKTREE_URL}
         target="_blank"
         rel="noreferrer"
         className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
-        linktr.ee/daptime
+        {LINKTREE_URL.replace(/^https?:\/\//, "")}
       </a>
     </footer>
   );

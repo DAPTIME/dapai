@@ -524,6 +524,72 @@ function hillLoop(w: number, h: number): Shape {
   );
 }
 
+
+/**
+ * A perimeter loop with rectangular bites taken out of its sides.
+ *
+ * This exists because size alone does not make two tracks look different.
+ * Forty tracks built from ovals and rings traced only eleven distinct
+ * paths between them: a 13x9 rectangle and an 18x12 rectangle are the same
+ * track drawn at two scales, and the eye reads the turn sequence, not the
+ * dimensions. Each bite adds four corners, so the *number and placement*
+ * of bites is what actually makes one loop read differently from another.
+ *
+ * `bites` is [top, right, bottom, left]. Depth is how far each one cuts in.
+ */
+function notchedLoop(
+  w: number,
+  h: number,
+  bites: [number, number, number, number],
+  depth = 2,
+): Shape {
+  const x0 = 1, z0 = 1, x1 = w, z1 = h;
+  const pts: Pt[] = [];
+
+  /** Walk one side, cutting `n` evenly spaced bites into it. */
+  const side = (
+    ax: number, az: number, bx: number, bz: number,
+    n: number, inx: number, inz: number,
+  ) => {
+    pts.push([ax, az]);
+    if (n <= 0) return;
+    const horiz = az === bz;
+    const span = horiz ? bx - ax : bz - az;
+    const dir = Math.sign(span);
+    const len = Math.abs(span);
+    // Each bite needs room for two walls and a floor, plus a gap either
+    // side, or the loop doubles back onto itself.
+    const cell = Math.floor(len / (n + 1));
+    // Bailing quietly here was a trap: the side still got traced, so the
+    // bites simply vanished and the "varied" loop came out a plain
+    // rectangle that the catalogue then believed was distinct.
+    if (cell < 3) {
+      throw new Error(`notchedLoop: ${n} bite(s) need a side of at least ${3 * (n + 1)}, got ${len}`);
+    }
+    const width = Math.max(2, Math.floor(cell / 2));
+    for (let i = 0; i < n; i++) {
+      const at = (i + 1) * cell;
+      const s = at - Math.floor(width / 2);
+      const e = s + width;
+      if (horiz) {
+        const sx = ax + dir * s, ex = ax + dir * e;
+        pts.push([sx, az], [sx, az + inz * depth], [ex, az + inz * depth], [ex, az]);
+      } else {
+        const sz = az + dir * s, ez = az + dir * e;
+        pts.push([ax, sz], [ax + inx * depth, sz], [ax + inx * depth, ez], [ax, ez]);
+      }
+    }
+  };
+
+  side(x0, z0, x1, z0, bites[0], 0, 1);    // top, bites cut downward
+  side(x1, z0, x1, z1, bites[1], -1, 0);   // right, cut leftward
+  side(x1, z1, x0, z1, bites[2], 0, -1);   // bottom, cut upward
+  side(x0, z1, x0, z0, bites[3], 1, 0);    // left, cut rightward
+  pts.push([x0, z0]);
+
+  return { cells: route(pts), features: [] };
+}
+
 /** Tight infield hairpins — the same serpentine, packed closer. */
 function hairpins(w: number, rows: number): Shape {
   return switchback(w, rows, 2);
@@ -587,51 +653,51 @@ type Entry = [name: string, difficulty: Difficulty, shape: Shape, checkpoints: n
  */
 const CATALOGUE: Record<Season, Entry[]> = {
   spring: [
-    ["Sprout Loop",       "easy",   oval(8, 6), 2],
-    ["Meadow Kink",       "easy",   chicane(12, 8, 4, 3), 2],
-    ["Clover Ring",       "easy",   polygonRing(16, 12, 4), 2],
-    ["Willow Waist",      "easy",   dogbone(13, 9, 2, 3), 3],
-    ["Fern Switchback",   "medium", rise(switchback(11, 3, 3), 0.12, 0.5), 3],
-    ["Bluebell Rise",     "medium", rise(dogbone(14, 10, 3, 3), 0.18, 0.6), 3],
-    ["Verdant Spur",      "medium", rise(spur(13, 11, 7), 0.2, 0.62, 2), 3],
-    ["Dewfall Crossing",  "medium", crossover(14, 10), 3],
-    ["Highvine Terrace",  "hard",   terrace(13, 9), 4],
-    ["Skyblossom",        "hard",   rise(weave(14, 10), 0.15, 0.62, 2), 4],
+    ["Sprout Loop",       "easy",   oval(9, 7), 2],
+    ["Meadow Kink",       "easy",   notchedLoop(14, 9, [0, 0, 0, 1]), 2],
+    ["Clover Ring",       "easy",   notchedLoop(15, 11, [0, 1, 0, 1]), 2],
+    ["Willow Waist",      "easy",   notchedLoop(14, 10, [0, 0, 1, 1], 3), 3],
+    ["Fern Switchback",   "medium", rise(notchedLoop(13, 14, [0, 0, 0, 3]), 0.12, 0.5), 3],
+    ["Bluebell Rise",     "medium", rise(notchedLoop(15, 10, [0, 0, 0, 2]), 0.18, 0.6), 3],
+    ["Verdant Spur",      "medium", rise(notchedLoop(15, 12, [0, 1, 2, 1]), 0.2, 0.62, 2), 3],
+    ["Dewfall Crossing",  "medium", notchedLoop(14, 10, [0, 1, 3, 1]), 3],
+    ["Highvine Terrace",  "hard",   rise(notchedLoop(15, 11, [0, 0, 1, 2]), 0.5, 0.8), 4],
+    ["Skyblossom",        "hard",   rise(notchedLoop(15, 13, [1, 1, 1, 2]), 0.15, 0.62, 2), 4],
   ],
   summer: [
     ["Sunbaked Ring",     "easy",   polygonRing(17, 13, 4), 2],
     ["Dune Dash",         "easy",   zigzag(16, 12, 3, 3, 1), 3],
-    ["Mirage Kink",       "easy",   chicane(16, 9, 5, 4), 3],
-    ["Canyon Switch",     "medium", rise(switchback(12, 3, 3), 0.12, 0.5, 2), 3],
-    ["Sandstone Rise",    "medium", hillLoop(14, 7), 3],
-    ["Oasis Spur",        "medium", rise(twinSpur(14, 15, 8), 0.25, 0.7), 4],
-    ["Scorpion Cross",    "medium", cloverleaf(15, 11), 4],
-    ["Sunspire Climb",    "hard",   terrace(15, 10), 4],
+    ["Mirage Kink",       "easy",   notchedLoop(16, 10, [0, 0, 2, 1], 3), 3],
+    ["Canyon Switch",     "medium", rise(switchback(12, 4, 3), 0.12, 0.5, 2), 3],
+    ["Sandstone Rise",    "medium", rise(notchedLoop(16, 11, [0, 1, 0, 2]), 0.3, 0.7), 3],
+    ["Oasis Spur",        "medium", rise(notchedLoop(14, 15, [0, 2, 1, 2]), 0.25, 0.7), 4],
+    ["Scorpion Cross",    "medium", notchedLoop(15, 11, [0, 2, 3, 0]), 4],
+    ["Sunspire Climb",    "hard",   rise(notchedLoop(17, 12, [0, 1, 1, 1]), 0.55, 0.85), 4],
     ["Great Basin",       "hard",   rise(lCircuit(18, 13, 9, 7), 0.06, 0.5, 2), 5],
-    ["Coilback Pass",     "hard",   rise(hairpins(13, 4), 0.15, 0.72, 2), 4],
+    ["Coilback Pass",     "hard",   rise(notchedLoop(13, 12, [1, 1, 3, 0]), 0.15, 0.72, 2), 4],
   ],
   fall: [
-    ["Amber Cross",       "easy",   polygonRing(15, 14, 5), 2],
-    ["Harvest Mile",      "easy",   dogbone(17, 12, 3, 4, true), 3],
-    ["Copper Kink",       "easy",   zigzag(18, 13, 3, 3), 3],
-    ["Ember Switchback",  "medium", rise(switchback(14, 4, 3), 0.1, 0.55, 2), 4],
-    ["Maple Rise",        "medium", rise(hillLoop(16, 9), 0.5, 0.78), 4],
-    ["Orchard Spur",      "medium", rise(spur(15, 12, 8), 0.22, 0.66, 2), 4],
-    ["Hollow Crossing",   "medium", cloverleaf(17, 13), 4],
-    ["Ridgefire Climb",   "hard",   rise(terrace(17, 11), 0.55, 0.82), 5],
-    ["Amber Grand Tour",  "hard",   rise(grandTour(20, 14, 7), 0.06, 0.46, 2), 5],
-    ["Twinfall Viaduct",  "hard",   doubleCross(17, 13), 5],
+    ["Amber Cross",       "easy",   notchedLoop(16, 13, [0, 0, 2, 3]), 2],
+    ["Harvest Mile",      "easy",   notchedLoop(17, 12, [0, 1, 3, 0]), 3],
+    ["Copper Kink",       "easy",   zigzag(18, 15, 4, 3), 3],
+    ["Ember Switchback",  "medium", rise(switchback(14, 5, 3), 0.1, 0.55, 2), 4],
+    ["Maple Rise",        "medium", rise(notchedLoop(17, 14, [0, 0, 1, 3]), 0.5, 0.78), 4],
+    ["Orchard Spur",      "medium", rise(notchedLoop(16, 14, [0, 1, 0, 3]), 0.22, 0.66, 2), 4],
+    ["Hollow Crossing",   "medium", doubleCross(17, 13), 4],
+    ["Ridgefire Climb",   "hard",   rise(notchedLoop(18, 12, [0, 1, 1, 2]), 0.55, 0.82), 5],
+    ["Amber Grand Tour",  "hard",   rise(notchedLoop(20, 14, [0, 2, 2, 1]), 0.06, 0.46, 2), 5],
+    ["Twinfall Viaduct",  "hard",   rise(notchedLoop(18, 13, [1, 1, 1, 1]), 0.1, 0.5, 2), 5],
   ],
   winter: [
-    ["Frost Ring",        "easy",   polygonRing(19, 13, 4), 2],
-    ["Glacier Mile",      "easy",   rise(lCircuit(17, 10, 9, 6), 0.07, 0.38), 3],
-    ["Icicle Kink",       "easy",   rise(chicane(17, 10, 6, 4), 0.6, 0.85), 3],
-    ["Drift Switchback",  "medium", rise(switchback(16, 5, 3), 0.08, 0.6, 2), 4],
-    ["Summit Rise",       "medium", zigzag(20, 15, 3, 4, 2), 4],
-    ["Pinehall Spur",     "medium", rise(twinSpur(17, 17, 10), 0.2, 0.68, 2), 4],
-    ["Blizzard Weave",    "medium", weave(19, 14), 4],
-    ["Northwall Climb",   "hard",   doubleCross(19, 15), 5],
-    ["Frost Grand Tour",  "hard",   rise(grandTour(21, 16, 8), 0.05, 0.44, 3), 6],
+    ["Frost Ring",        "easy",   notchedLoop(19, 12, [0, 0, 2, 2]), 2],
+    ["Glacier Mile",      "easy",   rise(notchedLoop(18, 11, [0, 2, 0, 2]), 0.07, 0.38), 3],
+    ["Icicle Kink",       "easy",   rise(notchedLoop(18, 11, [0, 0, 3, 1], 3), 0.6, 0.85), 3],
+    ["Drift Switchback",  "medium", rise(switchback(16, 6, 3), 0.08, 0.6, 2), 4],
+    ["Summit Rise",       "medium", zigzag(22, 18, 4, 3, 2), 4],
+    ["Pinehall Spur",     "medium", rise(notchedLoop(19, 13, [0, 2, 1, 1]), 0.2, 0.68, 2), 4],
+    ["Blizzard Weave",    "medium", notchedLoop(19, 14, [0, 1, 2, 2]), 4],
+    ["Northwall Climb",   "hard",   rise(notchedLoop(20, 15, [0, 2, 0, 3]), 0.5, 0.85), 5],
+    ["Frost Grand Tour",  "hard",   rise(notchedLoop(21, 15, [0, 3, 1, 1]), 0.05, 0.44, 3), 6],
     ["Aurora Spiral",     "hard",   spiral(19, 15), 5],
   ],
 };
