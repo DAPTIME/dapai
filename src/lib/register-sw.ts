@@ -46,8 +46,20 @@ export function registerServiceWorker() {
   }
 
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register(SW_URL, { scope: "/" }).catch(() => {
-      /* installability is a bonus, never a hard failure */
-    });
+    void navigator.serviceWorker
+      .register(SW_URL, { scope: "/", updateViaCache: "none" })
+      .then(async (registration) => {
+        await registration.update();
+        if (!("caches" in window)) return;
+        const names = await caches.keys();
+        await Promise.all(
+          names
+            .filter((name) => name.startsWith("dap-pages-"))
+            .map((name) => caches.delete(name)),
+        );
+      })
+      .catch(() => {
+        /* installability is a bonus, never a hard failure */
+      });
   });
 }

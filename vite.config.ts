@@ -45,23 +45,9 @@ export default defineConfig({
           cleanupOutdatedCaches: true,
           skipWaiting: true,
           clientsClaim: true,
-          navigateFallback: "/offline.html",
-          // Auth, API and Supabase traffic (including streaming chat) must
-          // never be intercepted or cached by the worker.
-          navigateFallbackDenylist: [/\/api\//, /\/functions\//, /supabase/, /\/auth/, /\/~oauth/],
+          // Never intercept navigations. The old five-second NetworkFirst
+          // timeout falsely replaced slow online pages with offline.html.
           runtimeCaching: [
-            {
-              urlPattern: ({ request, url }) =>
-                request.mode === "navigate" &&
-                url.origin === self.location.origin &&
-                !/\/api\/|\/functions\/|supabase|\/auth|\/~oauth/.test(url.pathname),
-              handler: "NetworkFirst",
-              options: {
-                cacheName: "dap-pages-v1",
-                networkTimeoutSeconds: 5,
-                cacheableResponse: { statuses: [200] },
-              },
-            },
             {
               urlPattern: ({ request, url }) =>
                 url.origin === self.location.origin &&

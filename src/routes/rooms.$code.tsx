@@ -50,6 +50,7 @@ function RoomPage() {
   const [typing, setTyping] = useState<string[]>([]);
   const [online, setOnline] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const roomChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (ready && !loading && !user) navigate({ to: "/login" });
@@ -60,6 +61,7 @@ function RoomPage() {
     queryFn: () => fetchRoom({ data: { code } }),
     enabled: !!user,
     refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const roomId = roomQuery.data?.room?.id;
@@ -79,7 +81,32 @@ function RoomPage() {
           table: "study_room_messages",
           filter: `room_id=eq.${roomId}`,
         },
-        () => qc.invalidateQueries({ queryKey: ["study-room", code] })
+        (payload) => {
+          const incoming = payload.new as {
+            id: string;
+            user_id: string | null;
+            author_name: string;
+            role: string;
+            content: string;
+            created_at: string;
+          };
+          qc.setQueryData(
+            ["study-room", code],
+            (current: Awaited<ReturnType<typeof fetchRoom>> | undefined) => {
+              if (
+                !current ||
+                !("isHost" in current.room) ||
+                current.messages.some((message) => message.id === incoming.id)
+              ) {
+                return current;
+              }
+              return { ...current, messages: [...current.messages, incoming] };
+            },
+          );
+          if (incoming.user_id === user.id && incoming.role === "user") {
+            setOptimisticText(null);
+          }
+        }
       )
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState<{ name: string; typing: boolean }>();
@@ -100,7 +127,9 @@ function RoomPage() {
           await channel.track({ name: me, typing: false });
         }
       });
+    roomChannelRef.current = channel;
     return () => {
+      roomChannelRef.current = null;
       supabase.removeChannel(channel);
     };
   }, [roomId, joined, user, code, qc, me]);
@@ -109,7 +138,7 @@ function RoomPage() {
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const signalTyping = () => {
     if (!roomId || !user) return;
-    const channel = supabase.getChannels().find((c) => c.topic === `realtime:study-room-${roomId}`);
+    const channel = roomChannelRef.current;
     if (!channel) return;
     void channel.track({ name: me, typing: true });
     if (typingTimer.current) clearTimeout(typingTimer.current);
