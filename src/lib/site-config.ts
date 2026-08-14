@@ -27,9 +27,9 @@ export function useSiteConfig(): SiteConfig {
     queryKey: SITE_CONFIG_QUERY_KEY,
     queryFn: () => fetchConfig(),
     initialData: initial,
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 2_000,
+    refetchInterval: 5_000,
+    refetchOnWindowFocus: true,
   });
 
   return query.data ?? initial;

@@ -1,15 +1,16 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Users, Plus, LogIn, Radio } from "lucide-react";
+import { Users, Plus, LogIn, Radio, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import {
   createStudyRoom,
   joinStudyRoom,
+  leaveStudyRoom,
   listMyStudyRooms,
 } from "@/lib/study-rooms.functions";
 
@@ -37,10 +38,12 @@ export const Route = createFileRoute("/rooms/")({
 
 function RoomsIndex() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { user } = useAuth();
   const create = useServerFn(createStudyRoom);
   const join = useServerFn(joinStudyRoom);
   const listRooms = useServerFn(listMyStudyRooms);
+  const leave = useServerFn(leaveStudyRoom);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
 
@@ -59,6 +62,15 @@ function RoomsIndex() {
   const joinMut = useMutation({
     mutationFn: () => join({ data: { code: code.trim() } }),
     onSuccess: (room) => navigate({ to: "/rooms/$code", params: { code: room.code } }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const leaveMut = useMutation({
+    mutationFn: (roomId: string) => leave({ data: { roomId } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["study-rooms"] });
+      toast.success("Room removed from your account.");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -132,11 +144,11 @@ function RoomsIndex() {
             {roomsQuery.data && roomsQuery.data.length > 0 ? (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {roomsQuery.data.map((r) => (
+                  <div key={r.id} className="flex items-center gap-2 rounded-2xl border border-border bg-card p-2 transition hover:border-ring/40">
                   <Link
-                    key={r.id}
                     to="/rooms/$code"
                     params={{ code: r.code }}
-                    className="rounded-2xl border border-border bg-card p-4 transition hover:border-ring/40"
+                    className="min-w-0 flex-1 p-2"
                   >
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 text-primary" />
@@ -152,6 +164,18 @@ function RoomsIndex() {
                       Code {r.code} · {r.is_open ? "open" : "closed"}
                     </p>
                   </Link>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                    aria-label={`Remove ${r.name} from your account`}
+                    disabled={leaveMut.isPending}
+                    onClick={() => leaveMut.mutate(r.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  </div>
                 ))}
               </div>
             ) : (

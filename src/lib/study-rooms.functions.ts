@@ -33,10 +33,10 @@ async function displayName(
 ) {
   const { data } = await supabase
     .from("profiles")
-    .select("display_name, email")
+    .select("name, email")
     .eq("id", userId)
     .maybeSingle();
-  return firstName(data?.display_name ?? data?.email, "Guest");
+  return firstName(data?.name ?? data?.email, "Guest");
 }
 
 export const createStudyRoom = createServerFn({ method: "POST" })
@@ -178,6 +178,23 @@ export const listMyStudyRooms = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false });
     if (error) throw dbError(error);
     return (data ?? []).map((r: any) => ({ ...r, isHost: r.host_id === userId }));
+  });
+
+/** Remove a room from only the caller's account. The room and transcript
+ * remain available to every other member, including when the caller hosted it. */
+export const leaveStudyRoom = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ roomId: z.string().uuid() }).parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("study_room_members")
+      .delete()
+      .eq("room_id", data.roomId)
+      .eq("user_id", context.userId);
+    if (error) throw dbError(error);
+    return { ok: true };
   });
 
 export const setStudyRoomOpen = createServerFn({ method: "POST" })

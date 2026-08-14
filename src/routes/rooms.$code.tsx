@@ -46,6 +46,7 @@ function RoomPage() {
   );
   const [model, setModel] = useState<ModelId>("dap-ai-lite");
   const [text, setText] = useState("");
+  const [optimisticText, setOptimisticText] = useState<string | null>(null);
   const [typing, setTyping] = useState<string[]>([]);
   const [online, setOnline] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -126,8 +127,14 @@ function RoomPage() {
   const sendMut = useMutation({
     mutationFn: (value: string) =>
       post({ data: { roomId: roomId!, text: value, askAi: true, model } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["study-room", code] }),
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => {
+      setOptimisticText(null);
+      qc.invalidateQueries({ queryKey: ["study-room", code] });
+    },
+    onError: (e: Error) => {
+      setOptimisticText(null);
+      toast.error(e.message);
+    },
   });
 
   const messages = roomQuery.data?.messages ?? [];
@@ -247,6 +254,12 @@ function RoomPage() {
               )}
             </div>
           ))}
+          {optimisticText && !messages.some((m) => m.role === "user" && m.content === optimisticText) && (
+            <div className="message-in">
+              <div className="text-xs font-medium text-muted-foreground">{me}</div>
+              <div className="user-bubble mt-1 inline-block whitespace-pre-wrap">{optimisticText}</div>
+            </div>
+          )}
           {(sendMut.isPending || typing.length > 0) && (
             <p className="text-xs text-muted-foreground">
               {sendMut.isPending
@@ -264,6 +277,7 @@ function RoomPage() {
           const value = text.trim();
           if (!value || sendMut.isPending) return;
           setText("");
+          setOptimisticText(value);
           sendMut.mutate(value);
         }}
       >
