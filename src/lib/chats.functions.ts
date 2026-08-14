@@ -840,8 +840,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           if (active.lite) {
             const resolved = await resolveOllamaModel(backend, key, upstreamModel);
             if (resolved.installed && resolved.installed.length === 0) {
-              return `${active.label} is unreachable: your Ollama server has no models installed. SSH into the Jetson and run e.g. \`ollama pull gemma2:2b\`, then retry.`;
+              console.error(
+                `[chat] ${active.label} backend has no models installed.`
+              );
+              return await offlineMessage();
             }
+
             resolvedModel = resolved.model;
           }
           const res = await fetch(backend, {
