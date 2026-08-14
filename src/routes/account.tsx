@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { useMyProfile } from "@/lib/use-my-profile";
 import { updateMyName, updateMyAvatar } from "@/lib/profile.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { PlanAndUsage } from "@/components/plan-and-usage";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
@@ -122,6 +123,8 @@ function AccountPage() {
       </p>
 
       <div className="mt-8 space-y-6">
+        <PlanAndUsage />
+
         <div className="rounded-2xl border border-border bg-card p-5">
           <Label className="text-base">Profile picture</Label>
           <p className="mt-1 text-sm text-muted-foreground">

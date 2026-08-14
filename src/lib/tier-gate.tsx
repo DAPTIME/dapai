@@ -353,9 +353,7 @@ function UpgradeDialog({
               className="text-primary-foreground"
               style={{ background: "var(--gradient-brand)" }}
             >
-              <a href={LINKTREE_URL} target="_blank" rel="noreferrer">
-                Get in touch
-              </a>
+              <a href="/account">Go to your plan</a>
             </Button>
           </DialogFooter>
         </DialogContent>
