@@ -573,6 +573,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
       find_study_room_by_code: {
         Args: { _code: string }
         Returns: {
