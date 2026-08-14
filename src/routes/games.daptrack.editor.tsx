@@ -21,7 +21,7 @@ import {
 } from "@/lib/track-editor-model";
 import { EditorCanvas, TILE_COLOR, TILE_GLYPH, type EditorTool } from "@/components/track-editor/editor-canvas";
 import { PolyTrackRunner } from "@/components/polytrack-runner";
-import { createTrack, updateTrack, publishTrack, unpublishTrack, deleteTrack, getMyTrack } from "@/lib/tracks.functions";
+import { createTrack, updateTrack, publishTrack, unpublishTrack, deleteTrack, verifyTrack, getMyTrack } from "@/lib/tracks.functions";
 
 const searchSchema = z.object({ id: z.string().uuid().optional() });
 
@@ -98,6 +98,9 @@ function EditorPage() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [savedMark, setSavedMark] = useState<string | null>(null);
+  // Null until the owner has driven this exact version to the finish. Any
+  // save clears it, because the database clears it on every edit.
+  const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
 
   const fetchTrack = useServerFn(getMyTrack);
   const create = useServerFn(createTrack);
@@ -105,6 +108,7 @@ function EditorPage() {
   const publish = useServerFn(publishTrack);
   const unpublish = useServerFn(unpublishTrack);
   const remove = useServerFn(deleteTrack);
+  const verify = useServerFn(verifyTrack);
 
   const goal = clampGoal(goalText);
   const data = doc.data;
@@ -121,6 +125,7 @@ function EditorPage() {
     if (!id) {
       setDoc(STARTER_DOC); setPast([]); setFuture([]);
       setName("My Track"); setSeason("spring"); setGoalText("30"); setIsPublic(false);
+      setVerifiedAt(null);
       setSavedMark(null); setLoading(false);
       return;
     }
@@ -132,6 +137,7 @@ function EditorPage() {
         setSeason(row.season as Season);
         setGoalText((row.goal / 1000).toString());
         setIsPublic(row.is_public);
+        setVerifiedAt(row.verified_at ?? null);
         setPast([]); setFuture([]);
         if (parsed) {
           setDoc({ data: parsed, selection: [] });
@@ -206,7 +212,9 @@ function EditorPage() {
       if (id) {
         await update({ data: { id, name, season, params: data, goal } });
         setIsPublic(false);
-        setSavedMark(fingerprint(data, name, season, goal));
+        setVerifiedAt(null);
+        setVerifiedAt(null);
+      setSavedMark(fingerprint(data, name, season, goal));
         toast.success("Saved. Republish when ready.");
         return id;
       }
@@ -223,12 +231,36 @@ function EditorPage() {
     }
   }, [id, name, season, data, goal, report.error, create, update, navigate]);
 
-  const doPublish = async () => {
+  /**
+   * Called when the test drive reaches the finish. Saving first matters:
+   * verification is stored against the row, and the database clears it on
+   * the next edit, so it has to attach to the version that was driven.
+   */
+  const markVerified = useCallback(async (timeMs: number) => {
     let target = id;
     if (dirty || !target) {
       const saved = await save();
       if (!saved) return;
       target = saved;
+    }
+    try {
+      const res = await verify({ data: { id: target, timeMs: Math.round(timeMs) } });
+      setVerifiedAt(res.verifiedAt);
+      toast.success("Verified — you can publish this track now.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }, [id, dirty, save, verify]);
+
+  const doPublish = async () => {
+    if (!verifiedAt) {
+      toast.error("Drive your track to the finish first — use Test drive.");
+      return;
+    }
+    let target = id;
+    if (dirty || !target) {
+      toast.error("Save and re-drive the track: editing clears its verification.");
+      return;
     }
     const err = validateForPublish(name, data);
     if (err) { toast.error(err); return; }
@@ -341,6 +373,7 @@ function EditorPage() {
           goal={goal}
           title={`${name} (test drive)`}
           trackRef={id ? `custom:${id}` : undefined}
+          onFinish={(timeMs) => { void markVerified(timeMs); }}
           onExit={() => setTesting(false)}
           exitLabel="Editor"
         />
@@ -570,7 +603,22 @@ function EditorPage() {
             {saving ? "Saving…" : id ? "Save" : "Create"}
           </Button>
           <Button variant="secondary" onClick={() => setTesting(true)} disabled={!!report.error}>🏁 Test drive</Button>
-          {!isPublic && <Button variant="outline" onClick={doPublish}>Publish</Button>}
+          {!isPublic && (
+            <Button
+              variant="outline"
+              onClick={doPublish}
+              disabled={!verifiedAt || dirty}
+              title={
+                !verifiedAt
+                  ? "Drive your track to the finish first"
+                  : dirty
+                    ? "Save, then drive it again"
+                    : undefined
+              }
+            >
+              Publish
+            </Button>
+          )}
           {id && isPublic && <Button variant="outline" onClick={doUnpublish}>Unpublish</Button>}
           {id && <Button variant="ghost" onClick={share}>Copy link</Button>}
           {id && <Button variant="ghost" className="text-destructive" onClick={doDelete}>Delete</Button>}

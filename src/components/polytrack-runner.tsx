@@ -19,6 +19,8 @@ import {
   STOCK_TUNING, type CarTuning,
 } from "@/lib/poly-physics";
 import { getRacePerks } from "@/lib/race-perks.functions";
+import { getMyCar } from "@/lib/car.functions";
+import { DEFAULT_CAR, hexToInt, type CarSpec } from "@/lib/car-spec";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -125,6 +127,17 @@ export function PolyTrackRunner(props: Props) {
   const tuningRef = useRef<CarTuning>(STOCK_TUNING);
   tuningRef.current = perksQuery.data ?? STOCK_TUNING;
 
+  // The player's saved paint, read through a ref for the same reason.
+  const fetchCar = useServerFn(getMyCar);
+  const carQuery = useQuery({
+    queryKey: ["my-car"],
+    queryFn: () => fetchCar(),
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
+  const paintRef = useRef<CarSpec>(DEFAULT_CAR);
+  paintRef.current = carQuery.data?.car ?? DEFAULT_CAR;
+
   const apiRef = useRef<EngineApi | null>(null);
   const timerRef = useRef<HTMLDivElement | null>(null);
   const deltaRef = useRef<HTMLDivElement | null>(null);
@@ -195,7 +208,7 @@ export function PolyTrackRunner(props: Props) {
       const built = buildTrack(THREE, track, sampler, theme);
       scene.add(built.group);
 
-      const carMesh = buildCar(THREE, CAR_COLOR, false);
+      const carMesh = buildCar(THREE, hexToInt(paintRef.current.body), false, paintRef.current);
       scene.add(carMesh.group);
       const ghostCar = buildCar(THREE, 0xffffff, true);
       ghostCar.group.visible = false;
@@ -1316,12 +1329,11 @@ function buildTrack(THREE: ThreeNS, track: TrackData, sampler: Sampler, theme: T
 
 // ── Car ─────────────────────────────────────────────────────────────
 
-/** Bright flat shell colour. Everything else on the car is fixed. */
-const CAR_COLOR = 0xf3402f;
-const CAR_TRIM = 0x272e37;   // splitter, diffuser, wing posts
-const CAR_GLASS = 0x3a4a5c;
+/**
+ * Fixed parts of the car. Shell, trim, glass and hubs come from the
+ * player's saved CarSpec instead — see buildCar's `paint` argument.
+ */
 const CAR_TYRE = 0x15191e;
-const CAR_HUB = 0xc2cad2;
 const CAR_LAMP = 0xfff1c9;
 const CAR_TAIL = 0xff5347;
 
@@ -1336,7 +1348,7 @@ const P = (x: number, y: number, z: number): V3 => ({ x, y, z });
  * Every panel is flat-shaded by construction; the only round part is the
  * ten-sided wheel.
  */
-function buildCar(THREE: ThreeNS, color: number, ghostly: boolean) {
+function buildCar(THREE: ThreeNS, color: number, ghostly: boolean, paint: CarSpec = DEFAULT_CAR) {
   const group = new THREE.Group();
   // Yaw first, then pitch and roll in the car's own frame.
   group.rotation.order = "YXZ";
@@ -1388,7 +1400,7 @@ function buildCar(THREE: ThreeNS, color: number, ghostly: boolean) {
   );
   const glassGeo = glass.build(THREE);
   disposables.push(glassGeo);
-  group.add(new THREE.Mesh(glassGeo, mkMat(CAR_GLASS)));
+  group.add(new THREE.Mesh(glassGeo, mkMat(hexToInt(paint.glass))));
 
   // Splitter, diffuser and the posts under the wing.
   const trim = new Mesher();
@@ -1397,7 +1409,7 @@ function buildCar(THREE: ThreeNS, color: number, ghostly: boolean) {
   for (const sx of [-0.44, 0.44]) trim.box(sx, 0.94, -1.49, 0.11, 0.40, 0.16);
   const trimGeo = trim.build(THREE);
   disposables.push(trimGeo);
-  group.add(new THREE.Mesh(trimGeo, mkMat(CAR_TRIM)));
+  group.add(new THREE.Mesh(trimGeo, mkMat(hexToInt(paint.trim))));
 
   const lamps = new Mesher();
   for (const sx of [-0.42, 0.42]) lamps.box(sx, 0.43, 1.64, 0.32, 0.14, 0.11);
@@ -1418,7 +1430,7 @@ function buildCar(THREE: ThreeNS, color: number, ghostly: boolean) {
   hubGeo.rotateZ(Math.PI / 2);
   disposables.push(tyreGeo, hubGeo);
   const tyreMat = mkMat(CAR_TYRE);
-  const hubMat = mkMat(CAR_HUB);
+  const hubMat = mkMat(hexToInt(paint.hub));
   const wheels: Array<{ hold: import("three").Group; front: boolean }> = [];
   for (const [wx, wz, front] of [
     [-0.80, 1.02, true], [0.80, 1.02, true], [-0.80, -1.06, false], [0.80, -1.06, false],

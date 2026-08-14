@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PolyTrackRunner, type RunResult } from "@/components/polytrack-runner";
+import { CarEditor } from "@/components/car-editor";
 import { Leaderboard } from "@/components/track-leaderboard";
 import { TrackThumbnail } from "@/components/track-thumbnail";
 import {
@@ -143,6 +144,10 @@ function PolyRacer() {
               </button>
             );
           })}
+        </div>
+
+        <div className="mt-6">
+          <CarEditor />
         </div>
 
         <div className="mt-6 rounded-xl border border-border bg-card/40 p-4 text-sm text-muted-foreground">
