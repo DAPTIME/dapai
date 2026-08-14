@@ -12,8 +12,7 @@ import { firstName } from "@/lib/utils";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { MODELS, type ModelId } from "@/lib/models";
 import { TIER_RANK } from "@/lib/tier-rank";
-import type { Tier } from "@/lib/tier-gate";
-import { useMyProfile } from "@/lib/use-my-profile";
+import { useUpgradeGate } from "@/lib/tier-gate";
 import {
   getStudyRoom,
   joinStudyRoom,
@@ -41,8 +40,7 @@ function RoomPage() {
   const post = useServerFn(postStudyRoomMessage);
   const setOpen = useServerFn(setStudyRoomOpen);
 
-  const profile = useMyProfile();
-  const myTier = ((profile.data?.tier as Tier | undefined) ?? "free") as Tier;
+  const { tier: myTier } = useUpgradeGate();
   const allowedModels = MODELS.filter(
     (m) => TIER_RANK[myTier] >= TIER_RANK[m.minTier]
   );
