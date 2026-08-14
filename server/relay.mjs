@@ -55,14 +55,31 @@ const server = http.createServer(async (req, res) => {
       body,
     });
     const text = await upstream.text();
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = null;
+    }
+    const content =
+      payload?.choices?.[0]?.message?.content ?? payload?.message?.content;
+    if (!upstream.ok || typeof content !== "string" || !content.trim()) {
+      console.error(
+        `Upstream returned ${upstream.status}: ${text.replace(/\s+/g, " ").trim().slice(0, 200)}`
+      );
+      res.writeHead(502, { ...cors, "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Sorry, DAP AI is offline right now." }));
+      return;
+    }
     res.writeHead(upstream.status, {
       ...cors,
-      "Content-Type": upstream.headers.get("content-type") ?? "application/json",
+      "Content-Type": "application/json",
     });
-    res.end(text);
+    res.end(JSON.stringify(payload));
   } catch (e) {
     res.writeHead(502, { ...cors, "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: `Upstream failed: ${e.message}` }));
+    console.error(`Upstream request failed: ${e.message}`);
+    res.end(JSON.stringify({ error: "Sorry, DAP AI is offline right now." }));
   }
 });
 
