@@ -12,7 +12,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { dbError } from "./db-error";
 import { firstName } from "./utils";
 import { completeOnce } from "./ai-backend.server";
-import { modelInfo, type ModelId } from "./models";
+import { modelInfo, MODEL_IDS, type ModelId } from "./models";
+import { TIER_RANK } from "./tier-rank";
+import type { Tier } from "./tier-gate";
+
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
