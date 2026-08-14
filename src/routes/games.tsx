@@ -41,7 +41,6 @@ export const Route = createFileRoute("/games")({
               ["River Crosser", "/games/river"],
               ["Flappy", "/games/flappy"],
               ["Brick Breaker", "/games/breakout"],
-              ["Stunt Racer", "/games/stunt"],
             ].map(([name, path], i) => ({
               "@type": "ListItem",
               position: i + 1,
@@ -64,7 +63,6 @@ const GAMES = [
   { to: "/games/river" as const, label: "River Crosser", emoji: "🐸" },
   { to: "/games/flappy" as const, label: "Flappy", emoji: "🐤" },
   { to: "/games/breakout" as const, label: "Brick Breaker", emoji: "🧱" },
-  { to: "/games/stunt" as const, label: "Stunt Racer", emoji: "🛞" },
 ] as const;
 
 function GamesLayout() {

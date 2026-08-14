@@ -21,7 +21,6 @@ export const FEATURE_KEYS = [
   "game_river",
   "game_flappy",
   "game_breakout",
-  "game_stunt",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -47,7 +46,6 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   game_river: "River Crosser",
   game_flappy: "Flappy",
   game_breakout: "Brick Breaker",
-  game_stunt: "Stunt Racer",
 };
 
 /** Which toggles belong together in the admin console. */
@@ -73,6 +71,5 @@ export const FEATURE_GROUPS = {
     "game_river",
     "game_flappy",
     "game_breakout",
-    "game_stunt",
   ],
 } as const satisfies Record<string, readonly FeatureKey[]>;

@@ -59,7 +59,6 @@ const arcade = [
   { title: "River Crosser", url: "/games/river" },
   { title: "Flappy", url: "/games/flappy" },
   { title: "Brick Breaker", url: "/games/breakout" },
-  { title: "Stunt Racer", url: "/games/stunt" },
 ] as const;
 
 export function AppSidebar() {

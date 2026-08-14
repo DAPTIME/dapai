@@ -29,7 +29,6 @@ export const FEATURE_KEYS = [
   "game_river",
   "game_flappy",
   "game_breakout",
-  "game_stunt",
 ] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
@@ -66,7 +65,6 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     game_river: true,
     game_flappy: true,
     game_breakout: true,
-    game_stunt: true,
   },
   offlineMessage: DEFAULT_OFFLINE_MESSAGE,
 };

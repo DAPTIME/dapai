@@ -592,11 +592,11 @@ const CATALOGUE: Record<Season, Entry[]> = {
     ["Clover Ring",       "easy",   polygonRing(16, 12, 4), 2],
     ["Willow Waist",      "easy",   dogbone(13, 9, 2, 3), 3],
     ["Fern Switchback",   "medium", rise(switchback(11, 3, 3), 0.12, 0.5), 3],
-    ["Bluebell Rise",     "medium", hillLoop(13, 8), 3],
+    ["Bluebell Rise",     "medium", rise(dogbone(14, 10, 3, 3), 0.18, 0.6), 3],
     ["Verdant Spur",      "medium", rise(spur(13, 11, 7), 0.2, 0.62, 2), 3],
     ["Dewfall Crossing",  "medium", crossover(14, 10), 3],
     ["Highvine Terrace",  "hard",   terrace(13, 9), 4],
-    ["Skyblossom",        "hard",   skyway(14, 10), 4],
+    ["Skyblossom",        "hard",   rise(weave(14, 10), 0.15, 0.62, 2), 4],
   ],
   summer: [
     ["Sunbaked Ring",     "easy",   polygonRing(17, 13, 4), 2],
