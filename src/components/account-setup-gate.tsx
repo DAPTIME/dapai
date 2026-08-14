@@ -76,10 +76,11 @@ export function AccountSetupGate() {
           <h2 className="text-lg font-semibold">Finish setting up your account</h2>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          DAP AI moved to a new, more secure backend. Your chats and data came
-          with you, but you need to choose a new password and a new recovery
-          question before you continue.
+          Your account was flagged for a security refresh. Your chats and data
+          are safe — please choose a new password and a new recovery question
+          before you continue.
         </p>
+
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div className="space-y-2">
