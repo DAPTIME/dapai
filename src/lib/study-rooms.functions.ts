@@ -270,11 +270,12 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
           : { role: "user" as const, content: `${m.author_name}: ${m.content}` }
       );
 
+    const { offlineMessage } = await import("./offline-message.server");
     let reply = "";
     try {
       reply = (
         await completeOnce(
-          (room.model ?? "dap-ai-lite") as ModelId,
+          chosen,
           [
             {
               role: "system",
@@ -287,11 +288,20 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
         )
       ).trim();
     } catch (e) {
-      throw new Error(
-        e instanceof Error ? e.message : "DAP AI couldn't reply in this room."
+      console.error(
+        `[rooms] ${chosen} reply failed:`,
+        e instanceof Error ? e.message : e
       );
+      throw new Error(await offlineMessage());
     }
-    if (!reply) return { ok: true, replied: false };
+    if (!reply) throw new Error(await offlineMessage());
+
+    // Count the reply against the sender's own usage.
+    await supabase
+      .from("profiles")
+      .update({ pro_messages_used: (me?.pro_messages_used ?? 0) + 1 })
+      .eq("id", userId);
+
 
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
