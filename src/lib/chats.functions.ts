@@ -794,12 +794,15 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
 
     const { url: backend, key, upstreamModel } = backendFor(effectiveModel);
+    const { offlineMessage } = await import("./offline-message.server");
 
     let replyText = "";
     if (!backend) {
-      replyText = `No AI backend configured for ${effectiveModel}. Set ${
-        active.lite ? "AI_BACKEND_URL_LITE" : "AI_BACKEND_URL_PRO"
-      } to that model's tunnel URL (e.g. https://abcd.ngrok-free.app/v1/chat/completions).`;
+      console.error(
+        `[chat] No AI backend configured for ${effectiveModel} (missing AI_BACKEND_URL_${active.lite ? "LITE" : "PRO"}).`
+      );
+      replyText = await offlineMessage();
+
     } else {
       // Per-model queue: only one in-flight call per model at a time.
       replyText = await enqueue(`model:${effectiveModel}`, async () => {
