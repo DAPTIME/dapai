@@ -130,11 +130,16 @@ export const Route = createFileRoute("/api/public/lite-try")({
           }
           const errStr =
             typeof json?.error === "string" ? json.error : json?.error?.message;
-          let out =
-            json?.choices?.[0]?.message?.content ??
-            json?.message?.content ??
-            errStr ??
-            "(empty response)";
+          const content =
+            json?.choices?.[0]?.message?.content ?? json?.message?.content;
+          if (!content) {
+            console.error(`[lite-try] no content from backend: ${errStr ?? raw.slice(0, 200)}`);
+            return new Response(
+              JSON.stringify({ error: "Sorry, DAP AI is offline right now." }),
+              { status: 502, headers: { "Content-Type": "application/json" } }
+            );
+          }
+          let out = content;
           out = sanitizeLiteReply(out);
           return new Response(JSON.stringify({ reply: out }), {
             status: 200,
