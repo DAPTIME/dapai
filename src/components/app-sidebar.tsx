@@ -14,6 +14,7 @@ import {
   Users,
   Gamepad2,
   Users2,
+  ChevronDown,
 } from "lucide-react";
 
 import { adminAmIAdmin } from "@/lib/admin.functions";
@@ -29,8 +30,12 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/lib/auth";
 import {
   listChats,
@@ -42,8 +47,19 @@ import { useSiteConfig } from "@/lib/site-config";
 const main = [
   { title: "Custom AI's", url: "/daps", icon: Sparkles },
   { title: "Study Rooms", url: "/rooms", icon: Users2 },
-  { title: "Games", url: "/games", icon: Gamepad2 },
   { title: "Our Team", url: "/team", icon: Users },
+] as const;
+
+const arcade = [
+  { title: "All games", url: "/games" },
+  { title: "2048", url: "/games/2048" },
+  { title: "Snake", url: "/games/snake" },
+  { title: "Spacewar", url: "/games/spacewar" },
+  { title: "DAP Track", url: "/games/daptrack" },
+  { title: "River Crosser", url: "/games/river" },
+  { title: "Flappy", url: "/games/flappy" },
+  { title: "Brick Breaker", url: "/games/breakout" },
+  { title: "Stunt Racer", url: "/games/stunt" },
 ] as const;
 
 export function AppSidebar() {
@@ -67,10 +83,7 @@ export function AppSidebar() {
   const isAdmin = adminQuery.data?.isAdmin === true;
 
   const siteConfig = useSiteConfig();
-  // Admins can switch the arcade off; drop its link when they have.
-  const nav = main.filter(
-    (item) => item.url !== "/games" || siteConfig.flags.games
-  );
+  const nav = main;
 
 
   const chatsQuery = useQuery({
@@ -146,6 +159,28 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <Collapsible defaultOpen={pathname.startsWith("/games")} asChild>
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton isActive={pathname.startsWith("/games")}>
+                      <Gamepad2 />
+                      <span>Arcade</span>
+                      <ChevronDown className="ml-auto transition-transform group-data-[state=open]/menu-item:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {arcade.map((game) => (
+                        <SidebarMenuSubItem key={game.url}>
+                          <SidebarMenuSubButton asChild isActive={pathname === game.url}>
+                            <Link to={game.url} onClick={closeIfMobile}>{game.title}</Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -67,10 +67,8 @@ const SECTIONS = [
   { id: "users", label: "Users", icon: Shield },
   { id: "chats", label: "All Chats", icon: MessageSquare },
   { id: "beta", label: "Beta Testers", icon: Users },
-  { id: "site", label: "Site", icon: Power },
   { id: "models", label: "Models", icon: Cpu },
   { id: "pages", label: "Pages", icon: Eye },
-  { id: "games", label: "Games", icon: Gamepad2 },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
 
@@ -226,10 +224,8 @@ function Admin() {
           <TabsContent value="beta" className="mt-6">
             <BetaTab />
           </TabsContent>
-          <TabsContent value="site" className="mt-6 space-y-6">
+          <TabsContent value="models" className="mt-6 space-y-6">
             <SiteTab />
-          </TabsContent>
-          <TabsContent value="models" className="mt-6">
             <FeatureList
               title="Models"
               description="Turn an individual DAP AI model off for everyone."
@@ -241,13 +237,6 @@ function Admin() {
               title="Pages & features"
               description="Anyone using a page you turn off is sent back to the home page."
               keys={FEATURE_GROUPS.pages}
-            />
-          </TabsContent>
-          <TabsContent value="games" className="mt-6">
-            <FeatureList
-              title="Individual games"
-              description="Turn a single arcade game off without closing the whole arcade."
-              keys={FEATURE_GROUPS.games}
             />
           </TabsContent>
         </Tabs>

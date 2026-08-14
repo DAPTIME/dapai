@@ -29,6 +29,7 @@ import { AppContextMenu } from "@/components/app-context-menu";
 import { InstallAppButton } from "@/components/install-app-button";
 import { registerServiceWorker } from "@/lib/register-sw";
 import { useTheme } from "@/lib/theme";
+import { pageFlagFor, useFeatureGuard } from "@/lib/feature-guard";
 
 import { getProfile } from "@/lib/chats.functions";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
@@ -292,6 +293,8 @@ function HeaderBar() {
 
 function RouteTransition({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const off = useFeatureGuard(pageFlagFor(pathname));
+  if (off) return null;
   return (
     <div key={pathname} className="route-transition-enter">
       {children}
