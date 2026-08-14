@@ -5,6 +5,7 @@ import {
   MAX_IMAGES_PER_PROMPT,
   costOfPrompt,
   estimateTokens,
+  isLedgerMissing,
 } from "@/lib/usage-limits";
 /**
  * Server functions for chats. All run as the authenticated user so RLS
@@ -645,7 +646,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       const { data: charged, error: chargeErr } = await supabase
         .rpc("charge_usage", { _cost: cost, _images: Math.min(imageCount, 1) })
         .maybeSingle();
-      if (chargeErr) throw dbError(chargeErr, "charge_usage");
+      if (chargeErr) {
+        // No ledger installed yet means no limit configured, not a limit
+        // reached. Anything else fails closed.
+        if (!isLedgerMissing(chargeErr)) throw dbError(chargeErr, "charge_usage");
+        console.warn("[usage] charge_usage missing — not counting this message");
+      }
       if (charged && charged.ok === false) {
         throw new Error(charged.reason ?? "You have used up your allowance.");
       }

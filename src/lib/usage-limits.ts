@@ -151,3 +151,22 @@ export function costOfPrompt(opts: {
 }
 
 export const isUnlimited = (n: number) => !Number.isFinite(n);
+
+/**
+ * Is this error "the ledger isn't installed yet" rather than "you're out"?
+ *
+ * The allowance lives in a database function. If that function is missing
+ * — the migration hasn't run, or it's a fresh environment — the honest
+ * reading is that no limit has been configured, not that the caller has
+ * exhausted one. Blocking there would take chat down on every deployment
+ * whose migrations lag the code by a few minutes, which is a worse outcome
+ * than briefly not counting.
+ *
+ * A real refusal still fails closed: this only matches the function being
+ * absent (42883 from Postgres, PGRST202 from PostgREST's schema cache).
+ */
+export function isLedgerMissing(err: { code?: string; message?: string } | null | undefined) {
+  if (!err) return false;
+  if (err.code === "42883" || err.code === "PGRST202") return true;
+  return /could not find the function|does not exist/i.test(err.message ?? "");
+}

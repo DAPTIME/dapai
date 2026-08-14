@@ -10,6 +10,7 @@ import {
   MAX_IMAGES_PER_PROMPT,
   costOfPrompt,
   estimateTokens,
+  isLedgerMissing,
 } from "@/lib/usage-limits";
 import type { ModelId } from "@/lib/models";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
@@ -189,12 +190,15 @@ export const Route = createFileRoute("/api/chat")({
             const { data: charged, error: chargeErr } = await asCaller
               .rpc("charge_usage", { _cost: cost, _images: Math.min(images, 1) })
               .maybeSingle();
-            if (chargeErr) {
+            if (chargeErr && !isLedgerMissing(chargeErr)) {
               console.error("[api/chat] charge_usage failed:", chargeErr.message);
               return Response.json(
                 { error: "We couldn't check your usage allowance. Please try again." },
                 { status: 503 }
               );
+            }
+            if (chargeErr) {
+              console.warn("[api/chat] charge_usage missing — not counting this message");
             }
             if (charged && (charged as { ok?: boolean }).ok === false) {
               return Response.json(
