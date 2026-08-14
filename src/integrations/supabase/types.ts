@@ -502,6 +502,7 @@ export type Database = {
           updated_at: string
           user_id: string
           week_start: string
+          week_started_at: string
           week_tokens: number
         }
         Insert: {
@@ -512,6 +513,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           week_start?: string
+          week_started_at?: string
           week_tokens?: number
         }
         Update: {
@@ -522,6 +524,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           week_start?: string
+          week_started_at?: string
           week_tokens?: number
         }
         Relationships: []
@@ -599,6 +602,38 @@ export type Database = {
           best_time_ms: number
           name: string
           rank: number
+        }[]
+      }
+      charge_usage: {
+        Args: { _cost: number; _images?: number }
+        Returns: {
+          ok: boolean
+          reason: string | null
+          day_used: number
+          day_limit: number | null
+          week_used: number
+          week_limit: number | null
+          images_used: number
+          images_limit: number | null
+        }[]
+      }
+      my_usage: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          day_used: number
+          day_limit: number | null
+          week_used: number
+          week_limit: number | null
+          images_used: number
+          images_limit: number | null
+        }[]
+      }
+      usage_limit: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: {
+          tokens_day: number | null
+          tokens_week: number | null
+          images_day: number | null
         }[]
       }
       set_track_published: {

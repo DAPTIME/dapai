@@ -27,6 +27,9 @@ import { downgradeOwnTier } from "@/lib/tier.functions";
 import { TIER_LABEL, TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { PLANS, LINKTREE_URL } from "@/lib/plans";
 
+/** Trim trailing zeros: 1.25 stays, 2.00 becomes 2. */
+const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2))));
+
 /** A used/allowed line with a bar, or a plain count when there's no cap. */
 function Meter({ label, used, limit, note }: {
   label: string;
@@ -43,7 +46,7 @@ function Meter({ label, used, limit, note }: {
       <div className="flex items-baseline justify-between gap-2 text-sm">
         <span className="font-medium">{label}</span>
         <span className={full ? "text-destructive" : "text-muted-foreground"}>
-          {unlimited ? `${used} — no limit` : `${used} of ${limit}`}
+          {unlimited ? `${fmt(used)} — no limit` : `${fmt(used)} of ${limit}`}
         </span>
       </div>
       {!unlimited && (
@@ -147,9 +150,21 @@ export function PlanAndUsage() {
                 limit={Number.isFinite(usage.data.tracks.limit) ? usage.data.tracks.limit : null}
               />
               <Meter
-                label="Pro messages sent"
-                used={usage.data.proMessages.used}
-                limit={usage.data.proMessages.limit}
+                label="Usage tokens today"
+                used={usage.data.tokensToday.used}
+                limit={usage.data.tokensToday.limit}
+                note="Resets at midnight UTC."
+              />
+              <Meter
+                label="Usage tokens this week"
+                used={usage.data.tokensWeek.used}
+                limit={usage.data.tokensWeek.limit}
+                note="Your week runs seven days from your first message in it."
+              />
+              <Meter
+                label="Images today"
+                used={usage.data.imagesToday.used}
+                limit={usage.data.imagesToday.limit}
               />
             </>
           )}

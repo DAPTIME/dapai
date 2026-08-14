@@ -5,10 +5,11 @@
  * and four separate spinners settling at different moments reads as a
  * broken page.
  *
- * Note what is *not* here: a message quota. pro_messages_used is counted
- * but nothing checks it, so there is no limit to report yet. When the
- * token allowance lands it belongs in usage-limits.ts and gets surfaced
- * through this one function.
+ * The token balances come from my_usage() rather than from a direct read
+ * of usage_quota: the function rolls the day and week windows before
+ * answering, so a ledger row left over from yesterday reads as a full
+ * balance instead of yesterday's spend. The table itself is not readable
+ * by the caller at all.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -23,8 +24,12 @@ export type UsageSummary = {
   chats: { used: number; limit: number };
   /** DAP Track levels built, and how many this plan allows. */
   tracks: { used: number; limit: number };
-  /** Messages sent on the Pro model. No ceiling is enforced yet. */
-  proMessages: { used: number; limit: number | null };
+  /** Usage tokens spent today, and the plan's daily allowance. */
+  tokensToday: { used: number; limit: number | null };
+  /** Usage tokens spent this week, and the plan's weekly allowance. */
+  tokensWeek: { used: number; limit: number | null };
+  /** Images attached today, and the plan's daily allowance. */
+  imagesToday: { used: number; limit: number | null };
 };
 
 export const getMyUsage = createServerFn({ method: "GET" })
@@ -32,19 +37,33 @@ export const getMyUsage = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<UsageSummary> => {
     const { supabase, userId } = context;
 
-    const [profileRes, chatsRes, tracksRes] = await Promise.all([
-      supabase.from("profiles").select("tier, pro_messages_used").eq("id", userId).maybeSingle(),
+    const [profileRes, chatsRes, tracksRes, ledgerRes] = await Promise.all([
+      supabase.from("profiles").select("tier").eq("id", userId).maybeSingle(),
       supabase.from("chats").select("id", { count: "exact", head: true }).eq("user_id", userId),
       supabase.from("custom_tracks").select("id", { count: "exact", head: true }).eq("owner_id", userId),
+      supabase.rpc("my_usage").maybeSingle(),
     ]);
 
     if (profileRes.error) throw dbError(profileRes.error, "getMyUsage");
 
     const tier = ((profileRes.data?.tier as Tier) ?? "free");
+    // A ledger read that fails should not take the whole page down; the
+    // rest of the panel is still worth showing.
+    if (ledgerRes.error) {
+      console.error("[usage] my_usage failed:", ledgerRes.error.message);
+    }
+    const led = ledgerRes.data as {
+      day_used?: number; day_limit?: number | null;
+      week_used?: number; week_limit?: number | null;
+      images_used?: number; images_limit?: number | null;
+    } | null;
+
     return {
       tier,
       chats: { used: chatsRes.count ?? 0, limit: CHAT_HISTORY_LIMIT[tier] },
       tracks: { used: tracksRes.count ?? 0, limit: TRACK_QUOTA[tier] },
-      proMessages: { used: profileRes.data?.pro_messages_used ?? 0, limit: null },
+      tokensToday: { used: Number(led?.day_used ?? 0), limit: led?.day_limit ?? null },
+      tokensWeek: { used: Number(led?.week_used ?? 0), limit: led?.week_limit ?? null },
+      imagesToday: { used: Number(led?.images_used ?? 0), limit: led?.images_limit ?? null },
     };
   });
