@@ -93,7 +93,11 @@ function RoomPage() {
           qc.setQueryData<Awaited<ReturnType<typeof fetchRoom>>>(
             ["study-room", code],
             (current) => {
-              if (!current || current.messages.some((message) => message.id === incoming.id)) {
+              if (
+                !current ||
+                !current.room.joined ||
+                current.messages.some((message) => message.id === incoming.id)
+              ) {
                 return current;
               }
               return { ...current, messages: [...current.messages, incoming] };
