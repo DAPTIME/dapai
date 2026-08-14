@@ -83,10 +83,7 @@ export function AppSidebar() {
   const isAdmin = adminQuery.data?.isAdmin === true;
 
   const siteConfig = useSiteConfig();
-  // Admins can switch the arcade off; drop its link when they have.
-  const nav = main.filter(
-    (item) => item.url !== "/games" || siteConfig.flags.games
-  );
+  const nav = main;
 
 
   const chatsQuery = useQuery({
