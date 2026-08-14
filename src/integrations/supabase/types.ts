@@ -211,30 +211,6 @@ export type Database = {
         }
         Relationships: []
       }
-      email_rate_limit_exempt: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          email: string
-          id: string
-          note: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          email: string
-          id?: string
-          note?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          email?: string
-          id?: string
-          note?: string
-        }
-        Relationships: []
-      }
       email_rate_limits: {
         Row: {
           created_at: string
@@ -597,6 +573,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
       find_study_room_by_code: {
         Args: { _code: string }
         Returns: {
