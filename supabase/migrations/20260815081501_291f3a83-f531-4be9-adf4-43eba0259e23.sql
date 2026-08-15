@@ -1,0 +1,161 @@
+ALTER TABLE public.usage_quota
+  ADD COLUMN IF NOT EXISTS week_started_at timestamptz NOT NULL DEFAULT now();
+
+CREATE UNIQUE INDEX IF NOT EXISTS usage_quota_user_id_key
+  ON public.usage_quota (user_id);
+
+CREATE OR REPLACE FUNCTION public.usage_limit(_tier public.account_tier)
+RETURNS TABLE (tokens_day numeric, tokens_week numeric, images_day integer)
+LANGUAGE sql
+IMMUTABLE
+SET search_path TO 'public'
+AS $$
+  SELECT t.tokens_day, t.tokens_week, t.images_day FROM (VALUES
+    ('free'::public.account_tier,      15::numeric,  60::numeric,  2),
+    ('go'::public.account_tier,        25::numeric,  80::numeric,  5),
+    ('pro'::public.account_tier,       50::numeric, 400::numeric,  8),
+    ('exclusive'::public.account_tier, NULL::numeric, NULL::numeric, NULL::integer)
+  ) AS t(tier, tokens_day, tokens_week, images_day)
+  WHERE t.tier = _tier;
+$$;
+
+CREATE OR REPLACE FUNCTION public.my_usage()
+RETURNS TABLE (
+  day_used numeric, day_limit numeric,
+  week_used numeric, week_limit numeric,
+  images_used integer, images_limit integer
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  uid uuid := auth.uid();
+  v_tier public.account_tier;
+  lim record;
+  q public.usage_quota%ROWTYPE;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Sign in first.';
+  END IF;
+
+  SELECT tier INTO v_tier FROM public.profiles WHERE id = uid;
+  SELECT * INTO lim FROM public.usage_limit(COALESCE(v_tier, 'free'));
+  SELECT * INTO q FROM public.usage_quota WHERE user_id = uid;
+
+  IF q.user_id IS NULL THEN
+    RETURN QUERY SELECT 0::numeric, lim.tokens_day, 0::numeric, lim.tokens_week, 0, lim.images_day;
+    RETURN;
+  END IF;
+
+  RETURN QUERY SELECT
+    CASE WHEN q.day_date = current_date THEN q.day_tokens ELSE 0 END,
+    lim.tokens_day,
+    CASE WHEN now() - q.week_started_at < interval '7 days' THEN q.week_tokens ELSE 0 END,
+    lim.tokens_week,
+    CASE WHEN q.day_date = current_date THEN q.day_images ELSE 0 END,
+    lim.images_day;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.my_usage() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.my_usage() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.charge_usage(_cost numeric, _images integer DEFAULT 0)
+RETURNS TABLE (
+  ok boolean, reason text,
+  day_used numeric, day_limit numeric,
+  week_used numeric, week_limit numeric,
+  images_used integer, images_limit integer
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  uid uuid := auth.uid();
+  v_tier public.account_tier;
+  lim record;
+  q public.usage_quota%ROWTYPE;
+  d_date date;
+  d_tok numeric;
+  d_img integer;
+  w_at timestamptz;
+  w_tok numeric;
+  n_day numeric;
+  n_week numeric;
+  n_img integer;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Sign in first.';
+  END IF;
+  IF _cost IS NULL OR _cost < 0 OR _cost > 100 THEN
+    RAISE EXCEPTION 'Invalid charge.';
+  END IF;
+  IF _images IS NULL OR _images < 0 OR _images > 1 THEN
+    RAISE EXCEPTION 'One image per prompt.';
+  END IF;
+
+  SELECT tier INTO v_tier FROM public.profiles WHERE id = uid;
+  SELECT * INTO lim FROM public.usage_limit(COALESCE(v_tier, 'free'));
+
+  INSERT INTO public.usage_quota (user_id) VALUES (uid)
+  ON CONFLICT (user_id) DO NOTHING;
+  SELECT * INTO q FROM public.usage_quota WHERE user_id = uid FOR UPDATE;
+
+  IF q.day_date = current_date THEN
+    d_date := q.day_date; d_tok := q.day_tokens; d_img := q.day_images;
+  ELSE
+    d_date := current_date; d_tok := 0; d_img := 0;
+  END IF;
+
+  IF now() - q.week_started_at < interval '7 days' THEN
+    w_at := q.week_started_at; w_tok := q.week_tokens;
+  ELSE
+    w_at := now(); w_tok := 0;
+  END IF;
+
+  n_day := d_tok + _cost;
+  n_week := w_tok + _cost;
+  n_img := d_img + _images;
+
+  IF lim.images_day IS NOT NULL AND n_img > lim.images_day THEN
+    RETURN QUERY SELECT false,
+      format('You have used all %s of today''s images.', lim.images_day),
+      d_tok, lim.tokens_day, w_tok, lim.tokens_week, d_img, lim.images_day;
+    RETURN;
+  END IF;
+
+  IF lim.tokens_day IS NOT NULL AND n_day > lim.tokens_day THEN
+    RETURN QUERY SELECT false,
+      'You have used all of today''s usage tokens. They reset at midnight UTC.',
+      d_tok, lim.tokens_day, w_tok, lim.tokens_week, d_img, lim.images_day;
+    RETURN;
+  END IF;
+
+  IF lim.tokens_week IS NOT NULL AND n_week > lim.tokens_week THEN
+    RETURN QUERY SELECT false,
+      'You have used all of this week''s usage tokens.',
+      d_tok, lim.tokens_day, w_tok, lim.tokens_week, d_img, lim.images_day;
+    RETURN;
+  END IF;
+
+  UPDATE public.usage_quota
+     SET day_date = d_date,
+         day_tokens = n_day,
+         day_images = n_img,
+         week_started_at = w_at,
+         week_tokens = n_week,
+         updated_at = now()
+   WHERE user_id = uid;
+
+  RETURN QUERY SELECT true, NULL::text,
+    n_day, lim.tokens_day, n_week, lim.tokens_week, n_img, lim.images_day;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.charge_usage(numeric, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.charge_usage(numeric, integer) TO authenticated;
+
+REVOKE ALL ON public.usage_quota FROM anon, authenticated;
