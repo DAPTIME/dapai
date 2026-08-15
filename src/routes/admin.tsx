@@ -74,6 +74,11 @@ type SectionId = (typeof SECTIONS)[number]["id"];
 
 
 import {
+  adminListStudyRooms,
+  adminDeleteStudyRoom,
+  adminRestoreStudyRoom,
+} from "@/lib/study-rooms.functions";
+import {
   listBetaTesters,
   adminAddBetaTester,
   adminRemoveBetaTester,

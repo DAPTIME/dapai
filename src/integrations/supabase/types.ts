@@ -440,6 +440,8 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
           host_id: string
           id: string
           is_open: boolean
@@ -458,6 +460,8 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           host_id?: string
           id?: string
           is_open?: boolean
@@ -586,6 +590,33 @@ export type Database = {
     }
     Functions: {
       can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
+      join_study_room_by_code: {
+        Args: { _code: string }
+        Returns: { id: string; code: string; name: string }[]
+      }
+      admin_list_study_rooms: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          code: string
+          name: string
+          model: string
+          is_open: boolean
+          created_at: string
+          deleted_at: string | null
+          host_name: string
+          member_count: number
+          message_count: number
+        }[]
+      }
+      admin_delete_study_room: {
+        Args: { _id: string }
+        Returns: boolean
+      }
+      admin_restore_study_room: {
+        Args: { _id: string }
+        Returns: boolean
+      }
       charge_usage: {
         Args: { _cost: number; _images?: number }
         Returns: {
