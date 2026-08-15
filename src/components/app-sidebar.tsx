@@ -14,7 +14,6 @@ import {
   Users,
   Gamepad2,
   Users2,
-  ChevronDown,
 } from "lucide-react";
 
 import { adminAmIAdmin } from "@/lib/admin.functions";
@@ -30,12 +29,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/lib/auth";
 import {
   listChats,
@@ -48,17 +43,6 @@ const main = [
   { title: "Custom AI's", url: "/daps", icon: Sparkles },
   { title: "Study Rooms", url: "/rooms", icon: Users2 },
   { title: "Our Team", url: "/team", icon: Users },
-] as const;
-
-const arcade = [
-  { title: "All games", url: "/games" },
-  { title: "2048", url: "/games/2048" },
-  { title: "Snake", url: "/games/snake" },
-  { title: "Spacewar", url: "/games/spacewar" },
-  { title: "DAP Track", url: "/games/daptrack" },
-  { title: "River Crosser", url: "/games/river" },
-  { title: "Flappy", url: "/games/flappy" },
-  { title: "Brick Breaker", url: "/games/breakout" },
 ] as const;
 
 export function AppSidebar() {
@@ -158,28 +142,26 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              <Collapsible defaultOpen={pathname.startsWith("/games")} asChild>
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton isActive={pathname.startsWith("/games")}>
-                      <Gamepad2 />
-                      <span>Arcade</span>
-                      <ChevronDown className="ml-auto transition-transform group-data-[state=open]/menu-item:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {arcade.map((game) => (
-                        <SidebarMenuSubItem key={game.url}>
-                          <SidebarMenuSubButton asChild isActive={pathname === game.url}>
-                            <Link to={game.url} onClick={closeIfMobile}>{game.title}</Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+              {/* Arcade goes straight to the games page rather than
+                  unfolding the list here. The page shows every game with
+                  its artwork, which is a better way to pick one than a
+                  column of names — and it saves a click for the common
+                  case of just wanting the arcade. */}
+              <SidebarMenuItem
+                className="animate-fade-in"
+                style={{ animationDelay: `${(nav.length + 1) * 60}ms` }}
+              >
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/games")}
+                  className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
+                >
+                  <Link to="/games" onClick={closeIfMobile}>
+                    <Gamepad2 />
+                    <span>Arcade</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
