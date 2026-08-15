@@ -502,6 +502,7 @@ export type Database = {
           updated_at: string
           user_id: string
           week_start: string
+          week_started_at: string
           week_tokens: number
         }
         Insert: {
@@ -512,6 +513,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           week_start?: string
+          week_started_at?: string
           week_tokens?: number
         }
         Update: {
@@ -522,6 +524,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           week_start?: string
+          week_started_at?: string
           week_tokens?: number
         }
         Relationships: []
@@ -583,6 +586,19 @@ export type Database = {
     }
     Functions: {
       can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
+      charge_usage: {
+        Args: { _cost: number; _images?: number }
+        Returns: {
+          day_limit: number
+          day_used: number
+          images_limit: number
+          images_used: number
+          ok: boolean
+          reason: string
+          week_limit: number
+          week_used: number
+        }[]
+      }
       find_study_room_by_code: {
         Args: { _code: string }
         Returns: {
@@ -613,6 +629,17 @@ export type Database = {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
       }
+      my_usage: {
+        Args: never
+        Returns: {
+          day_limit: number
+          day_used: number
+          images_limit: number
+          images_used: number
+          week_limit: number
+          week_used: number
+        }[]
+      }
       set_track_published: {
         Args: { _id: string; _public: boolean }
         Returns: boolean
@@ -624,6 +651,14 @@ export type Database = {
       track_quota: {
         Args: { _tier: Database["public"]["Enums"]["account_tier"] }
         Returns: number
+      }
+      usage_limit: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: {
+          images_day: number
+          tokens_day: number
+          tokens_week: number
+        }[]
       }
       verify_own_track: {
         Args: { _id: string; _time_ms: number }
