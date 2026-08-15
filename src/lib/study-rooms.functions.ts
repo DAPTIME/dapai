@@ -9,6 +9,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { assertAdmin } from "./admin.server";
 import { dbError } from "./db-error";
 import { firstName } from "./utils";
 import { completeOnce } from "./ai-backend.server";
@@ -38,6 +40,51 @@ async function displayName(
     .maybeSingle();
   return firstName(data?.name ?? data?.email, "Guest");
 }
+
+/** What someone is told when the room they were in has been closed down. */
+export const ROOM_DELETED_NOTICE =
+  "Sorry, this room has been deleted by the admin. Please contact us for any inquiries.";
+
+/**
+ * Does study_rooms carry the soft-delete columns yet?
+ *
+ * Closing a room down marks it rather than dropping it, which needs
+ * deleted_at/deleted_by — added by
+ * supabase/migrations/20260815120000_study_room_join_and_admin.sql. Until
+ * that migration is applied the columns are absent, and every query naming
+ * one fails with 42703, which would take the room page down with it.
+ *
+ * So the shape is probed once and remembered. Everything that reads a room
+ * keeps working without the columns; only closing a room actually needs
+ * them, and that says so plainly instead of failing as a bug. Once the
+ * migration lands the probe flips on its own — the cache lives for the life
+ * of a worker, not forever.
+ */
+let softDelete: boolean | undefined;
+async function hasSoftDelete(): Promise<boolean> {
+  if (softDelete !== undefined) return softDelete;
+  const { error } = await supabaseAdmin
+    .from("study_rooms")
+    .select("deleted_at")
+    .limit(1);
+  // 42703 is "column does not exist"; PGRST204 is PostgREST saying the same
+  // from its schema cache. Anything else is a database that is unwell, and
+  // guessing "no column" from it would hide the real fault — so only these
+  // two count as absent, and the rest are retried on the next call.
+  if (error) {
+    if (error.code === "42703" || error.code === "PGRST204") {
+      softDelete = false;
+      return false;
+    }
+    return false;
+  }
+  softDelete = true;
+  return true;
+}
+
+/** The columns a room is read with, which depends on the above. */
+const roomColumns = (soft: boolean) =>
+  `id, code, name, host_id, model, is_open, created_at${soft ? ", deleted_at" : ""}`;
 
 export const createStudyRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -88,37 +135,135 @@ export const joinStudyRoom = createServerFn({ method: "POST" })
     z.object({ code: z.string().trim().min(4).max(10) }).parse(i)
   )
   .handler(async ({ context, data }) => {
-    /* One call rather than three.
-       Joining used to resolve the code, then upsert a membership row from
-       the browser's own key — an INSERT ... ON CONFLICT DO UPDATE needing
-       the INSERT grant, the INSERT policy, the UPDATE grant and the UPDATE
-       policy all to line up. Four things across three migrations, any one
-       of which silently produced "joining doesn't work".
+    /* Joining used to resolve the code and then upsert a membership row
+       using the browser's own key — an INSERT ... ON CONFLICT DO UPDATE
+       needing the INSERT grant, the INSERT policy, the UPDATE grant and the
+       UPDATE policy all to line up. Four things across three migrations,
+       any one of which produced the same silent "joining doesn't work".
 
-       join_study_room_by_code does the lookup and the membership in one
-       SECURITY DEFINER call. It still refuses what it should — you join as
-       yourself, only rooms that exist, are open, and are not deleted — but
-       it cannot be defeated by a grant that went missing. */
-    const { data: rows, error } = await context.supabase.rpc(
-      "join_study_room_by_code",
-      { _code: data.code.trim().toUpperCase() }
-    );
-    // The function's own messages are written for the person reading them,
-    // so they survive rather than being flattened by the sanitiser.
-    if (error) throw new Error(error.message);
-    const room = (rows ?? [])[0];
+       This runs on the server, which has already established who the caller
+       is, so it does the checks itself and writes with the service role.
+       The decision of who may join is made here in one place, in the open,
+       rather than emerging from four separate pieces of database
+       configuration that have to agree. */
+    const { userId } = context;
+    const code = data.code.trim().toUpperCase();
+    const soft = await hasSoftDelete();
+
+    const { data: room, error } = await supabaseAdmin
+      .from("study_rooms")
+      .select(roomColumns(soft))
+      .eq("code", code)
+      .maybeSingle<{
+        id: string;
+        code: string;
+        name: string;
+        is_open: boolean;
+        deleted_at?: string | null;
+      }>();
+    if (error) throw dbError(error);
     if (!room) throw new Error("No study room with that code.");
+    if (room.deleted_at) throw new Error(ROOM_DELETED_NOTICE);
+    if (!room.is_open) throw new Error("That study room has been closed.");
+
+    // You join as yourself: the id comes from the verified session, never
+    // from anything the caller sent.
+    const { error: joinError } = await supabaseAdmin
+      .from("study_room_members")
+      .upsert(
+        {
+          room_id: room.id,
+          user_id: userId,
+          display_name: await displayName(supabaseAdmin, userId),
+        },
+        { onConflict: "room_id,user_id" }
+      );
+    if (joinError) throw dbError(joinError);
+
     return { id: room.id, code: room.code, name: room.name };
   });
 
-/** Every room on the site, for the admin console. */
+/**
+ * Every room on the site, for the admin console.
+ *
+ * Admin is profiles.site_admin, checked here on the server before the
+ * service role is used for anything — the client is never asked whether it
+ * is allowed.
+ */
 export const adminListStudyRooms = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase.rpc("admin_list_study_rooms");
-    if (error) throw new Error(error.message);
-    return data ?? [];
+    await assertAdmin(context.userId);
+    const soft = await hasSoftDelete();
+
+    const { data: rooms, error } = await supabaseAdmin
+      .from("study_rooms")
+      .select(roomColumns(soft))
+      .order("created_at", { ascending: false })
+      .returns<
+        Array<{
+          id: string;
+          code: string;
+          name: string;
+          host_id: string | null;
+          model: string;
+          is_open: boolean;
+          created_at: string;
+          deleted_at?: string | null;
+        }>
+      >();
+    if (error) throw dbError(error);
+    if (!rooms?.length) return [];
+
+    const hostIds = [...new Set(rooms.map((r) => r.host_id).filter(Boolean))];
+    const { data: hosts } = await supabaseAdmin
+      .from("profiles")
+      .select("id, name, email")
+      .in("id", hostIds as string[]);
+    const hostName = new Map(
+      (hosts ?? []).map((h: { id: string; name: string | null; email: string | null }) => [
+        h.id,
+        h.name?.trim() || h.email || "Unknown",
+      ])
+    );
+
+    // Counted per room with a HEAD request rather than by pulling every row
+    // and tallying in memory: PostgREST caps a select at a page of rows, so
+    // tallying would quietly under-report a busy room.
+    const counts = await Promise.all(
+      rooms.map(async (r) => {
+        const [members, messages] = await Promise.all([
+          supabaseAdmin
+            .from("study_room_members")
+            .select("*", { count: "exact", head: true })
+            .eq("room_id", r.id),
+          supabaseAdmin
+            .from("study_room_messages")
+            .select("*", { count: "exact", head: true })
+            .eq("room_id", r.id),
+        ]);
+        return { member_count: members.count ?? 0, message_count: messages.count ?? 0 };
+      })
+    );
+
+    return rooms.map((r, i) => ({
+      id: r.id,
+      code: r.code,
+      name: r.name,
+      model: r.model,
+      is_open: r.is_open,
+      created_at: r.created_at,
+      deleted_at: r.deleted_at ?? null,
+      host_name: (r.host_id && hostName.get(r.host_id)) || "Unknown",
+      ...counts[i],
+    }));
   });
+
+/** Raised when closing a room needs a migration that has not been applied. */
+const SOFT_DELETE_MISSING =
+  "Closing a room needs the deleted_at column on study_rooms, which this " +
+  "database does not have yet. Apply " +
+  "supabase/migrations/20260815120000_study_room_join_and_admin.sql and try again.";
 
 /**
  * Close a room down.
@@ -132,24 +277,44 @@ export const adminDeleteStudyRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    const { data: ok, error } = await context.supabase.rpc(
-      "admin_delete_study_room",
-      { _id: data.id }
-    );
-    if (error) throw new Error(error.message);
-    return { ok: ok === true };
+    await assertAdmin(context.userId);
+    if (!(await hasSoftDelete())) throw new Error(SOFT_DELETE_MISSING);
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("study_rooms")
+      .update({
+        deleted_at: new Date().toISOString(),
+        deleted_by: context.userId,
+        is_open: false,
+      })
+      .eq("id", data.id)
+      .is("deleted_at", null)
+      .select("id");
+    if (error) throw dbError(error);
+    return { ok: (rows ?? []).length > 0 };
   });
 
+/**
+ * Put a closed room back.
+ *
+ * Deleting the wrong room by one misread code is an easy mistake, and a
+ * soft delete is what makes it a recoverable one.
+ */
 export const adminRestoreStudyRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    const { data: ok, error } = await context.supabase.rpc(
-      "admin_restore_study_room",
-      { _id: data.id }
-    );
-    if (error) throw new Error(error.message);
-    return { ok: ok === true };
+    await assertAdmin(context.userId);
+    if (!(await hasSoftDelete())) throw new Error(SOFT_DELETE_MISSING);
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("study_rooms")
+      .update({ deleted_at: null, deleted_by: null, is_open: true })
+      .eq("id", data.id)
+      .not("deleted_at", "is", null)
+      .select("id");
+    if (error) throw dbError(error);
+    return { ok: (rows ?? []).length > 0 };
   });
 
 export const getStudyRoom = createServerFn({ method: "POST" })
@@ -168,9 +333,18 @@ export const getStudyRoom = createServerFn({ method: "POST" })
     if (!found) throw new Error("No study room with that code.");
     const { data: full } = await supabase
       .from("study_rooms")
-      .select("id, code, name, host_id, model, is_open, created_at, deleted_at")
+      .select(roomColumns(await hasSoftDelete()))
       .eq("id", found.id)
-      .maybeSingle();
+      .maybeSingle<{
+        id: string;
+        code: string;
+        name: string;
+        host_id: string | null;
+        model: string;
+        is_open: boolean;
+        created_at: string | null;
+        deleted_at?: string | null;
+      }>();
     const room = full ?? {
       ...found,
       host_id: null as string | null,
@@ -308,13 +482,17 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
+    const soft = await hasSoftDelete();
     const { data: room, error: roomError } = await supabase
       .from("study_rooms")
-      .select("id, model, is_open")
+      .select(`id, model, is_open${soft ? ", deleted_at" : ""}`)
       .eq("id", data.roomId)
-      .maybeSingle();
+      .maybeSingle<{ id: string; model: string; is_open: boolean; deleted_at?: string | null }>();
     if (roomError) throw dbError(roomError);
     if (!room) throw new Error("That study room no longer exists.");
+    // A tab left open would otherwise keep talking to a room the owner has
+    // closed down.
+    if (room.deleted_at) throw new Error(ROOM_DELETED_NOTICE);
     if (!room.is_open) throw new Error("That study room has been closed.");
 
     // The reply runs on the sender's plan: they pick the model, it must be
