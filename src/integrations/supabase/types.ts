@@ -502,7 +502,6 @@ export type Database = {
           updated_at: string
           user_id: string
           week_start: string
-          week_started_at: string
           week_tokens: number
         }
         Insert: {
@@ -513,7 +512,6 @@ export type Database = {
           updated_at?: string
           user_id: string
           week_start?: string
-          week_started_at?: string
           week_tokens?: number
         }
         Update: {
@@ -524,7 +522,6 @@ export type Database = {
           updated_at?: string
           user_id?: string
           week_start?: string
-          week_started_at?: string
           week_tokens?: number
         }
         Relationships: []
@@ -604,54 +601,6 @@ export type Database = {
           rank: number
         }[]
       }
-      charge_usage: {
-        Args: { _cost: number; _images?: number }
-        Returns: {
-          ok: boolean
-          reason: string | null
-          day_used: number
-          day_limit: number | null
-          week_used: number
-          week_limit: number | null
-          images_used: number
-          images_limit: number | null
-        }[]
-      }
-      my_usage: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          day_used: number
-          day_limit: number | null
-          week_used: number
-          week_limit: number | null
-          images_used: number
-          images_limit: number | null
-        }[]
-      }
-      usage_limit: {
-        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
-        Returns: {
-          tokens_day: number | null
-          tokens_week: number | null
-          images_day: number | null
-        }[]
-      }
-      set_track_published: {
-        Args: { _id: string; _public: boolean }
-        Returns: boolean
-      }
-      verify_own_track: {
-        Args: { _id: string; _time_ms: number }
-        Returns: string
-      }
-      tier_rank: {
-        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
-        Returns: number
-      }
-      track_quota: {
-        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
-        Returns: number
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -663,6 +612,22 @@ export type Database = {
       is_room_member: {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
+      }
+      set_track_published: {
+        Args: { _id: string; _public: boolean }
+        Returns: boolean
+      }
+      tier_rank: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
+      }
+      track_quota: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
+      }
+      verify_own_track: {
+        Args: { _id: string; _time_ms: number }
+        Returns: string
       }
     }
     Enums: {
