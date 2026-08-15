@@ -30,23 +30,44 @@ import { PLANS, LINKTREE_URL } from "@/lib/plans";
 /** Trim trailing zeros: 1.25 stays, 2.00 becomes 2. */
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2))));
 
-/** A used/allowed line with a bar, or a plain count when there's no cap. */
-function Meter({ label, used, limit, note }: {
+/**
+ * A used/allowed line with a bar, or a plain count when there's no cap.
+ *
+ * `hideNumbers` keeps the bar and drops the figures. Usage tokens are
+ * charged in fractions that depend on prompt length and model, so "3.25 of
+ * 15" invites arithmetic nobody wants to do mid-conversation; how full the
+ * bar looks is the part that actually matters. The limit is still enforced
+ * exactly, and the refusal message says plainly when it's reached.
+ */
+function Meter({ label, used, limit, note, hideNumbers = false }: {
   label: string;
   used: number;
   limit: number | null;
   note?: string;
+  hideNumbers?: boolean;
 }) {
   const unlimited = limit === null || !Number.isFinite(limit);
   const pct = unlimited ? 0 : Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
   const full = !unlimited && used >= (limit as number);
+
+  const readout = hideNumbers
+    // Still say something on the right, or the row reads as unfinished —
+    // and someone on an unlimited plan should know that's why it's blank.
+    ? unlimited
+      ? "No limit"
+      : full
+        ? "None left"
+        : "Available"
+    : unlimited
+      ? `${fmt(used)} — no limit`
+      : `${fmt(used)} of ${limit}`;
 
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2 text-sm">
         <span className="font-medium">{label}</span>
         <span className={full ? "text-destructive" : "text-muted-foreground"}>
-          {unlimited ? `${fmt(used)} — no limit` : `${fmt(used)} of ${limit}`}
+          {readout}
         </span>
       </div>
       {!unlimited && (
@@ -145,7 +166,7 @@ export function PlanAndUsage() {
                 note="Older chats are pruned when you start a new one."
               />
               <Meter
-                label="DAP Track levels"
+                label="Tracks created"
                 used={usage.data.tracks.used}
                 limit={Number.isFinite(usage.data.tracks.limit) ? usage.data.tracks.limit : null}
               />
@@ -153,12 +174,14 @@ export function PlanAndUsage() {
                 label="Usage tokens today"
                 used={usage.data.tokensToday.used}
                 limit={usage.data.tokensToday.limit}
+                hideNumbers
                 note="Resets at midnight UTC."
               />
               <Meter
                 label="Usage tokens this week"
                 used={usage.data.tokensWeek.used}
                 limit={usage.data.tokensWeek.limit}
+                hideNumbers
                 note="Your week runs seven days from your first message in it."
               />
               <Meter
