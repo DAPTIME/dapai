@@ -13,19 +13,49 @@
 
 -- ── Ledger shape ────────────────────────────────────────────────────────
 --
+-- Every step here is guarded, because this runs against a live table whose
+-- starting state I could not inspect: the connection used to apply it kept
+-- dropping. A migration that fails halfway leaves the ledger in a state
+-- nothing understands, so each step checks before it acts and the whole
+-- file is safe to run twice.
+
 -- Costs are fractional (a short Lite prompt is 0.75), so the token columns
--- cannot stay integers.
-ALTER TABLE public.usage_quota
-  ALTER COLUMN day_tokens TYPE numeric(12, 2) USING day_tokens::numeric,
-  ALTER COLUMN week_tokens TYPE numeric(12, 2) USING week_tokens::numeric;
+-- cannot stay integers. Only retype them if they are not already numeric.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'usage_quota'
+      AND column_name = 'day_tokens' AND data_type <> 'numeric'
+  ) THEN
+    ALTER TABLE public.usage_quota
+      ALTER COLUMN day_tokens TYPE numeric(12, 2) USING day_tokens::numeric;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'usage_quota'
+      AND column_name = 'week_tokens' AND data_type <> 'numeric'
+  ) THEN
+    ALTER TABLE public.usage_quota
+      ALTER COLUMN week_tokens TYPE numeric(12, 2) USING week_tokens::numeric;
+  END IF;
+END $$;
 
 -- The weekly window is anchored to each account's first prompt of its week
--- rather than to a fixed calendar boundary, so it needs a timestamp.
--- Added alongside week_start rather than retyping it: this runs against a
--- live table whose column type differs between environments, and a failed
--- ALTER here would take the whole migration with it.
+-- rather than to a fixed calendar boundary, so it needs a timestamp. Added
+-- alongside week_start rather than retyping it: that column's type differs
+-- between environments and a failed ALTER would take the migration with it.
 ALTER TABLE public.usage_quota
   ADD COLUMN IF NOT EXISTS week_started_at timestamptz NOT NULL DEFAULT now();
+
+-- ON CONFLICT (user_id) below needs a unique index, and one cannot be built
+-- over duplicates. Keep the newest row per account if any exist — this is a
+-- usage counter, so the freshest reading is the right one to survive.
+DELETE FROM public.usage_quota a
+USING public.usage_quota b
+WHERE a.user_id = b.user_id
+  AND a.ctid < b.ctid;
 
 CREATE UNIQUE INDEX IF NOT EXISTS usage_quota_user_id_key
   ON public.usage_quota (user_id);
