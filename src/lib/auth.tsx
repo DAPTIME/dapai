@@ -61,7 +61,7 @@ function toUser(u: SupabaseUser | null | undefined): User | null {
     email: u.email ?? "",
     name:
       pick("name", "full_name", "given_name", "user_name", "preferred_username", "nickname") ||
-      (u.email ? u.email.split("@")[0]! : "friend"),
+      (u.email?.split("@")[0] || "friend"),
   };
 }
 
@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, s) => {
       if (cancelled) return;
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       if (event === "SIGNED_IN" && s) writeSessionCookie(true);
       if (event === "SIGNED_OUT") writeSessionCookie(false);
       setSession(s);
