@@ -160,7 +160,7 @@ function SignupPage() {
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
           <Input id="password" type="password" autoComplete="new-password" required minLength={PASSWORD_MIN_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)} />
-          <p className="text-xs text-muted-foreground">At least 6 characters.</p>
+          <p className="text-xs text-muted-foreground">At least {PASSWORD_MIN_LENGTH} characters.</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">Confirm password</Label>
