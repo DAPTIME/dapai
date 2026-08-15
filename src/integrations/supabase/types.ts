@@ -586,6 +586,19 @@ export type Database = {
     }
     Functions: {
       can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
+      charge_usage: {
+        Args: { _cost: number; _images?: number }
+        Returns: {
+          day_limit: number
+          day_used: number
+          images_limit: number
+          images_used: number
+          ok: boolean
+          reason: string
+          week_limit: number
+          week_used: number
+        }[]
+      }
       find_study_room_by_code: {
         Args: { _code: string }
         Returns: {
@@ -604,54 +617,6 @@ export type Database = {
           rank: number
         }[]
       }
-      charge_usage: {
-        Args: { _cost: number; _images?: number }
-        Returns: {
-          ok: boolean
-          reason: string | null
-          day_used: number
-          day_limit: number | null
-          week_used: number
-          week_limit: number | null
-          images_used: number
-          images_limit: number | null
-        }[]
-      }
-      my_usage: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          day_used: number
-          day_limit: number | null
-          week_used: number
-          week_limit: number | null
-          images_used: number
-          images_limit: number | null
-        }[]
-      }
-      usage_limit: {
-        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
-        Returns: {
-          tokens_day: number | null
-          tokens_week: number | null
-          images_day: number | null
-        }[]
-      }
-      set_track_published: {
-        Args: { _id: string; _public: boolean }
-        Returns: boolean
-      }
-      verify_own_track: {
-        Args: { _id: string; _time_ms: number }
-        Returns: string
-      }
-      tier_rank: {
-        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
-        Returns: number
-      }
-      track_quota: {
-        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
-        Returns: number
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -663,6 +628,41 @@ export type Database = {
       is_room_member: {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
+      }
+      my_usage: {
+        Args: never
+        Returns: {
+          day_limit: number
+          day_used: number
+          images_limit: number
+          images_used: number
+          week_limit: number
+          week_used: number
+        }[]
+      }
+      set_track_published: {
+        Args: { _id: string; _public: boolean }
+        Returns: boolean
+      }
+      tier_rank: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
+      }
+      track_quota: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
+      }
+      usage_limit: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: {
+          images_day: number
+          tokens_day: number
+          tokens_week: number
+        }[]
+      }
+      verify_own_track: {
+        Args: { _id: string; _time_ms: number }
+        Returns: string
       }
     }
     Enums: {
