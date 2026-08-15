@@ -88,28 +88,68 @@ export const joinStudyRoom = createServerFn({ method: "POST" })
     z.object({ code: z.string().trim().min(4).max(10) }).parse(i)
   )
   .handler(async ({ context, data }) => {
-    const { supabase, userId } = context;
-    // RLS hides rooms you haven't joined, so resolve the code through the
-    // narrow lookup function instead of a broad table read.
-    const { data: rows, error } = await supabase.rpc("find_study_room_by_code", {
-      _code: data.code.toUpperCase(),
-    });
-    if (error) throw dbError(error);
-    const room = (rows ?? [])[0] ?? null;
+    /* One call rather than three.
+       Joining used to resolve the code, then upsert a membership row from
+       the browser's own key — an INSERT ... ON CONFLICT DO UPDATE needing
+       the INSERT grant, the INSERT policy, the UPDATE grant and the UPDATE
+       policy all to line up. Four things across three migrations, any one
+       of which silently produced "joining doesn't work".
+
+       join_study_room_by_code does the lookup and the membership in one
+       SECURITY DEFINER call. It still refuses what it should — you join as
+       yourself, only rooms that exist, are open, and are not deleted — but
+       it cannot be defeated by a grant that went missing. */
+    const { data: rows, error } = await context.supabase.rpc(
+      "join_study_room_by_code",
+      { _code: data.code.trim().toUpperCase() }
+    );
+    // The function's own messages are written for the person reading them,
+    // so they survive rather than being flattened by the sanitiser.
+    if (error) throw new Error(error.message);
+    const room = (rows ?? [])[0];
     if (!room) throw new Error("No study room with that code.");
-    if (!room.is_open) throw new Error("That study room has been closed.");
-    const { error: joinError } = await supabase
-      .from("study_room_members")
-      .upsert(
-        {
-          room_id: room.id,
-          user_id: userId,
-          display_name: await displayName(supabase, userId),
-        },
-        { onConflict: "room_id,user_id" }
-      );
-    if (joinError) throw dbError(joinError);
     return { id: room.id, code: room.code, name: room.name };
+  });
+
+/** Every room on the site, for the admin console. */
+export const adminListStudyRooms = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase.rpc("admin_list_study_rooms");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+/**
+ * Close a room down.
+ *
+ * A soft delete: the row stays so the people who were in it can be told
+ * why it is gone. Dropping it would give them "no room with that code",
+ * which reads as a fault rather than a decision — and would make an
+ * accidental deletion unrecoverable.
+ */
+export const adminDeleteStudyRoom = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ context, data }) => {
+    const { data: ok, error } = await context.supabase.rpc(
+      "admin_delete_study_room",
+      { _id: data.id }
+    );
+    if (error) throw new Error(error.message);
+    return { ok: ok === true };
+  });
+
+export const adminRestoreStudyRoom = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ context, data }) => {
+    const { data: ok, error } = await context.supabase.rpc(
+      "admin_restore_study_room",
+      { _id: data.id }
+    );
+    if (error) throw new Error(error.message);
+    return { ok: ok === true };
   });
 
 export const getStudyRoom = createServerFn({ method: "POST" })
@@ -128,7 +168,7 @@ export const getStudyRoom = createServerFn({ method: "POST" })
     if (!found) throw new Error("No study room with that code.");
     const { data: full } = await supabase
       .from("study_rooms")
-      .select("id, code, name, host_id, model, is_open, created_at")
+      .select("id, code, name, host_id, model, is_open, created_at, deleted_at")
       .eq("id", found.id)
       .maybeSingle();
     const room = full ?? {
@@ -137,6 +177,17 @@ export const getStudyRoom = createServerFn({ method: "POST" })
       model: "dap-ai-lite",
       created_at: null as string | null,
     };
+
+    // A deleted room still resolves, so its members get an explanation
+    // instead of the "no room with that code" they'd get from a hard
+    // delete — which reads as a fault rather than a decision.
+    if ((room as { deleted_at?: string | null }).deleted_at) {
+      return {
+        room: { ...room, joined: false, deleted: true },
+        members: [],
+        messages: [],
+      };
+    }
 
     const { data: members } = await supabase
       .from("study_room_members")

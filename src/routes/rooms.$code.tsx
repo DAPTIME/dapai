@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Send, Users, Lock, Copy, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LINKTREE_URL } from "@/lib/plans";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -194,6 +195,28 @@ function RoomPage() {
         <Button className="mt-6" asChild>
           <Link to="/rooms">Back to Study Rooms</Link>
         </Button>
+      </div>
+    );
+  }
+
+  // A room the admin closed down still resolves, so the people who were in
+  // it get told what happened instead of "room not found".
+  if ((roomQuery.data?.room as { deleted?: boolean } | undefined)?.deleted) {
+    return (
+      <div className="mx-auto max-w-lg px-6 py-24 text-center">
+        <h1 className="text-2xl font-semibold">Room closed</h1>
+        <p className="mt-3 text-muted-foreground">
+          Sorry, this room has been deleted by the admin. Please contact us for
+          any inquiries.
+        </p>
+        <div className="mt-6 flex justify-center gap-2">
+          <Button asChild variant="outline">
+            <Link to="/rooms">Back to Study Rooms</Link>
+          </Button>
+          <Button asChild className="text-primary-foreground" style={{ background: "var(--gradient-brand)" }}>
+            <a href={LINKTREE_URL} target="_blank" rel="noreferrer">Contact us</a>
+          </Button>
+        </div>
       </div>
     );
   }
