@@ -92,6 +92,7 @@ export function PlanAndUsage() {
   const fetchUsage = useServerFn(getMyUsage);
   const downgrade = useServerFn(downgradeOwnTier);
   const [leaving, setLeaving] = useState<Tier | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
 
   const usage = useQuery({
     queryKey: ["my-usage", user?.id],
@@ -137,15 +138,13 @@ export function PlanAndUsage() {
           {/* Nothing to sell to someone already at the top. */}
           {!top && (
             <Button
-              asChild
               size="sm"
               className="gap-1 text-primary-foreground"
               style={{ background: "var(--gradient-brand)" }}
+              onClick={() => setUpgrading(true)}
             >
-              <a href={LINKTREE_URL} target="_blank" rel="noreferrer">
-                <Sparkles className="h-3.5 w-3.5" />
-                Upgrade
-              </a>
+              <Sparkles className="h-3.5 w-3.5" />
+              Upgrade
             </Button>
           )}
         </div>
@@ -207,6 +206,36 @@ export function PlanAndUsage() {
           </div>
         )}
       </div>
+
+      {/* Upgrading is a conversation, not a checkout, so the button says so
+          before it sends anyone off-site. Landing on a links page with no
+          explanation leaves you guessing which link is the right one. */}
+      <Dialog open={upgrading} onOpenChange={setUpgrading}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Contact us to upgrade</DialogTitle>
+            <DialogDescription>
+              We're new, so upgrades are arranged personally rather than through
+              a checkout. Message us and tell us which plan you want — we'll set
+              it up for you.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => setUpgrading(false)}>
+              Not now
+            </Button>
+            <Button
+              asChild
+              className="text-primary-foreground"
+              style={{ background: "var(--gradient-brand)" }}
+            >
+              <a href={LINKTREE_URL} target="_blank" rel="noreferrer">
+                Contact us
+              </a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!leaving} onOpenChange={(o) => !o && setLeaving(null)}>
         <DialogContent>
