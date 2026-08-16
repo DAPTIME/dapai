@@ -451,6 +451,8 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           host_id: string
           id?: string
           is_open?: boolean
@@ -589,34 +591,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
-      join_study_room_by_code: {
-        Args: { _code: string }
-        Returns: { id: string; code: string; name: string }[]
-      }
+      admin_delete_study_room: { Args: { _id: string }; Returns: boolean }
       admin_list_study_rooms: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
-          id: string
           code: string
-          name: string
-          model: string
-          is_open: boolean
           created_at: string
-          deleted_at: string | null
+          deleted_at: string
           host_name: string
+          id: string
+          is_open: boolean
           member_count: number
           message_count: number
+          model: string
+          name: string
         }[]
       }
-      admin_delete_study_room: {
-        Args: { _id: string }
-        Returns: boolean
-      }
-      admin_restore_study_room: {
-        Args: { _id: string }
-        Returns: boolean
-      }
+      admin_restore_study_room: { Args: { _id: string }; Returns: boolean }
+      can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
       charge_usage: {
         Args: { _cost: number; _images?: number }
         Returns: {
@@ -659,6 +651,14 @@ export type Database = {
       is_room_member: {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
+      }
+      join_study_room_by_code: {
+        Args: { _code: string }
+        Returns: {
+          code: string
+          id: string
+          name: string
+        }[]
       }
       my_usage: {
         Args: never
