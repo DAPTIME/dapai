@@ -22,12 +22,27 @@ export const adminListAllChats = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const supabaseAdmin = getAdminClient();
-    const { data: chats, error } = await supabaseAdmin
+    /* Falls back to the old column list until the soft-delete migration
+       has run, so the console keeps working across the gap between a
+       deploy and its migration. */
+    type AdminChatRow = {
+      id: string; title: string; user_id: string;
+      created_at: string; updated_at: string;
+      deleted_at?: string | null; is_incognito?: boolean | null;
+    };
+    let { data: chats, error } = (await supabaseAdmin
       .from("chats")
       .select("id, title, user_id, created_at, updated_at, deleted_at, is_incognito")
       .order("updated_at", { ascending: false })
-      .limit(500);
-    if (error) throw dbError(error);
+      .limit(500)) as { data: AdminChatRow[] | null; error: unknown };
+    if (error) {
+      ({ data: chats, error } = (await supabaseAdmin
+        .from("chats")
+        .select("id, title, user_id, created_at, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(500)) as { data: AdminChatRow[] | null; error: unknown });
+    }
+    if (error) throw dbError(error as { message?: string });
     const userIds = Array.from(new Set((chats ?? []).map((c) => c.user_id)));
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
@@ -52,7 +67,7 @@ export const adminGetChat = createServerFn({ method: "POST" })
     const [{ data: chat }, { data: messages, error }] = await Promise.all([
       supabaseAdmin
         .from("chats")
-        .select("id, title, user_id, created_at, updated_at, deleted_at, is_incognito")
+        .select("id, title, user_id, created_at, updated_at")
         .eq("id", data.chatId)
         .single(),
       supabaseAdmin

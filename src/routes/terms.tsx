@@ -522,7 +522,7 @@ function Terms() {
         <div>
           <h2 className="text-lg font-semibold text-foreground">34. Contact Information</h2>
           <p className="mt-2">
-            If you have any questions about these Terms, or wish to raise a dispute under Section 27, please contact us at pancholiadevansh@gmail.com. We will make every reasonable effort to respond within five (5) business days.
+            If you have any questions about these Terms, or wish to raise a dispute under Section 27, please contact us at DAPAI.support@gmail.com. We will make every reasonable effort to respond within five (5) business days.
           </p>
         </div>
 
@@ -532,20 +532,38 @@ function Terms() {
             This Section governs all payments for the Services and applies in addition to the rest of these Terms.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.1 Plans</p>
+          <p className="mt-4 font-medium text-foreground">35.1 Plans</p>
           <p className="mt-2">
-            DAP AI offers a free tier (“Lite”) and a paid tier (“Pro”). The free tier is provided at no charge and may be limited, changed, or withdrawn at any time. Pro unlocks the features described on the Services at the time of purchase. Nothing on the Services constitutes an offer capable of acceptance until we confirm your upgrade.
+            DAP AI offers three plans: DAP AI 4 Lite, DAP AI 4 Pro Lite, and
+            DAP AI 4 Pro. All are currently provided at no charge. Any plan may
+            be limited, changed, or withdrawn at any time, and the features
+            included in a plan are those described on the Services at the time
+            of use. Nothing on the Services constitutes an offer capable of
+            acceptance until we confirm your upgrade.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.2 How payment is taken</p>
+          <p className="mt-4 font-medium text-foreground">35.2 How payment is taken</p>
           <p className="mt-2">
-            Pro is currently sold for <strong>AED 5</strong>, paid <strong>in person and in cash</strong> to the operator of DAP AI. We do not currently process card payments, store card details, or operate recurring billing. Your account is upgraded manually after payment is received, and an upgrade is not guaranteed to be immediate. If we introduce an online payment method in future, the terms disclosed at the point of purchase will apply in addition to this Section.
+            The Services are currently provided free of charge. No plan is
+            offered for sale at present, and we do not currently process
+            payments, store card details, or operate recurring billing.
           </p>
           <p className="mt-2">
-            You are responsible for any taxes, duties, or charges applicable to your purchase other than taxes on our income. Prices are stated in UAE Dirhams (AED) and exclude any such amounts unless stated otherwise.
+            We may begin charging for paid plans in future, through Stripe or
+            another third-party payment provider. Where we do, the price,
+            billing period, renewal terms, and the identity of the payment
+            provider will be disclosed at the point of purchase and will apply
+            in addition to this Section. Card details would be handled by that
+            provider and not by us. Nothing on the Services constitutes an
+            offer capable of acceptance until we confirm your upgrade.
+          </p>
+          <p className="mt-2">
+            You are responsible for any taxes, duties, or charges applicable to
+            a purchase other than taxes on our income. Prices are stated in UAE
+            Dirhams (AED) and exclude any such amounts unless stated otherwise.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.3 No refunds</p>
+          <p className="mt-4 font-medium text-foreground">35.3 No refunds</p>
           <p className="mt-2 font-medium text-foreground">
             All payments are final and non-refundable, except where a refund is required by applicable law.
           </p>
@@ -553,17 +571,17 @@ function Terms() {
             Because the Services are digital and made available immediately, no refund is given for: a change of mind; failure to use the Services; dissatisfaction with output quality, accuracy, or speed; downtime, interruption, or degraded performance; a change to features, models, plans, or limits; suspension or termination of your account under Section 22; or loss of data under Section 21.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.4 Price and plan changes</p>
+          <p className="mt-4 font-medium text-foreground">35.4 Price and plan changes</p>
           <p className="mt-2">
             We may change prices, plan contents, usage quotas, and the features included in any plan at any time. Changes take effect prospectively. Continued use of the Services after a change constitutes acceptance of it. We are not obliged to maintain any plan, price, or feature indefinitely, and no purchase confers a perpetual right to any feature.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.5 Disputed payments</p>
+          <p className="mt-4 font-medium text-foreground">35.5 Disputed payments</p>
           <p className="mt-2">
             If you initiate a chargeback, reversal, or payment dispute, we may immediately suspend or terminate your account and revoke access to paid features pending resolution. You agree to contact us under Section 34 before initiating any dispute with a third party.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.6 Liability for payments</p>
+          <p className="mt-4 font-medium text-foreground">35.6 Liability for payments</p>
           <p className="mt-2">
             Our total liability in connection with any payment is limited as set out in Section 24, and in no circumstances exceeds the amount you actually paid to us. Payment does not create any warranty, service level, guarantee of availability, or guarantee of any particular result, and does not vary any disclaimer or limitation in these Terms.
           </p>

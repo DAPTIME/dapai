@@ -330,12 +330,25 @@ export const listChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase } = context;
-    const { data, error } = await supabase
+    /* Retired chats are filtered out here as well as by RLS. Before the
+       soft-delete migration runs the column does not exist and PostgREST
+       rejects the filter, so fall back to the unfiltered query — at that
+       point nothing is flagged anyway, and a chat list that errors is far
+       worse than one that briefly cannot hide something that does not
+       exist yet. */
+    let { data, error } = await supabase
       .from("chats")
       .select("id, title, created_at, updated_at")
       .eq("is_incognito", false)
       .is("deleted_at", null)
       .order("updated_at", { ascending: false });
+    if (error && isLedgerMissing(error)) {
+      ({ data, error } = await supabase
+        .from("chats")
+        .select("id, title, created_at, updated_at")
+        .eq("is_incognito", false)
+        .order("updated_at", { ascending: false }));
+    }
     if (error) throw dbError(error);
     return data;
   });
@@ -485,7 +498,19 @@ export const createChat = createServerFn({ method: "POST" })
        to be created. Falling off the end of the history is still a deletion,
        so these are flagged rather than removed and the console keeps them. */
     if (Number.isFinite(limit)) {
-      await supabase.rpc("prune_own_chats", { _keep: Math.max(0, limit - 1) });
+      const { error: pruneErr } = await supabase.rpc("prune_own_chats", {
+        _keep: Math.max(0, limit - 1),
+      });
+      // Same fallback as deletion: keep the cap working before the
+      // migration lands, rather than letting histories grow unbounded.
+      if (pruneErr && isLedgerMissing(pruneErr)) {
+        const { data: existing } = await supabase
+          .from("chats")
+          .select("id")
+          .order("updated_at", { ascending: false });
+        const stale = (existing ?? []).slice(limit - 1).map((c) => c.id);
+        if (stale.length) await supabase.from("chats").delete().in("id", stale);
+      }
     }
 
     const { data: chat, error } = await supabase
@@ -525,11 +550,21 @@ export const deleteChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    const { supabase } = context;
-    // Soft delete: the chat leaves this user's history for good, and the
-    // row stays for the admin console. Users no longer hold DELETE on the
-    // table at all, so this is the only route.
-    const { error } = await supabase.rpc("delete_own_chat", { _id: data.chatId });
+    const { supabase, userId } = context;
+    /* Soft delete: the chat leaves this user's history for good, and the
+       row stays for the admin console. Users no longer hold DELETE on the
+       table, so this is the only route once the migration has run.
+       Before it has, fall back to the old hard delete — a deploy that
+       reaches production ahead of its migration should still let people
+       delete their own chats, rather than failing in their face. */
+    let { error } = await supabase.rpc("delete_own_chat", { _id: data.chatId });
+    if (error && isLedgerMissing(error)) {
+      ({ error } = await supabase
+        .from("chats")
+        .delete()
+        .eq("id", data.chatId)
+        .eq("user_id", userId));
+    }
     if (error) throw dbError(error);
     return { ok: true };
   });
