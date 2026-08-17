@@ -255,7 +255,8 @@ function Terms() {
             <li>Use the Services in any way that violates any applicable local, national, or international law or regulation.</li>
             <li>Engage in any conduct that is fraudulent, deceptive, or manipulative.</li>
             <li>Upload, transmit, or distribute any content that is unlawful, harmful, threatening, abusive, harassing, defamatory, vulgar, obscene, invasive of another’s privacy, or otherwise objectionable.</li>
-            <li>Generate, solicit, or distribute content that sexualises minors, incites violence or terrorism, or facilitates the creation of weapons or malicious software.</li>
+            <li>Generate, solicit, or distribute sexual or sexually explicit content, or any content that sexualises, depicts, or otherwise exploits a minor.</li>
+            <li>Generate, solicit, or distribute content that incites violence or terrorism, or facilitates the creation of weapons or malicious software.</li>
             <li>Impersonate any person or entity, or misrepresent your affiliation with a person or entity.</li>
             <li>Interfere with or disrupt the Services or the servers or networks connected to them.</li>
             <li>Attempt to gain unauthorised access to any portion of the Services, other accounts, or connected systems or networks.</li>
@@ -411,7 +412,7 @@ function Terms() {
             THIS EXCLUSION APPLIES REGARDLESS OF THE CAUSE, INCLUDING WITHOUT LIMITATION: INACCURATE, HARMFUL, OR FABRICATED OUTPUT; ANY DECISION OR ACTION TAKEN IN RELIANCE ON THE SERVICES; SERVICE INTERRUPTION OR DISCONTINUATION; LOSS OR CORRUPTION OF DATA; UNAUTHORISED ACCESS TO YOUR ACCOUNT OR DATA; OR THE CONDUCT OF ANY THIRD PARTY OR OTHER USER.
           </p>
           <p className="mt-2">
-            TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE TOTAL AGGREGATE LIABILITY OF THE PROTECTED PARTIES FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THESE TERMS OR THE SERVICES SHALL NOT EXCEED THE GREATER OF (A) THE TOTAL AMOUNT YOU ACTUALLY PAID TO US IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM, OR (B) ONE HUNDRED UAE DIRHAMS (AED 100).
+            TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE TOTAL AGGREGATE LIABILITY OF THE PROTECTED PARTIES FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THESE TERMS OR THE SERVICES SHALL NOT EXCEED THE TOTAL AMOUNT YOU ACTUALLY PAID TO US IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM.
           </p>
           <p className="mt-2">
             You acknowledge that the fees charged for the Services — where any are charged at all — reflect this allocation of risk, and that these limitations are an essential basis of the bargain between us. Without them, the Services would not be offered.
