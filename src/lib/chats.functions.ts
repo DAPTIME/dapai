@@ -48,6 +48,11 @@ import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 // never overflows. Pro keeps the full history.
 const LITE_HISTORY_LIMIT = 12;
 
+/* Thrown to leave the best-effort search block when the plan has no web
+   search. A named class rather than a bare throw so the empty catch below
+   stays readable about what it is swallowing. */
+class SkipSearch extends Error {}
+
 /**
  * Study Mode: turn the assistant into a Socratic tutor that never hands over
  * the whole answer up front.
@@ -325,11 +330,25 @@ export const listChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase } = context;
-    const { data, error } = await supabase
+    /* Retired chats are filtered out here as well as by RLS. Before the
+       soft-delete migration runs the column does not exist and PostgREST
+       rejects the filter, so fall back to the unfiltered query — at that
+       point nothing is flagged anyway, and a chat list that errors is far
+       worse than one that briefly cannot hide something that does not
+       exist yet. */
+    let { data, error } = await supabase
       .from("chats")
       .select("id, title, created_at, updated_at")
       .eq("is_incognito", false)
+      .is("deleted_at", null)
       .order("updated_at", { ascending: false });
+    if (error && isLedgerMissing(error)) {
+      ({ data, error } = await supabase
+        .from("chats")
+        .select("id, title, created_at, updated_at")
+        .eq("is_incognito", false)
+        .order("updated_at", { ascending: false }));
+    }
     if (error) throw dbError(error);
     return data;
   });
@@ -475,14 +494,22 @@ export const createChat = createServerFn({ method: "POST" })
 
     // Prune oldest chats so that after we insert the new one we sit at
     // exactly `limit`.
-    const { data: existing } = await supabase
-      .from("chats")
-      .select("id")
-      .order("updated_at", { ascending: false });
-    if (existing && existing.length >= limit) {
-      const toDelete = existing.slice(limit - 1).map((c) => c.id);
-      if (toDelete.length > 0) {
-        await supabase.from("chats").delete().in("id", toDelete);
+    /* Retire anything past the plan's limit, leaving room for the one about
+       to be created. Falling off the end of the history is still a deletion,
+       so these are flagged rather than removed and the console keeps them. */
+    if (Number.isFinite(limit)) {
+      const { error: pruneErr } = await supabase.rpc("prune_own_chats", {
+        _keep: Math.max(0, limit - 1),
+      });
+      // Same fallback as deletion: keep the cap working before the
+      // migration lands, rather than letting histories grow unbounded.
+      if (pruneErr && isLedgerMissing(pruneErr)) {
+        const { data: existing } = await supabase
+          .from("chats")
+          .select("id")
+          .order("updated_at", { ascending: false });
+        const stale = (existing ?? []).slice(limit - 1).map((c) => c.id);
+        if (stale.length) await supabase.from("chats").delete().in("id", stale);
       }
     }
 
@@ -523,8 +550,21 @@ export const deleteChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    const { supabase } = context;
-    const { error } = await supabase.from("chats").delete().eq("id", data.chatId);
+    const { supabase, userId } = context;
+    /* Soft delete: the chat leaves this user's history for good, and the
+       row stays for the admin console. Users no longer hold DELETE on the
+       table, so this is the only route once the migration has run.
+       Before it has, fall back to the old hard delete — a deploy that
+       reaches production ahead of its migration should still let people
+       delete their own chats, rather than failing in their face. */
+    let { error } = await supabase.rpc("delete_own_chat", { _id: data.chatId });
+    if (error && isLedgerMissing(error)) {
+      ({ error } = await supabase
+        .from("chats")
+        .delete()
+        .eq("id", data.chatId)
+        .eq("user_id", userId));
+    }
     if (error) throw dbError(error);
     return { ok: true };
   });
@@ -691,6 +731,13 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const imageCount = data.images?.length ?? 0;
 
+    /* What this message actually cost, kept in scope so an outage can give
+       it back. Stays at zero for Exclusive and for anyone whose ledger is
+       not installed, and refunding zero is a no-op — so the refund path
+       needs no special case for either. */
+    let chargedCost = 0;
+    let chargedImages = 0;
+
     /* Usage tokens. Charged before the model is called, because a reply
        that arrives after the allowance ran out is a reply we gave away.
        The prompt cap is checked first so an over-long message is refused
@@ -718,6 +765,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       const promptTokens = estimateTokens(data.text);
       const cost = costOfPrompt(callerTier, promptTokens);
       if (cost === null) throw new Error(PROMPT_TOO_LONG_MESSAGE);
+      chargedCost = cost;
+      chargedImages = Math.min(imageCount, 1);
 
       // charge_usage does the check and the debit under a row lock, so two
       // messages sent at once cannot both spend the last token. Charged
@@ -798,12 +847,16 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       systemPrompt = legacy?.system_prompt?.trim() ?? "";
     }
 
-    // Per-user memories (ChatGPT-style). Injected as a system message.
-    const { data: memRows } = await supabase
-      .from("user_memories")
-      .select("content")
-      .eq("enabled", true)
-      .order("created_at", { ascending: true });
+    /* Per-user memories (ChatGPT-style). Injected as a system message.
+       Gated here and not only in the UI: hiding the toggle stops the
+       button being pressed, it does not stop the request being sent. */
+    const { data: memRows } = TIER_LIMITS[callerTier].memory
+      ? await supabase
+          .from("user_memories")
+          .select("content")
+          .eq("enabled", true)
+          .order("created_at", { ascending: true })
+      : { data: null };
     const memoryBlock =
       memRows && memRows.length > 0
         ? `What you remember about this user (use naturally, don't recite):\n${memRows
@@ -834,6 +887,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // as system context so the model can answer accurately and cite.
     let webContext = "";
     try {
+      /* Same reasoning as memory: a plan without web search must not get
+         it by posting searchQuery straight to the server. */
+      if (!TIER_LIMITS[callerTier].webSearch) throw new SkipSearch();
       const query =
         data.searchQuery && data.searchQuery.trim().length > 0
           ? data.searchQuery.trim()
@@ -924,11 +980,19 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const { url: backend, key, upstreamModel } = backendFor(effectiveModel);
     const { offlineMessage } = await import("./offline-message.server");
 
+    /* Set wherever the reply is an outage rather than an answer, so the
+       charge can be given back. A flag rather than matching the text of
+       offlineMessage(), which is admin-configurable — the day someone
+       reworded it, string matching would stop refunding and nobody would
+       notice. */
+    let dispatchFailed = false;
+
     let replyText = "";
     if (!backend) {
       console.error(
         `[chat] No AI backend configured for ${effectiveModel} (missing AI_BACKEND_URL_${active.lite ? "LITE" : "PRO"}).`
       );
+      dispatchFailed = true;
       replyText = await offlineMessage();
 
     } else {
@@ -971,7 +1035,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               console.error(
                 `[chat] ${active.label} backend has no models installed.`
               );
-              return await offlineMessage();
+            dispatchFailed = true;
+          return await offlineMessage();
             }
 
             resolvedModel = resolved.model;
@@ -1007,7 +1072,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             console.error(
               `[chat] Non-JSON from backend (HTTP ${res.status}): ${raw.replace(/\s+/g, " ").trim().slice(0, 200)}`
             );
-            return await offlineMessage();
+            dispatchFailed = true;
+          return await offlineMessage();
           }
           const errStr =
             typeof json?.error === "string"
@@ -1030,7 +1096,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             console.error(
               `[chat] Backend returned no content (HTTP ${res.status}): ${errStr ?? raw.slice(0, 200)}`
             );
-            return await offlineMessage();
+            dispatchFailed = true;
+          return await offlineMessage();
           }
           // Always strip <think>/reasoning blocks and system-prompt
           // echoes — Pro can leak them too depending on which checkpoint
@@ -1045,8 +1112,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           }
           console.error(`[chat] Backend request failed: ${err.name}: ${err.message}`);
           if (err.name === "AbortError") {
+            dispatchFailed = true;
             return "DAP AI took too long to reply. Please try again.";
           }
+          dispatchFailed = true;
           return await offlineMessage();
 
         } finally {
@@ -1054,6 +1123,21 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           unregisterAborter(data.chatId);
         }
       });
+    }
+
+
+    /* Nothing was generated, so give the tokens back. Best effort and
+       deliberately non-fatal: a refund that fails must not turn an outage
+       into a second error on top of it. Safety refusals and stopped
+       replies are not refunded — both were served. */
+    if (dispatchFailed && chargedCost > 0) {
+      const { error: refundErr } = await supabase.rpc("refund_usage", {
+        _cost: chargedCost,
+        _images: chargedImages,
+      });
+      if (refundErr && !isLedgerMissing(refundErr)) {
+        console.error(`[usage] refund failed: ${refundErr.message}`);
+      }
     }
 
     if (replyText === "__DAP_STOPPED__") {

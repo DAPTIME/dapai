@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, stopChatMessage, getProfile, planSearchForMessage, discardEmptyChat } from "@/lib/chats.functions";
-import { useAiQueue, describeQueue } from "@/lib/use-ai-queue";
+import { useAiQueue, describeQueue, queueUpgradeHint } from "@/lib/use-ai-queue";
 import { MODELS, modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
@@ -446,15 +446,22 @@ function ChatPage() {
                      different motion: a pulsing dot rather than the
                      three-dot typing animation. */
                   <div
-                    className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"
+                    className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
                     role="status"
                     aria-live="polite"
                   >
                     <span
-                      className="inline-block h-2 w-2 animate-pulse rounded-full bg-current"
+                      className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500"
                       aria-hidden
                     />
-                    <span>{describeQueue(queue.view)}</span>
+                    <span>
+                      {describeQueue(queue.view)}
+                      {queueUpgradeHint(tier) && (
+                        <span className="ml-1 opacity-80">
+                          {queueUpgradeHint(tier)}
+                        </span>
+                      )}
+                    </span>
                   </div>
                 ) : (
                   <div className="mt-2">
@@ -504,6 +511,7 @@ function ChatPage() {
             <ChatComposer
               onSend={(text, images) => sendMut.mutate({ text, images })}
               pending={busy}
+              queued={queue.view.waiting}
               onStop={() => {
                 /* Stop means stop whichever stage we are in. Queued: leave
                    the line and hand the slot straight back rather than

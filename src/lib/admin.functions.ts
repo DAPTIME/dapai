@@ -22,18 +22,35 @@ export const adminListAllChats = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const supabaseAdmin = getAdminClient();
-    const { data: chats, error } = await supabaseAdmin
+    /* Falls back to the old column list until the soft-delete migration
+       has run, so the console keeps working across the gap between a
+       deploy and its migration. */
+    type AdminChatRow = {
+      id: string; title: string; user_id: string;
+      created_at: string; updated_at: string;
+      deleted_at?: string | null; is_incognito?: boolean | null;
+    };
+    let { data: chats, error } = (await supabaseAdmin
       .from("chats")
-      .select("id, title, user_id, created_at, updated_at")
+      .select("id, title, user_id, created_at, updated_at, deleted_at, is_incognito")
       .order("updated_at", { ascending: false })
-      .limit(500);
-    if (error) throw dbError(error);
+      .limit(500)) as { data: AdminChatRow[] | null; error: unknown };
+    if (error) {
+      ({ data: chats, error } = (await supabaseAdmin
+        .from("chats")
+        .select("id, title, user_id, created_at, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(500)) as { data: AdminChatRow[] | null; error: unknown });
+    }
+    if (error) throw dbError(error as { message?: string });
     const userIds = Array.from(new Set((chats ?? []).map((c) => c.user_id)));
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
       .select("id, email, name")
       .in("id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]);
     const map = new Map((profiles ?? []).map((p) => [p.id, p]));
+    // Retired chats are kept indefinitely and listed here alongside live
+    // ones; the console marks which is which rather than hiding either.
     return (chats ?? []).map((c) => ({
       ...c,
       user_email: map.get(c.user_id)?.email ?? null,
@@ -63,7 +80,12 @@ export const adminGetChat = createServerFn({ method: "POST" })
     return { chat, messages: messages ?? [] };
   });
 
-/** Admins can delete any user's chat (and its messages) from the console. */
+/**
+ * Admins can delete any chat for real, messages and all.
+ *
+ * The only route by which a chat actually leaves the database — a user's
+ * own delete just flags the row. Irreversible.
+ */
 export const adminDeleteChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))

@@ -81,7 +81,7 @@ function Terms() {
             DAP AI provides an AI-powered conversational platform that allows Users to interact with large language models, create custom AI personas (“DAPs”), manage chat histories, and use additional features such as games and community content. The Services include both free and paid tiers.
           </p>
           <p className="mt-2">
-            DAP AI is delivered as a mixture-of-experts model: a pool of specialist models of which only those suited to a given request are used to produce a reply. The pool comprises 15 to 23 experts depending on the plan, each of approximately 7-9 billion parameters. The number of experts available to a plan, the models in the pool, and the routing between them may change at any time as the Services are developed, and no particular model, expert count, parameter size, response quality, or speed is guaranteed as part of any plan.
+            DAP AI is delivered using small language models operated by DAP AI. The models used, their size, and the way requests are routed between them may change at any time as the Services are developed, and no particular model, parameter size, response quality, or speed is guaranteed as part of any plan.
           </p>
           <p className="mt-2">
             Inference runs on hardware operated by DAP AI rather than a third-party model provider. Your conversations are not forwarded to OpenAI, Anthropic, or Google for the purpose of generating replies. This does not apply to web search: where a message triggers a search, a query derived from it is sent to a third-party search provider, as described in Section 4.
@@ -255,7 +255,8 @@ function Terms() {
             <li>Use the Services in any way that violates any applicable local, national, or international law or regulation.</li>
             <li>Engage in any conduct that is fraudulent, deceptive, or manipulative.</li>
             <li>Upload, transmit, or distribute any content that is unlawful, harmful, threatening, abusive, harassing, defamatory, vulgar, obscene, invasive of another’s privacy, or otherwise objectionable.</li>
-            <li>Generate, solicit, or distribute content that sexualises minors, incites violence or terrorism, or facilitates the creation of weapons or malicious software.</li>
+            <li>Generate, solicit, or distribute sexual or sexually explicit content, or any content that sexualises, depicts, or otherwise exploits a minor.</li>
+            <li>Generate, solicit, or distribute content that incites violence or terrorism, or facilitates the creation of weapons or malicious software.</li>
             <li>Impersonate any person or entity, or misrepresent your affiliation with a person or entity.</li>
             <li>Interfere with or disrupt the Services or the servers or networks connected to them.</li>
             <li>Attempt to gain unauthorised access to any portion of the Services, other accounts, or connected systems or networks.</li>
@@ -371,6 +372,9 @@ function Terms() {
           <p className="mt-2 font-medium text-foreground">
             We do not guarantee that your data will be retained, backed up, or recoverable. You are solely responsible for keeping your own copies of anything you value.
           </p>
+          <p className="mt-2 font-medium text-foreground">
+            Deleting a chat removes it from your chat history but does not remove it from our systems. Deleted conversations, including their messages, are retained by us indefinitely and remain accessible to administrators. The same applies to conversations removed automatically when your plan's saved-chat limit is reached, and to conversations started in incognito mode.
+          </p>
           <p className="mt-2">
             Chat histories, custom personas, saved times, uploaded files, and any other stored content may be deleted, corrupted, truncated, or lost — including as a result of quota limits, plan changes, migration, hardware failure, or error — and we accept no liability for any such loss. Where a plan imposes a memory or retention limit, older content may be discarded automatically.
           </p>
@@ -411,7 +415,7 @@ function Terms() {
             THIS EXCLUSION APPLIES REGARDLESS OF THE CAUSE, INCLUDING WITHOUT LIMITATION: INACCURATE, HARMFUL, OR FABRICATED OUTPUT; ANY DECISION OR ACTION TAKEN IN RELIANCE ON THE SERVICES; SERVICE INTERRUPTION OR DISCONTINUATION; LOSS OR CORRUPTION OF DATA; UNAUTHORISED ACCESS TO YOUR ACCOUNT OR DATA; OR THE CONDUCT OF ANY THIRD PARTY OR OTHER USER.
           </p>
           <p className="mt-2">
-            TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE TOTAL AGGREGATE LIABILITY OF THE PROTECTED PARTIES FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THESE TERMS OR THE SERVICES SHALL NOT EXCEED THE GREATER OF (A) THE TOTAL AMOUNT YOU ACTUALLY PAID TO US IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM, OR (B) ONE HUNDRED UAE DIRHAMS (AED 100).
+            TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE TOTAL AGGREGATE LIABILITY OF THE PROTECTED PARTIES FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THESE TERMS OR THE SERVICES SHALL NOT EXCEED THE TOTAL AMOUNT YOU ACTUALLY PAID TO US IN THE ONE (1) MONTH IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM.
           </p>
           <p className="mt-2">
             You acknowledge that the fees charged for the Services — where any are charged at all — reflect this allocation of risk, and that these limitations are an essential basis of the bargain between us. Without them, the Services would not be offered.
@@ -518,7 +522,7 @@ function Terms() {
         <div>
           <h2 className="text-lg font-semibold text-foreground">34. Contact Information</h2>
           <p className="mt-2">
-            If you have any questions about these Terms, or wish to raise a dispute under Section 27, please contact us at pancholiadevansh@gmail.com. We will make every reasonable effort to respond within five (5) business days.
+            If you have any questions about these Terms, or wish to raise a dispute under Section 27, please contact us at DAPAI.support@gmail.com. We will make every reasonable effort to respond within five (5) business days.
           </p>
         </div>
 
@@ -528,20 +532,38 @@ function Terms() {
             This Section governs all payments for the Services and applies in addition to the rest of these Terms.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.1 Plans</p>
+          <p className="mt-4 font-medium text-foreground">35.1 Plans</p>
           <p className="mt-2">
-            DAP AI offers a free tier (“Lite”) and a paid tier (“Pro”). The free tier is provided at no charge and may be limited, changed, or withdrawn at any time. Pro unlocks the features described on the Services at the time of purchase. Nothing on the Services constitutes an offer capable of acceptance until we confirm your upgrade.
+            DAP AI offers three plans: DAP AI 4 Lite, DAP AI 4 Pro Lite, and
+            DAP AI 4 Pro. All are currently provided at no charge. Any plan may
+            be limited, changed, or withdrawn at any time, and the features
+            included in a plan are those described on the Services at the time
+            of use. Nothing on the Services constitutes an offer capable of
+            acceptance until we confirm your upgrade.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.2 How payment is taken</p>
+          <p className="mt-4 font-medium text-foreground">35.2 How payment is taken</p>
           <p className="mt-2">
-            Pro is currently sold for <strong>AED 5</strong>, paid <strong>in person and in cash</strong> to the operator of DAP AI. We do not currently process card payments, store card details, or operate recurring billing. Your account is upgraded manually after payment is received, and an upgrade is not guaranteed to be immediate. If we introduce an online payment method in future, the terms disclosed at the point of purchase will apply in addition to this Section.
+            The Services are currently provided free of charge. No plan is
+            offered for sale at present, and we do not currently process
+            payments, store card details, or operate recurring billing.
           </p>
           <p className="mt-2">
-            You are responsible for any taxes, duties, or charges applicable to your purchase other than taxes on our income. Prices are stated in UAE Dirhams (AED) and exclude any such amounts unless stated otherwise.
+            We may begin charging for paid plans in future, through Stripe or
+            another third-party payment provider. Where we do, the price,
+            billing period, renewal terms, and the identity of the payment
+            provider will be disclosed at the point of purchase and will apply
+            in addition to this Section. Card details would be handled by that
+            provider and not by us. Nothing on the Services constitutes an
+            offer capable of acceptance until we confirm your upgrade.
+          </p>
+          <p className="mt-2">
+            You are responsible for any taxes, duties, or charges applicable to
+            a purchase other than taxes on our income. Prices are stated in UAE
+            Dirhams (AED) and exclude any such amounts unless stated otherwise.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.3 No refunds</p>
+          <p className="mt-4 font-medium text-foreground">35.3 No refunds</p>
           <p className="mt-2 font-medium text-foreground">
             All payments are final and non-refundable, except where a refund is required by applicable law.
           </p>
@@ -549,17 +571,17 @@ function Terms() {
             Because the Services are digital and made available immediately, no refund is given for: a change of mind; failure to use the Services; dissatisfaction with output quality, accuracy, or speed; downtime, interruption, or degraded performance; a change to features, models, plans, or limits; suspension or termination of your account under Section 22; or loss of data under Section 21.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.4 Price and plan changes</p>
+          <p className="mt-4 font-medium text-foreground">35.4 Price and plan changes</p>
           <p className="mt-2">
             We may change prices, plan contents, usage quotas, and the features included in any plan at any time. Changes take effect prospectively. Continued use of the Services after a change constitutes acceptance of it. We are not obliged to maintain any plan, price, or feature indefinitely, and no purchase confers a perpetual right to any feature.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.5 Disputed payments</p>
+          <p className="mt-4 font-medium text-foreground">35.5 Disputed payments</p>
           <p className="mt-2">
             If you initiate a chargeback, reversal, or payment dispute, we may immediately suspend or terminate your account and revoke access to paid features pending resolution. You agree to contact us under Section 34 before initiating any dispute with a third party.
           </p>
 
-          <p className="mt-4 font-medium text-foreground">24.6 Liability for payments</p>
+          <p className="mt-4 font-medium text-foreground">35.6 Liability for payments</p>
           <p className="mt-2">
             Our total liability in connection with any payment is limited as set out in Section 24, and in no circumstances exceeds the amount you actually paid to us. Payment does not create any warranty, service level, guarantee of availability, or guarantee of any particular result, and does not vary any disclaimer or limitation in these Terms.
           </p>

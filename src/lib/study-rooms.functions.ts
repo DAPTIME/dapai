@@ -18,6 +18,7 @@ import { modelInfo, MODEL_IDS, type ModelId } from "./models";
 import { TIER_RANK } from "./tier-rank";
 import { TIER_LIMITS } from "./usage-limits";
 import type { Tier } from "./tier-gate";
+import { chargeForPrompt, refundPrompt, type Charged } from "@/lib/charge-usage.server";
 
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -478,6 +479,24 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
+    /* A room message addressed to DAP AI runs the same hardware as a
+       private chat, so it costs the same. This was free before, which made
+       a study room a way around the allowance rather than a feature of it.
+       Only charged when the message actually asks for a reply. */
+    let roomCharge: Charged = { cost: 0, images: 0 };
+    if (data.askAi !== false) {
+      const { data: prof } = await context.supabase
+        .from("profiles")
+        .select("tier")
+        .eq("id", context.userId)
+        .maybeSingle();
+      roomCharge = await chargeForPrompt(
+        context.supabase,
+        (prof?.tier as Tier) ?? "free",
+        data.text
+      );
+    }
+
     const { supabase, userId } = context;
     const soft = await hasSoftDelete();
     const { data: room, error: roomError } = await supabase
@@ -565,9 +584,14 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
         `[rooms] ${chosen} reply failed:`,
         e instanceof Error ? e.message : e
       );
+      // The room got no answer, so the sender keeps their tokens.
+      await refundPrompt(context.supabase, roomCharge);
       throw new Error(await offlineMessage());
     }
-    if (!reply) throw new Error(await offlineMessage());
+    if (!reply) {
+      await refundPrompt(context.supabase, roomCharge);
+      throw new Error(await offlineMessage());
+    }
 
     // Count the reply against the sender's own usage.
     await supabase

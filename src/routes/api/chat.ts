@@ -17,6 +17,7 @@ import {
 } from "@/lib/usage-limits";
 import type { ModelId } from "@/lib/models";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
+import { isSafetyBlock, SAFETY_BLOCKED_MESSAGE } from "@/lib/safety";
 
 const LITE_NO_THINK_PROMPT =
   "You are DAP AI Lite, also known as the Gemma E2B model. Thinking mode is OFF. Answer with only the final user-facing response. Never write internal reasoning, planning, analysis, scratchpad, self-talk, or sentences like 'I need to'. Do not output <think> tags or explain how you will answer.";
@@ -93,6 +94,8 @@ export const Route = createFileRoute("/api/chat")({
 
         const raw = await request.text();
 
+        let replyCeiling: number | null = null;
+
         let model = "dap-ai-1.0";
         try {
           const parsed = JSON.parse(raw) as { model?: string };
@@ -142,6 +145,10 @@ export const Route = createFileRoute("/api/chat")({
           {
             const tier = ((profile?.tier as Tier) ?? "free") as Tier;
             const limits = TIER_LIMITS[tier];
+            // Carried out of this block so the relayed request can be
+            // capped: without it a raw caller sets their own max_tokens and
+            // pulls a longer reply than their plan allows.
+            replyCeiling = limits.maxResponseTokens;
 
             let promptText = "";
             let images = 0;
@@ -247,6 +254,10 @@ export const Route = createFileRoute("/api/chat")({
         try {
           const parsed = JSON.parse(raw);
           if (upstreamModel) parsed.model = upstreamModel;
+          /* Overwritten rather than defaulted. This endpoint takes a body
+             the caller composed, so a max_tokens they set themselves is a
+             request for a longer answer than their plan pays for. */
+          if (replyCeiling !== null) parsed.max_tokens = replyCeiling;
           if (model === "dap-ai-lite") {
             parsed.reasoning_effort = "none";
             parsed.thinking = false;
@@ -300,6 +311,21 @@ export const Route = createFileRoute("/api/chat")({
             });
             let text = await res.text();
             if (!res.ok) {
+              /* A safety refusal usually comes back non-OK with no content,
+                 and reporting it as an outage sends someone retrying a
+                 prompt that will never go through. Checked before the
+                 outage branch for that reason — same order as the main
+                 chat path. */
+              let errBody: unknown = {};
+              try {
+                errBody = JSON.parse(text);
+              } catch {
+                errBody = {};
+              }
+              if (isSafetyBlock(errBody, res.status)) {
+                console.warn(`[api/chat] blocked upstream (HTTP ${res.status})`);
+                return Response.json({ reply: SAFETY_BLOCKED_MESSAGE });
+              }
               console.error(
                 `[api/chat] Backend HTTP ${res.status}: ${text.replace(/\s+/g, " ").trim().slice(0, 200)}`
               );

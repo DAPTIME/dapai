@@ -11,6 +11,7 @@
  * place in line rather than going to the back of it.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Tier } from "@/lib/tier-rank";
 import { useServerFn } from "@tanstack/react-start";
 import {
   joinAiQueue,
@@ -140,12 +141,30 @@ export function useAiQueue() {
      401s is worse than no call, because it reads as covered. That path is
      the heartbeat's job instead: two minutes without a beat and the slot
      is reaped. Unmounting still tries the real release. */
+  /* A reload unmounts this hook exactly as navigating away does, and the
+     spec is explicit that a queued request survives a refresh. So the two
+     have to be told apart: pagehide fires when the document itself is going
+     away, and not on an in-app route change. If the page is tearing down we
+     leave the ticket alone — a reload rejoins it, because queue_join hands
+     back the account's existing live ticket rather than a new one, and a
+     tab that is genuinely gone stops beating and gets reaped. */
+  const unloadingRef = useRef(false);
+  useEffect(() => {
+    const onPageHide = () => {
+      unloadingRef.current = true;
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, []);
+
   useEffect(() => {
     return () => {
       stopBeating();
       const id = ticketRef.current;
       ticketRef.current = null;
-      if (id) release({ data: { id, cancelled: true } }).catch(() => {});
+      if (id && !unloadingRef.current) {
+        release({ data: { id, cancelled: true } }).catch(() => {});
+      }
     };
   }, [release, stopBeating]);
 
@@ -155,18 +174,31 @@ export function useAiQueue() {
 /**
  * How the wait reads to a person.
  *
- * "You're next" rather than "position 1", because a queue position of one
- * invites the question of whether it counts you.
+ * Deliberately not a position. The exact place in line is computed and
+ * available — queue_position replays the dispatcher for it — but showing it
+ * invites arithmetic about other people's tiers, and a number that moves
+ * because somebody upstream cancelled reads as a bug rather than as luck.
+ * "In queue" is the honest amount to promise.
+ *
+ * Free and Go are told upgrading moves them up, because for them it is
+ * true and actionable. Pro and Exclusive are already at the front of the
+ * ratio, so telling them the same thing would be selling something that
+ * does not exist.
  */
-export function describeQueue(view: QueueView): string {
+export function describeQueue(view: QueueView, tier?: Tier): string {
   if (!view.waiting) return "";
   const eta =
     view.etaSeconds && view.etaSeconds > 0
       ? ` — about ${formatWait(view.etaSeconds)}`
       : "";
-  if (view.position === null) return `Waiting for a free slot${eta}`;
-  if (view.position <= 1) return `You're next${eta}`;
-  return `${view.position - 1} ahead of you${eta}`;
+  return `Response in queue${eta}`;
+}
+
+/** The upgrade nudge, or "" for plans that are already prioritised. */
+export function queueUpgradeHint(tier?: Tier): string {
+  return tier === "free" || tier === "go"
+    ? "Consider upgrading for a shorter wait."
+    : "";
 }
 
 function formatWait(seconds: number): string {

@@ -623,6 +623,25 @@ function withCheckpoints(shape: Shape, count: number): Shape {
   return { cells: shape.cells, features };
 }
 
+
+/**
+ * Lap-estimate correction for the new car, applied to targetTime().
+ *
+ * These were briefly set from the leaderboard — record plus one second, on
+ * twenty tracks that had a recorded time. Those numbers are gone, and had
+ * to go: every one of them was driven by a car that settled at 53.9 km/h,
+ * and this one settles at 80. A target derived from the old car would have
+ * been unbeatable-adjacent nonsense on the new one, in the wrong direction
+ * on every track.
+ *
+ * So the targets are back to the geometric estimate, scaled by 0.673 — the
+ * ratio of the two cars' settling speeds, which is how much less time the
+ * same distance now takes. It is an estimate of an estimate and should be
+ * treated as provisional: once real times exist on the new physics, derive
+ * the targets from those again, the way it was done before.
+ */
+const NEW_CAR_LAP_SCALE = 0.673;
+
 function build(
   id: number, name: string, season: Season, difficulty: Difficulty,
   shape: Shape, checkpoints: number,
@@ -639,7 +658,8 @@ function build(
   if (!walk.reachesFinish) {
     throw new Error(`built-in "${name}" is not drivable: ${walk.problem ?? "unknown"}`);
   }
-  return { id, name, season, difficulty, goal: targetTime(data), data };
+  const goal = Math.round(targetTime(data) * NEW_CAR_LAP_SCALE);
+  return { id, name, season, difficulty, goal, data };
 }
 
 type Entry = [name: string, difficulty: Difficulty, shape: Shape, checkpoints: number];

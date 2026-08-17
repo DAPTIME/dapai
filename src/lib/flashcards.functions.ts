@@ -10,6 +10,8 @@ import { dbError } from "./db-error";
 import { completeOnce } from "./ai-backend.server";
 import { MODEL_IDS, type ModelId } from "@/lib/models";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
+import { chargeForPrompt, refundPrompt } from "@/lib/charge-usage.server";
+import type { Tier } from "@/lib/tier-rank";
 
 const MAX_CARDS_PER_CHAT = 20;
 
@@ -70,14 +72,34 @@ export const generateFlashcards = createServerFn({ method: "POST" })
       throw new Error("This chat has nothing to make flashcards from yet.");
     }
 
-    const raw = await completeOnce(data.model as ModelId, [
+    /* Generating cards is a model call like any other and was not being
+       charged. Priced off the transcript, which is what is actually sent. */
+    const { data: prof } = await context.supabase
+      .from("profiles")
+      .select("tier")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const cardsCharge = await chargeForPrompt(
+      context.supabase,
+      (prof?.tier as Tier) ?? "free",
+      transcript
+    );
+
+    let raw: string;
+    try {
+      raw = await completeOnce(data.model as ModelId, [
       {
         role: "system",
         content:
           'You create study flashcards. Read the conversation and output STRICT JSON only: {"cards":[{"front":"question","back":"answer"}]}. Between 3 and 12 cards. Each front is a single clear question under 160 chars; each back is a concise factual answer under 300 chars. Cover only the study material in the conversation — no meta questions about the chat itself. No markdown, no commentary.',
       },
       { role: "user", content: transcript },
-    ]);
+      ]);
+    } catch (e) {
+      // No cards were produced, so the charge should not stand.
+      await refundPrompt(context.supabase, cardsCharge);
+      throw e;
+    }
 
     const jsonText = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
     let cards: Array<{ front: string; back: string }> = [];

@@ -233,7 +233,7 @@ function UpgradeDialog({
                     </span>
                   )}
                   <h3 className="text-lg font-semibold">{plan.name}</h3>
-                  {/* Exclusive has no tagline. Rendering the element anyway
+                  {/* A plan may have no tagline. Rendering the element anyway
                       would leave a blank line where the other three cards
                       have text, so the element goes rather than emptying. */}
                   {plan.tagline && (
