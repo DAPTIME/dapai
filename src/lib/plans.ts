@@ -1,12 +1,26 @@
 /**
- * Plan catalogue used by the upgrade screen. Benefits only — no prices.
+ * Plan catalogue used by the upgrade screen and the plans page.
+ *
+ * Benefits only — there are no prices here, because there is no self-serve
+ * checkout: a tier lives on the profile row and is set by an admin.
+ *
+ * The hard numbers are NOT duplicated here. Anything countable — usage
+ * tokens, input and output caps, image quotas, web search, memory — comes
+ * from TIER_LIMITS in usage-limits.ts, so the plans page cannot advertise
+ * an allowance the enforcement layer disagrees with.
  */
 export type PlanId = "free" | "go" | "pro" | "exclusive";
 
 export interface Plan {
   id: PlanId;
   name: string;
-  tagline: string;
+  /**
+   * Absent on Exclusive, deliberately. It is the same product as Pro for
+   * anyone reading the page, and inventing a line for it would say less
+   * than saying nothing. Renderers must omit the element entirely rather
+   * than render an empty one, or the card gains a blank row.
+   */
+  tagline?: string;
   benefits: string[];
   highlight?: boolean;
 }
@@ -14,11 +28,10 @@ export interface Plan {
 export const PLANS: Plan[] = [
   {
     id: "free",
-    name: "Free",
-    tagline: "Everything you need to get started",
+    name: "DAP AI 4 Lite",
+    tagline: "Basic, gets work done — good deal",
     benefits: [
       "DAP AI 4 Lite for everyday questions",
-      "Unlimited chats and chat history",
       "Full DAP Arcade access",
       "Save your game records and leaderboard times",
       "Light, dark and Liquid Glass themes",
@@ -26,41 +39,37 @@ export const PLANS: Plan[] = [
   },
   {
     id: "go",
-    name: "Go",
-    tagline: "For people who use DAP AI every day",
+    name: "DAP AI 4 Pro Lite",
+    tagline: "Starting to do real work — smart, great deal",
     benefits: [
-      "Everything in Free",
-      "Much higher daily message limits",
-      "Faster replies during busy hours",
+      "Everything in DAP AI 4 Lite",
+      "DAP AI 4 Pro Lite — quick, and sharper",
+      "Web search and memory across your chats",
+      "Generate images",
       "Beta features as they land",
-      "Longer memory across your chats",
     ],
   },
   {
     id: "pro",
-    name: "Pro",
-    tagline: "The full DAP AI 4 experience",
+    name: "DAP AI 4 Pro",
+    tagline: "The best tier: best models, very good usage limits",
     benefits: [
-      "Everything in Go",
+      "Everything in DAP AI 4 Pro Lite",
       "DAP AI 4 Pro — the smartest DAP model",
       "Build your own Custom AI assistants",
-      "Priority access when the site is busy",
-      "Deeper reasoning for study, coding and writing",
-      "Early access to new games and tools",
+      "Priority in the queue when the site is busy",
+      "Longer prompts, longer answers, more images",
     ],
-    highlight: true,
   },
   {
     id: "exclusive",
-    name: "Exclusive",
-    tagline: "For the inner circle",
+    name: "DAP AI 4 Pro",
     benefits: [
-      "Everything in Pro",
-      "Highest limits on every model",
+      "Everything in DAP AI 4 Pro",
+      "No usage limits at all",
+      "Unlimited images",
       "First look at unreleased features",
-      "Direct line to the DAP AI team",
       "Your name on the beta testers page",
-      "Requests you make get built first",
     ],
   },
 ];

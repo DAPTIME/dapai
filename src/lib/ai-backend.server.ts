@@ -55,7 +55,7 @@ export function backendFor(model: ModelId): {
 export async function completeOnce(
   model: ModelId,
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
-  opts: { timeoutMs?: number } = {}
+  opts: { timeoutMs?: number; maxTokens?: number } = {}
 ): Promise<string> {
   const info = modelInfo(model);
   const { url, key, upstreamModel } = backendFor(model);
@@ -85,6 +85,10 @@ export async function completeOnce(
         messages,
         stream: false,
         temperature: 0.2,
+        // Caller passes the sender's plan cap; omitted means the
+        // orchestrator's own default, which is the right behaviour for
+        // internal callers that are not billing anyone.
+        ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
       }),
       signal: ctrl.signal,
     });
