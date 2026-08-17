@@ -69,6 +69,7 @@ export async function deliverConfirmation(opts: {
   email: string;
   name: string;
   link: string;
+  origin?: string;
 }) {
   void opts.name;
   void opts.link;
@@ -76,6 +77,9 @@ export async function deliverConfirmation(opts: {
   const { error } = await supabaseAdmin.auth.resend({
     type: "signup",
     email: opts.email,
+    options: opts.origin
+      ? { emailRedirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1` }
+      : undefined,
   });
   if (error) {
     console.error("[signup] Supabase SMTP delivery failed:", error.message);
@@ -116,5 +120,10 @@ export async function sendConfirmation(opts: {
   }
   if (!link) throw new Error("Could not create a confirmation link.");
 
-  await deliverConfirmation({ email: opts.email, name: opts.name, link });
+  await deliverConfirmation({
+    email: opts.email,
+    name: opts.name,
+    link,
+    origin: opts.origin,
+  });
 }

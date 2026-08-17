@@ -107,7 +107,7 @@ export const registerAccount = createServerFn({ method: "POST" })
         .eq("id", created.id);
     }
 
-    await deliverConfirmation({ email, name, link });
+    await deliverConfirmation({ email, name, link, origin: data.origin });
 
     return { ok: true, pending: true };
   });
