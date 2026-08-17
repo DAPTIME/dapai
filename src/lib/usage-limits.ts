@@ -124,14 +124,69 @@ export function estimateTokens(text: string): number {
 }
 
 /**
- * The cost curve: eight bands, each an eighth of the tier's own input cap.
+ * The cost curve, as a band table per tier.
  *
- * Measuring against the tier's own cap rather than an absolute length is
- * what stops a Free user's 900-token question costing the same as a Pro
- * user's — both are using nearly everything they were given, and both are
- * charged 4.5 for it.
+ * Each entry is [upper bound as a percentage of THAT TIER'S input cap,
+ * cost in usage tokens]. A prompt costs the first band whose upper bound
+ * it does not exceed; above 100% it is rejected and costs nothing.
+ *
+ * Written out per tier rather than derived from one shared formula,
+ * because the tiers genuinely differ: the ceilings are 3.5 / 4.5 / 5.5 and
+ * the band counts are 6 / 8 / 10, so any single expression covering all
+ * three would be a worse description of the rule than the rule itself.
+ *
+ * Measuring against the tier's own cap is what stops a Free user's
+ * 950-token question costing the same as a Pro user's 3,800-token one —
+ * both are using nearly everything they were given, and both pay their own
+ * tier's maximum.
+ *
+ * Note on Free: the spec's prose says "7 bands" while its table lists six
+ * (1.0 through 3.5 in 0.5 steps, the last running 71.4%–100%). The table
+ * is followed, being the unambiguous half.
  */
-export const COST_BANDS = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5] as const;
+export type CostBand = readonly [maxPercent: number, cost: number];
+
+export const COST_BANDS: Record<Tier, readonly CostBand[]> = {
+  free: [
+    [14.3, 1.0],
+    [28.6, 1.5],
+    [42.9, 2.0],
+    [57.1, 2.5],
+    [71.4, 3.0],
+    [100, 3.5],
+  ],
+  go: [
+    [12.5, 1.0],
+    [25, 1.5],
+    [37.5, 2.0],
+    [50, 2.5],
+    [62.5, 3.0],
+    [75, 3.5],
+    [87.5, 4.0],
+    [100, 4.5],
+  ],
+  pro: [
+    [10, 1.0],
+    [20, 1.5],
+    [30, 2.0],
+    [40, 2.5],
+    [50, 3.0],
+    [60, 3.5],
+    [70, 4.0],
+    [80, 4.5],
+    [90, 5.0],
+    [100, 5.5],
+  ],
+  // Never charged. Kept as an empty table rather than omitted so the record
+  // stays total and a missing tier cannot read as "no limit configured".
+  exclusive: [],
+};
+
+/** The most a single prompt can cost on this tier. */
+export function maxCostFor(tier: Tier): number {
+  const bands = COST_BANDS[tier];
+  return bands.length ? bands[bands.length - 1]![1] : 0;
+}
 
 /** Is this prompt longer than the tier allows? Checked before anything else. */
 export function isPromptTooLong(tier: Tier, promptTokens: number): boolean {
@@ -153,11 +208,16 @@ export function costOfPrompt(tier: Tier, promptTokens: number): number | null {
   if (tier === "exclusive") return 0;
 
   const cap = TIER_LIMITS[tier].maxPromptTokens;
+  const pct = (promptTokens / cap) * 100;
+
   // An empty prompt still sits in the first band: every message costs
   // something, and 0 would make a flood of blank sends free.
-  const eighth = Math.ceil((promptTokens / cap) * 8);
-  const band = Math.min(COST_BANDS.length, Math.max(1, eighth));
-  return COST_BANDS[band - 1]!;
+  for (const [upTo, cost] of COST_BANDS[tier]) {
+    if (pct <= upTo) return cost;
+  }
+  // Unreachable while the last band ends at 100 and the cap was checked
+  // above, but a curve that silently returned undefined would charge NaN.
+  return maxCostFor(tier);
 }
 
 export const isUnlimited = (n: number) => !Number.isFinite(n);
