@@ -132,6 +132,7 @@ export type Database = {
       }
       chats: {
         Row: {
+          deleted_at: string | null
           created_at: string
           id: string
           is_incognito: boolean
@@ -713,6 +714,8 @@ export type Database = {
         Args: { _cost: number; _images?: number }
         Returns: boolean
       }
+      delete_own_chat: { Args: { _id: string }; Returns: boolean }
+      prune_own_chats: { Args: { _keep: number }; Returns: number }
       charge_usage: {
         Args: { _cost: number; _images?: number }
         Returns: {

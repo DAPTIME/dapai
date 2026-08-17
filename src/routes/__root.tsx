@@ -241,13 +241,13 @@ function IncognitoToggle() {
             onClick={toggle}
             className="gap-1.5"
             aria-pressed={on}
-            aria-label={on ? "Incognito mode on" : "Incognito mode off"}
+            aria-label={on ? "Incognito on — hide this chat from your history" : "Incognito off"}
           >
             {on ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             <span className="hidden sm:inline">Incognito</span>
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{on ? "Incognito on — chats won't be saved" : "Turn on incognito"}</TooltipContent>
+        <TooltipContent>{on ? "Incognito on — kept out of your chat history" : "Incognito — keep a chat out of your history"}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

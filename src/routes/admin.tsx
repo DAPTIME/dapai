@@ -863,10 +863,26 @@ function ChatsTab() {
               onClick={() => setOpenId(c.id)}
               className="min-w-0 flex-1 text-left"
             >
-              <div className="truncate font-medium">{c.title}</div>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate font-medium">{c.title}</span>
+                {/* Kept after the owner deleted it — they cannot see it any
+                    more, so the console has to say which state it is in. */}
+                {c.deleted_at && (
+                  <span className="shrink-0 rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-destructive">
+                    Deleted
+                  </span>
+                )}
+                {c.is_incognito && (
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Incognito
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-muted-foreground">
                 {c.user_name || c.user_email || c.user_id.slice(0, 8)} ·{" "}
                 {new Date(c.updated_at).toLocaleString()}
+                {c.deleted_at &&
+                  ` · deleted ${new Date(c.deleted_at).toLocaleString()}`}
               </div>
             </button>
             <Button
@@ -876,7 +892,11 @@ function ChatsTab() {
               aria-label="Delete chat"
               disabled={del.isPending}
               onClick={() => {
-                if (confirm("Delete this chat and all of its messages?")) {
+                if (
+                  confirm(
+                    "Permanently delete this chat and all of its messages? This removes it from the database for good — a user's own delete only hides it."
+                  )
+                ) {
                   del.mutate(c.id);
                 }
               }}

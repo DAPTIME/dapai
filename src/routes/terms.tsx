@@ -372,6 +372,9 @@ function Terms() {
           <p className="mt-2 font-medium text-foreground">
             We do not guarantee that your data will be retained, backed up, or recoverable. You are solely responsible for keeping your own copies of anything you value.
           </p>
+          <p className="mt-2 font-medium text-foreground">
+            Deleting a chat removes it from your chat history but does not remove it from our systems. Deleted conversations, including their messages, are retained by us indefinitely and remain accessible to administrators. The same applies to conversations removed automatically when your plan's saved-chat limit is reached, and to conversations started in incognito mode.
+          </p>
           <p className="mt-2">
             Chat histories, custom personas, saved times, uploaded files, and any other stored content may be deleted, corrupted, truncated, or lost — including as a result of quota limits, plan changes, migration, hardware failure, or error — and we accept no liability for any such loss. Where a plan imposes a memory or retention limit, older content may be discarded automatically.
           </p>
@@ -412,7 +415,7 @@ function Terms() {
             THIS EXCLUSION APPLIES REGARDLESS OF THE CAUSE, INCLUDING WITHOUT LIMITATION: INACCURATE, HARMFUL, OR FABRICATED OUTPUT; ANY DECISION OR ACTION TAKEN IN RELIANCE ON THE SERVICES; SERVICE INTERRUPTION OR DISCONTINUATION; LOSS OR CORRUPTION OF DATA; UNAUTHORISED ACCESS TO YOUR ACCOUNT OR DATA; OR THE CONDUCT OF ANY THIRD PARTY OR OTHER USER.
           </p>
           <p className="mt-2">
-            TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE TOTAL AGGREGATE LIABILITY OF THE PROTECTED PARTIES FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THESE TERMS OR THE SERVICES SHALL NOT EXCEED THE TOTAL AMOUNT YOU ACTUALLY PAID TO US IN THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM.
+            TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE TOTAL AGGREGATE LIABILITY OF THE PROTECTED PARTIES FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THESE TERMS OR THE SERVICES SHALL NOT EXCEED THE TOTAL AMOUNT YOU ACTUALLY PAID TO US IN THE ONE (1) MONTH IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM.
           </p>
           <p className="mt-2">
             You acknowledge that the fees charged for the Services — where any are charged at all — reflect this allocation of risk, and that these limitations are an essential basis of the bargain between us. Without them, the Services would not be offered.

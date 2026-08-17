@@ -334,6 +334,7 @@ export const listChats = createServerFn({ method: "GET" })
       .from("chats")
       .select("id, title, created_at, updated_at")
       .eq("is_incognito", false)
+      .is("deleted_at", null)
       .order("updated_at", { ascending: false });
     if (error) throw dbError(error);
     return data;
@@ -480,15 +481,11 @@ export const createChat = createServerFn({ method: "POST" })
 
     // Prune oldest chats so that after we insert the new one we sit at
     // exactly `limit`.
-    const { data: existing } = await supabase
-      .from("chats")
-      .select("id")
-      .order("updated_at", { ascending: false });
-    if (existing && existing.length >= limit) {
-      const toDelete = existing.slice(limit - 1).map((c) => c.id);
-      if (toDelete.length > 0) {
-        await supabase.from("chats").delete().in("id", toDelete);
-      }
+    /* Retire anything past the plan's limit, leaving room for the one about
+       to be created. Falling off the end of the history is still a deletion,
+       so these are flagged rather than removed and the console keeps them. */
+    if (Number.isFinite(limit)) {
+      await supabase.rpc("prune_own_chats", { _keep: Math.max(0, limit - 1) });
     }
 
     const { data: chat, error } = await supabase
@@ -529,7 +526,10 @@ export const deleteChat = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     const { supabase } = context;
-    const { error } = await supabase.from("chats").delete().eq("id", data.chatId);
+    // Soft delete: the chat leaves this user's history for good, and the
+    // row stays for the admin console. Users no longer hold DELETE on the
+    // table at all, so this is the only route.
+    const { error } = await supabase.rpc("delete_own_chat", { _id: data.chatId });
     if (error) throw dbError(error);
     return { ok: true };
   });
