@@ -614,12 +614,12 @@ export type Database = {
       queue_eta_seconds: { Args: { _lane: string }; Returns: number }
       queue_join: {
         Args: { _chat_id?: string | null }
-        Returns: { id: string; lane: string; position: number; state: string }[]
+        Returns: { id: string; lane: string; pos: number; state: string }[]
       }
       queue_release: { Args: { _id: string; _cancelled?: boolean }; Returns: boolean }
       queue_status: {
         Args: { _id: string }
-        Returns: { id: string; lane: string; position: number; state: string }[]
+        Returns: { id: string; lane: string; pos: number; state: string }[]
       }
       charge_usage: {
         Args: { _cost: number; _images?: number }

@@ -108,67 +108,20 @@ $$;
 -- cron job.
 CREATE OR REPLACE FUNCTION public.queue_reap()
 RETURNS void
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-  WITH dead AS (
-    UPDATE public.ai_queue
-       SET state = 'cancelled', finished_at = now()
-     WHERE state = 'running' AND heartbeat_at < now() - interval '2 minutes'
-     RETURNING 1
-  ), stale AS (
-    UPDATE public.ai_queue
-       SET state = 'cancelled', finished_at = now()
-     WHERE state = 'waiting' AND created_at < now() - interval '15 minutes'
-     RETURNING 1
-  )
-  SELECT NULL::void;
-$$;
-
--- ── Joining ─────────────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION public.queue_join(_chat_id uuid DEFAULT NULL)
-RETURNS TABLE (id uuid, lane text, position integer, state text)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $function$
-DECLARE
-  uid uuid := auth.uid();
-  v_tier public.account_tier;
-  v_lane text;
-  v_id uuid;
 BEGIN
-  IF uid IS NULL THEN
-    RAISE EXCEPTION 'Sign in first.';
-  END IF;
+  UPDATE public.ai_queue
+     SET state = 'cancelled', finished_at = now()
+   WHERE state = 'running' AND heartbeat_at < now() - interval '2 minutes';
 
-  PERFORM public.queue_reap();
-
-  SELECT COALESCE(tier, 'free') INTO v_tier FROM public.profiles WHERE profiles.id = uid;
-  v_lane := public.queue_lane_for(COALESCE(v_tier, 'free'));
-
-  -- One live ticket per account. Pressing send twice should not buy two
-  -- places in the line, and it is also what makes a page refresh rejoin
-  -- the existing ticket instead of taking a worse one.
-  SELECT q.id INTO v_id
-    FROM public.ai_queue q
-   WHERE q.user_id = uid AND q.state IN ('waiting', 'running')
-   ORDER BY q.created_at
-   LIMIT 1;
-
-  IF v_id IS NULL THEN
-    INSERT INTO public.ai_queue (user_id, tier, lane, chat_id)
-    VALUES (uid, COALESCE(v_tier, 'free'), v_lane, _chat_id)
-    RETURNING ai_queue.id INTO v_id;
-  END IF;
-
-  RETURN QUERY SELECT * FROM public.queue_status(v_id);
+  UPDATE public.ai_queue
+     SET state = 'cancelled', finished_at = now()
+   WHERE state = 'waiting' AND created_at < now() - interval '15 minutes';
 END;
 $function$;
-
-REVOKE ALL ON FUNCTION public.queue_join(uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.queue_join(uuid) TO authenticated;
 
 -- ── Where am I ──────────────────────────────────────────────────────────
 --
@@ -176,7 +129,7 @@ GRANT EXECUTE ON FUNCTION public.queue_join(uuid) TO authenticated;
 -- the lane's own ordering, so the number a Go user sees accounts for the
 -- Pro requests that will jump them.
 CREATE OR REPLACE FUNCTION public.queue_status(_id uuid)
-RETURNS TABLE (id uuid, lane text, position integer, state text)
+RETURNS TABLE (id uuid, lane text, pos integer, state text)
 LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
@@ -218,6 +171,50 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.queue_status(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.queue_status(uuid) TO authenticated;
+
+-- ── Joining ─────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.queue_join(_chat_id uuid DEFAULT NULL)
+RETURNS TABLE (id uuid, lane text, pos integer, state text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  uid uuid := auth.uid();
+  v_tier public.account_tier;
+  v_lane text;
+  v_id uuid;
+BEGIN
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Sign in first.';
+  END IF;
+
+  PERFORM public.queue_reap();
+
+  SELECT COALESCE(tier, 'free') INTO v_tier FROM public.profiles WHERE profiles.id = uid;
+  v_lane := public.queue_lane_for(COALESCE(v_tier, 'free'));
+
+  -- One live ticket per account. Pressing send twice should not buy two
+  -- places in the line, and it is also what makes a page refresh rejoin
+  -- the existing ticket instead of taking a worse one.
+  SELECT q.id INTO v_id
+    FROM public.ai_queue q
+   WHERE q.user_id = uid AND q.state IN ('waiting', 'running')
+   ORDER BY q.created_at
+   LIMIT 1;
+
+  IF v_id IS NULL THEN
+    INSERT INTO public.ai_queue (user_id, tier, lane, chat_id)
+    VALUES (uid, COALESCE(v_tier, 'free'), v_lane, _chat_id)
+    RETURNING ai_queue.id INTO v_id;
+  END IF;
+
+  RETURN QUERY SELECT * FROM public.queue_status(v_id);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.queue_join(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.queue_join(uuid) TO authenticated;
 
 -- ── Claiming the slot ───────────────────────────────────────────────────
 --
