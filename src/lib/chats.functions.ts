@@ -21,13 +21,13 @@ import {
  * Legacy fallback: AI_BACKEND_URL / AI_BACKEND_KEY is used for either
  * model if the model-specific one isn't set, so older configs keep working.
  *
- * Chat memory limits per plan (oldest chats are auto-deleted on creation):
- *   free → 5 chats
- *   pro  → 10 chats
+ * Saved-chat limits per plan live in usage-limits.ts (5 / 15 / 50 /
+ * unlimited). The oldest are pruned when a new chat is created.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   enqueue,
   isStopped,
@@ -332,6 +332,75 @@ export const listChats = createServerFn({ method: "GET" })
       .order("updated_at", { ascending: false });
     if (error) throw dbError(error);
     return data;
+  });
+
+/**
+ * Drop a chat that never got an answer.
+ *
+ * A thread with a question and no reply is not a conversation, and leaving
+ * it in the list burns one of the account's saved-chat slots on nothing. So
+ * navigating away from one discards it.
+ *
+ * Two things are deliberately kept instead:
+ *
+ *   - a reply still being generated. Someone opening a chat, sending, and
+ *     switching tabs while it thinks must come back to it, so a live queue
+ *     ticket for this chat vetoes the delete. Checked here rather than
+ *     trusted from the browser, because the browser that navigated away is
+ *     the one least able to know.
+ *
+ *   - a reply that was cancelled. Pressing stop is a decision about the
+ *     answer, not about the chat, and throwing away what they typed would
+ *     punish them for it. The caller says so with `cancelled`.
+ *
+ * Returns what it did, so the caller can tell "gone" from "kept" rather
+ * than guessing.
+ */
+export const discardEmptyChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        chatId: z.string().uuid(),
+        cancelled: z.boolean().optional().default(false),
+      })
+      .parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    if (data.cancelled) return { deleted: false, reason: "cancelled" as const };
+
+    const { data: chat } = await supabase
+      .from("chats")
+      .select("id")
+      .eq("id", data.chatId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!chat) return { deleted: false, reason: "missing" as const };
+
+    // Any assistant turn at all means this is a real conversation.
+    const { count: replies } = await supabase
+      .from("chat_messages")
+      .select("id", { count: "exact", head: true })
+      .eq("chat_id", data.chatId)
+      .eq("role", "assistant");
+    if ((replies ?? 0) > 0) return { deleted: false, reason: "has-reply" as const };
+
+    // Still queued or generating somewhere.
+    const { count: live } = await supabaseAdmin
+      .from("ai_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("chat_id", data.chatId)
+      .in("state", ["waiting", "running"]);
+    if ((live ?? 0) > 0) return { deleted: false, reason: "in-flight" as const };
+
+    const { error } = await supabase
+      .from("chats")
+      .delete()
+      .eq("id", data.chatId)
+      .eq("user_id", userId);
+    if (error) throw dbError(error, "discardEmptyChat");
+    return { deleted: true, reason: "empty" as const };
   });
 
 export const createChat = createServerFn({ method: "POST" })

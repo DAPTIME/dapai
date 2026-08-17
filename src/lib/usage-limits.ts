@@ -17,19 +17,21 @@
  */
 import type { Tier } from "@/lib/tier-rank";
 
+/** Infinity means unlimited, so callers compare without a null check. */
+const INF = Number.POSITIVE_INFINITY;
+
 /**
  * How many chats stay in history. Older ones are pruned when a new chat
  * starts, so this is a rolling window rather than a hard stop.
  */
 export const CHAT_HISTORY_LIMIT: Record<Tier, number> = {
   free: 5,
-  go: 10,
-  pro: 25,
-  exclusive: 100,
+  go: 15,
+  pro: 50,
+  // Genuinely unlimited rather than a large number: a cap of 100 would
+  // still silently delete somebody's 101st chat one day.
+  exclusive: INF,
 };
-
-/** Infinity means unlimited, so callers compare without a null check. */
-const INF = Number.POSITIVE_INFINITY;
 
 export type TierLimits = {
   /** Usage tokens per UTC day. */
