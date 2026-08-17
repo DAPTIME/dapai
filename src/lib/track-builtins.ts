@@ -625,54 +625,22 @@ function withCheckpoints(shape: Shape, count: number): Shape {
 
 
 /**
- * Author-medal targets measured from the leaderboard, in ms.
+ * Lap-estimate correction for the new car, applied to targetTime().
  *
- * targetTime() below estimates a lap from the geometry, and the estimate
- * turned out to be generous everywhere: across the twenty built-ins that
- * have a recorded time, the fastest lap beat the estimate on all twenty,
- * by 6% to 56%. An "author" medal handed out for a lap four seconds slower
- * than the track record is not an author medal.
+ * These were briefly set from the leaderboard — record plus one second, on
+ * twenty tracks that had a recorded time. Those numbers are gone, and had
+ * to go: every one of them was driven by a car that settled at 53.9 km/h,
+ * and this one settles at 80. A target derived from the old car would have
+ * been unbeatable-adjacent nonsense on the new one, in the wrong direction
+ * on every track.
  *
- * So where a real time exists, the target is that record plus one second.
- * Beating it means matching the best anyone has driven, near enough.
- *
- * Measured 2026-08-17 from get_track_leaderboard. These are a snapshot, not
- * a live read: a target that moved every time somebody set a record would
- * take medals away from players who had already earned them, which is worse
- * than being slightly out of date. Re-run the numbers deliberately.
+ * So the targets are back to the geometric estimate, scaled by 0.673 — the
+ * ratio of the two cars' settling speeds, which is how much less time the
+ * same distance now takes. It is an estimate of an estimate and should be
+ * treated as provisional: once real times exist on the new physics, derive
+ * the targets from those again, the way it was done before.
  */
-const MEASURED_GOALS: Record<number, number> = {
-  1: 9383,      // Sprout Loop
-  2: 17158,     // Meadow Kink
-  3: 21483,     // Clover Ring
-  4: 21517,     // Willow Waist
-  5: 21050,     // Fern Switchback
-  6: 15392,     // Bluebell Rise
-  7: 22042,     // Verdant Spur
-  8: 21600,     // Dewfall Crossing
-  9: 16333,     // Highvine Terrace
-  10: 16083,    // Skyblossom
-  11: 21900,    // Sunbaked Ring
-  12: 21633,    // Dune Dash
-  13: 21800,    // Mirage Kink
-  14: 23083,    // Canyon Switch
-  15: 15858,    // Sandstone Rise
-  16: 30342,    // Oasis Spur
-  17: 24425,    // Scorpion Cross
-  18: 23900,    // Sunspire Climb
-  19: 21525,    // Great Basin
-  31: 32625,    // Frost Ring
-};
-
-/**
- * Applied to the estimate for the twenty tracks nobody has set a time on.
- *
- * The median measured target came out at 0.771 of the estimate, so the
- * estimator is generous by a consistent enough margin to correct for.
- * The median rather than the tightest ratio (0.437), because guessing a
- * target nobody has ever driven should err toward attainable.
- */
-const UNMEASURED_TIGHTEN = 0.771;
+const NEW_CAR_LAP_SCALE = 0.673;
 
 function build(
   id: number, name: string, season: Season, difficulty: Difficulty,
@@ -690,8 +658,7 @@ function build(
   if (!walk.reachesFinish) {
     throw new Error(`built-in "${name}" is not drivable: ${walk.problem ?? "unknown"}`);
   }
-  const goal =
-    MEASURED_GOALS[id] ?? Math.round(targetTime(data) * UNMEASURED_TIGHTEN);
+  const goal = Math.round(targetTime(data) * NEW_CAR_LAP_SCALE);
   return { id, name, season, difficulty, goal, data };
 }
 
