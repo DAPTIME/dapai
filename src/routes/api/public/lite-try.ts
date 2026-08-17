@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { resolveOllamaModel } from "@/lib/ollama-models.server";
+import { isSafetyBlock, SAFETY_BLOCKED_MESSAGE } from "@/lib/safety";
+import { TIER_LIMITS } from "@/lib/usage-limits";
 
 const Body = z.object({
   text: z.string().min(1).max(2000),
@@ -103,6 +105,11 @@ export const Route = createFileRoute("/api/public/lite-try")({
             body: JSON.stringify({
               model: resolvedModel,
               stream: false,
+              /* The signed-out trial is a Free account in everything but
+                 the sign-in: same reply ceiling, so an anonymous visitor
+                 cannot pull a longer answer out of the hardware than a
+                 Free user who registered for one. */
+              max_tokens: TIER_LIMITS.free.maxResponseTokens,
               temperature: 0,
               top_p: 1,
               reasoning_effort: "none",
@@ -146,6 +153,16 @@ export const Route = createFileRoute("/api/public/lite-try")({
           }
           const errStr =
             typeof json?.error === "string" ? json.error : json?.error?.message;
+          /* Checked before the no-content branch: a blocked request comes
+             back empty, and calling that an outage tells the visitor to
+             retry something that will never go through. */
+          if (isSafetyBlock(json, res.status)) {
+            console.warn(`[lite-try] blocked upstream (HTTP ${res.status})`);
+            return new Response(JSON.stringify({ reply: SAFETY_BLOCKED_MESSAGE }), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
           const content =
             json?.choices?.[0]?.message?.content ?? json?.message?.content;
           if (!content) {

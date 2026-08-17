@@ -709,6 +709,10 @@ export type Database = {
           created_at: string
         }[]
       }
+      refund_usage: {
+        Args: { _cost: number; _images?: number }
+        Returns: boolean
+      }
       charge_usage: {
         Args: { _cost: number; _images?: number }
         Returns: {
