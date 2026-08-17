@@ -60,9 +60,7 @@ export const ROOM_DELETED_NOTICE =
  * migration lands the probe flips on its own — the cache lives for the life
  * of a worker, not forever.
  */
-let softDelete: boolean | undefined;
 async function hasSoftDelete(): Promise<boolean> {
-  if (softDelete !== undefined) return softDelete;
   const { error } = await supabaseAdmin
     .from("study_rooms")
     .select("deleted_at")
@@ -73,12 +71,10 @@ async function hasSoftDelete(): Promise<boolean> {
   // two count as absent, and the rest are retried on the next call.
   if (error) {
     if (error.code === "42703" || error.code === "PGRST204") {
-      softDelete = false;
       return false;
     }
     return false;
   }
-  softDelete = true;
   return true;
 }
 
