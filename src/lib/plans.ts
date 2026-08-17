@@ -15,10 +15,8 @@ export interface Plan {
   id: PlanId;
   name: string;
   /**
-   * Absent on Exclusive, deliberately. It is the same product as Pro for
-   * anyone reading the page, and inventing a line for it would say less
-   * than saying nothing. Renderers must omit the element entirely rather
-   * than render an empty one, or the card gains a blank row.
+   * Optional. Renderers must omit the element entirely when it is absent
+   * rather than render an empty one, or the card gains a blank row.
    */
   tagline?: string;
   benefits: string[];
@@ -64,6 +62,7 @@ export const PLANS: Plan[] = [
   {
     id: "exclusive",
     name: "DAP AI 4 Pro",
+    tagline: "Only for the inner circle, plus businesses",
     benefits: [
       "Everything in DAP AI 4 Pro",
       "No usage limits at all",

@@ -16,7 +16,7 @@ import { dbError } from "./db-error";
 
 export type QueueTicket = {
   id: string;
-  lane: "a" | "b";
+  lane: "pro" | "go" | "free";
   /** 0 when running, otherwise how many are ahead plus one. */
   position: number;
   state: "waiting" | "running" | "done" | "cancelled";
@@ -26,15 +26,19 @@ export type QueueTicket = {
  * The SQL calls the column `pos`, not `position` — `position` is a reserved
  * word in Postgres and a RETURNS TABLE cannot use it. Renamed here at the
  * boundary so the rest of the app reads the word it means.
+ *
+ * The position is still computed exactly (queue_position replays the
+ * dispatcher) even though the UI does not show it, so turning it back on is
+ * a change to one line of copy rather than a change to the queue.
  */
-type QueueRow = { id: string; lane: string; pos: number; state: string };
+type QueueRow = { id: string; lane: string; pos: number | null; state: string };
 
 const toTicket = (row: QueueRow | null): QueueTicket | null =>
   row
     ? {
         id: row.id,
-        lane: row.lane === "a" ? "a" : "b",
-        position: row.pos,
+        lane: (row.lane as QueueTicket["lane"]) ?? "free",
+        position: row.pos ?? 0,
         state: row.state as QueueTicket["state"],
       }
     : null;
@@ -98,9 +102,7 @@ export const claimAiQueue = createServerFn({ method: "POST" })
 
     let etaSeconds: number | null = null;
     if (t && t.position > 0) {
-      const { data: per } = await context.supabase.rpc("queue_eta_seconds", {
-        _lane: t.lane,
-      });
+      const { data: per } = await context.supabase.rpc("queue_eta_seconds");
       // No history means no estimate. An invented "about 30s" is worse
       // than showing nothing, because people plan around it.
       if (typeof per === "number" && per > 0) etaSeconds = per * t.position;

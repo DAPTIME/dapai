@@ -644,15 +644,15 @@ export type Database = {
       can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
       queue_beat: { Args: { _id: string }; Returns: undefined }
       queue_claim: { Args: { _id: string }; Returns: boolean }
-      queue_eta_seconds: { Args: { _lane: string }; Returns: number }
+      queue_eta_seconds: { Args: Record<PropertyKey, never>; Returns: number }
       queue_join: {
         Args: { _chat_id?: string | null }
-        Returns: { id: string; lane: string; pos: number; state: string }[]
+        Returns: { id: string; lane: string; pos: number | null; state: string }[]
       }
       queue_release: { Args: { _id: string; _cancelled?: boolean }; Returns: boolean }
       queue_status: {
         Args: { _id: string }
-        Returns: { id: string; lane: string; pos: number; state: string }[]
+        Returns: { id: string; lane: string; pos: number | null; state: string }[]
       }
       create_custom_dap: {
         Args: { _name: string; _description: string; _emoji: string; _system_prompt: string; _opener: string }

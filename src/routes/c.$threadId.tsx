@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, stopChatMessage, getProfile, planSearchForMessage, discardEmptyChat } from "@/lib/chats.functions";
-import { useAiQueue, describeQueue } from "@/lib/use-ai-queue";
+import { useAiQueue, describeQueue, queueUpgradeHint } from "@/lib/use-ai-queue";
 import { MODELS, modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
@@ -451,10 +451,17 @@ function ChatPage() {
                     aria-live="polite"
                   >
                     <span
-                      className="inline-block h-2 w-2 animate-pulse rounded-full bg-current"
+                      className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-500"
                       aria-hidden
                     />
-                    <span>{describeQueue(queue.view)}</span>
+                    <span>
+                      {describeQueue(queue.view)}
+                      {queueUpgradeHint(tier) && (
+                        <span className="ml-1 opacity-80">
+                          {queueUpgradeHint(tier)}
+                        </span>
+                      )}
+                    </span>
                   </div>
                 ) : (
                   <div className="mt-2">
