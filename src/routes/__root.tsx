@@ -120,14 +120,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       </div>
     </div>
   ),
-  errorComponent: ({ error }) => (
-    <div className="flex min-h-screen items-center justify-center p-6 text-center">
-      <div>
-        <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+  // The message is deliberately not shown. This boundary catches whatever
+  // escaped every other handler — a render fault, a stack, a database error
+  // that missed the sanitiser — and printing that verbatim on a public page
+  // is how a schema leaks. It goes to the console instead, where the browser
+  // devtools and the server logs can both see it, and the visitor gets
+  // something they can act on.
+  errorComponent: ({ error }) => {
+    if (typeof console !== "undefined") console.error("[app]", error);
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6 text-center">
+        <div>
+          <h1 className="text-xl font-semibold">Something went wrong</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Try reloading the page. If it keeps happening, let us know.
+          </p>
+        </div>
       </div>
-    </div>
-  ),
+    );
+  },
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {

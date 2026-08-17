@@ -28,6 +28,22 @@ export const Route = createFileRoute("/api/public/lite-try")({
           });
         }
 
+        /* This endpoint takes no credentials — that is the point, it is the
+           try-before-signup box — so the only thing standing between it and
+           someone looping it is a per-IP cap. Without one, an anonymous
+           caller can run the owner's own inference hardware flat out for
+           free, which costs real money and starves signed-in users. */
+        const { consumeIpQuota } = await import("@/lib/rate-limit.server");
+        if (!(await consumeIpQuota("attempt:lite-try", 5, 10 * 60 * 1000))) {
+          return new Response(
+            JSON.stringify({
+              error:
+                "That's a few messages from this network already. Create a free account to keep going.",
+            }),
+            { status: 429, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
         // Honor the admin maintenance flag for DAP AI Lite.
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
