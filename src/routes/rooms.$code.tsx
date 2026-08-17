@@ -109,6 +109,44 @@ function RoomPage() {
           }
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "study_rooms",
+          filter: `id=eq.${roomId}`,
+        },
+        (payload) => {
+          const incoming = payload.new as { is_open?: boolean; deleted_at?: string | null };
+          qc.setQueryData(
+            ["study-room", code],
+            (current: Awaited<ReturnType<typeof fetchRoom>> | undefined) => {
+              if (!current) return current;
+              return {
+                ...current,
+                room: {
+                  ...current.room,
+                  ...(typeof incoming.is_open === "boolean" ? { is_open: incoming.is_open } : {}),
+                  ...(incoming.deleted_at ? { deleted: true } : {}),
+                },
+              };
+            },
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "study_room_members",
+          filter: `room_id=eq.${roomId}`,
+        },
+        () => {
+          void qc.invalidateQueries({ queryKey: ["study-room", code] });
+        },
+      )
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState<{ name: string; typing: boolean }>();
         const people = Object.values(state).flat();

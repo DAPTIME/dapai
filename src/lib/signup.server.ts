@@ -1,6 +1,5 @@
 import { dbError } from "./db-error";
 /** Server-only helpers for the confirm-your-email signup flow. */
-import { sendEmail, confirmEmailHtml } from "./email.server";
 import { resolveSiteUrl } from "./site-url.server";
 
 export const HOLD_MS = 10 * 60 * 1000;
@@ -65,48 +64,31 @@ export async function generateSignupLink(opts: {
 }
 
 
-/**
- * Deliver the confirmation email. Resend is the primary sender; if Resend
- * refuses the recipient (e.g. the shared onboarding sender can only reach the
- * account owner until a domain is verified), fall back to Supabase's own
- * built-in confirmation email so signup never dead-ends.
- */
+/** Deliver through Supabase Auth, which uses the project's configured SMTP. */
 export async function deliverConfirmation(opts: {
   email: string;
   name: string;
   link: string;
+  origin?: string;
 }) {
-  try {
-    await sendEmail({
-      to: opts.email,
-      subject: "Confirm your DAP AI account",
-      html: confirmEmailHtml({ name: opts.name, link: opts.link }),
-      text: `Confirm your DAP AI account: ${opts.link} (expires in 10 minutes)`,
-    });
-    return { via: "resend" as const };
-  } catch (e) {
-    console.error("[signup] Resend delivery failed, falling back to Supabase:", (e as Error).message);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.auth.resend({
-      type: "signup",
-      email: opts.email,
-    });
-    if (error) {
-      // Both senders are down, and they fail for different reasons — the
-      // first is usually an unset RESEND_FROM, the second Supabase's own
-      // hourly cap on its built-in mail. Log both so the cause is
-      // recoverable from the server log rather than guessed at.
-      console.error(
-        "[signup] both senders failed. resend:", (e as Error).message,
-        "| supabase:", error.message
-      );
-      throw new Error(
-        "Your account was created, but we couldn't send the confirmation email. " +
-          "Use \u201cResend email\u201d in a minute, or contact DAPAI.support@gmail.com."
-      );
-    }
-    return { via: "supabase" as const };
+  void opts.name;
+  void opts.link;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.auth.resend({
+    type: "signup",
+    email: opts.email,
+    options: opts.origin
+      ? { emailRedirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1` }
+      : undefined,
+  });
+  if (error) {
+    console.error("[signup] Supabase SMTP delivery failed:", error.message);
+    throw new Error(
+      "Your account was created, but we couldn't send the confirmation email. " +
+        "Use \u201cResend email\u201d in a minute, or contact DAPAI.support@gmail.com."
+    );
   }
+  return { via: "supabase" as const };
 }
 
 export async function sendConfirmation(opts: {
@@ -138,5 +120,10 @@ export async function sendConfirmation(opts: {
   }
   if (!link) throw new Error("Could not create a confirmation link.");
 
-  await deliverConfirmation({ email: opts.email, name: opts.name, link });
+  await deliverConfirmation({
+    email: opts.email,
+    name: opts.name,
+    link,
+    origin: opts.origin,
+  });
 }
