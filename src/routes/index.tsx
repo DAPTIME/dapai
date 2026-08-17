@@ -276,17 +276,16 @@ function Home() {
               <p className="text-base font-medium text-foreground sm:text-lg">
                 The only chatbot you'll ever need.
               </p>
-              {/* Short on purpose. The h1 and the meta description already
-                  carry the keywords, and /about-dap-ai is linked below for
-                  anyone who wants the full account — so this only has to
-                  say what it costs and what an account adds. */}
+              {/* One line. The h1 and the meta description already carry the
+                  keywords, and "What DAP AI can do" is linked directly below
+                  for anyone who wants more — so this only has to say what it
+                  costs and what an account adds. */}
               <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                Ask questions, write, study, code. Your first message needs no
-                signup —{" "}
+                No signup for your first message —{" "}
                 <Link to="/signup" className="font-medium text-foreground underline">
                   create a free account
                 </Link>{" "}
-                to save chats and unlock DAP AI 4 Pro and the arcade.
+                for chat history, Pro and the arcade.
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
                 <Link to="/about-dap-ai" className="underline">
