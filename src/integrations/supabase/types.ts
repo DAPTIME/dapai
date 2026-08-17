@@ -451,6 +451,8 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
           host_id: string
           id?: string
           is_open?: boolean
@@ -589,67 +591,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
-      join_study_room_by_code: {
-        Args: { _code: string }
-        Returns: { id: string; code: string; name: string }[]
-      }
+      admin_delete_study_room: { Args: { _id: string }; Returns: boolean }
       admin_list_study_rooms: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
-          id: string
           code: string
-          name: string
-          model: string
-          is_open: boolean
           created_at: string
-          deleted_at: string | null
+          deleted_at: string
           host_name: string
+          id: string
+          is_open: boolean
           member_count: number
           message_count: number
+          model: string
+          name: string
         }[]
       }
-      admin_delete_study_room: {
-        Args: { _id: string }
-        Returns: boolean
-      }
-      admin_restore_study_room: {
-        Args: { _id: string }
-        Returns: boolean
-      }
+      admin_restore_study_room: { Args: { _id: string }; Returns: boolean }
+      can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
+      queue_beat: { Args: { _id: string }; Returns: undefined }
+      queue_claim: { Args: { _id: string }; Returns: boolean }
+      queue_eta_seconds: { Args: { _lane: string }; Returns: number }
       queue_join: {
         Args: { _chat_id?: string | null }
-        Returns: {
-          id: string
-          lane: string
-          position: number
-          state: string
-        }[]
+        Returns: { id: string; lane: string; position: number; state: string }[]
       }
+      queue_release: { Args: { _id: string; _cancelled?: boolean }; Returns: boolean }
       queue_status: {
         Args: { _id: string }
-        Returns: {
-          id: string
-          lane: string
-          position: number
-          state: string
-        }[]
-      }
-      queue_claim: {
-        Args: { _id: string }
-        Returns: boolean
-      }
-      queue_release: {
-        Args: { _id: string; _cancelled?: boolean }
-        Returns: boolean
-      }
-      queue_beat: {
-        Args: { _id: string }
-        Returns: undefined
-      }
-      queue_eta_seconds: {
-        Args: { _lane: string }
-        Returns: number
+        Returns: { id: string; lane: string; position: number; state: string }[]
       }
       charge_usage: {
         Args: { _cost: number; _images?: number }
@@ -693,6 +663,14 @@ export type Database = {
       is_room_member: {
         Args: { _room_id: string; _user_id: string }
         Returns: boolean
+      }
+      join_study_room_by_code: {
+        Args: { _code: string }
+        Returns: {
+          code: string
+          id: string
+          name: string
+        }[]
       }
       my_usage: {
         Args: never
