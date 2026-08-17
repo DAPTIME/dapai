@@ -621,6 +621,61 @@ export type Database = {
         Args: { _id: string }
         Returns: { id: string; lane: string; pos: number; state: string }[]
       }
+      create_custom_dap: {
+        Args: { _name: string; _description: string; _emoji: string; _system_prompt: string; _opener: string }
+        Returns: string
+      }
+      submit_custom_dap: { Args: { _id: string }; Returns: string }
+      unpublish_custom_dap: { Args: { _id: string }; Returns: boolean }
+      delete_custom_dap: { Args: { _id: string }; Returns: boolean }
+      dap_content_hash: { Args: { _name: string; _emoji: string; _prompt: string }; Returns: string }
+      tier_at_least: { Args: { _tier: string; _min: string }; Returns: boolean }
+      my_tier: { Args: Record<PropertyKey, never>; Returns: string }
+      mark_dap_notices_seen: { Args: Record<PropertyKey, never>; Returns: number }
+      my_dap_notices: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          emoji: string
+          moderation_status: string
+          rejection_reason: string | null
+          reviewed_at: string
+        }[]
+      }
+      admin_list_dap_submissions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          emoji: string
+          description: string
+          system_prompt: string
+          author_name: string
+          author_email: string
+          submitted_at: string
+          moderation_status: string
+          rejection_reason: string | null
+        }[]
+      }
+      admin_review_dap: {
+        Args: { _id: string; _approve: boolean; _reason?: string | null }
+        Returns: string
+      }
+      marketplace_daps: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          description: string
+          emoji: string
+          author_name: string
+          install_count: number
+          mcp_url: string | null
+          user_id: string
+          created_at: string
+        }[]
+      }
       charge_usage: {
         Args: { _cost: number; _images?: number }
         Returns: {

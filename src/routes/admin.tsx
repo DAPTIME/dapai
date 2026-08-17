@@ -11,12 +11,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { sendChatMessage } from "@/lib/chats.functions";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2 } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Users, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,6 +70,8 @@ const SECTIONS = [
   { id: "beta", label: "Beta Testers", icon: Users },
   { id: "models", label: "Models", icon: Cpu },
   { id: "pages", label: "Pages", icon: Eye },
+  { id: "rooms", label: "Study Rooms", icon: Gamepad2 },
+  { id: "daps", label: "DAP Review", icon: Sparkles },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
 
@@ -78,6 +81,10 @@ import {
   adminDeleteStudyRoom,
   adminRestoreStudyRoom,
 } from "@/lib/study-rooms.functions";
+import {
+  adminListDapSubmissions,
+  adminReviewDap,
+} from "@/lib/custom-daps.functions";
 import {
   listBetaTesters,
   adminAddBetaTester,
@@ -147,7 +154,7 @@ function Admin() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Admin Console</h1>
           <p className="text-sm text-muted-foreground">
-            Manage users, the global system prompt, and read every chat.
+            Manage users, review Custom DAPs, and read every chat.
           </p>
         </div>
       </header>
@@ -236,6 +243,12 @@ function Admin() {
               description="Turn an individual DAP AI model off for everyone."
               keys={FEATURE_GROUPS.models}
             />
+          </TabsContent>
+          <TabsContent value="rooms" className="mt-6">
+            <StudyRoomsTab />
+          </TabsContent>
+          <TabsContent value="daps" className="mt-6">
+            <DapReviewTab />
           </TabsContent>
           <TabsContent value="pages" className="mt-6">
             <FeatureList
@@ -1220,6 +1233,228 @@ function FeatureList({
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+
+/**
+ * Every study room on the site.
+ *
+ * Closing one down is a soft delete: the row stays so the people who were
+ * in it can be told why it is gone. A hard delete would give them "no room
+ * with that code", which reads as a fault rather than as a decision.
+ */
+function StudyRoomsTab() {
+  const qc = useQueryClient();
+  const listRooms = useServerFn(adminListStudyRooms);
+  const removeRoom = useServerFn(adminDeleteStudyRoom);
+  const restoreRoom = useServerFn(adminRestoreStudyRoom);
+  const [confirming, setConfirming] = useState<{ id: string; name: string } | null>(null);
+
+  const rooms = useQuery({ queryKey: ["admin-rooms"], queryFn: () => listRooms() });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-rooms"] });
+
+  const del = useMutation({
+    mutationFn: (id: string) => removeRoom({ data: { id } }),
+    onSuccess: () => { setConfirming(null); refresh(); toast.success("Room closed."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const restore = useMutation({
+    mutationFn: (id: string) => restoreRoom({ data: { id } }),
+    onSuccess: () => { refresh(); toast.success("Room restored."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (rooms.isLoading) return <p className="text-sm text-muted-foreground">Loading rooms…</p>;
+  if (rooms.isError) return <p className="text-sm text-destructive">Couldn't load the rooms.</p>;
+
+  const all = (rooms.data ?? []) as Array<{
+    id: string; code: string; name: string; model: string; is_open: boolean;
+    created_at: string; deleted_at: string | null; host_name: string;
+    member_count: number; message_count: number;
+  }>;
+  const active = all.filter((r) => !r.deleted_at);
+  const closed = all.filter((r) => r.deleted_at);
+
+  const Row = ({ r }: { r: (typeof all)[number] }) => (
+    <li className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">
+          {r.name} <span className="font-mono text-xs text-muted-foreground">{r.code}</span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {r.host_name} · {r.member_count} member{r.member_count === 1 ? "" : "s"} ·{" "}
+          {r.message_count} message{r.message_count === 1 ? "" : "s"} · {r.model}
+        </p>
+      </div>
+      {r.deleted_at ? (
+        <Button size="sm" variant="outline" disabled={restore.isPending}
+          onClick={() => restore.mutate(r.id)}>Restore</Button>
+      ) : (
+        <Button size="sm" variant="outline" className="text-destructive"
+          onClick={() => setConfirming({ id: r.id, name: r.name })}>
+          <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
+        </Button>
+      )}
+    </li>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-sm font-medium">Active ({active.length})</h2>
+        {active.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">No rooms open right now.</p>
+        ) : (
+          <ul className="mt-3 space-y-2">{active.map((r) => <Row key={r.id} r={r} />)}</ul>
+        )}
+      </div>
+      {closed.length > 0 && (
+        <div>
+          <h2 className="text-sm font-medium">Closed ({closed.length})</h2>
+          <ul className="mt-3 space-y-2 opacity-70">{closed.map((r) => <Row key={r.id} r={r} />)}</ul>
+        </div>
+      )}
+
+      <Dialog open={!!confirming} onOpenChange={(o) => !o && setConfirming(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Close "{confirming?.name}" down?</DialogTitle>
+            <DialogDescription>
+              Everyone in it will see: "Sorry, this room has been deleted by the
+              admin. Please contact us for any inquiries." You can restore it later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => setConfirming(null)}>Keep it</Button>
+            <Button className="text-destructive-foreground" style={{ background: "hsl(var(--destructive))" }}
+              disabled={del.isPending}
+              onClick={() => confirming && del.mutate(confirming.id)}>
+              {del.isPending ? "Closing…" : "Close it down"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Custom DAPs waiting to go on the marketplace.
+ *
+ * A published DAP's instructions run in front of other people's
+ * conversations on the Orin hardware, so the whole prompt is shown here —
+ * reviewing a name and an emoji would be reviewing the label, not the thing.
+ */
+function DapReviewTab() {
+  const qc = useQueryClient();
+  const listSubs = useServerFn(adminListDapSubmissions);
+  const review = useServerFn(adminReviewDap);
+  const [rejecting, setRejecting] = useState<{ id: string; name: string } | null>(null);
+  const [reason, setReason] = useState("");
+
+  const subs = useQuery({ queryKey: ["admin-dap-subs"], queryFn: () => listSubs() });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-dap-subs"] });
+
+  const decide = useMutation({
+    mutationFn: (v: { id: string; approve: boolean; reason?: string }) =>
+      review({ data: v }),
+    onSuccess: (_r, v) => {
+      setRejecting(null); setReason(""); refresh();
+      toast.success(v.approve ? "Approved and published." : "Rejected. The author will be told.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (subs.isLoading) return <p className="text-sm text-muted-foreground">Loading submissions…</p>;
+  if (subs.isError) return <p className="text-sm text-destructive">Couldn't load submissions.</p>;
+
+  const rows = (subs.data ?? []) as Array<{
+    id: string; name: string; emoji: string; description: string;
+    system_prompt: string; author_name: string; author_email: string;
+    submitted_at: string; moderation_status: string; rejection_reason: string | null;
+  }>;
+  const pending = rows.filter((r) => r.moderation_status === "pending");
+  const done = rows.filter((r) => r.moderation_status !== "pending");
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-sm font-medium">Waiting ({pending.length})</h2>
+        {pending.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">Nothing to review.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {pending.map((d) => (
+              <li key={d.id} className="rounded-xl border border-border bg-card p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xl" aria-hidden>{d.emoji}</span>
+                  <span className="font-medium">{d.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    by {d.author_name} ({d.author_email})
+                  </span>
+                </div>
+                {d.description && (
+                  <p className="mt-1 text-sm text-muted-foreground">{d.description}</p>
+                )}
+                <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-muted/40 p-3 text-xs">
+                  {d.system_prompt}
+                </pre>
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" className="text-primary-foreground"
+                    style={{ background: "var(--gradient-brand)" }}
+                    disabled={decide.isPending}
+                    onClick={() => decide.mutate({ id: d.id, approve: true })}>
+                    <Globe className="mr-1.5 h-3.5 w-3.5" /> Approve
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-destructive"
+                    onClick={() => setRejecting({ id: d.id, name: d.name })}>
+                    Reject
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {done.length > 0 && (
+        <div>
+          <h2 className="text-sm font-medium">Previously rejected ({done.length})</h2>
+          <ul className="mt-3 space-y-2 text-sm opacity-70">
+            {done.map((d) => (
+              <li key={d.id} className="rounded-xl border border-border bg-card p-3">
+                <span aria-hidden>{d.emoji}</span> <span className="font-medium">{d.name}</span>
+                {d.rejection_reason && (
+                  <span className="text-muted-foreground"> — {d.rejection_reason}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <Dialog open={!!rejecting} onOpenChange={(o) => !o && setRejecting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject "{rejecting?.name}"?</DialogTitle>
+            <DialogDescription>
+              It stays private and the author is told next time they open the
+              Custom AI's page. A reason helps them fix it.
+            </DialogDescription>
+          </DialogHeader>
+          <Input value={reason} onChange={(e) => setReason(e.target.value)}
+            placeholder="Why not? (optional)" maxLength={300} />
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => setRejecting(null)}>Cancel</Button>
+            <Button disabled={decide.isPending}
+              onClick={() => rejecting && decide.mutate({ id: rejecting.id, approve: false, reason })}>
+              {decide.isPending ? "Rejecting…" : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

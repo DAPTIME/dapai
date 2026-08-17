@@ -9,7 +9,10 @@ import {
   listCustomDaps,
   createCustomDap,
   deleteCustomDap,
-  setCustomDapPublished,
+  submitCustomDap,
+  unpublishCustomDap,
+  listMyDapNotices,
+  markDapNoticesSeen,
   listMarketplaceDaps,
   installMarketplaceDap,
 } from "@/lib/custom-daps.functions";
@@ -52,7 +55,10 @@ function Daps() {
   const listCustom = useServerFn(listCustomDaps);
   const createCustom = useServerFn(createCustomDap);
   const deleteCustom = useServerFn(deleteCustomDap);
-  const setPublished = useServerFn(setCustomDapPublished);
+  const submitDap = useServerFn(submitCustomDap);
+  const unpublishDap = useServerFn(unpublishCustomDap);
+  const listNotices = useServerFn(listMyDapNotices);
+  const markSeen = useServerFn(markDapNoticesSeen);
   const listMarket = useServerFn(listMarketplaceDaps);
   const installDap = useServerFn(installMarketplaceDap);
   const siteConfig = useSiteConfig();
@@ -83,20 +89,44 @@ function Daps() {
     enabled: !!user && dapsEnabled && isPro,
   });
 
-  const publishMut = useMutation({
-    mutationFn: (vars: { id: string; published: boolean; authorName?: string }) =>
-      setPublished({ data: vars }),
-    onSuccess: (_r, vars) => {
-      qc.invalidateQueries({ queryKey: ["custom-daps"] });
-      qc.invalidateQueries({ queryKey: ["daps-marketplace"] });
-      toast.success(
-        vars.published
-          ? "Published to the marketplace."
-          : "Removed from the marketplace."
-      );
+  const refreshDaps = () => {
+    qc.invalidateQueries({ queryKey: ["custom-daps"] });
+    qc.invalidateQueries({ queryKey: ["daps-marketplace"] });
+  };
+
+  const submitMut = useMutation({
+    mutationFn: (id: string) => submitDap({ data: { id } }),
+    onSuccess: () => {
+      refreshDaps();
+      toast.success("Sent for review. You'll hear back here once it's looked at.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const unpublishMut = useMutation({
+    mutationFn: (id: string) => unpublishDap({ data: { id } }),
+    onSuccess: () => {
+      refreshDaps();
+      toast.success("Taken off the marketplace.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  /* Decisions the moderator has made that this author has not been shown.
+     Read once and marked seen, so a rejection is delivered exactly one time
+     rather than greeting them on every visit. */
+  const noticesQuery = useQuery({
+    queryKey: ["dap-notices"],
+    queryFn: () => listNotices(),
+    enabled: !!user && dapsEnabled,
+  });
+  const notices = (noticesQuery.data ?? []) as Array<{
+    id: string;
+    name: string;
+    emoji: string;
+    moderation_status: string;
+    rejection_reason: string | null;
+  }>;
 
   const installMut = useMutation({
     mutationFn: (sourceId: string) => installDap({ data: { sourceId } }),
@@ -229,6 +259,51 @@ function Daps() {
         />
       )}
 
+      {/* Moderator decisions. Shown once — dismissing marks them seen, which
+          is also what the "told the next time they look" rule needs: the
+          author finds out here, not by noticing their DAP quietly missing
+          from the marketplace. */}
+      {notices.length > 0 && (
+        <section className="mt-8 rounded-2xl border border-border bg-card p-5">
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-sm font-medium">From the moderators</h2>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs"
+              onClick={() => {
+                markSeen().then(() => {
+                  qc.invalidateQueries({ queryKey: ["dap-notices"] });
+                });
+              }}
+            >
+              Dismiss
+            </Button>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm">
+            {notices.map((n) => (
+              <li key={n.id} className="flex gap-2">
+                <span aria-hidden>{n.emoji}</span>
+                <span>
+                  <span className="font-medium">{n.name}</span>{" "}
+                  {n.moderation_status === "approved" ? (
+                    <span className="text-muted-foreground">
+                      was approved and is on the marketplace.
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      wasn't approved
+                      {n.rejection_reason ? ` — ${n.rejection_reason}` : "."} You can
+                      change it and send it again.
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {user && customQuery.data && customQuery.data.length > 0 && (
         <section className="mt-10">
           <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
@@ -256,34 +331,58 @@ function Daps() {
                     </p>
                   )}
                 </button>
-                <div className="mt-3 flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant={c.published ? "default" : "outline"}
-                    className="h-7 gap-1.5 rounded-full px-3 text-xs"
-                    disabled={publishMut.isPending}
-                    {...(c.published
-                      ? { style: { background: "var(--gradient-brand)" } }
-                      : {})}
-                    onClick={() =>
-                      publishMut.mutate({
-                        id: c.id,
-                        published: !c.published,
-                        authorName: user?.name || undefined,
-                      })
-                    }
-                  >
-                    <Globe className="h-3.5 w-3.5" />
-                    {c.published ? "Published" : "Publish"}
-                  </Button>
-                  {c.published && (
-                    <span className="text-xs text-muted-foreground">
-                      {c.install_count} install{c.install_count === 1 ? "" : "s"}
+                {/* Publishing is a request, not a switch: it goes to a
+                    moderator first, so the button says what pressing it
+                    actually does and then reports where the request got to. */}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {c.published ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                        disabled={unpublishMut.isPending}
+                        onClick={() => unpublishMut.mutate(c.id)}
+                      >
+                        <Globe className="h-3.5 w-3.5" />
+                        Unpublish
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        Live · {c.install_count ?? 0} install
+                        {(c.install_count ?? 0) === 1 ? "" : "s"}
+                      </span>
+                    </>
+                  ) : c.moderation_status === "pending" ? (
+                    <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+                      Waiting for review
+                    </span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                      disabled={submitMut.isPending}
+                      onClick={() => submitMut.mutate(c.id)}
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      Submit for review
+                    </Button>
+                  )}
+                  {c.moderation_status === "rejected" && (
+                    <span className="text-xs text-destructive">
+                      Rejected{c.rejection_reason ? ` — ${c.rejection_reason}` : ""}
                     </span>
                   )}
                 </div>
                 <button
                   onClick={() => {
+                    // Deleting a live DAP would pull it out from under
+                    // whoever installed it, so unpublishing is a separate,
+                    // deliberate first step.
+                    if (c.published) {
+                      toast.error("Unpublish it first, then you can delete it.");
+                      return;
+                    }
                     if (confirm(`Delete "${c.name}"?`)) removeCustom.mutate(c.id);
                   }}
                   className="absolute right-3 top-3 rounded-md p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-foreground group-hover:opacity-100"
