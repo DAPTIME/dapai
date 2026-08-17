@@ -181,7 +181,7 @@ export function PlanAndUsage() {
                 used={usage.data.tokensWeek.used}
                 limit={usage.data.tokensWeek.limit}
                 hideNumbers
-                note="Your week runs seven days from your first message in it."
+                note="Your week resets on Monday at midnight UTC."
               />
               <Meter
                 label="Images today"

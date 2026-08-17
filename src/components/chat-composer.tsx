@@ -32,6 +32,8 @@ interface Props {
   pending?: boolean;
   /** Called when the user interrupts an in-flight reply. */
   onStop?: () => void;
+  /** Waiting in the queue rather than generating — the button cancels the wait. */
+  queued?: boolean;
   /** When true the bar is read-only and shows the admin's offline message. */
   offline?: boolean;
   offlineMessage?: string;
@@ -56,6 +58,7 @@ export function ChatComposer({
   quotaInfo,
   pending,
   onStop,
+  queued = false,
   offline,
   offlineMessage,
 }: Props) {
@@ -290,8 +293,8 @@ export function ChatComposer({
             onClick={onStop}
             className="relative h-9 w-9 rounded-full transition-transform active:scale-95"
             style={{ background: "var(--gradient-brand)" }}
-            aria-label="Stop generating"
-            title="Stop generating"
+            aria-label={queued ? "Leave the queue" : "Stop generating"}
+            title={queued ? "Leave the queue" : "Stop generating"}
           >
             <Square className="h-3.5 w-3.5 fill-current" />
           </Button>
