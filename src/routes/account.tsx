@@ -256,7 +256,12 @@ function ConnectedAccounts() {
       provider,
       options: { redirectTo: `${window.location.origin}/account` },
     });
-    if (error) toast.error(error.message);
+    // Auth errors are mostly readable, but not reliably — some are internal
+    // and none are worth the risk of pasting verbatim into the page.
+    if (error) {
+      console.error("[account] link identity:", error.message);
+      toast.error(`Couldn't connect ${provider}. Try again.`);
+    }
   };
 
   const unlink = async (provider: string) => {
@@ -269,7 +274,8 @@ function ConnectedAccounts() {
     if (!target) return;
     const { error } = await supabase.auth.unlinkIdentity(target);
     if (error) {
-      toast.error(error.message);
+      console.error("[account] unlink identity:", error.message);
+      toast.error(`Couldn't disconnect ${provider}. Try again.`);
       return;
     }
     toast.success(`${provider} disconnected`);

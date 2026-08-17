@@ -52,3 +52,43 @@ export async function consumeEmailQuota(kind = "email", _email?: string | null) 
     .delete()
     .lt("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 }
+
+/**
+ * A per-IP limit on anything, counted in the same table.
+ *
+ * Returns whether the caller may proceed rather than throwing, because the
+ * callers are HTTP handlers that need to choose their own status code.
+ *
+ * The kind must start with `attempt:` — `consumeEmailQuota` deliberately
+ * excludes that prefix from its own count, so limiting something here can
+ * never quietly eat somebody's password-reset allowance.
+ *
+ * Fails open. If the table cannot be read the request is allowed through:
+ * a rate limiter that takes the feature down when the database hiccups has
+ * done more damage than the abuse it was guarding against.
+ */
+export async function consumeIpQuota(
+  kind: `attempt:${string}`,
+  max: number,
+  windowMs: number
+): Promise<boolean> {
+  const ip = requestIp();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const since = new Date(Date.now() - windowMs).toISOString();
+
+  const { count, error } = await supabaseAdmin
+    .from("email_rate_limits")
+    .select("id", { count: "exact", head: true })
+    .eq("ip", ip)
+    .eq("kind", kind)
+    .gte("created_at", since);
+
+  if (error) {
+    console.error("[rate-limit] lookup failed:", error.code, error.message);
+    return true;
+  }
+  if ((count ?? 0) >= max) return false;
+
+  await supabaseAdmin.from("email_rate_limits").insert({ ip, kind });
+  return true;
+}

@@ -1,4 +1,4 @@
-import { dbError } from "./db-error";
+import { dbError, userFacingError } from "./db-error";
 import {
   SUPABASE_URL as PUBLIC_SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY as PUBLIC_SUPABASE_PUBLISHABLE_KEY,
@@ -180,10 +180,10 @@ export const createTrack = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) {
-      // 23514: the per-plan quota trigger. Its message is written for the
-      // person reading it, so it survives the sanitiser.
-      if (error.code === "23514") throw new Error(error.message);
-      throw dbError(error);
+      // The per-plan quota trigger writes its message for the person
+      // reading it, so it survives; a real check-constraint violation names
+      // the constraint and does not.
+      throw userFacingError(error, "createTrack");
     }
     return { id: row.id };
   });
@@ -283,7 +283,7 @@ export const publishTrack = createServerFn({ method: "POST" })
       _id: data.id,
       _public: true,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw userFacingError(error, "trackRpc");
     return { ok: true };
   });
 
@@ -295,7 +295,7 @@ export const unpublishTrack = createServerFn({ method: "POST" })
       _id: data.id,
       _public: false,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw userFacingError(error, "trackRpc");
     return { ok: true };
   });
 
@@ -323,7 +323,7 @@ export const verifyTrack = createServerFn({ method: "POST" })
       _id: data.id,
       _time_ms: data.timeMs,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw userFacingError(error, "trackRpc");
     return { verifiedAt: at as string, timeMs: data.timeMs };
   });
 

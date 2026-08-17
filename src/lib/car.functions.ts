@@ -11,7 +11,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { dbError } from "@/lib/db-error";
+import { dbError, userFacingError } from "@/lib/db-error";
 import { canEditCar, toCarSpec, DEFAULT_CAR, type CarSpec } from "@/lib/car-spec";
 import type { Tier } from "@/lib/tier-rank";
 
@@ -62,9 +62,9 @@ export const setMyCar = createServerFn({ method: "POST" })
       .update({ car })
       .eq("id", context.userId);
     if (error) {
-      // 42501: the trigger refused it. Its message is already user-facing.
-      if (error.code === "42501") throw new Error(error.message);
-      throw dbError(error, "setMyCar");
+      // 42501 here is the trigger refusing a reserved colour, not Postgres
+      // refusing a table — userFacingError tells those apart by wording.
+      throw userFacingError(error, "setMyCar");
     }
     return { car };
   });

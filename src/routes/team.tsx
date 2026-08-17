@@ -41,7 +41,12 @@ function TeamPage() {
         .select("id, name, sort_order")
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
-      if (error) throw new Error(error.message);
+      // Queried straight from the browser, so the error is whatever RLS
+      // said — policy and table names included. Not the visitor's business.
+      if (error) {
+        console.error("[team] beta testers:", error.code, error.message);
+        throw new Error("Couldn't load this right now.");
+      }
       return data ?? [];
     },
     enabled: teamEnabled,
