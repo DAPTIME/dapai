@@ -165,11 +165,34 @@ function Home() {
     }
   }, []);
 
+  /* Incognito changes who the page thinks you are, so the greeting has to
+     follow the toggle rather than only the session. Listening for the
+     setting event means flipping it re-greets immediately instead of on
+     the next reload. */
+  const [incognito, setIncognito] = useState(false);
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const read = () => setIncognito(localStorage.getItem("dap.incognito") === "1");
+    read();
+    const onSetting = (e: Event) => {
+      const d = (e as CustomEvent<{ key?: string }>).detail;
+      if (!d?.key || d.key === "dap.incognito") read();
+    };
+    window.addEventListener("dap.setting", onSetting);
+    return () => window.removeEventListener("dap.setting", onSetting);
+  }, []);
+
+  useEffect(() => {
+    if (incognito) {
+      // No name, no time-of-day line — nothing that shows the page knows
+      // who is reading it.
+      setGreeting("Hello, stranger.");
+      return;
+    }
     // One shared rule site-wide: first name only, whatever the sign-up method.
     const list = GREETINGS(firstName(user?.name || user?.email), new Date().getHours());
     setGreeting(list[Math.floor(Math.random() * list.length)]);
-  }, [user]);
+  }, [user, incognito]);
 
 
   const startChat = useMutation({

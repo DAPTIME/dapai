@@ -53,6 +53,10 @@ const LITE_HISTORY_LIMIT = 12;
    stays readable about what it is swallowing. */
 class SkipSearch extends Error {}
 
+/* Same idea for memory extraction: a named throw so the best-effort catch
+   below stays honest about what it is swallowing. */
+class SkipMemory extends Error {}
+
 /**
  * Study Mode: turn the assistant into a Socratic tutor that never hands over
  * the whole answer up front.
@@ -814,7 +818,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     const { data: chatRow } = await supabase
       .from("chats")
-      .select("title")
+      .select("title, is_incognito")
       .eq("id", data.chatId)
       .single();
     if (chatRow?.title === "New chat") {
@@ -847,10 +851,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       systemPrompt = legacy?.system_prompt?.trim() ?? "";
     }
 
+    const anonymous = !!chatRow?.is_incognito;
+
     /* Per-user memories (ChatGPT-style). Injected as a system message.
        Gated here and not only in the UI: hiding the toggle stops the
-       button being pressed, it does not stop the request being sent. */
-    const { data: memRows } = TIER_LIMITS[callerTier].memory
+       button being pressed, it does not stop the request being sent.
+
+       Skipped entirely in an incognito chat. The toggle promises the
+       assistant does not know you, and reading back a stored fact about
+       someone in the middle of the reply is exactly the thing it promises
+       will not happen. */
+    const { data: memRows } = TIER_LIMITS[callerTier].memory && !anonymous
       ? await supabase
           .from("user_memories")
           .select("content")
@@ -1165,8 +1176,13 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       memory_used: memoryBlock.length > 0,
     });
 
-    // Auto-extract durable memories from the user's message (best-effort).
+    /* Auto-extract durable memories from the user's message (best-effort).
+       Not in an incognito chat, and not on a plan without memory: a chat
+       that does not read memory must not quietly write it either, or
+       "doesn't know anything about me" lasts exactly until the next
+       conversation. */
     try {
+      if (anonymous || !TIER_LIMITS[callerTier].memory) throw new SkipMemory();
       const existingMems = (memRows ?? []).map((m) => m.content);
       const newMems = await extractMemories(data.text, existingMems);
       if (newMems.length > 0) {

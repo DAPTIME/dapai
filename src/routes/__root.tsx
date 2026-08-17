@@ -244,7 +244,7 @@ function IncognitoToggle() {
             aria-label={on ? "Incognito on — hide this chat from your history" : "Incognito off"}
           >
             {on ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            <span className="hidden sm:inline">Incognito</span>
+            <span>Incognito</span>
           </Button>
         </TooltipTrigger>
         <TooltipContent>{on ? "Incognito on — kept out of your chat history" : "Incognito — keep a chat out of your history"}</TooltipContent>
@@ -267,6 +267,9 @@ function HeaderBar() {
     TIER_RANK[(profileQuery.data?.tier as Tier | undefined) ?? "free"] >=
     TIER_RANK.pro;
 
+  const headerPath = useRouterState({ select: (st) => st.location.pathname });
+  const isHome = headerPath === "/";
+
   /* The two groups inside the header were flex items with nothing
      stopping them growing, so on a phone the account controls pushed it
      out to ~770px against a 412px screen — and because the header is in
@@ -281,7 +284,12 @@ function HeaderBar() {
       </div>
       <div className="flex min-w-0 shrink items-center gap-2">
         <InstallAppButton />
-        <IncognitoToggle />
+        {/* Home only. It was in the header on every page, where on a phone
+            it collapsed to a bare eye with no label — a control nobody could
+            identify, sitting one tap from turning itself on. Starting a chat
+            is the only moment the choice means anything, so that is the only
+            place it appears. */}
+        {isHome && <IncognitoToggle />}
 
         {!isPro && (
           <Button
