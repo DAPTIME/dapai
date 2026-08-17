@@ -23,6 +23,23 @@ export type QueueTicket = {
 };
 
 /**
+ * The SQL calls the column `pos`, not `position` — `position` is a reserved
+ * word in Postgres and a RETURNS TABLE cannot use it. Renamed here at the
+ * boundary so the rest of the app reads the word it means.
+ */
+type QueueRow = { id: string; lane: string; pos: number; state: string };
+
+const toTicket = (row: QueueRow | null): QueueTicket | null =>
+  row
+    ? {
+        id: row.id,
+        lane: row.lane === "a" ? "a" : "b",
+        position: row.pos,
+        state: row.state as QueueTicket["state"],
+      }
+    : null;
+
+/**
  * Is this "the queue isn't installed yet" rather than a real failure?
  *
  * Same reasoning as the usage ledger: if the migration has not run, the
@@ -52,7 +69,7 @@ export const joinAiQueue = createServerFn({ method: "POST" })
       if (isQueueMissing(error)) return null;
       throw dbError(error, "queue_join");
     }
-    return (row ?? null) as QueueTicket | null;
+    return toTicket((row ?? null) as QueueRow | null);
   });
 
 /**
@@ -77,7 +94,7 @@ export const claimAiQueue = createServerFn({ method: "POST" })
     const { data: ticket } = await context.supabase
       .rpc("queue_status", { _id: data.id })
       .maybeSingle();
-    const t = (ticket ?? null) as QueueTicket | null;
+    const t = toTicket((ticket ?? null) as QueueRow | null);
 
     let etaSeconds: number | null = null;
     if (t && t.position > 0) {

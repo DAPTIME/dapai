@@ -29,7 +29,7 @@ RETURNS TABLE (tokens_day numeric, tokens_week numeric, images_day integer)
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  SELECT * FROM (VALUES
+  SELECT t.tokens_day, t.tokens_week, t.images_day FROM (VALUES
     ('free'::public.account_tier,      10::numeric,  40::numeric,  0),
     ('go'::public.account_tier,        25::numeric, 100::numeric,  3),
     ('pro'::public.account_tier,       50::numeric, 400::numeric,  8),
