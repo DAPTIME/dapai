@@ -108,7 +108,15 @@ export function unrotateXZ(dx: number, dz: number, rot: number): [number, number
 
 export type Medal = "author" | "gold" | "silver" | "bronze" | null;
 
-export const MEDAL_MULT = { author: 1, gold: 1.2, silver: 1.5, bronze: 2 } as const;
+/*
+ * Multiples of the author target. Tightened from 1.2 / 1.5 / 2, which were
+ * set against an estimated target that turned out to be well off the pace —
+ * a bronze at twice the estimate was slower than simply finishing. Now that
+ * the target is the track record plus a second, these hold their shape:
+ * bronze is a lap you have to drive properly, and gold is close to the
+ * record.
+ */
+export const MEDAL_MULT = { author: 1, gold: 1.15, silver: 1.35, bronze: 1.6 } as const;
 
 export function medalFor(timeMs: number, goalMs: number): Medal {
   if (timeMs <= goalMs * MEDAL_MULT.author) return "author";

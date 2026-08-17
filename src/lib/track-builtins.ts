@@ -623,6 +623,57 @@ function withCheckpoints(shape: Shape, count: number): Shape {
   return { cells: shape.cells, features };
 }
 
+
+/**
+ * Author-medal targets measured from the leaderboard, in ms.
+ *
+ * targetTime() below estimates a lap from the geometry, and the estimate
+ * turned out to be generous everywhere: across the twenty built-ins that
+ * have a recorded time, the fastest lap beat the estimate on all twenty,
+ * by 6% to 56%. An "author" medal handed out for a lap four seconds slower
+ * than the track record is not an author medal.
+ *
+ * So where a real time exists, the target is that record plus one second.
+ * Beating it means matching the best anyone has driven, near enough.
+ *
+ * Measured 2026-08-17 from get_track_leaderboard. These are a snapshot, not
+ * a live read: a target that moved every time somebody set a record would
+ * take medals away from players who had already earned them, which is worse
+ * than being slightly out of date. Re-run the numbers deliberately.
+ */
+const MEASURED_GOALS: Record<number, number> = {
+  1: 9383,      // Sprout Loop
+  2: 17158,     // Meadow Kink
+  3: 21483,     // Clover Ring
+  4: 21517,     // Willow Waist
+  5: 21050,     // Fern Switchback
+  6: 15392,     // Bluebell Rise
+  7: 22042,     // Verdant Spur
+  8: 21600,     // Dewfall Crossing
+  9: 16333,     // Highvine Terrace
+  10: 16083,    // Skyblossom
+  11: 21900,    // Sunbaked Ring
+  12: 21633,    // Dune Dash
+  13: 21800,    // Mirage Kink
+  14: 23083,    // Canyon Switch
+  15: 15858,    // Sandstone Rise
+  16: 30342,    // Oasis Spur
+  17: 24425,    // Scorpion Cross
+  18: 23900,    // Sunspire Climb
+  19: 21525,    // Great Basin
+  31: 32625,    // Frost Ring
+};
+
+/**
+ * Applied to the estimate for the twenty tracks nobody has set a time on.
+ *
+ * The median measured target came out at 0.771 of the estimate, so the
+ * estimator is generous by a consistent enough margin to correct for.
+ * The median rather than the tightest ratio (0.437), because guessing a
+ * target nobody has ever driven should err toward attainable.
+ */
+const UNMEASURED_TIGHTEN = 0.771;
+
 function build(
   id: number, name: string, season: Season, difficulty: Difficulty,
   shape: Shape, checkpoints: number,
@@ -639,7 +690,9 @@ function build(
   if (!walk.reachesFinish) {
     throw new Error(`built-in "${name}" is not drivable: ${walk.problem ?? "unknown"}`);
   }
-  return { id, name, season, difficulty, goal: targetTime(data), data };
+  const goal =
+    MEASURED_GOALS[id] ?? Math.round(targetTime(data) * UNMEASURED_TIGHTEN);
+  return { id, name, season, difficulty, goal, data };
 }
 
 type Entry = [name: string, difficulty: Difficulty, shape: Shape, checkpoints: number];
