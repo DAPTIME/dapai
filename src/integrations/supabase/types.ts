@@ -617,6 +617,40 @@ export type Database = {
         Args: { _id: string }
         Returns: boolean
       }
+      queue_join: {
+        Args: { _chat_id?: string | null }
+        Returns: {
+          id: string
+          lane: string
+          position: number
+          state: string
+        }[]
+      }
+      queue_status: {
+        Args: { _id: string }
+        Returns: {
+          id: string
+          lane: string
+          position: number
+          state: string
+        }[]
+      }
+      queue_claim: {
+        Args: { _id: string }
+        Returns: boolean
+      }
+      queue_release: {
+        Args: { _id: string; _cancelled?: boolean }
+        Returns: boolean
+      }
+      queue_beat: {
+        Args: { _id: string }
+        Returns: undefined
+      }
+      queue_eta_seconds: {
+        Args: { _lane: string }
+        Returns: number
+      }
       charge_usage: {
         Args: { _cost: number; _images?: number }
         Returns: {
