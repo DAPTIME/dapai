@@ -32,6 +32,7 @@ import { useAuth } from "@/lib/auth";
 import { getProfile } from "@/lib/chats.functions";
 import { TIER_RANK, TIER_LABEL, type Tier } from "@/lib/tier-rank";
 import { downgradeOwnTier } from "@/lib/tier.functions";
+import { TIER_LIMITS, isUnlimited } from "@/lib/usage-limits";
 
 // The ladder itself lives in tier-rank.ts so the server-side downgrade
 // endpoint can share it without importing a React component. Re-exported
@@ -100,6 +101,50 @@ export function UpgradeGateProvider({ children }: { children: ReactNode }) {
         onClose={() => setDialog(null)}
       />
     </Ctx.Provider>
+  );
+}
+
+/**
+ * The countable half of a plan card.
+ *
+ * Read from TIER_LIMITS rather than written out per plan, so the page
+ * cannot advertise an allowance the enforcement layer disagrees with —
+ * changing a limit changes what is shown, in one edit.
+ */
+function PlanSpecs({ tier }: { tier: Tier }) {
+  const l = TIER_LIMITS[tier];
+  const n = (v: number) => v.toLocaleString();
+
+  const rows: Array<[string, string]> = [
+    [
+      "Usage tokens",
+      isUnlimited(l.tokensPerDay)
+        ? "Unlimited"
+        : `${n(l.tokensPerDay)} a day · ${n(l.tokensPerWeek)} a week`,
+    ],
+    ["Prompt length", `${n(l.maxPromptTokens)} tokens`],
+    ["Reply length", `${n(l.maxResponseTokens)} tokens`],
+    [
+      "Images",
+      l.imagesPerDay <= 0
+        ? "Not included"
+        : isUnlimited(l.imagesPerDay)
+          ? "Unlimited"
+          : `${n(l.imagesPerDay)} a day`,
+    ],
+    ["Web search", l.webSearch ? "Yes" : "No"],
+    ["Memory", l.memory ? "Yes" : "No"],
+  ];
+
+  return (
+    <dl className="mt-4 flex-1 space-y-1 border-t border-border pt-3 text-xs">
+      {rows.map(([label, value]) => (
+        <div key={label} className="flex justify-between gap-2">
+          <dt className="text-muted-foreground">{label}</dt>
+          <dd className="text-right font-medium">{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -188,10 +233,15 @@ function UpgradeDialog({
                     </span>
                   )}
                   <h3 className="text-lg font-semibold">{plan.name}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {plan.tagline}
-                  </p>
-                  <ul className="mt-4 flex-1 space-y-2 text-sm">
+                  {/* Exclusive has no tagline. Rendering the element anyway
+                      would leave a blank line where the other three cards
+                      have text, so the element goes rather than emptying. */}
+                  {plan.tagline && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {plan.tagline}
+                    </p>
+                  )}
+                  <ul className="mt-4 space-y-2 text-sm">
                     {plan.benefits.map((b) => (
                       <li key={b} className="flex gap-2">
                         <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -199,6 +249,7 @@ function UpgradeDialog({
                       </li>
                     ))}
                   </ul>
+                  <PlanSpecs tier={plan.id as Tier} />
                   <div className="mt-5">
                     {isCurrent ? (
                       <Button variant="outline" className="w-full" disabled>

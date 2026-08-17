@@ -2,10 +2,13 @@ import { dbError } from "./db-error";
 import {
   CHAT_HISTORY_LIMIT as CHAT_LIMITS,
   TIER_LIMITS,
-  MAX_IMAGES_PER_PROMPT,
+  MAX_IMAGES_PER_RESPONSE,
+  PROMPT_TOO_LONG_MESSAGE,
   costOfPrompt,
   estimateTokens,
   isLedgerMissing,
+  limitRefusal,
+  type ChargeResult,
 } from "@/lib/usage-limits";
 /**
  * Server functions for chats. All run as the authenticated user so RLS
@@ -34,6 +37,7 @@ import {
   unregisterAborter,
 } from "@/lib/ai-queue";
 import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
+import { isSafetyBlock, SAFETY_BLOCKED_MESSAGE } from "@/lib/safety";
 import { resolveOllamaModel } from "@/lib/ollama-models.server";
 import { MODEL_IDS, modelInfo, type ModelId } from "@/lib/models";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
@@ -624,25 +628,32 @@ export const sendChatMessage = createServerFn({ method: "POST" })
        outright rather than billed at the top band and then rejected. */
     {
       const limits = TIER_LIMITS[callerTier];
-      if (imageCount > MAX_IMAGES_PER_PROMPT) {
-        throw new Error(`Please attach at most ${MAX_IMAGES_PER_PROMPT} image per message.`);
-      }
-      const promptTokens = estimateTokens(data.text);
-      if (promptTokens > limits.maxPromptTokens) {
+
+      if (imageCount > MAX_IMAGES_PER_RESPONSE) {
         throw new Error(
-          `That message is too long for your plan — about ${promptTokens} tokens against a ${limits.maxPromptTokens} limit. Shorten it, or upgrade for more room.`
+          `Only ${MAX_IMAGES_PER_RESPONSE} image per message, on every plan.`
+        );
+      }
+      // A plan with no image allowance is an upgrade prompt, not a quota
+      // message — there is no reset that will give them one.
+      if (imageCount > 0 && limits.imagesPerDay <= 0) {
+        throw new Error(
+          "Images aren't part of your plan. Upgrade to generate them."
         );
       }
 
-      const cost = costOfPrompt({
-        tier: callerTier,
-        model: effectiveModel,
-        promptTokens,
-        hasImage: imageCount > 0,
-      });
+      /* The length check comes first and costs nothing: an over-long
+         message is refused outright rather than billed at the top band
+         and then rejected. costOfPrompt returns null for exactly that
+         case, so the two cannot drift apart. */
+      const promptTokens = estimateTokens(data.text);
+      const cost = costOfPrompt(callerTier, promptTokens);
+      if (cost === null) throw new Error(PROMPT_TOO_LONG_MESSAGE);
 
       // charge_usage does the check and the debit under a row lock, so two
-      // messages sent at once cannot both spend the last token.
+      // messages sent at once cannot both spend the last token. Charged
+      // before the orchestrator is dialled, because a reply that arrives
+      // after the allowance ran out is a reply we gave away.
       const { data: charged, error: chargeErr } = await supabase
         .rpc("charge_usage", { _cost: cost, _images: Math.min(imageCount, 1) })
         .maybeSingle();
@@ -653,7 +664,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         console.warn("[usage] charge_usage missing — not counting this message");
       }
       if (charged && charged.ok === false) {
-        throw new Error(charged.reason ?? "You have used up your allowance.");
+        throw new Error(limitRefusal(charged as ChargeResult, callerTier));
       }
     }
 
@@ -906,6 +917,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               model: resolvedModel,
               messages,
               stream: false,
+              // The reply length the sender's plan pays for. Sent to the
+              // orchestrator rather than trimmed afterwards, so a long
+              // answer is never generated and then thrown away.
+              max_tokens: TIER_LIMITS[callerTier].maxResponseTokens,
               ...(active.lite ? liteOptions : {}),
             }),
             signal: ctrl.signal,
@@ -929,6 +944,17 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             typeof json?.error === "string"
               ? json.error
               : json?.error?.message;
+
+          /* A safety refusal is not an outage. Checked before the
+             no-content branch, because a blocked request usually comes
+             back with no content and would otherwise be reported as the
+             site being offline — which sends someone retrying a prompt
+             that will never go through. */
+          if (isSafetyBlock(json, res.status)) {
+            console.warn(`[chat] blocked upstream (HTTP ${res.status})`);
+            return SAFETY_BLOCKED_MESSAGE;
+          }
+
           const content =
             json?.choices?.[0]?.message?.content ?? json?.message?.content;
           if (!content) {

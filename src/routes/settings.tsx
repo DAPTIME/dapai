@@ -9,6 +9,7 @@ import { InstallAppButton } from "@/components/install-app-button";
 import { MemoryVault } from "@/components/memory-vault";
 
 import { useUpgradeGate } from "@/lib/tier-gate";
+import { TIER_LIMITS } from "@/lib/usage-limits";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -49,7 +50,11 @@ function Settings() {
   const [history, setHistory] = useLocalToggle("dap.history", true);
   const [sounds, setSounds] = useLocalToggle("dap.sounds", false);
   const [beta, setBetaRaw] = useLocalToggle("dap.beta", false);
-  const { hasTier, requireTier } = useUpgradeGate();
+  const { hasTier, requireTier, tier } = useUpgradeGate();
+  // Memory is not part of the Free plan, so the section is not shown
+  // at all rather than shown locked: a control someone can never
+  // unlock is clutter, and the plans page already says who gets it.
+  const canSeeMemory = TIER_LIMITS[tier].memory;
   const canBeta = hasTier("go");
   // Beta features are Pro and up; anyone lower gets the upgrade screen.
   const setBeta = (v: boolean) => {
@@ -107,18 +112,19 @@ function Settings() {
 
         <PrivacyRow />
 
-        {beta && canBeta ? (
-          <MemoryVault />
-        ) : (
-          <div className="rounded-2xl border border-dashed border-border bg-card/50 p-5 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2 font-medium text-foreground">
-              <Brain className="h-4 w-4" /> Memory Vault
+        {canSeeMemory &&
+          (beta && canBeta ? (
+            <MemoryVault />
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-5 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 font-medium text-foreground">
+                <Brain className="h-4 w-4" /> Memory Vault
+              </div>
+              <p className="mt-1">
+                Enable Beta features above to open your Memory Vault.
+              </p>
             </div>
-            <p className="mt-1">
-              Enable Beta features above to open your Memory Vault.
-            </p>
-          </div>
-        )}
+          ))}
       </div>
     </div>
   );

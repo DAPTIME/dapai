@@ -7,10 +7,13 @@ import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { enqueue } from "@/lib/ai-queue";
 import {
   TIER_LIMITS,
-  MAX_IMAGES_PER_PROMPT,
+  MAX_IMAGES_PER_RESPONSE,
+  PROMPT_TOO_LONG_MESSAGE,
   costOfPrompt,
   estimateTokens,
   isLedgerMissing,
+  limitRefusal,
+  type ChargeResult,
 } from "@/lib/usage-limits";
 import type { ModelId } from "@/lib/models";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
@@ -159,28 +162,26 @@ export const Route = createFileRoute("/api/chat")({
               /* an unparseable body is the backend's problem, not the ledger's */
             }
 
-            if (images > MAX_IMAGES_PER_PROMPT) {
+            if (images > MAX_IMAGES_PER_RESPONSE) {
               return Response.json(
-                { error: `Please attach at most ${MAX_IMAGES_PER_PROMPT} image per message.` },
+                { error: `Only ${MAX_IMAGES_PER_RESPONSE} image per message, on every plan.` },
                 { status: 400 }
               );
             }
-            const promptTokens = estimateTokens(promptText);
-            if (promptTokens > limits.maxPromptTokens) {
+            if (images > 0 && limits.imagesPerDay <= 0) {
               return Response.json(
-                {
-                  error: `That message is too long for your plan — about ${promptTokens} tokens against a ${limits.maxPromptTokens} limit.`,
-                },
-                { status: 400 }
+                { error: "Images aren't part of your plan. Upgrade to generate them." },
+                { status: 403 }
               );
             }
 
-            const cost = costOfPrompt({
-              tier,
-              model: model as ModelId,
-              promptTokens,
-              hasImage: images > 0,
-            });
+            // Length first, and it costs nothing: an over-long message is
+            // refused rather than billed at the top band and then rejected.
+            const promptTokens = estimateTokens(promptText);
+            const cost = costOfPrompt(tier, promptTokens);
+            if (cost === null) {
+              return Response.json({ error: PROMPT_TOO_LONG_MESSAGE }, { status: 400 });
+            }
 
             const { createClient } = await import("@supabase/supabase-js");
             const asCaller = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
@@ -202,7 +203,7 @@ export const Route = createFileRoute("/api/chat")({
             }
             if (charged && (charged as { ok?: boolean }).ok === false) {
               return Response.json(
-                { error: (charged as { reason?: string }).reason ?? "You have used up your allowance." },
+                { error: limitRefusal(charged as ChargeResult, tier) },
                 { status: 429 }
               );
             }

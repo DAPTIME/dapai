@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, sendChatMessage, stopChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
+import { useAiQueue, describeQueue } from "@/lib/use-ai-queue";
 import { MODELS, modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
@@ -97,6 +98,8 @@ function ChatPage() {
     (m) => TIER_RANK[tier] >= TIER_RANK[m.minTier] && siteConfig.flags[m.flag] !== false,
   );
 
+  const queue = useAiQueue();
+
   const sendMut = useMutation({
     mutationFn: async ({ text, images }: { text: string; images?: string[] }) => {
       const model =
@@ -146,6 +149,17 @@ function ChatPage() {
         }
       }
 
+      /* Wait for a slot before dialling the orchestrator. Inference runs
+         on one box, so this is what stops ten simultaneous sends becoming
+         ten simultaneous generations. wait() resolves immediately when the
+         lane is free, and returns false if the person gave up while
+         queued — in which case nothing is sent. */
+      const myTurn = await queue.wait(threadId);
+      if (!myTurn) {
+        setOptimisticUserMessage(null);
+        throw new Error("__DAP_QUEUE_CANCELLED__");
+      }
+
       try {
         const sendPromise = send({
           data: {
@@ -165,6 +179,9 @@ function ChatPage() {
         return await sendPromise;
       } finally {
         setSearchingWeb(false);
+        // The slot comes back on success, on failure and on cancel — one
+        // call on the one path all three go through.
+        await queue.giveUp();
       }
     },
     onSuccess: (result) => {
@@ -185,6 +202,9 @@ function ChatPage() {
       setOptimisticUserMessage(null);
       // Roll back the optimistic message on failure.
       qc.invalidateQueries({ queryKey: ["chat", threadId] });
+      // Leaving the queue is something the person just asked for, not a
+      // failure to report back to them.
+      if (e instanceof Error && e.message === "__DAP_QUEUE_CANCELLED__") return;
       toast.error(e instanceof Error ? e.message : "Send failed");
     },
   });
@@ -395,6 +415,22 @@ function ChatPage() {
                     />
                     <span>Searching the web…</span>
                   </div>
+                ) : queue.view.waiting ? (
+                  /* Queued is not generating, and conflating the two makes
+                     a busy site look like a slow one. Different words,
+                     different motion: a pulsing dot rather than the
+                     three-dot typing animation. */
+                  <div
+                    className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <span
+                      className="inline-block h-2 w-2 animate-pulse rounded-full bg-current"
+                      aria-hidden
+                    />
+                    <span>{describeQueue(queue.view)}</span>
+                  </div>
                 ) : (
                   <div className="mt-2">
                     <span className="thinking-dot" />
@@ -444,6 +480,15 @@ function ChatPage() {
               onSend={(text, images) => sendMut.mutate({ text, images })}
               pending={busy}
               onStop={() => {
+                /* Stop means stop whichever stage we are in. Queued: leave
+                   the line and hand the slot straight back rather than
+                   holding it until the reaper notices. Generating: abort
+                   the upstream call. */
+                if (queue.view.waiting) {
+                  void queue.giveUp(true);
+                  toast.info("Left the queue");
+                  return;
+                }
                 void stop({ data: { chatId: threadId } }).catch(() => {});
                 toast.info("Stopping…");
               }}

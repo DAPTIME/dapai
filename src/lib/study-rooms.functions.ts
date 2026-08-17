@@ -16,6 +16,7 @@ import { firstName } from "./utils";
 import { completeOnce } from "./ai-backend.server";
 import { modelInfo, MODEL_IDS, type ModelId } from "./models";
 import { TIER_RANK } from "./tier-rank";
+import { TIER_LIMITS } from "./usage-limits";
 import type { Tier } from "./tier-gate";
 
 
@@ -551,7 +552,12 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
             },
             ...transcript,
           ],
-          { timeoutMs: 120_000 }
+          {
+            timeoutMs: 120_000,
+            // The reply runs on the sender's plan, so it gets the sender's
+            // output cap — same as it would in their own chat.
+            maxTokens: TIER_LIMITS[myTier].maxResponseTokens,
+          }
         )
       ).trim();
     } catch (e) {

@@ -609,6 +609,18 @@ export type Database = {
       }
       admin_restore_study_room: { Args: { _id: string }; Returns: boolean }
       can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
+      queue_beat: { Args: { _id: string }; Returns: undefined }
+      queue_claim: { Args: { _id: string }; Returns: boolean }
+      queue_eta_seconds: { Args: { _lane: string }; Returns: number }
+      queue_join: {
+        Args: { _chat_id?: string | null }
+        Returns: { id: string; lane: string; position: number; state: string }[]
+      }
+      queue_release: { Args: { _id: string; _cancelled?: boolean }; Returns: boolean }
+      queue_status: {
+        Args: { _id: string }
+        Returns: { id: string; lane: string; position: number; state: string }[]
+      }
       charge_usage: {
         Args: { _cost: number; _images?: number }
         Returns: {
