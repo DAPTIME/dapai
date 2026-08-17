@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
-import { getChat, sendChatMessage, stopChatMessage, getProfile, planSearchForMessage } from "@/lib/chats.functions";
+import { getChat, sendChatMessage, stopChatMessage, getProfile, planSearchForMessage, discardEmptyChat } from "@/lib/chats.functions";
 import { useAiQueue, describeQueue } from "@/lib/use-ai-queue";
 import { MODELS, modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
@@ -99,6 +99,13 @@ function ChatPage() {
   );
 
   const queue = useAiQueue();
+  const discard = useServerFn(discardEmptyChat);
+
+  /* Pressing stop is a decision about the answer, not about the chat, so a
+     cancelled thread is kept even though it has no reply. Tracked in a ref
+     rather than state because only the leaving effect reads it, and it must
+     not trigger a render. */
+  const wasCancelled = useRef(false);
 
   const sendMut = useMutation({
     mutationFn: async ({ text, images }: { text: string; images?: string[] }) => {
@@ -209,6 +216,24 @@ function ChatPage() {
     },
   });
 
+
+  /* Leaving a chat that never got an answer throws it away.
+     A question with no reply is not a conversation, and keeping it burns
+     one of the account's saved-chat slots on nothing. The server makes the
+     final call — it refuses to delete anything with a live queue ticket,
+     because the tab that navigated away is the one least able to know
+     whether a reply is still coming. */
+  useEffect(() => {
+    return () => {
+      discard({ data: { chatId: threadId, cancelled: wasCancelled.current } })
+        .then((r) => {
+          if (r?.deleted) qc.invalidateQueries({ queryKey: ["chats"] });
+        })
+        .catch(() => {
+          /* best effort: an undeleted empty chat is untidy, not broken */
+        });
+    };
+  }, [threadId, discard, qc]);
 
   // Auto-send any pending message stashed from the homepage navigation.
   const pendingFired = useRef(false);
@@ -484,6 +509,7 @@ function ChatPage() {
                    the line and hand the slot straight back rather than
                    holding it until the reaper notices. Generating: abort
                    the upstream call. */
+                wasCancelled.current = true;
                 if (queue.view.waiting) {
                   void queue.giveUp(true);
                   toast.info("Left the queue");

@@ -32,6 +32,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_queue: {
+        Row: {
+          id: string
+          user_id: string
+          tier: string
+          lane: string
+          state: string
+          chat_id: string | null
+          created_at: string
+          started_at: string | null
+          finished_at: string | null
+          heartbeat_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          tier: string
+          lane: string
+          state?: string
+          chat_id?: string | null
+          created_at?: string
+          started_at?: string | null
+          finished_at?: string | null
+          heartbeat_at?: string
+        }
+        Update: {
+          state?: string
+          started_at?: string | null
+          finished_at?: string | null
+          heartbeat_at?: string
+        }
+        Relationships: []
+      }
       beta_testers: {
         Row: {
           created_at: string
