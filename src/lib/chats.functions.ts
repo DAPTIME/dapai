@@ -988,8 +988,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     }
 
 
-    const { url: backend, key, upstreamModel } = backendFor(effectiveModel);
     const { offlineMessage } = await import("./offline-message.server");
+    const {
+      aiEnabled,
+      orchestratorComplete,
+      OrchestratorUnavailableError,
+      AI_MAINTENANCE_MESSAGE,
+      CONNECTION_LOST_MESSAGE,
+    } = await import("./dap-orchestrator.server");
 
     /* Set wherever the reply is an outage rather than an answer, so the
        charge can be given back. A flag rather than matching the text of
@@ -999,138 +1005,51 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     let dispatchFailed = false;
 
     let replyText = "";
-    if (!backend) {
-      console.error(
-        `[chat] No AI backend configured for ${effectiveModel} (missing AI_BACKEND_URL_${active.lite ? "LITE" : "PRO"}).`
-      );
+    if (!(await aiEnabled())) {
       dispatchFailed = true;
-      replyText = await offlineMessage();
-
+      replyText = AI_MAINTENANCE_MESSAGE;
     } else {
-      // Per-model queue: only one in-flight call per model at a time.
+      // One in-flight generation per tier lane: inference runs on one box.
       replyText = await enqueue(`model:${effectiveModel}`, async () => {
-        const liteOptions = {
-          reasoning_effort: "none",
-          thinking: false,
-          enable_thinking: false,
-          include_reasoning: false,
-          return_reasoning: false,
-          temperature: 0,
-          top_p: 1,
-          chat_template_kwargs: {
-            enable_thinking: false,
-            thinking: false,
-            no_think: true,
-          },
-          extra_body: {
-            chat_template_kwargs: {
-              enable_thinking: false,
-              thinking: false,
-              no_think: true,
-            },
-          },
-        };
-
         // The user may have hit Stop while this request waited in line.
         if (isStopped(data.chatId)) return "__DAP_STOPPED__";
 
         const ctrl = new AbortController();
         registerAborter(data.chatId, ctrl);
-        const timeoutMs = 90_000;
-        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
         try {
-          let resolvedModel = upstreamModel;
-          if (active.lite) {
-            const resolved = await resolveOllamaModel(backend, key, upstreamModel);
-            if (resolved.installed && resolved.installed.length === 0) {
-              console.error(
-                `[chat] ${active.label} backend has no models installed.`
-              );
-            dispatchFailed = true;
-          return await offlineMessage();
-            }
-
-            resolvedModel = resolved.model;
-          }
-          const res = await fetch(backend, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(key ? { Authorization: `Bearer ${key}` } : {}),
-            },
-            body: JSON.stringify({
-              model: resolvedModel,
-              messages,
-              stream: false,
-              // The reply length the sender's plan pays for. Sent to the
-              // orchestrator rather than trimmed afterwards, so a long
-              // answer is never generated and then thrown away.
-              max_tokens: TIER_LIMITS[callerTier].maxResponseTokens,
-              ...(active.lite ? liteOptions : {}),
-            }),
+          const out = await orchestratorComplete({
+            tier: callerTier,
+            messages: messages as Array<{
+              role: "system" | "user" | "assistant";
+              content: unknown;
+            }>,
+            timeoutMs: 180_000,
             signal: ctrl.signal,
           });
-          const raw = await res.text();
-          let json: {
-            choices?: { message?: { content?: string } }[];
-            message?: { content?: string };
-            error?: string | { message?: string };
-          } = {};
-          try {
-            json = JSON.parse(raw);
-          } catch {
-            // Upstream returned non-JSON (ngrok error page, HTML, plain text).
-            console.error(
-              `[chat] Non-JSON from backend (HTTP ${res.status}): ${raw.replace(/\s+/g, " ").trim().slice(0, 200)}`
-            );
+          if (!out.trim()) {
             dispatchFailed = true;
-          return await offlineMessage();
+            return await offlineMessage();
           }
-          const errStr =
-            typeof json?.error === "string"
-              ? json.error
-              : json?.error?.message;
-
-          /* A safety refusal is not an outage. Checked before the
-             no-content branch, because a blocked request usually comes
-             back with no content and would otherwise be reported as the
-             site being offline — which sends someone retrying a prompt
-             that will never go through. */
-          if (isSafetyBlock(json, res.status)) {
-            console.warn(`[chat] blocked upstream (HTTP ${res.status})`);
-            return SAFETY_BLOCKED_MESSAGE;
-          }
-
-          const content =
-            json?.choices?.[0]?.message?.content ?? json?.message?.content;
-          if (!content) {
-            console.error(
-              `[chat] Backend returned no content (HTTP ${res.status}): ${errStr ?? raw.slice(0, 200)}`
-            );
-            dispatchFailed = true;
-          return await offlineMessage();
-          }
-          // Always strip <think>/reasoning blocks and system-prompt
-          // echoes — Pro can leak them too depending on which checkpoint
-          // is loaded in LM Studio.
-          let out = sanitizeLiteReply(content);
-          if (hasLiteReasoningLeak(out)) out = sanitizeLiteReply(out);
-          return out;
+          let cleaned = sanitizeLiteReply(out);
+          if (hasLiteReasoningLeak(cleaned)) cleaned = sanitizeLiteReply(cleaned);
+          return cleaned;
         } catch (e) {
           const err = e as Error;
           if (err.name === "AbortError" && isStopped(data.chatId)) {
             return "__DAP_STOPPED__";
           }
-          console.error(`[chat] Backend request failed: ${err.name}: ${err.message}`);
+          dispatchFailed = true;
           if (err.name === "AbortError") {
-            dispatchFailed = true;
             return "DAP AI took too long to reply. Please try again.";
           }
-          dispatchFailed = true;
+          if (err instanceof OrchestratorUnavailableError) {
+            return err.message === CONNECTION_LOST_MESSAGE
+              ? CONNECTION_LOST_MESSAGE
+              : await offlineMessage();
+          }
+          console.error(`[chat] orchestrator failed: ${err.name}: ${err.message}`);
           return await offlineMessage();
-
         } finally {
-          clearTimeout(timer);
           unregisterAborter(data.chatId);
         }
       });
