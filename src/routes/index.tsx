@@ -14,6 +14,7 @@ import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { MODELS } from "@/lib/models";
 
 import { useAuth } from "@/lib/auth";
+import { useNewChatGuard } from "@/lib/use-new-chat-guard";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -123,6 +124,7 @@ function Home() {
   const [trial, setTrial] = useState<TrialExchange | null>(null);
   const [trialPending, setTrialPending] = useState(false);
   const create = useServerFn(createChat);
+  const newChatGuard = useNewChatGuard();
   const siteConfig = useSiteConfig();
   const siteEnabled = siteConfig.enabled;
   const proEnabled = siteConfig.flags.pro_model;
@@ -197,6 +199,8 @@ function Home() {
 
   const startChat = useMutation({
     mutationFn: async (payload: { text: string; images?: string[] }) => {
+      const proceed = await newChatGuard.request();
+      if (!proceed) return null;
       const incognito = typeof window !== "undefined" && localStorage.getItem("dap.incognito") === "1";
       const chat = await create({ data: { incognito } });
       // Stash pending message so the chat route auto-sends after navigation.
@@ -209,6 +213,7 @@ function Home() {
       return chat.id;
     },
     onSuccess: (chatId) => {
+      if (!chatId) return;
       navigate({ to: "/c/$threadId", params: { threadId: chatId } });
     },
   });
@@ -416,6 +421,7 @@ function Home() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {newChatGuard.dialog}
     </div>
   );
 }

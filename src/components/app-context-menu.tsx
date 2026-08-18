@@ -21,6 +21,7 @@ import { useAuth } from "@/lib/auth";
 import { createChat } from "@/lib/chats.functions";
 import { toast } from "sonner";
 import { useUpgradeGate } from "@/lib/tier-gate";
+import { useNewChatGuard } from "@/lib/use-new-chat-guard";
 
 
 /**
@@ -35,11 +36,17 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
   const qc = useQueryClient();
   const create = useServerFn(createChat);
   const { openUpgrade } = useUpgradeGate();
+  const newChatGuard = useNewChatGuard();
 
 
   const createMut = useMutation({
-    mutationFn: () => create(),
+    mutationFn: async () => {
+      const proceed = await newChatGuard.request();
+      if (!proceed) return null;
+      return create();
+    },
     onSuccess: (chat) => {
+      if (!chat) return;
       qc.invalidateQueries({ queryKey: ["chats"] });
       navigate({ to: "/c/$threadId", params: { threadId: chat.id } });
     },
@@ -151,8 +158,9 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    // modal={false} keeps the rest of the page interactive while the menu is
-    // open, so the replayed right-click above actually reaches the trigger.
+    <>
+    {/* modal={false} keeps the rest of the page interactive while the menu is
+        open, so the replayed right-click above actually reaches the trigger. */}
     <ContextMenu
       modal={false}
       onOpenChange={(o) => {
@@ -196,5 +204,7 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
       </ContextMenuContent>
 
     </ContextMenu>
+      {newChatGuard.dialog}
+    </>
   );
 }

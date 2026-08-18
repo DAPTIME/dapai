@@ -156,7 +156,15 @@ export function PlanAndUsage() {
           {usage.isError && (
             <p className="text-sm text-destructive">Couldn't load your usage right now.</p>
           )}
-          {usage.data && (
+          {/* Exclusive is uncapped: nothing is checked or deducted for it, so
+              showing meters would only invent limits that do not exist. */}
+          {usage.data && tier === "exclusive" && (
+            <p className="text-sm text-muted-foreground">
+              Nothing is counted on this plan — no daily or weekly caps, no image
+              limit, and your chat history is never pruned.
+            </p>
+          )}
+          {usage.data && tier !== "exclusive" && (
             <>
               <Meter
                 label="Chat history"

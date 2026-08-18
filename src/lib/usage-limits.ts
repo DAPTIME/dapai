@@ -27,7 +27,7 @@ const INF = Number.POSITIVE_INFINITY;
 export const CHAT_HISTORY_LIMIT: Record<Tier, number> = {
   free: 5,
   go: 15,
-  pro: 50,
+  pro: 30,
   // Genuinely unlimited rather than a large number: a cap of 100 would
   // still silently delete somebody's 101st chat one day.
   exclusive: INF,

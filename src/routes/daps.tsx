@@ -21,6 +21,7 @@ import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { useFeatureGuard } from "@/lib/feature-guard";
 import { useUpgradeGate } from "@/lib/tier-gate";
 import { useAuth } from "@/lib/auth";
+import { useNewChatGuard } from "@/lib/use-new-chat-guard";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -52,6 +53,7 @@ function Daps() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const create = useServerFn(createChat);
+  const newChatGuard = useNewChatGuard();
   const listCustom = useServerFn(listCustomDaps);
   const createCustom = useServerFn(createCustomDap);
   const deleteCustom = useServerFn(deleteCustomDap);
@@ -139,9 +141,15 @@ function Daps() {
   });
 
   const startDap = useMutation({
-    mutationFn: (dapId: string) => create({ data: { dapId, incognito: typeof window !== "undefined" && localStorage.getItem("dap.incognito") === "1" } }),
-    onSuccess: (chat) =>
-      navigate({ to: "/c/$threadId", params: { threadId: chat.id } }),
+    mutationFn: async (dapId: string) => {
+      const proceed = await newChatGuard.request();
+      if (!proceed) return null;
+      return create({ data: { dapId, incognito: typeof window !== "undefined" && localStorage.getItem("dap.incognito") === "1" } });
+    },
+    onSuccess: (chat) => {
+      if (!chat) return;
+      navigate({ to: "/c/$threadId", params: { threadId: chat.id } });
+    },
     onError: (e: Error) =>
       toast.error(e?.message || "Couldn't start that Custom AI. Please try again."),
   });
@@ -488,6 +496,10 @@ function Daps() {
           ))}
         </div>
       </section>
+
+      {/* Starting a Custom AI creates a chat, so it goes through the same
+          saved-chat limit warning as the composer. */}
+      {newChatGuard.dialog}
     </div>
   );
 }

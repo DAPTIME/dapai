@@ -164,6 +164,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_incognito: boolean
+          pinned: boolean
           title: string
           updated_at: string
           user_id: string
@@ -174,6 +175,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_incognito?: boolean
+          pinned?: boolean
           title?: string
           updated_at?: string
           user_id: string
@@ -184,6 +186,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_incognito?: boolean
+          pinned?: boolean
           title?: string
           updated_at?: string
           user_id?: string
@@ -728,6 +731,7 @@ export type Database = {
           week_used: number
         }[]
       }
+      chat_rate_ok: { Args: never; Returns: boolean }
       create_custom_dap: {
         Args: {
           _description: string
@@ -849,6 +853,20 @@ export type Database = {
           _pro_waiting: boolean
         }
         Returns: string
+      }
+      queue_pick_lane: {
+        Args: {
+          _free_waiting: number
+          _go_since_free: number
+          _go_waiting: number
+          _pro_since_go: number
+          _pro_waiting: number
+        }
+        Returns: {
+          go_since_free: number
+          lane: string
+          pro_since_go: number
+        }[]
       }
       queue_position: { Args: { _id: string }; Returns: number }
       queue_reap: { Args: never; Returns: undefined }

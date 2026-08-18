@@ -146,24 +146,45 @@ export const Route = createFileRoute("/api/chat")({
           );
         }
 
+        /* Rate limit before anything is spent: 4 requests per minute per
+           person, every tier including exclusive. One request is dispatched
+           at a time system-wide, so without this one impatient tab can hold
+           the slot away from everyone else. A missing function (older
+           database) must not block chat, hence the permissive default. */
+        const { data: rateOk, error: rateErr } = await asCaller.rpc("chat_rate_ok");
+        if (!rateErr && rateOk === false) {
+          return Response.json(
+            {
+              error:
+                "You're sending messages faster than DAP AI can answer them. Please wait a moment and try again.",
+            },
+            { status: 429 }
+          );
+        }
+
         const promptTokens = estimateTokens(body.text);
         const cost = costOfPrompt(tier, promptTokens);
         if (cost === null) return Response.json({ error: PROMPT_TOO_LONG_MESSAGE }, { status: 400 });
         const chargedImages = Math.min(imageCount, 1);
 
-        const { data: charged, error: chargeErr } = await asCaller
-          .rpc("charge_usage", { _cost: cost, _images: chargedImages })
-          .maybeSingle();
-        if (chargeErr && !isLedgerMissing(chargeErr)) {
-          return Response.json(
-            { error: "We couldn't check your usage allowance. Please try again." },
-            { status: 503 }
-          );
+        // Exclusive never checks or deducts against the ledger at all —
+        // no charge_usage call, so nothing is ever written for it.
+        let chargedCost = 0;
+        if (tier !== "exclusive") {
+          const { data: charged, error: chargeErr } = await asCaller
+            .rpc("charge_usage", { _cost: cost, _images: chargedImages })
+            .maybeSingle();
+          if (chargeErr && !isLedgerMissing(chargeErr)) {
+            return Response.json(
+              { error: "We couldn't check your usage allowance. Please try again." },
+              { status: 503 }
+            );
+          }
+          if (charged && (charged as { ok?: boolean }).ok === false) {
+            return Response.json({ error: limitRefusal(charged as ChargeResult, tier) }, { status: 429 });
+          }
+          chargedCost = chargeErr ? 0 : cost;
         }
-        if (charged && (charged as { ok?: boolean }).ok === false) {
-          return Response.json({ error: limitRefusal(charged as ChargeResult, tier) }, { status: 429 });
-        }
-        const chargedCost = chargeErr ? 0 : cost;
 
         // Queue slot: only one generation runs system-wide at a time.
         const { data: ticket } = await Promise.resolve(

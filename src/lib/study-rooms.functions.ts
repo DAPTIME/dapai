@@ -8,6 +8,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { normalizeRoomCode } from "./room-code";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assertAdmin } from "./admin.server";
@@ -130,7 +131,19 @@ export const createStudyRoom = createServerFn({ method: "POST" })
 export const joinStudyRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({ code: z.string().trim().min(4).max(10) }).parse(i)
+    z
+      .object({
+        code: z
+          .string()
+          .transform(normalizeRoomCode)
+          .pipe(
+            z
+              .string()
+              .min(4, "That room code looks too short — codes are 6 characters.")
+              .max(10, "That room code looks too long — codes are 6 characters.")
+          ),
+      })
+      .parse(i)
   )
   .handler(async ({ context, data }) => {
     /* Joining used to resolve the code and then upsert a membership row
@@ -318,7 +331,19 @@ export const adminRestoreStudyRoom = createServerFn({ method: "POST" })
 export const getStudyRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
-    z.object({ code: z.string().trim().min(4).max(10) }).parse(i)
+    z
+      .object({
+        code: z
+          .string()
+          .transform(normalizeRoomCode)
+          .pipe(
+            z
+              .string()
+              .min(4, "That room code looks too short — codes are 6 characters.")
+              .max(10, "That room code looks too long — codes are 6 characters.")
+          ),
+      })
+      .parse(i)
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;

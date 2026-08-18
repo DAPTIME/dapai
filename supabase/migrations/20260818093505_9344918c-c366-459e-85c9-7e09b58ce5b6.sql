@@ -1,0 +1,2 @@
+GRANT EXECUTE ON FUNCTION public.queue_pick_lane(integer, integer, integer, integer, integer) TO supabase_read_only_user;
+GRANT EXECUTE ON FUNCTION public.queue_next_lane(integer, integer, boolean, boolean, boolean) TO supabase_read_only_user;
