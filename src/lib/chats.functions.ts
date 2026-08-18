@@ -14,12 +14,10 @@ import {
  * Server functions for chats. All run as the authenticated user so RLS
  * scopes every read/write to that user's rows.
  *
- * Two models, two independent queues, two independent backend URLs:
- *   AI_BACKEND_URL_PRO   / AI_BACKEND_KEY_PRO    → dap-ai-1.0  (Pro)
- *   AI_BACKEND_URL_LITE  / AI_BACKEND_KEY_LITE   → dap-ai-lite (Lite)
- *
- * Legacy fallback: AI_BACKEND_URL / AI_BACKEND_KEY is used for either
- * model if the model-specific one isn't set, so older configs keep working.
+ * All inference goes through the single DAP orchestrator
+ * (src/lib/dap-orchestrator.server.ts) — there are no per-model backend
+ * URLs anymore. `effectiveModel` only selects the system prompt / feature
+ * flag / vision handling; the orchestrator itself picks the tier's hardware.
  *
  * Saved-chat limits per plan live in usage-limits.ts (5 / 15 / 50 /
  * unlimited). The oldest are pruned when a new chat is created.
@@ -38,7 +36,6 @@ import {
 } from "@/lib/ai-queue";
 import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { isSafetyBlock, SAFETY_BLOCKED_MESSAGE } from "@/lib/safety";
-import { resolveOllamaModel } from "@/lib/ollama-models.server";
 import { MODEL_IDS, modelInfo, type ModelId } from "@/lib/models";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 
@@ -47,11 +44,6 @@ import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 // Lite gets a smaller rolling window so its (smaller LM Studio context)
 // never overflows. Pro keeps the full history.
 const LITE_HISTORY_LIMIT = 12;
-
-/* Thrown to leave the best-effort search block when the plan has no web
-   search. A named class rather than a bare throw so the empty catch below
-   stays readable about what it is swallowing. */
-class SkipSearch extends Error {}
 
 /* Same idea for memory extraction: a named throw so the best-effort catch
    below stays honest about what it is swallowing. */
@@ -177,158 +169,6 @@ async function extractMemories(
     return [];
   }
 }
-
-/**
- * Decide if the user's message needs fresh information from the web
- * (current events, "latest", prices, scores, recent releases, real-time
- * facts, anything time-sensitive). Returns a tight search query when yes,
- * null when no. Best-effort — returns null on failure.
- */
-async function planWebSearch(userText: string): Promise<string | null> {
-  // Hard override: if the user explicitly asks to search/look up/google
-  // something, skip the classifier and search directly. This guarantees
-  // that "search the web for X" always triggers Firecrawl even if the
-  // classifier model is unavailable.
-  const explicit =
-    /\b(search (the )?(web|internet|online)|look (this |that |it )?up|google( it| this| that)?|browse the web|find (online|on the web)|web search|fact[- ]?check)\b/i;
-  if (explicit.test(userText)) {
-    // Strip the instruction phrase to make a tighter query.
-    const cleaned = userText
-      .replace(explicit, "")
-      .replace(/\b(please|for me|can you|could you|i want you to|tell me)\b/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    const q = (cleaned.length > 0 ? cleaned : userText).slice(0, 200);
-    return q;
-  }
-
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) return null;
-  try {
-    const res = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Decide if answering the user's message correctly REQUIRES fresh internet information (current events, 'latest' / 'newest' / 'recent', live scores, today's prices, recent releases, news, who currently holds X, real-time facts), OR the user explicitly asks to search/look up/google something. If yes, produce a short Google-style search query. If the answer is timeless general knowledge, math, coding, opinions, or the model can answer from training, say no. Return STRICT JSON: {\"search\": boolean, \"query\": string}.",
-            },
-            { role: "user", content: userText },
-          ],
-          response_format: { type: "json_object" },
-          stream: false,
-        }),
-      }
-    );
-    if (!res.ok) return null;
-    const json = (await res.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const raw = json?.choices?.[0]?.message?.content ?? "";
-    const parsed = JSON.parse(raw) as { search?: boolean; query?: string };
-    if (!parsed.search) return null;
-    const q = (parsed.query ?? userText).trim();
-    return q.length > 0 ? q.slice(0, 200) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Search the web via Firecrawl and return a compact, model-friendly
- * context block. Returns "" on failure.
- */
-async function webSearchContext(query: string): Promise<string> {
-  const key = process.env.FIRECRAWL_API_KEY;
-  if (!key) return "";
-  try {
-    const res = await fetch("https://api.firecrawl.dev/v2/search", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query, limit: 5 }),
-    });
-    if (!res.ok) return "";
-    type Hit = { url?: string; title?: string; description?: string };
-    const json = (await res.json()) as {
-      data?: Hit[] | { web?: Hit[] };
-    };
-    const results: Hit[] = Array.isArray(json?.data)
-      ? json.data
-      : json?.data?.web ?? [];
-    if (results.length === 0) return "";
-    const lines = results.slice(0, 5).map((r: Hit, i: number) => {
-      const title = (r.title ?? "").trim();
-      const desc = (r.description ?? "").trim().slice(0, 300);
-      const url = (r.url ?? "").trim();
-      return `[${i + 1}] ${title}\n${desc}\n${url}`;
-    });
-    return `Live web search results for: "${query}"\nUse these to answer accurately. Cite sources inline like [1], [2] when relevant. If the results don't actually answer the question, say so honestly.\n\n${lines.join("\n\n")}`;
-  } catch {
-    return "";
-  }
-}
-
-function backendFor(model: ModelId): {
-  url?: string;
-  key?: string;
-  upstreamModel: string;
-} {
-  if (model === "dap-ai-1.0") {
-    return {
-      url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
-      key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
-      upstreamModel: process.env.AI_BACKEND_MODEL_PRO ?? model,
-    };
-  }
-  if (model === "dap-ai-pro-lite") {
-    // Pro Lite has its own backend when configured, otherwise it shares the
-    // Lite tunnel so it keeps working out of the box.
-    return {
-      url:
-        process.env.AI_BACKEND_URL_PRO_LITE ??
-        process.env.AI_BACKEND_URL_LITE ??
-        process.env.AI_BACKEND_URL,
-      key:
-        process.env.AI_BACKEND_KEY_PRO_LITE ??
-        process.env.AI_BACKEND_KEY_LITE ??
-        process.env.AI_BACKEND_KEY,
-      upstreamModel:
-        process.env.AI_BACKEND_MODEL_PRO_LITE ??
-        process.env.AI_BACKEND_MODEL_LITE ??
-        model,
-    };
-  }
-  return {
-    url: process.env.AI_BACKEND_URL_LITE ?? process.env.AI_BACKEND_URL,
-    key: process.env.AI_BACKEND_KEY_LITE ?? process.env.AI_BACKEND_KEY,
-    upstreamModel: process.env.AI_BACKEND_MODEL_LITE ?? model,
-  };
-}
-
-/**
- * Client calls this BEFORE sendChatMessage so it can show a
- * "Searching the web…" indicator while the model is being primed.
- */
-export const planSearchForMessage = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i) =>
-    z.object({ text: z.string().min(1).max(8000) }).parse(i)
-  )
-  .handler(async ({ data }) => {
-    const query = await planWebSearch(data.text);
-    return { query };
-  });
 
 export const listChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -631,7 +471,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           .array(z.string().startsWith("data:image/").max(8_000_000))
           .max(4)
           .optional(),
-        searchQuery: z.string().min(1).max(200).optional(),
         /** Study Mode: Socratic tutoring, one step at a time. */
         studyMode: z.boolean().optional(),
       })
@@ -893,23 +732,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     const metaPrompt =
       active.lite ? "" : await generateMetaPrompt(data.text, systemPrompt, dapName);
 
-    // Auto web-search: a fast classifier decides if the question needs
-    // fresh info; if so we run a Firecrawl search and inject the results
-    // as system context so the model can answer accurately and cite.
-    let webContext = "";
-    try {
-      /* Same reasoning as memory: a plan without web search must not get
-         it by posting searchQuery straight to the server. */
-      if (!TIER_LIMITS[callerTier].webSearch) throw new SkipSearch();
-      const query =
-        data.searchQuery && data.searchQuery.trim().length > 0
-          ? data.searchQuery.trim()
-          : await planWebSearch(data.text);
-      if (query) webContext = await webSearchContext(query);
-    } catch {
-      /* best-effort */
-    }
-
     const ANTI_SYCOPHANCY =
       "Accuracy rules: (1) NEVER invent specific numbers, stats, dates, names, prices, or version numbers. If you don't actually know the exact value, say \"I'm not sure\" or \"I don't have that info\" — do not guess and do not output a plausible-looking number. (2) For niche topics (specific games, mods, private projects, internal tools, fan communities) assume the user knows more than you. If the user states a value, trust it and use it going forward unless web search results clearly contradict it. (3) If web search results are present above, prefer them over both your training data and the user's claim, and cite [1], [2] when relevant.";
 
@@ -935,9 +757,6 @@ export const sendChatMessage = createServerFn({ method: "POST" })
               content: `[Auto-tuned prompt for this request]\n${metaPrompt}`,
             },
           ]
-        : []),
-      ...(webContext
-        ? [{ role: "system" as const, content: webContext }]
         : []),
       { role: "system" as const, content: ANTI_SYCOPHANCY },
       ...(data.studyMode ? [{ role: "system" as const, content: STUDY_MODE_PROMPT }] : []),

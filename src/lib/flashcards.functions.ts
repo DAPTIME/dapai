@@ -1,14 +1,14 @@
 /**
- * Study Mode flashcards. Cards are generated from a chat using the user's
- * OWN AI backend (LM Studio / Ollama on their hardware) and reviewed with a
- * simplified SM-2 spaced-repetition schedule.
+ * Study Mode flashcards. Cards are generated from a chat through the DAP
+ * orchestrator and reviewed with a simplified SM-2 spaced-repetition
+ * schedule.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { dbError } from "./db-error";
-import { completeOnce } from "./ai-backend.server";
-import { MODEL_IDS, type ModelId } from "@/lib/models";
+import { orchestratorComplete, OrchestratorUnavailableError } from "./dap-orchestrator.server";
+import { MODEL_IDS } from "@/lib/models";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { chargeForPrompt, refundPrompt } from "@/lib/charge-usage.server";
 import type { Tier } from "@/lib/tier-rank";
@@ -87,18 +87,24 @@ export const generateFlashcards = createServerFn({ method: "POST" })
 
     let raw: string;
     try {
-      raw = await completeOnce(data.model as ModelId, [
-      {
-        role: "system",
-        content:
-          'You create study flashcards. Read the conversation and output STRICT JSON only: {"cards":[{"front":"question","back":"answer"}]}. Between 3 and 12 cards. Each front is a single clear question under 160 chars; each back is a concise factual answer under 300 chars. Cover only the study material in the conversation — no meta questions about the chat itself. No markdown, no commentary.',
-      },
-      { role: "user", content: transcript },
-      ]);
+      raw = await orchestratorComplete({
+        tier: (prof?.tier as Tier) ?? "free",
+        messages: [
+          {
+            role: "system",
+            content:
+              'You create study flashcards. Read the conversation and output STRICT JSON only: {"cards":[{"front":"question","back":"answer"}]}. Between 3 and 12 cards. Each front is a single clear question under 160 chars; each back is a concise factual answer under 300 chars. Cover only the study material in the conversation — no meta questions about the chat itself. No markdown, no commentary.',
+          },
+          { role: "user", content: transcript },
+        ],
+        timeoutMs: 90_000,
+      });
     } catch (e) {
       // No cards were produced, so the charge should not stand.
       await refundPrompt(context.supabase, cardsCharge);
-      throw e;
+      throw e instanceof OrchestratorUnavailableError
+        ? new Error("DAP AI is offline right now — try again in a moment.")
+        : e;
     }
 
     const jsonText = raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);

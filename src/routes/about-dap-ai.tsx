@@ -165,6 +165,14 @@ const REVEAL_WEBM = "/dap-hardware-reveal.webm?v=1";
 const REVEAL_MP4 = "/dap-hardware-reveal.mp4?v=1";
 
 /**
+ * Module-level cache: the reveal document is fetched once per tab and
+ * reused for every later visit to this page, instead of re-downloading
+ * and re-buffering it (and re-running its inlined Anime.js scene from
+ * scratch) each time the route mounts.
+ */
+const revealCache: { blobUrl: string | null } = { blobUrl: null };
+
+/**
  * A phone plays a recording of the reveal instead of running it.
  *
  * The interactive version is an SVG scene the browser re-rasterises every
@@ -251,12 +259,21 @@ function HardwareReveal() {
    *
    * If any of it fails, the frame falls back to loading the URL the
    * ordinary way; a slower start beats a blank panel. */
-  const [src, setSrc] = useState<string | null>(null);
-  const [pct, setPct] = useState(0);
+  const [src, setSrc] = useState<string | null>(revealCache.blobUrl ?? null);
+  const [pct, setPct] = useState(revealCache.blobUrl ? 100 : 0);
 
   useEffect(() => {
+    // Already fetched in a previous mount (same tab session): reuse the
+    // cached blob: URL instead of re-downloading and re-buffering ~1MB
+    // every time this route is revisited.
+    if (revealCache.blobUrl) {
+      setSrc(revealCache.blobUrl);
+      setPct(100);
+      return;
+    }
+
+    let disposed = false;
     const stop = new AbortController();
-    let blobUrl: string | null = null;
 
     (async () => {
       try {
@@ -272,22 +289,38 @@ function HardwareReveal() {
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
+          if (disposed) {
+            // Unmounted mid-stream: cancel the reader so the underlying
+            // fetch stops pulling bytes instead of finishing unobserved.
+            void reader.cancel().catch(() => {});
+            return;
+          }
           chunks.push(value);
           read += value.length;
-          if (total) setPct(Math.min(99, Math.round((read / total) * 100)));
+          if (total && !disposed) setPct(Math.min(99, Math.round((read / total) * 100)));
         }
+        if (disposed) return;
 
-        blobUrl = URL.createObjectURL(new Blob(chunks, { type: "text/html" }));
+        const blobUrl = URL.createObjectURL(new Blob(chunks, { type: "text/html" }));
+        // Cached at module scope: the blob URL and its backing bytes stay
+        // alive for the life of the tab so every later visit is instant
+        // and makes zero network requests, matching the "single response,
+        // fully in RAM" guarantee described above.
+        revealCache.blobUrl = blobUrl;
         setPct(100);
         setSrc(blobUrl);
       } catch {
-        if (!stop.signal.aborted) setSrc(REVEAL_SRC);
+        if (!disposed && !stop.signal.aborted) setSrc(REVEAL_SRC);
       }
     })();
 
     return () => {
+      disposed = true;
       stop.abort();
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      // Deliberately not revoking the blob URL here: it is cached at
+      // module scope for reuse by the next mount. It is only ever a
+      // single ~1MB document, and revoking it would force a full
+      // re-fetch and re-buffer on every navigation back to this page.
     };
   }, []);
 

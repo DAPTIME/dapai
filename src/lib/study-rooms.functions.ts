@@ -13,7 +13,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assertAdmin } from "./admin.server";
 import { dbError } from "./db-error";
 import { firstName } from "./utils";
-import { completeOnce } from "./ai-backend.server";
+import { orchestratorComplete, OrchestratorUnavailableError } from "./dap-orchestrator.server";
 import { modelInfo, MODEL_IDS, type ModelId } from "./models";
 import { TIER_RANK } from "./tier-rank";
 import { TIER_LIMITS } from "./usage-limits";
@@ -561,9 +561,9 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
     let reply = "";
     try {
       reply = (
-        await completeOnce(
-          chosen,
-          [
+        await orchestratorComplete({
+          tier: myTier,
+          messages: [
             {
               role: "system",
               content:
@@ -571,13 +571,8 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
             },
             ...transcript,
           ],
-          {
-            timeoutMs: 120_000,
-            // The reply runs on the sender's plan, so it gets the sender's
-            // output cap — same as it would in their own chat.
-            maxTokens: TIER_LIMITS[myTier].maxResponseTokens,
-          }
-        )
+          timeoutMs: 120_000,
+        })
       ).trim();
     } catch (e) {
       console.error(
@@ -586,7 +581,9 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
       );
       // The room got no answer, so the sender keeps their tokens.
       await refundPrompt(context.supabase, roomCharge);
-      throw new Error(await offlineMessage());
+      throw e instanceof OrchestratorUnavailableError
+        ? new Error(await offlineMessage())
+        : new Error(await offlineMessage());
     }
     if (!reply) {
       await refundPrompt(context.supabase, roomCharge);

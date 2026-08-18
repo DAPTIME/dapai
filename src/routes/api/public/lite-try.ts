@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
-import { resolveOllamaModel } from "@/lib/ollama-models.server";
 import { isSafetyBlock, SAFETY_BLOCKED_MESSAGE } from "@/lib/safety";
-import { TIER_LIMITS } from "@/lib/usage-limits";
+import {
+  orchestratorComplete,
+  OrchestratorUnavailableError,
+} from "@/lib/dap-orchestrator.server";
 
 const Body = z.object({
   text: z.string().min(1).max(2000),
@@ -33,8 +35,8 @@ export const Route = createFileRoute("/api/public/lite-try")({
         /* This endpoint takes no credentials — that is the point, it is the
            try-before-signup box — so the only thing standing between it and
            someone looping it is a per-IP cap. Without one, an anonymous
-           caller can run the owner's own inference hardware flat out for
-           free, which costs real money and starves signed-in users. */
+           caller can run the orchestrator flat out for free, which costs
+           real money and starves signed-in users. */
         const { consumeIpQuota } = await import("@/lib/rate-limit.server");
         if (!(await consumeIpQuota("attempt:lite-try", 5, 10 * 60 * 1000))) {
           return new Response(
@@ -46,15 +48,17 @@ export const Route = createFileRoute("/api/public/lite-try")({
           );
         }
 
-        // Honor the admin maintenance flag for DAP AI Lite.
+        // Honor the admin maintenance flags for DAP AI.
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { data: flag } = await supabaseAdmin
+          const { data: rows } = await supabaseAdmin
             .from("ai_settings")
-            .select("system_prompt")
-            .eq("id", "feature_lite_model")
-            .maybeSingle();
-          if ((flag?.system_prompt ?? "on").trim().toLowerCase() === "off") {
+            .select("id, system_prompt")
+            .in("id", ["site_status", "feature_ai_enabled", "feature_lite_model"]);
+          const off = (rows ?? []).some(
+            (r) => (r.system_prompt ?? "on").trim().toLowerCase() === "off"
+          );
+          if (off) {
             return new Response(
               JSON.stringify({
                 error: "DAP AI is undergoing major reworks. Please try again later.",
@@ -63,134 +67,42 @@ export const Route = createFileRoute("/api/public/lite-try")({
             );
           }
         } catch {
-          /* if the check fails, fall through and let upstream handle */
+          /* if the check fails, fall through and let the orchestrator handle it */
         }
 
-        const backend =
-          process.env.AI_BACKEND_URL_LITE ?? process.env.AI_BACKEND_URL;
-        const key =
-          process.env.AI_BACKEND_KEY_LITE ?? process.env.AI_BACKEND_KEY;
-        const upstreamModel =
-          process.env.AI_BACKEND_MODEL_LITE ?? "dap-ai-lite";
-
-        if (!backend) {
-          return new Response(
-            JSON.stringify({
-              error:
-                "DAP AI Lite isn't available right now. Please try again later.",
-            }),
-            { status: 503, headers: { "Content-Type": "application/json" } }
-          );
-        }
-
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 60_000);
         try {
-          const resolved = await resolveOllamaModel(backend, key, upstreamModel);
-          if (resolved.installed && resolved.installed.length === 0) {
-            return new Response(
-              JSON.stringify({
-                error: "Sorry, DAP AI is offline right now.",
-              }),
-              { status: 503, headers: { "Content-Type": "application/json" } }
-            );
-          }
-          const resolvedModel = resolved.model;
-          const res = await fetch(backend, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(key ? { Authorization: `Bearer ${key}` } : {}),
-            },
-            body: JSON.stringify({
-              model: resolvedModel,
-              stream: false,
-              /* The signed-out trial is a Free account in everything but
-                 the sign-in: same reply ceiling, so an anonymous visitor
-                 cannot pull a longer answer out of the hardware than a
-                 Free user who registered for one. */
-              max_tokens: TIER_LIMITS.free.maxResponseTokens,
-              temperature: 0,
-              top_p: 1,
-              reasoning_effort: "none",
-              thinking: false,
-              enable_thinking: false,
-              chat_template_kwargs: {
-                enable_thinking: false,
-                thinking: false,
-                no_think: true,
-              },
-              extra_body: {
-                chat_template_kwargs: {
-                  enable_thinking: false,
-                  thinking: false,
-                  no_think: true,
-                },
-              },
-              messages: [
-                { role: "system", content: LITE_NO_THINK_PROMPT },
-                { role: "system", content: TRIAL_NOTE },
-                { role: "user", content: parsed.text },
-              ],
-            }),
-            signal: ctrl.signal,
+          const raw = await orchestratorComplete({
+            tier: "free",
+            timeoutMs: 60_000,
+            messages: [
+              { role: "system", content: LITE_NO_THINK_PROMPT },
+              { role: "system", content: TRIAL_NOTE },
+              { role: "user", content: parsed.text },
+            ],
           });
-          const raw = await res.text();
-          let json: {
-            choices?: { message?: { content?: string } }[];
-            message?: { content?: string };
-            error?: string | { message?: string };
-          } = {};
-          try {
-            json = JSON.parse(raw);
-          } catch {
-            return new Response(
-              JSON.stringify({
-                error: "Sorry, DAP AI is offline right now.",
-              }),
-              { status: 502, headers: { "Content-Type": "application/json" } }
-            );
-          }
-          const errStr =
-            typeof json?.error === "string" ? json.error : json?.error?.message;
-          /* Checked before the no-content branch: a blocked request comes
-             back empty, and calling that an outage tells the visitor to
-             retry something that will never go through. */
-          if (isSafetyBlock(json, res.status)) {
-            console.warn(`[lite-try] blocked upstream (HTTP ${res.status})`);
+
+          if (isSafetyBlock({ error: raw }, 200)) {
             return new Response(JSON.stringify({ reply: SAFETY_BLOCKED_MESSAGE }), {
               headers: { "Content-Type": "application/json" },
             });
           }
-
-          const content =
-            json?.choices?.[0]?.message?.content ?? json?.message?.content;
-          if (!content) {
-            console.error(`[lite-try] no content from backend: ${errStr ?? raw.slice(0, 200)}`);
-            return new Response(
-              JSON.stringify({ error: "Sorry, DAP AI is offline right now." }),
-              { status: 502, headers: { "Content-Type": "application/json" } }
-            );
-          }
-          let out = content;
-          out = sanitizeLiteReply(out);
+          const out = sanitizeLiteReply(raw);
           return new Response(JSON.stringify({ reply: out }), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });
         } catch (e) {
           const err = e as Error;
-          return new Response(
-            JSON.stringify({
-              error:
-                err.name === "AbortError"
-                  ? "DAP AI Lite took too long to respond. Please try again."
-                  : "Sorry, DAP AI is offline right now.",
-            }),
-            { status: 504, headers: { "Content-Type": "application/json" } }
-          );
-        } finally {
-          clearTimeout(timer);
+          const message =
+            err instanceof OrchestratorUnavailableError
+              ? "Sorry, DAP AI is offline right now."
+              : err.name === "AbortError"
+                ? "DAP AI Lite took too long to respond. Please try again."
+                : "Sorry, DAP AI is offline right now.";
+          return new Response(JSON.stringify({ error: message }), {
+            status: 504,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },
