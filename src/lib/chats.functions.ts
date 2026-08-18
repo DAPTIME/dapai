@@ -281,7 +281,16 @@ export const discardEmptyChat = createServerFn({ method: "POST" })
       .in("state", ["waiting", "running"]);
     if ((live ?? 0) > 0) return { deleted: false, reason: "in-flight" as const };
 
-    const { error } = await supabase
+    /* Through the service-role client, because the soft-delete change
+       revoked DELETE on chats from authenticated — this ran as the user and
+       started failing with a permission error the moment that landed.
+
+       A real delete rather than the soft one is right here: retention keeps
+       chats a person chose to delete so an admin can still read them, and
+       an empty chat has nothing in it to read. Ownership was checked at the
+       top of this handler, so the service role is only being used to get
+       past the grant, not past a check. */
+    const { error } = await supabaseAdmin
       .from("chats")
       .delete()
       .eq("id", data.chatId)

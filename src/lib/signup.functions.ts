@@ -142,10 +142,3 @@ export const resendConfirmationEmail = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const getConfirmationState = createServerFn({ method: "POST" })
-  .inputValidator((i) => z.object({ email: z.string().trim().email().max(255) }).parse(i))
-  .handler(async ({ data }) => {
-    const { findUserByEmail } = await import("./signup.server");
-    const existing = await findUserByEmail(data.email.toLowerCase());
-    return { confirmed: !!existing?.confirmed };
-  });

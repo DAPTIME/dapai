@@ -63,6 +63,21 @@ export const getRecoveryQuestion = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase();
+
+    /* Bounded per IP. This endpoint takes any address, says whether it has
+       a recovery question, and writes a password_reset_sessions row every
+       time it does — so unbounded it is both an account-enumeration oracle
+       and a way to fill that table. Every other entry point in this file
+       already spends an attempt; this one did not.
+
+       Fails open, like the other limiters: a rate limiter that takes
+       account recovery down when the database hiccups has done more damage
+       than the abuse it guards against. */
+    const { consumeIpQuota } = await import("./rate-limit.server");
+    if (!(await consumeIpQuota("attempt:recovery-question", 10, 10 * 60 * 1000))) {
+      throw new Error("Too many attempts. Please wait a few minutes and try again.");
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("profiles")
