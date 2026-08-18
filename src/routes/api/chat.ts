@@ -91,6 +91,31 @@ export const Route = createFileRoute("/api/chat")({
           global: { headers: { Authorization: `Bearer ${token}` } },
         });
 
+        /* Bans, before anything is charged or dispatched.
+           This endpoint authenticates inline rather than through
+           requireSupabaseAuth, and the ban check lived only in that
+           middleware — so a suspended account could keep chatting here
+           until its access token expired, up to an hour later. A ban writes
+           auth.users.banned_until, which stops Supabase issuing or
+           refreshing tokens, but a token already in the browser stays
+           cryptographically valid; reading the column closes that window.
+
+           Same rule as the middleware: read with the caller's own client so
+           it still works without a service-role key, and let only an
+           explicit `true` block, so a failed lookup cannot lock everyone
+           out of chat. */
+        const { data: callerProfile } = await asCaller
+          .from("profiles")
+          .select("banned")
+          .eq("id", callerId)
+          .maybeSingle();
+        if (callerProfile?.banned === true) {
+          return Response.json(
+            { error: "Your account has been suspended." },
+            { status: 403 }
+          );
+        }
+
         // Kill switches.
         const { data: settingsRows } = await supabaseAdmin
           .from("ai_settings")
