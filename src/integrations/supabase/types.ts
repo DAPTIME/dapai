@@ -853,6 +853,20 @@ export type Database = {
         }
         Returns: string
       }
+      queue_pick_lane: {
+        Args: {
+          _free_waiting: number
+          _go_since_free: number
+          _go_waiting: number
+          _pro_since_go: number
+          _pro_waiting: number
+        }
+        Returns: {
+          go_since_free: number
+          lane: string
+          pro_since_go: number
+        }[]
+      }
       queue_position: { Args: { _id: string }; Returns: number }
       queue_reap: { Args: never; Returns: undefined }
       queue_release: {
