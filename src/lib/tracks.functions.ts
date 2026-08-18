@@ -371,8 +371,12 @@ export const getLeaderboard = createServerFn({ method: "GET" })
        (that grant trips the security scanner), so this read goes through the
        trusted server client. The helper itself still hides times for private
        tracks. Guests get the same public board as signed-in players. */
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin.rpc("get_track_leaderboard", {
+    const { tryAdminClient } = await import("./admin-client.server");
+    const adminClient = await tryAdminClient();
+    // Without the key there is no trusted reader, so the board shows empty
+    // rather than erroring the whole track page.
+    if (!adminClient) return [];
+    const { data: rows, error } = await adminClient.rpc("get_track_leaderboard", {
       _track_ref: data.trackRef,
       _limit: data.limit ?? 20,
     });

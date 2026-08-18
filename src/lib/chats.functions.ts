@@ -273,13 +273,31 @@ export const discardEmptyChat = createServerFn({ method: "POST" })
       .eq("role", "assistant");
     if ((replies ?? 0) > 0) return { deleted: false, reason: "has-reply" as const };
 
-    // Still queued or generating somewhere.
-    const { count: live } = await supabaseAdmin
-      .from("ai_queue")
-      .select("id", { count: "exact", head: true })
-      .eq("chat_id", data.chatId)
-      .in("state", ["waiting", "running"]);
-    if ((live ?? 0) > 0) return { deleted: false, reason: "in-flight" as const };
+    const { tryAdminClient } = await import("./admin-client.server");
+    const adminForDiscard = await tryAdminClient();
+
+    // Still queued or generating somewhere. Only the admin client can see
+    // the queue; without one, skip the check — the soft-delete fallback
+    // below cannot lose a reply, it only hides the chat from the sidebar.
+    if (adminForDiscard) {
+      const { count: live } = await adminForDiscard
+        .from("ai_queue")
+        .select("id", { count: "exact", head: true })
+        .eq("chat_id", data.chatId)
+        .in("state", ["waiting", "running"]);
+      if ((live ?? 0) > 0) return { deleted: false, reason: "in-flight" as const };
+    }
+
+    if (!adminForDiscard) {
+      // No key, no hard delete (DELETE on chats is revoked from users). The
+      // soft delete gives the same experience — the empty chat vanishes —
+      // and leaves an empty row for the console instead of an error here.
+      const { error: softErr } = await supabase.rpc("delete_own_chat", {
+        _id: data.chatId,
+      });
+      if (softErr && !isLedgerMissing(softErr)) throw dbError(softErr, "discardEmptyChat");
+      return { deleted: true, reason: "empty" as const };
+    }
 
     /* Through the service-role client, because the soft-delete change
        revoked DELETE on chats from authenticated — this ran as the user and
@@ -290,7 +308,7 @@ export const discardEmptyChat = createServerFn({ method: "POST" })
        an empty chat has nothing in it to read. Ownership was checked at the
        top of this handler, so the service role is only being used to get
        past the grant, not past a check. */
-    const { error } = await supabaseAdmin
+    const { error } = await adminForDiscard
       .from("chats")
       .delete()
       .eq("id", data.chatId)
@@ -552,16 +570,20 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
 
 
-    // Block sends when the site is in maintenance mode.
+    // Block sends when the site is in maintenance mode. Read through the
+    // admin client when there is one; without it, fail open the same way
+    // getPublicSiteConfig does — a missing settings lookup must degrade to
+    // "the site is up", never take chat down with it.
     {
-      const { supabaseAdmin } = await import(
-        "@/integrations/supabase/client.server"
-      );
-      const { data: status } = await supabaseAdmin
-        .from("ai_settings")
-        .select("system_prompt")
-        .eq("id", "site_status")
-        .maybeSingle();
+      const { tryAdminClient } = await import("./admin-client.server");
+      const adminClient = await tryAdminClient();
+      const { data: status } = adminClient
+        ? await adminClient
+            .from("ai_settings")
+            .select("system_prompt")
+            .eq("id", "site_status")
+            .maybeSingle()
+        : { data: null };
       const siteStatus = parseSiteStatus(status?.system_prompt);
       if (siteStatus !== "on") {
         // "admin" keeps the site usable for site admins while it is closed
@@ -928,16 +950,21 @@ export const sendChatMessage = createServerFn({ method: "POST" })
        into a second error on top of it. Safety refusals and stopped
        replies are not refunded — both were served. */
     if (dispatchFailed && chargedCost > 0) {
-      const { supabaseAdmin } = await import(
-        "@/integrations/supabase/client.server"
-      );
-      const { error: refundErr } = await supabaseAdmin.rpc("admin_refund_usage", {
-        _user_id: userId,
-        _cost: chargedCost,
-        _images: chargedImages,
-      });
-      if (refundErr && !isLedgerMissing(refundErr)) {
-        console.error(`[usage] refund failed: ${refundErr.message}`);
+      const { tryAdminClient } = await import("./admin-client.server");
+      const refundClient = await tryAdminClient();
+      if (refundClient) {
+        const { error: refundErr } = await refundClient.rpc("admin_refund_usage", {
+          _user_id: userId,
+          _cost: chargedCost,
+          _images: chargedImages,
+        });
+        if (refundErr && !isLedgerMissing(refundErr)) {
+          console.error(`[usage] refund failed: ${refundErr.message}`);
+        }
+      } else {
+        // Refunds are best-effort by design; without the key they are
+        // skipped, not fatal. The reply flow below continues unchanged.
+        console.warn("[usage] no admin client; refund skipped");
       }
     }
 

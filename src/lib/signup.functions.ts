@@ -38,6 +38,61 @@ export const registerAccount = createServerFn({ method: "POST" })
     const { assertPasswordNotLeaked } = await import("./pwned.server");
     await assertPasswordNotLeaked(data.password);
 
+    /* ── Fallback: no service-role key on this deployment ─────────────────
+       The primary path below is built on admin APIs — find the user, mint a
+       confirmation link, write the recovery question, send through Resend.
+       Without SUPABASE_SERVICE_ROLE_KEY every one of those throws, and the
+       thrown message (an environment dump) was landing in the signup toast.
+
+       Plain auth.signUp with the publishable key needs no admin rights:
+       Supabase creates the unconfirmed account and sends its own
+       confirmation email. The name and the recovery question travel in the
+       user metadata — the answer as the same salted hash the primary path
+       stores, never plaintext — and a database trigger copies them onto the
+       profile row. The moment the key is configured, the branded Resend
+       path below takes over again, unchanged. */
+    const { hasAdminEnv } = await import("./admin-client.server");
+    if (!hasAdminEnv()) {
+      const { makeStored } = await import("./recovery-hash.server");
+      const { createClient } = await import("@supabase/supabase-js");
+      const { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } = await import(
+        "@/integrations/supabase/public-config"
+      );
+      const plain = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { error } = await plain.auth.signUp({
+        email,
+        password: data.password,
+        options: {
+          emailRedirectTo: `${data.origin}/auth/callback`,
+          data: {
+            name,
+            recovery_question: data.question,
+            recovery_answer_hash: makeStored(data.answer),
+          },
+        },
+      });
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("already registered") || msg.includes("already exists")) {
+          throw new Error(
+            "An account with this email already exists. Try signing in instead."
+          );
+        }
+        if (msg.includes("rate limit")) {
+          throw new Error(
+            "Too many signups right now. Please try again in a little while."
+          );
+        }
+        console.error("[signup] fallback signUp failed:", error.message);
+        throw new Error(
+          "We couldn't start your signup right now. Please try again in a minute."
+        );
+      }
+      return { ok: true, pending: true };
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { makeStored } = await import("./recovery-hash.server");
     const {
@@ -130,6 +185,28 @@ export const resendConfirmationEmail = createServerFn({ method: "POST" })
     const email = data.email.toLowerCase();
     const { consumeEmailQuota } = await import("./rate-limit.server");
     await consumeEmailQuota("resend", email);
+    const { hasAdminEnv } = await import("./admin-client.server");
+    if (!hasAdminEnv()) {
+      // Same key-less fallback as registerAccount: let Supabase re-send its
+      // own confirmation email. Errors are swallowed into the same "ok"
+      // shape the primary path uses, which never reveals whether the
+      // address exists.
+      const { createClient } = await import("@supabase/supabase-js");
+      const { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } = await import(
+        "@/integrations/supabase/public-config"
+      );
+      const plain = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { error } = await plain.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${data.origin}/auth/callback` },
+      });
+      if (error) console.warn("[signup] fallback resend failed:", error.message);
+      return { ok: true };
+    }
+
     const { findUserByEmail, sendConfirmation } = await import("./signup.server");
     const existing = await findUserByEmail(email);
     // Never reveal whether the address exists.

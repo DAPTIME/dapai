@@ -25,7 +25,13 @@ export function requestIp() {
  */
 export async function consumeEmailQuota(kind = "email", _email?: string | null) {
   const ip = requestIp();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // Fail open when the deployment has no service-role key. That is this
+  // module's stated philosophy for a broken table, and a missing key is the
+  // same situation one layer down — before this, the client's constructor
+  // threw and the "limiter" took signup down with an environment dump.
+  const { tryAdminClient } = await import("./admin-client.server");
+  const supabaseAdmin = await tryAdminClient();
+  if (!supabaseAdmin) return;
   const since = new Date(Date.now() - EMAIL_WINDOW_MS).toISOString();
 
   const { count, error } = await supabaseAdmin
@@ -73,7 +79,9 @@ export async function consumeIpQuota(
   windowMs: number
 ): Promise<boolean> {
   const ip = requestIp();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { tryAdminClient } = await import("./admin-client.server");
+  const supabaseAdmin = await tryAdminClient();
+  if (!supabaseAdmin) return true; // fail open, as documented above
   const since = new Date(Date.now() - windowMs).toISOString();
 
   const { count, error } = await supabaseAdmin

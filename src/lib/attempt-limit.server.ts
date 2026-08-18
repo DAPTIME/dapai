@@ -40,7 +40,11 @@ function minutes(ms: number) {
 export async function consumeAttempt(policy: AttemptPolicy) {
   const ip = requestIp();
   const kind = `attempt:${policy.name}`;
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  // Same fail-open rule as rate-limit.server.ts: no service-role key means
+  // no counter, and a limiter that cannot count must not block.
+  const { tryAdminClient } = await import("./admin-client.server");
+  const supabaseAdmin = await tryAdminClient();
+  if (!supabaseAdmin) return;
   const since = new Date(Date.now() - policy.windowMs).toISOString();
 
   const { count, error } = await supabaseAdmin

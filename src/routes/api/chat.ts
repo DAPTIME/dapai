@@ -85,7 +85,13 @@ export const Route = createFileRoute("/api/chat")({
           return Response.json({ error: "Invalid request" }, { status: 400 });
         }
 
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        /* The admin client may be absent (no SUPABASE_SERVICE_ROLE_KEY on
+           the deployment). Every use below degrades instead of dying: the
+           kill-switch read fails open, the tier read falls back to the
+           caller's own profile row, the model prompt defaults to empty, and
+           refunds are skipped. Chat must not go down over a settings key. */
+        const { tryAdminClient } = await import("@/lib/admin-client.server");
+        const adminClient = await tryAdminClient();
         const { createClient } = await import("@supabase/supabase-js");
         const asCaller = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
           auth: { persistSession: false, autoRefreshToken: false },
@@ -119,10 +125,12 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         // Kill switches.
-        const { data: settingsRows } = await supabaseAdmin
-          .from("ai_settings")
-          .select("id, system_prompt")
-          .in("id", ["site_status", "feature_ai_enabled"]);
+        const { data: settingsRows } = adminClient
+          ? await adminClient
+              .from("ai_settings")
+              .select("id, system_prompt")
+              .in("id", ["site_status", "feature_ai_enabled"])
+          : { data: null };
         const siteRow = (settingsRows ?? []).find((r) => r.id === "site_status");
         const siteStatus = parseSiteStatus(siteRow?.system_prompt);
         // "admin" leaves the site working for site admins only. callerProfile
@@ -158,10 +166,13 @@ export const Route = createFileRoute("/api/chat")({
         if (!chat) return Response.json({ error: "Chat not found." }, { status: 404 });
         const ownerId = chat.user_id as string;
 
-        const { data: profile } = await supabaseAdmin
+        // Tier: through the admin client when there is one (the chat owner
+        // may differ from the caller for admin reads); otherwise the
+        // caller's own row, which RLS lets them read.
+        const { data: profile } = await (adminClient ?? asCaller)
           .from("profiles")
           .select("tier")
-          .eq("id", ownerId)
+          .eq("id", adminClient ? ownerId : callerId)
           .maybeSingle();
         const tier = ((profile?.tier as Tier | undefined) ?? "free") as Tier;
         const limits = TIER_LIMITS[tier];
@@ -247,11 +258,13 @@ export const Route = createFileRoute("/api/chat")({
           await asCaller.from("chats").update({ updated_at: new Date().toISOString() }).eq("id", body.chatId);
         }
 
-        const { data: perModel } = await supabaseAdmin
-          .from("ai_settings")
-          .select("system_prompt")
-          .eq("id", "global")
-          .maybeSingle();
+        const { data: perModel } = adminClient
+          ? await adminClient
+              .from("ai_settings")
+              .select("system_prompt")
+              .eq("id", "global")
+              .maybeSingle()
+          : { data: null };
         const systemPrompt = perModel?.system_prompt?.trim() ?? "";
 
         const anonymous = !!chat.is_incognito;
@@ -302,13 +315,15 @@ export const Route = createFileRoute("/api/chat")({
             // granted to authenticated, because taking the amount as an
             // argument from whoever is calling let a signed-in account loop
             // it and hold its own quota at zero.
-            await Promise.resolve(
-              supabaseAdmin.rpc("admin_refund_usage", {
-                _user_id: callerId,
-                _cost: chargedCost,
-                _images: chargedImages,
-              })
-            ).catch(() => {});
+            if (adminClient) {
+              await Promise.resolve(
+                adminClient.rpc("admin_refund_usage", {
+                  _user_id: callerId,
+                  _cost: chargedCost,
+                  _images: chargedImages,
+                })
+              ).catch(() => {});
+            }
           }
           await Promise.resolve(
             asCaller.rpc("queue_release", { _id: ticketId, _cancelled: opts.refund })
