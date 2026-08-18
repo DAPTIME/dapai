@@ -45,6 +45,7 @@ export const DEFAULT_OFFLINE_MESSAGE =
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
   enabled: true,
   flags: {
+    ai_enabled: true,
     pro_model: true,
     pro_lite_model: true,
     lite_model: true,
