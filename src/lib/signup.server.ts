@@ -48,7 +48,7 @@ export async function findUserByEmail(email: string) {
         lastError = null;
         break;
       }
-      lastError = error as never;
+      lastError = error as { status?: number; message?: string };
       await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
     }
     if (lastError) {
