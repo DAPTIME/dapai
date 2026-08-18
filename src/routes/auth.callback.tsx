@@ -29,11 +29,23 @@ function AuthCallbackPage() {
   useEffect(() => {
     let cancelled = false;
 
+    // Supabase reports failures in the hash fragment, not the query string
+    // (#error=access_denied&error_description=…). Reading only ?search meant
+    // an expired confirmation link showed a spinner for twelve seconds and
+    // then a generic "took too long", with the actual reason sitting in the
+    // URL the whole time. Read both, prefer the specific message.
     const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(
+      window.location.hash.replace(/^#/, "")
+    );
     const oauthError =
-      params.get("error_description") ?? params.get("error") ?? null;
+      hashParams.get("error_description") ??
+      params.get("error_description") ??
+      hashParams.get("error") ??
+      params.get("error") ??
+      null;
     if (oauthError) {
-      setError(oauthError);
+      setError(oauthError.replace(/\+/g, " "));
       return;
     }
 
