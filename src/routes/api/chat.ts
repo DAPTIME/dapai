@@ -248,7 +248,7 @@ export const Route = createFileRoute("/api/chat")({
             ).catch(() => {});
           }
           await Promise.resolve(
-            asCaller.rpc("queue_release", { _id: ticketId, _completed: !opts.refund })
+            asCaller.rpc("queue_release", { _id: ticketId, _cancelled: opts.refund })
           ).catch(() => {});
         };
 
