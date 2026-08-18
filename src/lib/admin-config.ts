@@ -66,7 +66,7 @@ export const FEATURE_GROUPS = {
   games: [
     "game_2048",
     "game_snake",
-      "game_daptrack",
+    "game_daptrack",
     "game_river",
     "game_flappy",
     "game_breakout",
