@@ -131,8 +131,31 @@ function SnakeGame() {
       <h1 className="text-2xl font-bold">Snake 🐍</h1>
       <div className="mt-2 flex items-center justify-between text-sm">
         <div>Score: <span className="font-semibold">{score}</span></div>
-        <Button size="sm" variant="secondary" onClick={start}>{running ? "Restart" : dead ? "Play again" : "Start"}</Button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-border p-0.5">
+            {(["easy", "hard"] as Mode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                aria-pressed={mode === m}
+                className={
+                  mode === m
+                    ? "rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground"
+                    : "rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                }
+              >
+                {m === "easy" ? "Easy" : "Hard"}
+              </button>
+            ))}
+          </div>
+          <Button size="sm" variant="secondary" onClick={start}>{running ? "Restart" : dead ? "Play again" : "Start"}</Button>
+        </div>
       </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {mode === "easy" ? "Easy — one block per second." : "Hard — two blocks per second."}
+      </p>
+
       <canvas
         ref={canvasRef}
         width={COLS * CELL}
