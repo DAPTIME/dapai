@@ -3,35 +3,44 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/api/public/diag-admin")({
   server: {
     handlers: {
-      GET: async () => {
-        const out: Record<string, unknown> = {
-          hasKey: !!process.env["SUPABASE_SERVICE_ROLE_KEY"],
-          keyPrefix: (process.env["SUPABASE_SERVICE_ROLE_KEY"] ?? "").slice(0, 3),
-          url: process.env["SUPABASE_URL"] ?? null,
+      GET: async ({ request }) => {
+        const email =
+          new URL(request.url).searchParams.get("email") ?? "nobody@example.com";
+        const out: Record<string, unknown> = {};
+        const { supabaseAdmin } = await import(
+          "@/integrations/supabase/client.server"
+        );
+        const list = await supabaseAdmin.auth.admin.listUsers({
+          page: 1,
+          perPage: 200,
+        });
+        out["listUsers"] = {
+          count: list.data?.users?.length ?? null,
+          error: list.error
+            ? {
+                status: (list.error as { status?: number }).status,
+                message: list.error.message,
+                body: JSON.stringify(
+                  list.error,
+                  Object.getOwnPropertyNames(list.error)
+                ),
+              }
+            : null,
         };
         try {
-          const { supabaseAdmin } = await import(
-            "@/integrations/supabase/client.server"
-          );
-          const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-            page: 1,
-            perPage: 200,
+          const { generateSignupLink } = await import("@/lib/signup.server");
+          const link = await generateSignupLink({
+            email,
+            password: "Testpass!2345",
+            name: "Diag",
+            origin: "http://localhost:8080",
           });
-          out["users"] = data?.users?.length ?? null;
-          out["error"] = error
-            ? {
-                name: error.name,
-                status: (error as { status?: number }).status,
-                message: error.message,
-                code: (error as { code?: string }).code,
-                keys: Object.getOwnPropertyNames(error),
-              }
-            : null;
+          out["link"] = link.slice(0, 60);
         } catch (e) {
-          out["threw"] = {
+          out["linkError"] = {
             name: (e as Error).name,
             message: (e as Error).message,
-            cause: String((e as { cause?: unknown }).cause ?? ""),
+            body: JSON.stringify(e, Object.getOwnPropertyNames(e as object)),
           };
         }
         return new Response(JSON.stringify(out, null, 2), {
