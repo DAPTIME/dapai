@@ -44,6 +44,37 @@
 -- same ground and fails closed, so this keeps one mechanism that works over
 -- two that partly overlap.
 
+-- ── Record the state found, before anything is changed ──────────────────
+--
+-- The point of this migration is partly diagnostic: it should say whether
+-- the scanner's Critical was real on this database. A check that runs after
+-- the CREATE TRIGGERs below can only ever report success, so the reading is
+-- taken here, first, and states its verdict on the spot.
+DO $$
+DECLARE
+  present integer;
+  enabled integer;
+BEGIN
+  SELECT count(*), count(*) FILTER (WHERE t.tgenabled <> 'D')
+    INTO present, enabled
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace ns ON ns.oid = c.relnamespace
+   WHERE ns.nspname = 'public'
+     AND c.relname = 'profiles'
+     AND NOT t.tgisinternal
+     AND t.tgname IN ('prevent_profile_privileged_updates',
+                      'prevent_profile_privileged_inserts_trg');
+
+  IF enabled = 2 THEN
+    RAISE NOTICE 'BEFORE: profiles privilege guard healthy - both triggers present and enabled. The scanner Critical was a false positive against this schema.';
+  ELSIF present = 2 THEN
+    RAISE WARNING 'BEFORE: profiles privilege guard DISABLED - 2 triggers bound but only % enabled. The escalation was reachable.', enabled;
+  ELSE
+    RAISE WARNING 'BEFORE: profiles privilege guard INCOMPLETE - expected 2 triggers, found % (% enabled). The escalation was reachable.', present, enabled;
+  END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.prevent_profile_privileged_updates()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -122,8 +153,8 @@ CREATE TRIGGER prevent_profile_privileged_inserts_trg
 
 ALTER TABLE public.profiles ENABLE TRIGGER prevent_profile_privileged_inserts_trg;
 
--- Say out loud whether this run found the guard already healthy or had to
--- restore it, so the answer is in the migration log rather than inferred.
+-- Say out loud what this run ended with, next to what it started with, so
+-- the answer sits in the migration log rather than being inferred later.
 DO $$
 DECLARE
   n integer;
@@ -131,15 +162,17 @@ BEGIN
   SELECT count(*) INTO n
     FROM pg_trigger t
     JOIN pg_class c ON c.oid = t.tgrelid
-   WHERE c.relname = 'profiles'
+    JOIN pg_namespace ns ON ns.oid = c.relnamespace
+   WHERE ns.nspname = 'public'
+     AND c.relname = 'profiles'
      AND NOT t.tgisinternal
      AND t.tgname IN ('prevent_profile_privileged_updates',
                       'prevent_profile_privileged_inserts_trg')
      AND t.tgenabled <> 'D';
 
   IF n = 2 THEN
-    RAISE NOTICE 'profiles privilege guard: both triggers present and enabled.';
+    RAISE NOTICE 'AFTER: profiles privilege guard - 2 triggers present and enabled. Compare with the BEFORE line above.';
   ELSE
-    RAISE WARNING 'profiles privilege guard: expected 2 enabled triggers, found %.', n;
+    RAISE EXCEPTION 'AFTER: profiles privilege guard did not take - expected 2 enabled triggers, found %.', n;
   END IF;
 END $$;

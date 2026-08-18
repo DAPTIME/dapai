@@ -12,9 +12,9 @@
 -- that arrives in someone else's conversation and is read by a human or
 -- fed to a model is worth closing off.
 --
--- All three policies get the parent check, not just INSERT. On SELECT and
--- DELETE it changes nothing today, because a row with your user_id and
--- another chat's id should not exist once INSERT is fixed. It is written in
+-- SELECT gets the parent check as well as INSERT. On SELECT it changes
+-- nothing today, because a row with your user_id and another chat's id
+-- should not exist once INSERT is fixed. It is written in
 -- anyway so the invariant is stated in one place rather than depending on
 -- the absence of rows an earlier version allowed.
 
@@ -44,18 +44,13 @@ CREATE POLICY "Users insert own messages"
     )
   );
 
-DROP POLICY IF EXISTS "Users delete own messages" ON public.chat_messages;
-CREATE POLICY "Users delete own messages"
-  ON public.chat_messages FOR DELETE
-  TO authenticated
-  USING (
-    auth.uid() = user_id
-    AND EXISTS (
-      SELECT 1 FROM public.chats c
-       WHERE c.id = chat_messages.chat_id
-         AND c.user_id = auth.uid()
-    )
-  );
+-- No DELETE policy is recreated here. 20260817210000_chats_soft_delete.sql
+-- drops it and revokes DELETE from authenticated on purpose: users no
+-- longer remove rows at all, they set a flag through delete_own_chat and
+-- the record stays for the admin console. Recreating a DELETE policy would
+-- state the opposite intent, even though the missing grant would keep it
+-- inert. The UPDATE policy gets the same parent check in
+-- 20260818150000_chat_messages_update_parent_check.sql.
 
 -- The subquery runs per row, so it needs the parent lookup to be an index
 -- hit. chats.id is the primary key, so it already is.
