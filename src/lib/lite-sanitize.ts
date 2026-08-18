@@ -28,6 +28,12 @@ function directReplyIndex(text: string): number {
 
 export function sanitizeLiteReply(text: string): string {
   let out = String(text ?? "")
+    // The model wraps copyable answers in copy_block_start_dap_ai /
+    // copy_block_end_dap_ai marker lines. The chat UI parses those into a
+    // copy-block component; the anonymous trial box renders plain text, so
+    // the markers were showing verbatim to visitors (seen live). Unwrap
+    // them here — keep the content, drop the marker lines.
+    .replace(/[ \t]*copy_block_(?:start|end)_dap_ai[ \t]*\r?\n?/g, "")
     .replace(/```(?:analysis|reasoning|thinking|system)[\s\S]*?```/gi, "")
     .replace(/<think\b[^>]*>[\s\S]*?<\/think>/gi, "")
     .replace(/<think\b[^>]*>[\s\S]*$/gi, "")
