@@ -7,35 +7,67 @@ export const HOLD_MS = 10 * 60 * 1000;
 export async function findUserByEmail(email: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const target = email.trim().toLowerCase();
-  // listUsers is paginated — a single page can silently miss the account,
-  // which used to make signup fail later with "email already registered".
+
+  const shape = (u: {
+    id: string;
+    email?: string | null;
+    email_confirmed_at?: string | null;
+    created_at: string;
+    user_metadata?: Record<string, unknown> | null;
+  }) => ({
+    id: u.id,
+    confirmed: !!u.email_confirmed_at,
+    createdAt: new Date(u.created_at).getTime(),
+    name: (u.user_metadata?.["name"] as string | undefined) ?? "",
+  });
+
+  // Fast path: the profiles mirror carries the address, so one indexed row
+  // read replaces paging the whole auth user list (which intermittently
+  // answers 500 on larger projects).
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .ilike("email", target)
+    .maybeSingle();
+  if (profile?.id) {
+    const { data, error } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+    if (!error && data?.user) return shape(data.user as never);
+  }
+
+  // Fallback: page the auth list. Retry transient 5xx answers before giving up.
   for (let page = 1; page <= 20; page++) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-      page,
-      perPage: 200,
-    });
-    if (error) {
+    let users: Array<{ id: string; email?: string | null }> = [];
+    let lastError: { status?: number; message?: string } | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      });
+      if (!error) {
+        users = (data?.users ?? []) as never;
+        lastError = null;
+        break;
+      }
+      lastError = error as never;
+      await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+    }
+    if (lastError) {
       console.error(
         "[signup] admin.listUsers failed:",
-        error.status ?? "",
-        error.message || "(no message)"
+        lastError.status ?? "",
+        lastError.message || "(no message)"
       );
-      throw dbError(error);
+      // Treat as "not found" rather than failing the whole signup: the
+      // signup-link step below reports email_exists if the address is taken.
+      return null;
     }
-    const users = data?.users ?? [];
     const u = users.find((x) => (x.email ?? "").toLowerCase() === target);
-    if (u) {
-      return {
-        id: u.id,
-        confirmed: !!u.email_confirmed_at,
-        createdAt: new Date(u.created_at).getTime(),
-        name: (u.user_metadata?.["name"] as string | undefined) ?? "",
-      };
-    }
+    if (u) return shape(u as never);
     if (users.length < 200) break;
   }
   return null;
 }
+
 
 /** True when Supabase rejected the signup because the address already exists. */
 export function isEmailExists(e: unknown) {
