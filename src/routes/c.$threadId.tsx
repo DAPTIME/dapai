@@ -6,7 +6,8 @@ import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
-import { getChat, sendChatMessage, stopChatMessage, getProfile, planSearchForMessage, discardEmptyChat } from "@/lib/chats.functions";
+import { getChat, stopChatMessage, getProfile, discardEmptyChat } from "@/lib/chats.functions";
+import { streamChat, describeStage, type ChatStreamFrame } from "@/lib/chat-stream";
 import { useAiQueue, describeQueue, queueUpgradeHint } from "@/lib/use-ai-queue";
 import { MODELS, modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
@@ -34,13 +35,11 @@ export const Route = createFileRoute("/c/$threadId")({
 function ChatPage() {
   const { threadId } = Route.useParams();
   const navigate = useNavigate();
-  const { user, loading, ready } = useAuth();
+  const { user, loading, ready, session } = useAuth();
   const qc = useQueryClient();
   const fetchChat = useServerFn(getChat);
   const fetchProfile = useServerFn(getProfile);
-  const send = useServerFn(sendChatMessage);
   const stop = useServerFn(stopChatMessage);
-  const planSearch = useServerFn(planSearchForMessage);
   const [searchingWeb, setSearchingWeb] = useState(false);
   const [studyMode, setStudyMode] = useState(false);
   const [cardsOpen, setCardsOpen] = useState(false);
@@ -58,6 +57,10 @@ function ChatPage() {
       localStorage.setItem(`dap.study.${threadId}`, v ? "1" : "0");
     }
   };
+  const abortRef = useRef<AbortController | null>(null);
+  const [streamStageLabel, setStreamStageLabel] = useState<string>("Thinking...");
+  const [streamText, setStreamText] = useState<string>("");
+  const [streaming, setStreaming] = useState(false);
   const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
     id: string;
     role: "user";
@@ -141,21 +144,6 @@ function ChatPage() {
         return { ...prev, messages: [...(prev.messages ?? []), optimistic] };
       });
 
-      // Pre-flight: ask if this needs a web search so we can show
-      // "Searching the web…" while the model spins up. Lite skips search.
-      let searchQuery: string | undefined;
-      if (effective !== "dap-ai-lite") {
-        try {
-          const plan = await planSearch({ data: { text } });
-          if (plan?.query) {
-            searchQuery = plan.query;
-            setSearchingWeb(true);
-          }
-        } catch {
-          /* best-effort */
-        }
-      }
-
       /* Wait for a slot before dialling the orchestrator. Inference runs
          on one box, so this is what stops ten simultaneous sends becoming
          ten simultaneous generations. wait() resolves immediately when the
@@ -167,46 +155,72 @@ function ChatPage() {
         throw new Error("__DAP_QUEUE_CANCELLED__");
       }
 
+      const accessToken = session?.access_token;
+      if (!accessToken) throw new Error("You've been signed out — please sign back in.");
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setStreaming(true);
+      setStreamText("");
+      setStreamStageLabel("Thinking...");
+
+      let connectionLost = false;
+      let streamError: string | null = null;
+
       try {
-        const sendPromise = send({
-          data: {
-            chatId: threadId,
-            text,
-            images,
-            model: effective,
-            searchQuery,
-            studyMode,
+        await streamChat({
+          accessToken,
+          chatId: threadId,
+          text,
+          images,
+          studyMode,
+          signal: controller.signal,
+          onStage: (frame: ChatStreamFrame) => setStreamStageLabel(describeStage(frame)),
+          onToken: (delta) => setStreamText((prev) => prev + delta),
+          onDone: () => {},
+          onError: (message) => {
+            streamError = message;
+          },
+          onConnectionLost: () => {
+            connectionLost = true;
           },
         });
-        // Fire a module-level notifier so the top-of-screen toast still
-        // appears if the user navigated away from this chat before the
-        // reply arrived (component onSuccess would not run in that case).
-        const title = chatQuery.data?.chat?.title || text.slice(0, 60) || "New reply";
-        trackAiReply(threadId, title, sendPromise);
-        return await sendPromise;
+      } catch (err) {
+        if ((err as { name?: string })?.name === "AbortError") {
+          // Stop button — handled by the caller, not an error.
+          return { stopped: true } as const;
+        }
+        throw err;
       } finally {
+        abortRef.current = null;
         setSearchingWeb(false);
-        // The slot comes back on success, on failure and on cancel — one
-        // call on the one path all three go through.
         await queue.giveUp();
       }
+
+      if (streamError) throw new Error(streamError);
+      if (connectionLost) {
+        toast.error("Connection lost. Please try again.");
+        return { connectionLost: true } as const;
+      }
+      return { done: true } as const;
     },
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       setOptimisticUserMessage(null);
-      qc.setQueryData(["chat", threadId], (prev: any) => ({
-        chat: prev?.chat ?? { id: threadId, title: "Chat" },
-        messages: result.messages ?? prev?.messages ?? [],
-      }));
-      qc.invalidateQueries({ queryKey: ["chat", threadId] });
+      setStreaming(false);
+      // Whether it finished, was stopped, or lost connection, the tokens
+      // already streamed stay visible via streamText until this refetch
+      // brings back whatever the server actually persisted.
+      if (!result?.stopped) {
+        qc.invalidateQueries({ queryKey: ["chat", threadId] });
+      }
       qc.invalidateQueries({ queryKey: ["chats"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
-      if (result.forcedToLite) {
-        toast.info("DAP AI 4 Pro is Pro-only — replied with DAP AI 4 Lite.");
-      }
+      setStreamText("");
     },
     onError: (e) => {
       setSearchingWeb(false);
       setOptimisticUserMessage(null);
+      setStreaming(false);
       // Roll back the optimistic message on failure.
       qc.invalidateQueries({ queryKey: ["chat", threadId] });
       // Leaving the queue is something the person just asked for, not a
@@ -463,11 +477,27 @@ function ChatPage() {
                       )}
                     </span>
                   </div>
+                ) : streamText ? (
+                  // Tokens are already arriving — show them live, still with
+                  // a small spinner so a long pause mid-answer never reads
+                  // as frozen.
+                  <div className="mt-1 text-foreground">
+                    <MarkdownMessage content={streamText} />
+                    <span
+                      className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent align-middle text-muted-foreground"
+                      aria-hidden
+                    />
+                  </div>
                 ) : (
-                  <div className="mt-2">
+                  <div
+                    className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"
+                    role="status"
+                    aria-live="polite"
+                  >
                     <span className="thinking-dot" />
                     <span className="thinking-dot" />
                     <span className="thinking-dot" />
+                    <span>{streamStageLabel}</span>
                   </div>
                 )}
               </div>
@@ -516,15 +546,18 @@ function ChatPage() {
                 /* Stop means stop whichever stage we are in. Queued: leave
                    the line and hand the slot straight back rather than
                    holding it until the reaper notices. Generating: abort
-                   the upstream call. */
+                   the live SSE connection (already-streamed tokens stay on
+                   screen — streamText is left alone) and release the
+                   queue slot/refund server-side. */
                 wasCancelled.current = true;
                 if (queue.view.waiting) {
                   void queue.giveUp(true);
                   toast.info("Left the queue");
                   return;
                 }
+                abortRef.current?.abort();
                 void stop({ data: { chatId: threadId } }).catch(() => {});
-                toast.info("Stopping…");
+                toast.info("Stopped");
               }}
               quotaInfo={
                 profileQuery.data

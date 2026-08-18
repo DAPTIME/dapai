@@ -161,6 +161,7 @@ export type Database = {
         Row: {
           created_at: string
           deleted_at: string | null
+          deleted_by: string | null
           id: string
           is_incognito: boolean
           title: string
@@ -170,6 +171,7 @@ export type Database = {
         Insert: {
           created_at?: string
           deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_incognito?: boolean
           title?: string
@@ -179,6 +181,7 @@ export type Database = {
         Update: {
           created_at?: string
           deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           is_incognito?: boolean
           title?: string

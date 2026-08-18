@@ -4,6 +4,8 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { parseCopyBlocks } from "@/lib/copy-blocks";
+import { CopyBlock } from "@/components/copy-block";
 
 // Wraps every word in the rendered tree with a span that fades in with
 // a tiny staggered delay. Reset the counter per render so each new
@@ -44,7 +46,7 @@ function useWordFader() {
   return wrap;
 }
 
-export function MarkdownMessage({ content }: { content: string }) {
+function MarkdownProse({ content }: { content: string }) {
   const wrap = useWordFader();
   return (
     <div className="markdown-body max-w-none break-words text-foreground text-[15px] leading-relaxed">
@@ -112,5 +114,27 @@ export function MarkdownMessage({ content }: { content: string }) {
         {content}
       </ReactMarkdown>
     </div>
+  );
+}
+
+/**
+ * Assistant messages use literal copy_block_start_dap_ai / _end_dap_ai
+ * markers instead of markdown ``` fences. Split the raw text into prose
+ * and block segments first (streaming-safe — see src/lib/copy-blocks.ts),
+ * then render prose through the normal markdown pipeline and blocks
+ * through <CopyBlock>, which never assumes/forces syntax highlighting.
+ */
+export function MarkdownMessage({ content }: { content: string }) {
+  const segments = parseCopyBlocks(content);
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.type === "block" ? (
+          <CopyBlock key={i} content={seg.content} />
+        ) : seg.content ? (
+          <MarkdownProse key={i} content={seg.content} />
+        ) : null
+      )}
+    </>
   );
 }

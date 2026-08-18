@@ -1,8 +1,8 @@
 /**
  * In-process FIFO queue keyed by model. Ensures only one request is in
- * flight against a given local AI backend at a time — the LM Studio /
- * Ollama box on the user's PC can only chew on one prompt per model
- * without thrashing. Each model gets its own independent queue so the
+ * flight against the DAP orchestrator at a time — the Jetson boxes hold a
+ * single expert model in memory, so one request is processed at a time
+ * across the whole system. Each model gets its own independent queue so the
  * Pro model and the Lite model can serve users in parallel.
  *
  * Note: this is per-Worker-instance. The site runs on a small edge
