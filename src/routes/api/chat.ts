@@ -95,6 +95,7 @@ export const Route = createFileRoute("/api/chat")({
         const raw = await request.text();
 
         let replyCeiling: number | null = null;
+        let callerTier: Tier = "free";
 
         let model = "dap-ai-1.0";
         try {
@@ -144,6 +145,7 @@ export const Route = createFileRoute("/api/chat")({
              client would spend nobody's allowance. */
           {
             const tier = ((profile?.tier as Tier) ?? "free") as Tier;
+            callerTier = tier;
             const limits = TIER_LIMITS[tier];
             // Carried out of this block so the relayed request can be
             // capped: without it a raw caller sets their own max_tokens and
@@ -238,150 +240,87 @@ export const Route = createFileRoute("/api/chat")({
 
 
 
-        const { url: backend, key, upstreamModel } = backendFor(model);
-        if (!backend) {
-          return Response.json(
-            {
-              error: "Sorry, DAP AI is offline right now.",
-            },
-            { status: 503 }
-          );
+        // ── Stream the orchestrator's reply straight through as SSE ──
+        const {
+          aiEnabled,
+          openOrchestratorStream,
+          readOrchestratorEvents,
+          AI_MAINTENANCE_MESSAGE,
+          CONNECTION_LOST_MESSAGE,
+        } = await import("@/lib/dap-orchestrator.server");
+
+        if (!(await aiEnabled())) {
+          return Response.json({ error: AI_MAINTENANCE_MESSAGE }, { status: 503 });
         }
 
-        // Rewrite outgoing body's `model` to the upstream identifier
-        // (e.g. LM Studio's loaded-model name) if configured.
-        let outgoingBody = raw;
+        let messages: Array<{ role: "system" | "user" | "assistant"; content: unknown }> = [];
         try {
-          const parsed = JSON.parse(raw);
-          if (upstreamModel) parsed.model = upstreamModel;
-          /* Overwritten rather than defaulted. This endpoint takes a body
-             the caller composed, so a max_tokens they set themselves is a
-             request for a longer answer than their plan pays for. */
-          if (replyCeiling !== null) parsed.max_tokens = replyCeiling;
-          if (model === "dap-ai-lite") {
-            parsed.reasoning_effort = "none";
-            parsed.thinking = false;
-            parsed.enable_thinking = false;
-            parsed.include_reasoning = false;
-            parsed.return_reasoning = false;
-            parsed.temperature = 0;
-            parsed.top_p = 1;
-            parsed.chat_template_kwargs = {
-              ...(parsed.chat_template_kwargs ?? {}),
-              enable_thinking: false,
-              thinking: false,
-              no_think: true,
-            };
-            parsed.extra_body = {
-              ...(parsed.extra_body ?? {}),
-              chat_template_kwargs: {
-                ...(parsed.extra_body?.chat_template_kwargs ?? {}),
-                enable_thinking: false,
-                thinking: false,
-                no_think: true,
-              },
-            };
-            parsed.messages = [
-              {
-                role: "system",
-                content: LITE_NO_THINK_PROMPT,
-              },
-              ...(Array.isArray(parsed.messages) ? parsed.messages : []),
-            ];
-          }
-
-          outgoingBody = JSON.stringify(parsed);
+          const parsed = JSON.parse(raw) as { messages?: typeof messages };
+          messages = Array.isArray(parsed.messages) ? parsed.messages : [];
         } catch {
-          /* keep raw */
+          return Response.json({ error: "Invalid request body." }, { status: 400 });
+        }
+        if (messages.length === 0) {
+          return Response.json({ error: "No messages to send." }, { status: 400 });
         }
 
-
-
-
-        // Per-model queue: one request at a time per model.
+        // One generation at a time — inference runs on a single machine.
         return enqueue(`model:${model}`, async () => {
+          const encoder = new TextEncoder();
+          let upstream: Response;
           try {
-            const res = await fetch(backend, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(key ? { Authorization: `Bearer ${key}` } : {}),
-              },
-              body: outgoingBody,
-            });
-            let text = await res.text();
-            if (!res.ok) {
-              /* A safety refusal usually comes back non-OK with no content,
-                 and reporting it as an outage sends someone retrying a
-                 prompt that will never go through. Checked before the
-                 outage branch for that reason — same order as the main
-                 chat path. */
-              let errBody: unknown = {};
-              try {
-                errBody = JSON.parse(text);
-              } catch {
-                errBody = {};
-              }
-              if (isSafetyBlock(errBody, res.status)) {
-                console.warn(`[api/chat] blocked upstream (HTTP ${res.status})`);
-                return Response.json({ reply: SAFETY_BLOCKED_MESSAGE });
-              }
-              console.error(
-                `[api/chat] Backend HTTP ${res.status}: ${text.replace(/\s+/g, " ").trim().slice(0, 200)}`
-              );
-              return Response.json(
-                { error: "Sorry, DAP AI is offline right now." },
-                { status: 502 }
-              );
-            }
-            let parsedResponse: {
-              choices?: { message?: { content?: string } }[];
-              message?: { content?: string };
-              error?: string | { message?: string };
-            };
-            try {
-              parsedResponse = JSON.parse(text);
-            } catch {
-              console.error(
-                `[api/chat] Backend returned non-JSON: ${text.replace(/\s+/g, " ").trim().slice(0, 200)}`
-              );
-              return Response.json(
-                { error: "Sorry, DAP AI is offline right now." },
-                { status: 502 }
-              );
-            }
-            const content =
-              parsedResponse.choices?.[0]?.message?.content ??
-              parsedResponse.message?.content;
-            if (typeof content !== "string" || !content.trim()) {
-              console.error("[api/chat] Backend returned no assistant content.");
-              return Response.json(
-                { error: "Sorry, DAP AI is offline right now." },
-                { status: 502 }
-              );
-            }
-            if (model === "dap-ai-lite") {
-              const cleaned = sanitizeLiteReply(content);
-              if (parsedResponse.choices?.[0]?.message) {
-                parsedResponse.choices[0].message.content = cleaned;
-              } else if (parsedResponse.message) {
-                parsedResponse.message.content = cleaned;
-              }
-              text = JSON.stringify(parsedResponse);
-            }
-            return new Response(text, {
-              status: res.status,
-              headers: {
-                "Content-Type":
-                  res.headers.get("content-type") ?? "application/json",
-              },
-            });
-          } catch (e) {
+            upstream = await openOrchestratorStream({ tier: callerTier, messages });
+          } catch {
             return Response.json(
               { error: "Sorry, DAP AI is offline right now." },
               { status: 502 }
             );
           }
+
+          const stream = new ReadableStream<Uint8Array>({
+            async start(controller) {
+              const send = (obj: unknown) =>
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+              let sawDone = false;
+              let sawToken = false;
+              try {
+                for await (const evt of readOrchestratorEvents(upstream)) {
+                  if (evt.type === "token") {
+                    sawToken = true;
+                    send(evt);
+                  } else if (evt.type === "status") {
+                    send(evt);
+                  } else if (evt.type === "error") {
+                    send({ type: "error", message: "Sorry, DAP AI is offline right now." });
+                    sawDone = true;
+                    break;
+                  } else if (evt.type === "done") {
+                    sawDone = true;
+                    send({ type: "done" });
+                    break;
+                  }
+                }
+              } catch (e) {
+                console.error(`[api/chat] stream failed: ${(e as Error).message}`);
+              }
+              if (!sawDone) {
+                send({
+                  type: "error",
+                  message: sawToken ? CONNECTION_LOST_MESSAGE : "Sorry, DAP AI is offline right now.",
+                });
+              }
+              controller.close();
+            },
+          });
+
+          return new Response(stream, {
+            headers: {
+              "Content-Type": "text/event-stream; charset=utf-8",
+              "Cache-Control": "no-store",
+              Connection: "keep-alive",
+              "X-Accel-Buffering": "no",
+            },
+          });
         });
       },
     },
