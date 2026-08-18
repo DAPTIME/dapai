@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@lovable.dev/mcp-js": "^0.20.0",
+    "@lovable.dev/mcp-js": "^0.26.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.8",
@@ -101,9 +101,17 @@
     "postcss": "^8.5.25",
     "brace-expansion": "^5.0.9",
     "esbuild": "^0.28.1",
-    "js-yaml": "^5.3.0"
+    "js-yaml": "^5.3.0",
+    "hono": "^4.13.2",
+    "ip-address": "^10.5.0",
+    "fast-uri": "^3.1.5",
+    "@hono/node-server": "^1.19.17"
   },
   "resolutions": {
-    "js-yaml": "^5.3.0"
+    "js-yaml": "^5.3.0",
+    "hono": "^4.13.2",
+    "ip-address": "^10.5.0",
+    "fast-uri": "^3.1.5",
+    "@hono/node-server": "^1.19.17"
   }
 }
