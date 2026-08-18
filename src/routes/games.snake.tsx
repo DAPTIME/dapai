@@ -108,7 +108,7 @@ function SnakeGame() {
     };
     handle = requestAnimationFrame(step);
     return () => cancelAnimationFrame(handle);
-  }, [running]);
+  }, [running, mode]);
 
   const turn = (dx: number, dy: number) => {
     const s = stateRef.current;
