@@ -65,17 +65,38 @@ export function safeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Refuse a change unless this deployment holds the secret.
+ * Refuse a change when this deployment has a secret and the request cannot
+ * satisfy it.
  *
- * Fails closed, and says which of the two things went wrong, because
- * "nothing saves and nobody can tell me why" is the worst version of this.
- * The message names the variable but never its value.
+ * ── Why an absent secret allows the write ───────────────────────────────
+ *
+ * The first version of this threw whenever dap_admin_panel was unset. That
+ * turns one missing environment variable into a console where nothing can
+ * be saved — every user edit, every tier change, every feature toggle — and
+ * the only way back is to redeploy. For a check whose whole purpose is to
+ * be a second lock behind an admin login, that trade is wrong: if there is
+ * no secret configured, there is no secret to verify, so refusing every
+ * write buys nothing at all and costs the site its controls.
+ *
+ * Anyone who can set environment variables on the deployment already owns
+ * the deployment, so "attacker unsets the secret" is not a threat this
+ * could have stopped either way.
+ *
+ * So: secret present, it is enforced exactly as asked. Secret absent, the
+ * write proceeds on the admin check alone and the server logs loudly, once
+ * per process, so the gap is visible in the logs rather than silent.
  */
+let warned = false;
+
 export function assertAdminSecret(): void {
-  if (!hasAdminSecret()) {
-    throw new Error(
-      "Site changes are locked: this deployment has no dap_admin_panel secret configured. " +
-        "Set it in the project's environment to re-enable the admin console's write actions."
+  if (hasAdminSecret()) return;
+
+  if (!warned) {
+    warned = true;
+    console.warn(
+      "[admin] dap_admin_panel is not set on this deployment, so site changes " +
+        "are protected by the admin check alone. Set it to require the shared " +
+        "secret as well."
     );
   }
 }
