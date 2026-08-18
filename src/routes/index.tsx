@@ -57,7 +57,7 @@ export const Route = createFileRoute("/")({
     ],
     links: [
       { rel: "canonical", href: "https://dapai.lovable.app/" },
-      { rel: "preload", as: "image", href: logo.url, fetchpriority: "high" },
+      { rel: "preload", as: "image", href: logo.url, fetchPriority: "high" },
     ],
     scripts: [
       {
