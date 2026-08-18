@@ -995,7 +995,11 @@ function SiteTab() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  const status: SiteStatus = statusQuery.data?.status ?? "on";
+  /* Only trust a state we actually read. Defaulting a failed query to "on"
+     painted a green "DAP AI is live" over a console that had loaded nothing,
+     which is the worst possible reading of a site that might be off. */
+  const status: SiteStatus | null = statusQuery.data?.status ?? null;
+  const failed = statusQuery.isError;
 
   const dot: Record<SiteStatus, string> = {
     on: "bg-emerald-500",
@@ -1019,12 +1023,27 @@ function SiteTab() {
 
       <div className="mt-5 flex items-center gap-3 rounded-md border border-border bg-muted/30 p-4">
         <span
-          className={`inline-flex h-2.5 w-2.5 rounded-full ${dot[status]}`}
+          className={`inline-flex h-2.5 w-2.5 rounded-full ${
+            failed ? "bg-destructive" : status ? dot[status] : "bg-muted-foreground"
+          }`}
         />
         <span className="text-sm font-medium">
-          {statusQuery.isLoading ? "Loading\u2026" : headline[status]}
+          {statusQuery.isLoading
+            ? "Loading\u2026"
+            : failed
+              ? "Could not read the site's state"
+              : status
+                ? headline[status]
+                : "Unknown"}
         </span>
       </div>
+      {failed && (
+        <p className="mt-2 text-xs text-destructive">
+          {statusQuery.error instanceof Error
+            ? statusQuery.error.message
+            : "The server could not answer."}
+        </p>
+      )}
 
       <div
         role="radiogroup"
@@ -1040,7 +1059,7 @@ function SiteTab() {
               role="radio"
               aria-checked={active}
               onClick={() => !active && toggle.mutate(value)}
-              disabled={statusQuery.isLoading || toggle.isPending}
+              disabled={statusQuery.isLoading || failed || toggle.isPending}
               className={`rounded-md border p-3 text-left transition-colors disabled:opacity-60 ${
                 active
                   ? "border-primary bg-primary/10"
@@ -1150,15 +1169,25 @@ function FeatureList({
   });
 
   const flags = flagsQuery.data;
+  const flagsFailed = flagsQuery.isError;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
       <h2 className="text-lg font-semibold">{title}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
 
+      {flagsFailed && (
+        <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          These could not be read, so the states below are unknown rather than
+          on.{" "}
+          {flagsQuery.error instanceof Error ? flagsQuery.error.message : ""}
+        </p>
+      )}
+
       <ul className="mt-5 divide-y divide-border">
         {keys.map((key) => {
-          const enabled = flags ? flags[key] : true;
+          // Unknown when the read failed — a grey dot, not a green one.
+          const enabled = flags ? flags[key] : !flagsFailed;
           return (
             <li
               key={key}
@@ -1168,7 +1197,11 @@ function FeatureList({
                 <div className="flex items-center gap-2">
                   <span
                     className={`inline-flex h-2.5 w-2.5 rounded-full ${
-                      enabled ? "bg-emerald-500" : "bg-destructive"
+                      flagsFailed
+                        ? "bg-muted-foreground"
+                        : enabled
+                          ? "bg-emerald-500"
+                          : "bg-destructive"
                     }`}
                   />
                   <span className="font-medium">{FEATURE_LABELS[key]}</span>
@@ -1182,7 +1215,7 @@ function FeatureList({
               <Button
                 className="w-full sm:w-auto"
                 onClick={() => toggle.mutate({ key, enabled: !enabled })}
-                disabled={flagsQuery.isLoading || toggle.isPending}
+                disabled={flagsQuery.isLoading || flagsFailed || toggle.isPending}
                 variant={enabled ? "outline" : "default"}
                 style={
                   !enabled ? { background: "var(--gradient-brand)" } : undefined

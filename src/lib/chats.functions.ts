@@ -525,7 +525,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         ownerId = chat.user_id;
       } else {
         const { assertAdmin } = await import("./admin.server");
-        await assertAdmin(userId);
+        await assertAdmin(userId, userClient);
         const { supabaseAdmin } = await import(
           "@/integrations/supabase/client.server"
         );
@@ -559,7 +559,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         // to everyone else, so a change can be tested without opening it up.
         const { isAdminUser } = await import("./admin.server");
         const viewerIsAdmin =
-          siteStatus === "admin" ? await isAdminUser(userId).catch(() => false) : false;
+          siteStatus === "admin" ? await isAdminUser(userId, supabase).catch(() => false) : false;
         if (!siteOpenTo(siteStatus, viewerIsAdmin)) {
           throw new Error(
             "DAP AI is undergoing major reworks. Please try again later."

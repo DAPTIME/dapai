@@ -22,7 +22,7 @@ import { SITE_STATUSES, parseSiteStatus, type SiteStatus } from "@/lib/site-stat
 export const adminListAllChats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     const supabaseAdmin = getAdminClient();
     /* Falls back to the old column list until the soft-delete migration
        has run, so the console keeps working across the gap between a
@@ -64,7 +64,7 @@ export const adminGetChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     const supabaseAdmin = getAdminClient();
     const [{ data: chat }, { data: messages, error }] = await Promise.all([
       supabaseAdmin
@@ -92,7 +92,7 @@ export const adminDeleteChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error: msgErr } = await supabaseAdmin
@@ -114,7 +114,7 @@ type TierId = (typeof TIERS)[number];
 export const adminListUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     const supabaseAdmin = getAdminClient();
     const { data, error } = await supabaseAdmin
       .from("profiles")
@@ -151,7 +151,7 @@ export const adminSetBan = createServerFn({ method: "POST" })
     z.object({ userId: z.string().uuid(), banned: z.boolean() }).parse(i)
   )
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     if (data.userId === context.userId)
       throw new Error("You can't ban your own admin account.");
@@ -179,7 +179,7 @@ export const adminSetTier = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const patch: { tier: TierId; pro_messages_used?: number } = {
@@ -212,18 +212,13 @@ export const adminAmIAdmin = createServerFn({ method: "GET" })
       detail?: string;
     }> => {
       try {
-        return { isAdmin: await isAdminUser(context.userId) };
+        // isAdminUser now tries the caller's own profile row first and only
+        // falls back to the service role, so the fallback that used to be
+        // written out here lives in one place and every admin-gated call
+        // gets it — not just this one.
+        return { isAdmin: await isAdminUser(context.userId, context.supabase) };
       } catch (e) {
         if (e instanceof AdminCheckError) {
-          // Service-role path unavailable (missing key / db hiccup). The
-          // caller can still read their OWN profile row under RLS, which is
-          // the same source of truth, so admins are not locked out.
-          const { data } = await context.supabase
-            .from("profiles")
-            .select("site_admin")
-            .eq("id", context.userId)
-            .maybeSingle();
-          if (data?.site_admin === true) return { isAdmin: true };
           return { isAdmin: false, problem: e.problem, detail: e.detail };
         }
         throw e;
@@ -246,7 +241,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     if (data.email) {
@@ -287,7 +282,7 @@ export const adminResetPassword = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.auth.admin.updateUserById(
@@ -302,7 +297,7 @@ export const adminConfirmEmail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.auth.admin.updateUserById(
@@ -317,7 +312,7 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     if (data.userId === context.userId) {
@@ -367,7 +362,7 @@ export const adminSetSiteStatus = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     const status: SiteStatus =
       data.status ?? (data.enabled ? "on" : "off");
@@ -404,7 +399,7 @@ export const adminSetOfflineMessage = createServerFn({ method: "POST" })
     z.object({ message: z.string().trim().max(300) }).parse(i)
   )
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.from("ai_settings").upsert({
@@ -454,7 +449,7 @@ export const adminSetFeatureFlag = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.from("ai_settings").upsert({

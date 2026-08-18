@@ -205,7 +205,7 @@ export const joinStudyRoom = createServerFn({ method: "POST" })
 export const adminListStudyRooms = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     const soft = await hasSoftDelete();
 
     const { data: rooms, error } = await supabaseAdmin
@@ -289,7 +289,7 @@ export const adminDeleteStudyRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     if (!(await hasSoftDelete())) throw new Error(SOFT_DELETE_MISSING);
 
@@ -317,7 +317,7 @@ export const adminRestoreStudyRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.supabase);
     assertAdminSecret();
     if (!(await hasSoftDelete())) throw new Error(SOFT_DELETE_MISSING);
 
