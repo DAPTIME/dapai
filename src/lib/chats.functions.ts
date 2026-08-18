@@ -41,7 +41,7 @@ import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 
 
 
-// Lite gets a smaller rolling window so its (smaller LM Studio context)
+// Lite gets a smaller rolling window so the boss model's context
 // never overflows. Pro keeps the full history.
 const LITE_HISTORY_LIMIT = 12;
 
@@ -763,7 +763,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
 
       // Keep the system message at the head (for DAP context) and trim
-      // the rolling history for Lite so it fits in its smaller LM Studio
+      // the rolling history for Lite so it fits the boss model's smaller
       // context window.
       ...(() => {
         const all = history ?? [];
