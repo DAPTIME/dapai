@@ -731,6 +731,7 @@ export type Database = {
           week_used: number
         }[]
       }
+      chat_rate_ok: { Args: never; Returns: boolean }
       create_custom_dap: {
         Args: {
           _description: string
