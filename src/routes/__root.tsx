@@ -279,19 +279,28 @@ function HeaderBar() {
   return (
     <header className="sticky top-0 z-10 flex h-14 w-full max-w-full items-center justify-between gap-2 overflow-hidden border-b border-border bg-background/80 px-3 backdrop-blur">
       <div className="flex min-w-0 items-center gap-2">
-        <SidebarTrigger />
-        <span className="truncate text-sm font-medium text-muted-foreground">DAP AI</span>
+        {/* The brand text used to sit here. On a phone it truncated to
+            "DA..." — a label that names nothing and still charged ~55px
+            against a header that was already overflowing. The sidebar
+            button is the only thing that has to be in this corner, so it
+            takes the space and gets a little larger while it is at it. */}
+        <SidebarTrigger className="h-9 w-9 [&_svg]:size-5" />
       </div>
       <div className="flex min-w-0 shrink items-center gap-2">
         <InstallAppButton />
-        {/* Home only. It was in the header on every page, where on a phone
-            it collapsed to a bare eye with no label — a control nobody could
-            identify, sitting one tap from turning itself on. Starting a chat
-            is the only moment the choice means anything, so that is the only
-            place it appears. */}
-        {isHome && <IncognitoToggle />}
+        {/* Home only, and signed in only. It was in the header on every
+            page, where on a phone it collapsed to a bare eye with no label
+            — a control nobody could identify, sitting one tap from turning
+            itself on. Starting a chat is the only moment the choice means
+            anything, so that is the only place it appears.
 
-        {!isPro && (
+            Signed out it meant even less than that: every model is locked
+            behind sign-in, so a visitor cannot start a chat for it to hide,
+            and it was charging ~110px of a 412px header for the privilege
+            — which is what pushed Sign up off the screen. */}
+        {user && isHome && <IncognitoToggle />}
+
+        {user && !isPro && (
           <Button
             asChild
             size="sm"
