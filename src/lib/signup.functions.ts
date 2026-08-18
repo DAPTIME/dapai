@@ -85,6 +85,14 @@ export const registerAccount = createServerFn({ method: "POST" })
             "Too many signups right now. Please try again in a little while."
           );
         }
+        if (msg.includes("for security purposes")) {
+          // GoTrue's send cooldown ("you can only request this after N
+          // seconds") — matches neither "rate limit" nor the mailer error,
+          // so it fell to the generic message in live testing.
+          throw new Error(
+            "Please wait a minute before trying to sign up again."
+          );
+        }
         if (msg.includes("sending confirmation email")) {
           // Supabase's own mailer is not configured for this project — the
           // branded Resend path exists precisely because of that, and it
