@@ -14,7 +14,7 @@ export async function findUserByEmail(email: string) {
       page,
       perPage: 200,
     });
-    if (error) throw dbError(error);
+    if (error) { console.error("[signup] listUsers raw:", error.name, error.status, error.message, JSON.stringify(error, Object.getOwnPropertyNames(error))); throw dbError(error); }
     const users = data?.users ?? [];
     const u = users.find((x) => (x.email ?? "").toLowerCase() === target);
     if (u) {
