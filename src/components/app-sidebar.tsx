@@ -14,6 +14,8 @@ import {
   Users,
   Gamepad2,
   Users2,
+  Pin,
+  PinOff,
 } from "lucide-react";
 
 import { adminAmIAdmin } from "@/lib/admin.functions";
@@ -35,6 +37,8 @@ import { useAuth } from "@/lib/auth";
 import {
   listChats,
   deleteChat,
+  setChatPinned,
+  getProfile,
 } from "@/lib/chats.functions";
 import { useIncognito } from "@/lib/use-incognito";
 import { useSiteConfig } from "@/lib/site-config";
@@ -54,6 +58,8 @@ export function AppSidebar() {
   const incognito = useIncognito();
   const list = useServerFn(listChats);
   const remove = useServerFn(deleteChat);
+  const pin = useServerFn(setChatPinned);
+  const fetchProfile = useServerFn(getProfile);
 
   // Same query key as the account menu, so both read one cached answer.
   const amIAdmin = useServerFn(adminAmIAdmin);
@@ -84,7 +90,25 @@ export function AppSidebar() {
     },
   });
 
+  /* The saved-chat counter needs the plan's limit, which the profile
+     already carries. Exclusive has no limit, so it gets no counter. */
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchProfile(),
+    enabled: !!user && !incognito,
+    staleTime: 15_000,
+  });
+
+  const pinMut = useMutation({
+    mutationFn: (v: { id: string; pinned: boolean }) =>
+      pin({ data: { chatId: v.id, pinned: v.pinned } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["chats"] }),
+  });
+
   const threads = chatsQuery.data ?? [];
+  const chatLimit = profileQuery.data?.chatLimit;
+  const showChatCount =
+    typeof chatLimit === "number" && Number.isFinite(chatLimit) && threads.length > 0;
   const closeIfMobile = () => { if (isMobile) setOpenMobile(false); };
 
   return (
@@ -169,8 +193,21 @@ export function AppSidebar() {
 
         {user && !incognito && (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel>
-              <History className="mr-1.5 h-3.5 w-3.5" /> Chats
+            <SidebarGroupLabel className="justify-between">
+              <span className="flex items-center">
+                <History className="mr-1.5 h-3.5 w-3.5" /> Chats
+              </span>
+              {showChatCount && (
+                <span
+                  className={
+                    threads.length >= (chatLimit as number)
+                      ? "text-[0.7rem] font-normal text-destructive"
+                      : "text-[0.7rem] font-normal text-muted-foreground"
+                  }
+                >
+                  {threads.length} of {chatLimit} chats
+                </span>
+              )}
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -202,6 +239,29 @@ export function AppSidebar() {
                             <span className="truncate">{t.title}</span>
                           </Link>
                         </SidebarMenuButton>
+                        <button
+                          type="button"
+                          disabled={pinMut.isPending}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            pinMut.mutate({ id: t.id, pinned: !t.pinned });
+                          }}
+                          className="flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 md:h-7 md:w-7 md:group-hover/row:flex"
+                          aria-label={t.pinned ? "Unpin chat" : "Pin chat"}
+                          title={
+                            t.pinned
+                              ? "Pinned — never removed automatically"
+                              : "Pin so it is never removed automatically"
+                          }
+                          style={{ display: t.pinned ? "flex" : undefined }}
+                        >
+                          {t.pinned ? (
+                            <Pin className="h-3.5 w-3.5 fill-current text-primary" />
+                          ) : (
+                            <PinOff className="h-3.5 w-3.5" />
+                          )}
+                        </button>
                         <button
                           type="button"
                           disabled={deleteMut.isPending}
