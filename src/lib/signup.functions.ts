@@ -85,6 +85,15 @@ export const registerAccount = createServerFn({ method: "POST" })
             "Too many signups right now. Please try again in a little while."
           );
         }
+        if (msg.includes("sending confirmation email")) {
+          // Supabase's own mailer is not configured for this project — the
+          // branded Resend path exists precisely because of that, and it
+          // needs the service-role key. Nothing keyless can send the
+          // confirmation, so say what the visitor can actually do.
+          throw new Error(
+            "Signups are temporarily unavailable while we fix our email delivery. Please try again later."
+          );
+        }
         console.error("[signup] fallback signUp failed:", error.message);
         throw new Error(
           "We couldn't start your signup right now. Please try again in a minute."
