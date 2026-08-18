@@ -166,10 +166,9 @@ export const Route = createFileRoute("/api/chat")({
         const chargedCost = chargeErr ? 0 : cost;
 
         // Queue slot: only one generation runs system-wide at a time.
-        const { data: ticket, error: queueErr } = await asCaller
-          .rpc("queue_acquire", { _chat_id: body.chatId })
-          .maybeSingle()
-          .catch(() => ({ data: null, error: null }) as any);
+        const { data: ticket, error: queueErr } = await Promise.resolve(
+          asCaller.rpc("queue_acquire", { _chat_id: body.chatId }).maybeSingle()
+        ).catch(() => ({ data: null, error: null }) as { data: null; error: null });
         void queueErr;
         const ticketId = (ticket as { id?: string } | null)?.id ?? body.chatId;
 
