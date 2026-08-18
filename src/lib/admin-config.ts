@@ -17,7 +17,6 @@ export const FEATURE_KEYS = [
   "games",
   "game_2048",
   "game_snake",
-  "game_spacewar",
   "game_daptrack",
   "game_river",
   "game_flappy",
@@ -43,7 +42,6 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   games: "Games (DAP Arcade)",
   game_2048: "2048",
   game_snake: "Snake",
-  game_spacewar: "Spacewar",
   game_daptrack: "DAP Track",
   game_river: "River Crosser",
   game_flappy: "Flappy",
@@ -68,7 +66,6 @@ export const FEATURE_GROUPS = {
   games: [
     "game_2048",
     "game_snake",
-    "game_spacewar",
     "game_daptrack",
     "game_river",
     "game_flappy",

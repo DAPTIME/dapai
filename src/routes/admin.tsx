@@ -70,6 +70,7 @@ const SECTIONS = [
   { id: "beta", label: "Beta Testers", icon: Users },
   { id: "models", label: "Models", icon: Cpu },
   { id: "pages", label: "Pages", icon: Eye },
+  { id: "arcade", label: "Arcade", icon: Gamepad2 },
   { id: "rooms", label: "Study Rooms", icon: Gamepad2 },
   { id: "daps", label: "DAP Review", icon: Sparkles },
 ] as const;
@@ -255,6 +256,13 @@ function Admin() {
               title="Pages & features"
               description="Anyone using a page you turn off is sent back to the home page."
               keys={FEATURE_GROUPS.pages}
+            />
+          </TabsContent>
+          <TabsContent value="arcade" className="mt-6">
+            <FeatureList
+              title="Arcade games"
+              description="Turn an individual game off — it greys out in the arcade and anyone playing it is sent home."
+              keys={FEATURE_GROUPS.games}
             />
           </TabsContent>
         </Tabs>

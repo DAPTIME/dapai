@@ -8,7 +8,6 @@ import { FEATURE_LABELS, type FeatureKey } from "@/lib/admin-config";
 export const GAME_FLAGS: Record<string, FeatureKey> = {
   "/games/2048": "game_2048",
   "/games/snake": "game_snake",
-  "/games/spacewar": "game_spacewar",
   "/games/daptrack": "game_daptrack",
   "/games/river": "game_river",
   "/games/flappy": "game_flappy",
