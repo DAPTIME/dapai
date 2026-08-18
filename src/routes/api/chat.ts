@@ -15,12 +15,6 @@ import {
   limitRefusal,
   type ChargeResult,
 } from "@/lib/usage-limits";
-import type { ModelId } from "@/lib/models";
-import { sanitizeLiteReply } from "@/lib/lite-sanitize";
-import { isSafetyBlock, SAFETY_BLOCKED_MESSAGE } from "@/lib/safety";
-
-const LITE_NO_THINK_PROMPT =
-  "You are DAP AI Lite, also known as the Gemma E2B model. Thinking mode is OFF. Answer with only the final user-facing response. Never write internal reasoning, planning, analysis, scratchpad, self-talk, or sentences like 'I need to'. Do not output <think> tags or explain how you will answer.";
 
 /**
  * Raw HTTP relay for DAP AI (optional — the main app uses the
@@ -42,21 +36,6 @@ const LITE_NO_THINK_PROMPT =
  * as they like; they just wait their turn in line.
  */
 
-
-function backendFor(model: string): { url?: string; key?: string; upstreamModel?: string } {
-  if (model === "dap-ai-lite") {
-    return {
-      url: process.env.AI_BACKEND_URL_LITE ?? process.env.AI_BACKEND_URL,
-      key: process.env.AI_BACKEND_KEY_LITE ?? process.env.AI_BACKEND_KEY,
-      upstreamModel: process.env.AI_BACKEND_MODEL_LITE,
-    };
-  }
-  return {
-    url: process.env.AI_BACKEND_URL_PRO ?? process.env.AI_BACKEND_URL,
-    key: process.env.AI_BACKEND_KEY_PRO ?? process.env.AI_BACKEND_KEY,
-    upstreamModel: process.env.AI_BACKEND_MODEL_PRO,
-  };
-}
 
 export const Route = createFileRoute("/api/chat")({
   server: {
@@ -94,7 +73,7 @@ export const Route = createFileRoute("/api/chat")({
 
         const raw = await request.text();
 
-        let replyCeiling: number | null = null;
+        // Reply length is governed by the orchestrator itself.
         let callerTier: Tier = "free";
 
         let model = "dap-ai-1.0";
@@ -150,7 +129,6 @@ export const Route = createFileRoute("/api/chat")({
             // Carried out of this block so the relayed request can be
             // capped: without it a raw caller sets their own max_tokens and
             // pulls a longer reply than their plan allows.
-            replyCeiling = limits.maxResponseTokens;
 
             let promptText = "";
             let images = 0;
