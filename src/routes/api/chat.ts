@@ -241,9 +241,13 @@ export const Route = createFileRoute("/api/chat")({
 
         const releaseAndRefund = async (opts: { refund: boolean }) => {
           if (opts.refund && chargedCost > 0) {
-            await asCaller.rpc("refund_usage", { _cost: chargedCost, _images: chargedImages }).catch(() => {});
+            await Promise.resolve(
+              asCaller.rpc("refund_usage", { _cost: chargedCost, _images: chargedImages })
+            ).catch(() => {});
           }
-          await asCaller.rpc("queue_release", { _id: ticketId, _completed: !opts.refund }).catch(() => {});
+          await Promise.resolve(
+            asCaller.rpc("queue_release", { _id: ticketId, _completed: !opts.refund })
+          ).catch(() => {});
         };
 
         const persistStopped = async () => {
