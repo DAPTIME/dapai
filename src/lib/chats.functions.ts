@@ -950,14 +950,27 @@ export const sendChatMessage = createServerFn({ method: "POST" })
   });
 
 /**
- * Interrupt the in-flight (or queued) reply for a chat so the next person in
- * the per-model queue can go ahead.
+ * Interrupt the in-flight (or queued) reply for a chat.
+ *
+ * Only one request runs across the whole system at a time, so an abandoned
+ * slot stalls every other user: the slot is released here immediately rather
+ * than waiting for the reaper. The usage charge is given back too, and the
+ * partial reply (if the client streamed any) is saved marked as stopped so
+ * reloading the thread shows what actually arrived.
  */
 export const stopChatMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
+  .inputValidator((i) =>
+    z
+      .object({
+        chatId: z.string().uuid(),
+        partialText: z.string().max(200_000).optional(),
+        refundCost: z.number().min(0).max(10_000).optional(),
+      })
+      .parse(i)
+  )
   .handler(async ({ context, data }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
     const { data: owned, error } = await supabase
       .from("chats")
       .select("id")
@@ -965,7 +978,68 @@ export const stopChatMessage = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw dbError(error);
     if (!owned) throw new Error("Chat not found.");
+
     markStopped(data.chatId);
+
+    // Free the single system-wide generation slot right away.
+    await Promise.resolve(
+      supabase.rpc("queue_release", { _id: data.chatId, _cancelled: true })
+    ).catch(() => {});
+
+    // No image was produced, so nothing is charged against the image quota.
+    if (data.refundCost && data.refundCost > 0) {
+      await Promise.resolve(
+        supabase.rpc("refund_usage", { _cost: data.refundCost, _images: 0 })
+      ).catch(() => {});
+    }
+
+    const partial = (data.partialText ?? "").trim();
+    if (partial) {
+      await Promise.resolve(
+        supabase.from("chat_messages").insert({
+          chat_id: data.chatId,
+          user_id: userId,
+          role: "assistant",
+          content: `${partial}\n\n_Stopped._`,
+        })
+      ).catch(() => {});
+    }
+
     return { ok: true };
   });
+
+/**
+ * Persist a partial assistant reply the client streamed before the stream
+ * ended abnormally. Marked as stopped so the thread reads honestly on reload.
+ */
+export const saveStoppedReply = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        chatId: z.string().uuid(),
+        text: z.string().min(1).max(200_000),
+      })
+      .parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: owned, error } = await supabase
+      .from("chats")
+      .select("id")
+      .eq("id", data.chatId)
+      .maybeSingle();
+    if (error) throw dbError(error);
+    if (!owned) throw new Error("Chat not found.");
+    await Promise.resolve(
+      supabase.from("chat_messages").insert({
+        chat_id: data.chatId,
+        user_id: userId,
+        role: "assistant",
+        content: `${data.text.trim()}\n\n_Stopped._`,
+      })
+    ).catch(() => {});
+    return { ok: true };
+  });
+
 
