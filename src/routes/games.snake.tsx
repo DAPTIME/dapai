@@ -35,11 +35,17 @@ const CELL = 20;
 
 type Pt = { x: number; y: number };
 
+/* One block per second on easy, two per second on hard — the snake moves in
+   whole cells, so the tick interval is simply 1000ms or 500ms. */
+type Mode = "easy" | "hard";
+const TICK_MS: Record<Mode, number> = { easy: 1000, hard: 500 };
+
 function SnakeGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [running, setRunning] = useState(false);
   const [dead, setDead] = useState(false);
+  const [mode, setMode] = useState<Mode>("easy");
   const stateRef = useRef({
     snake: [{ x: 10, y: 10 }] as Pt[],
     dir: { x: 1, y: 0 },
@@ -59,6 +65,7 @@ function SnakeGame() {
     setRunning(true);
   };
 
+
   useEffect(() => {
     if (!running) return;
     const canvas = canvasRef.current;
@@ -68,7 +75,7 @@ function SnakeGame() {
     let last = 0;
     const step = (t: number) => {
       if (!last) last = t;
-      if (t - last > 110) {
+      if (t - last >= TICK_MS[mode]) {
         last = t;
         const s = stateRef.current;
         s.dir = s.nextDir;
@@ -101,7 +108,7 @@ function SnakeGame() {
     };
     handle = requestAnimationFrame(step);
     return () => cancelAnimationFrame(handle);
-  }, [running]);
+  }, [running, mode]);
 
   const turn = (dx: number, dy: number) => {
     const s = stateRef.current;
@@ -124,8 +131,31 @@ function SnakeGame() {
       <h1 className="text-2xl font-bold">Snake 🐍</h1>
       <div className="mt-2 flex items-center justify-between text-sm">
         <div>Score: <span className="font-semibold">{score}</span></div>
-        <Button size="sm" variant="secondary" onClick={start}>{running ? "Restart" : dead ? "Play again" : "Start"}</Button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-border p-0.5">
+            {(["easy", "hard"] as Mode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                aria-pressed={mode === m}
+                className={
+                  mode === m
+                    ? "rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground"
+                    : "rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                }
+              >
+                {m === "easy" ? "Easy" : "Hard"}
+              </button>
+            ))}
+          </div>
+          <Button size="sm" variant="secondary" onClick={start}>{running ? "Restart" : dead ? "Play again" : "Start"}</Button>
+        </div>
       </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {mode === "easy" ? "Easy — one block per second." : "Hard — two blocks per second."}
+      </p>
+
       <canvas
         ref={canvasRef}
         width={COLS * CELL}
