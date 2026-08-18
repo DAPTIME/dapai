@@ -47,7 +47,6 @@ import { Route as GamesPolytrackSplatRouteImport } from './routes/games.polytrac
 import { Route as GamesDaptrackEditorRouteImport } from './routes/games.daptrack.editor'
 import { Route as GamesDaptrackBrowseRouteImport } from './routes/games.daptrack.browse'
 import { Route as ApiPublicLiteTryRouteImport } from './routes/api/public/lite-try'
-import { Route as ApiPublicDiagAdminRouteImport } from './routes/api/public/diag-admin'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as GamesDaptrackTrackIdRouteImport } from './routes/games.daptrack.track.$id'
 import { Route as ApiPublicHooksCleanupOldChatsRouteImport } from './routes/api/public/hooks/cleanup-old-chats'
@@ -244,11 +243,6 @@ const ApiPublicLiteTryRoute = ApiPublicLiteTryRouteImport.update({
   path: '/api/public/lite-try',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicDiagAdminRoute = ApiPublicDiagAdminRouteImport.update({
-  id: '/api/public/diag-admin',
-  path: '/api/public/diag-admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -301,7 +295,6 @@ export interface FileRoutesByFullPath {
   '/games/': typeof GamesIndexRoute
   '/rooms/': typeof RoomsIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/api/public/diag-admin': typeof ApiPublicDiagAdminRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
   '/games/daptrack/editor': typeof GamesDaptrackEditorRoute
@@ -344,7 +337,6 @@ export interface FileRoutesByTo {
   '/games': typeof GamesIndexRoute
   '/rooms': typeof RoomsIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/api/public/diag-admin': typeof ApiPublicDiagAdminRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
   '/games/daptrack/editor': typeof GamesDaptrackEditorRoute
@@ -389,7 +381,6 @@ export interface FileRoutesById {
   '/games/': typeof GamesIndexRoute
   '/rooms/': typeof RoomsIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/api/public/diag-admin': typeof ApiPublicDiagAdminRoute
   '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
   '/games/daptrack/editor': typeof GamesDaptrackEditorRoute
@@ -435,7 +426,6 @@ export interface FileRouteTypes {
     | '/games/'
     | '/rooms/'
     | '/.mcp/invoke-tool/$tool'
-    | '/api/public/diag-admin'
     | '/api/public/lite-try'
     | '/games/daptrack/browse'
     | '/games/daptrack/editor'
@@ -478,7 +468,6 @@ export interface FileRouteTypes {
     | '/games'
     | '/rooms'
     | '/.mcp/invoke-tool/$tool'
-    | '/api/public/diag-admin'
     | '/api/public/lite-try'
     | '/games/daptrack/browse'
     | '/games/daptrack/editor'
@@ -522,7 +511,6 @@ export interface FileRouteTypes {
     | '/games/'
     | '/rooms/'
     | '/.mcp/invoke-tool/$tool'
-    | '/api/public/diag-admin'
     | '/api/public/lite-try'
     | '/games/daptrack/browse'
     | '/games/daptrack/editor'
@@ -560,7 +548,6 @@ export interface RootRouteChildren {
   RoomsCodeRoute: typeof RoomsCodeRoute
   RoomsIndexRoute: typeof RoomsIndexRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
-  ApiPublicDiagAdminRoute: typeof ApiPublicDiagAdminRoute
   ApiPublicLiteTryRoute: typeof ApiPublicLiteTryRoute
   ApiPublicHooksCleanupOldChatsRoute: typeof ApiPublicHooksCleanupOldChatsRoute
 }
@@ -833,13 +820,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicLiteTryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/diag-admin': {
-      id: '/api/public/diag-admin'
-      path: '/api/public/diag-admin'
-      fullPath: '/api/public/diag-admin'
-      preLoaderRoute: typeof ApiPublicDiagAdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -926,7 +906,6 @@ const rootRouteChildren: RootRouteChildren = {
   RoomsCodeRoute: RoomsCodeRoute,
   RoomsIndexRoute: RoomsIndexRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
-  ApiPublicDiagAdminRoute: ApiPublicDiagAdminRoute,
   ApiPublicLiteTryRoute: ApiPublicLiteTryRoute,
   ApiPublicHooksCleanupOldChatsRoute: ApiPublicHooksCleanupOldChatsRoute,
 }
