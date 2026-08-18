@@ -64,31 +64,38 @@ export async function generateSignupLink(opts: {
 }
 
 
-/** Deliver through Supabase Auth, which uses the project's configured SMTP. */
+/**
+ * Deliver the branded DAP AI confirmation email ourselves, through Resend.
+ *
+ * Supabase Auth is deliberately NOT used to send it: generating the link is
+ * already one auth-email operation, so asking Auth to send a second one
+ * comes straight back as 429 over_email_send_rate_limit ("only after 59
+ * seconds") — which is what used to surface as "something went wrong" on
+ * every signup.
+ */
 export async function deliverConfirmation(opts: {
   email: string;
   name: string;
   link: string;
   origin?: string;
 }) {
-  void opts.name;
-  void opts.link;
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.auth.resend({
-    type: "signup",
-    email: opts.email,
-    options: opts.origin
-      ? { emailRedirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1` }
-      : undefined,
-  });
-  if (error) {
-    console.error("[signup] Supabase SMTP delivery failed:", error.message);
+  const { sendEmail, confirmEmailHtml } = await import("./email.server");
+  try {
+    await sendEmail({
+      to: opts.email,
+      subject: "Confirm your DAP AI account",
+      html: confirmEmailHtml({ name: opts.name, link: opts.link }),
+      text: `Hi ${opts.name}, confirm your DAP AI account: ${opts.link}`,
+    });
+  } catch (e) {
+    console.error("[signup] confirmation email failed:", (e as Error).message);
     throw new Error(
-      "Your account was created, but we couldn't send the confirmation email. " +
-        "Use \u201cResend email\u201d in a minute, or contact DAPAI.support@gmail.com."
+      (e as Error).message ||
+        "Your account was created, but we couldn't send the confirmation email. " +
+          "Use \u201cResend email\u201d in a minute, or contact DAPAI.support@gmail.com."
     );
   }
-  return { via: "supabase" as const };
+  return { via: "resend" as const };
 }
 
 export async function sendConfirmation(opts: {
@@ -97,7 +104,7 @@ export async function sendConfirmation(opts: {
   origin: string;
   password?: string;
 }) {
-  let link: string | undefined;
+  let link: string;
   if (opts.password) {
     link = await generateSignupLink({
       email: opts.email,
@@ -106,19 +113,21 @@ export async function sendConfirmation(opts: {
       origin: opts.origin,
     });
   } else {
-    // Existing unconfirmed users must use Supabase's resend operation.
-    // generateLink({ type: "magiclink" }) is a sign-in link, not an email
-    // confirmation link, and can leave the account in the wrong state.
+    /* An existing unconfirmed address cannot get another `signup` link
+       (Auth answers email_exists). A magic link verifies the same address
+       and marks it confirmed, so it does the job — and it goes out through
+       Resend like everything else, rather than Auth's SMTP. */
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.auth.resend({
-      type: "signup",
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: "magiclink",
       email: opts.email,
-      options: { emailRedirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1` },
+      options: { redirectTo: `${resolveSiteUrl(opts.origin)}/?confirmed=1` },
     });
     if (error) throw dbError(error);
-    return;
+    const generated = data?.properties?.action_link;
+    if (!generated) throw new Error("Could not create a confirmation link.");
+    link = generated;
   }
-  if (!link) throw new Error("Could not create a confirmation link.");
 
   await deliverConfirmation({
     email: opts.email,
