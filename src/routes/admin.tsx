@@ -84,6 +84,12 @@ import {
   adminListDapSubmissions,
   adminReviewDap,
 } from "@/lib/custom-daps.functions";
+import {
+  SITE_STATUSES,
+  SITE_STATUS_LABELS,
+  SITE_STATUS_DESCRIPTIONS,
+  type SiteStatus,
+} from "@/lib/site-status";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -979,9 +985,9 @@ function SiteTab() {
   });
 
   const toggle = useMutation({
-    mutationFn: (enabled: boolean) => setStatus({ data: { enabled } }),
-    onSuccess: (_d, enabled) => {
-      toast.success(enabled ? "Site enabled" : "Site disabled");
+    mutationFn: (status: SiteStatus) => setStatus({ data: { status } }),
+    onSuccess: (_d, status) => {
+      toast.success(`Site set to ${SITE_STATUS_LABELS[status]}`);
       qc.invalidateQueries({ queryKey: ["site-status"] });
       qc.invalidateQueries({ queryKey: ["site-config"] });
 
@@ -989,40 +995,70 @@ function SiteTab() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  const enabled = statusQuery.data?.enabled ?? true;
+  const status: SiteStatus = statusQuery.data?.status ?? "on";
+
+  const dot: Record<SiteStatus, string> = {
+    on: "bg-emerald-500",
+    admin: "bg-amber-500",
+    off: "bg-destructive",
+  };
+  const headline: Record<SiteStatus, string> = {
+    on: "DAP AI is live",
+    admin: "DAP AI is open to admins only",
+    off: "DAP AI is OFF \u2014 maintenance mode",
+  };
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
       <h2 className="text-lg font-semibold">Site availability</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        When disabled, the chat composer is hidden everywhere and visitors see
-        a maintenance message. New chats cannot be sent.
+        Anything other than On hides the chat composer and shows visitors the
+        maintenance message below. Admin panel keeps the site working for site
+        admins, so a change can be checked before it goes back up.
       </p>
 
       <div className="mt-5 flex items-center gap-3 rounded-md border border-border bg-muted/30 p-4">
         <span
-          className={`inline-flex h-2.5 w-2.5 rounded-full ${
-            enabled ? "bg-emerald-500" : "bg-destructive"
-          }`}
+          className={`inline-flex h-2.5 w-2.5 rounded-full ${dot[status]}`}
         />
         <span className="text-sm font-medium">
-          {statusQuery.isLoading
-            ? "Loading…"
-            : enabled
-              ? "DAP AI is live"
-              : "DAP AI is OFF — maintenance mode"}
+          {statusQuery.isLoading ? "Loading\u2026" : headline[status]}
         </span>
-        <div className="ml-auto">
-          <Button
-            onClick={() => toggle.mutate(!enabled)}
-            disabled={statusQuery.isLoading || toggle.isPending}
-            variant={enabled ? "outline" : "default"}
-            style={!enabled ? { background: "var(--gradient-brand)" } : undefined}
-          >
-            <Power className="mr-2 h-4 w-4" />
-            {enabled ? "Turn OFF" : "Turn ON"}
-          </Button>
-        </div>
+      </div>
+
+      <div
+        role="radiogroup"
+        aria-label="Site availability"
+        className="mt-3 grid gap-2 sm:grid-cols-3"
+      >
+        {SITE_STATUSES.map((value) => {
+          const active = status === value;
+          return (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => !active && toggle.mutate(value)}
+              disabled={statusQuery.isLoading || toggle.isPending}
+              className={`rounded-md border p-3 text-left transition-colors disabled:opacity-60 ${
+                active
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:bg-muted/50"
+              }`}
+            >
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <span
+                  className={`inline-flex h-2 w-2 rounded-full ${dot[value]}`}
+                />
+                {SITE_STATUS_LABELS[value]}
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                {SITE_STATUS_DESCRIPTIONS[value]}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <OfflineMessageEditor />

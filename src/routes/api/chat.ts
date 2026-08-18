@@ -21,6 +21,7 @@ import {
   OrchestratorUnavailableError,
 } from "@/lib/dap-orchestrator.server";
 import { sanitizeLiteReply, hasLiteReasoningLeak } from "@/lib/lite-sanitize";
+import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
 
 /**
  * Streaming chat proxy.
@@ -106,9 +107,10 @@ export const Route = createFileRoute("/api/chat")({
            out of chat. */
         const { data: callerProfile } = await asCaller
           .from("profiles")
-          .select("banned")
+          .select("banned, site_admin")
           .eq("id", callerId)
           .maybeSingle();
+        const callerIsAdmin = callerProfile?.site_admin === true;
         if (callerProfile?.banned === true) {
           return Response.json(
             { error: "Your account has been suspended." },
@@ -121,10 +123,17 @@ export const Route = createFileRoute("/api/chat")({
           .from("ai_settings")
           .select("id, system_prompt")
           .in("id", ["site_status", "feature_ai_enabled"]);
-        const off = (settingsRows ?? []).some(
-          (r) => (r.system_prompt ?? "on").trim().toLowerCase() === "off"
+        const siteRow = (settingsRows ?? []).find((r) => r.id === "site_status");
+        const siteStatus = parseSiteStatus(siteRow?.system_prompt);
+        // "admin" leaves the site working for site admins only. callerProfile
+        // was already read for the ban check, so this costs no extra query.
+        const siteClosed = !siteOpenTo(siteStatus, callerIsAdmin);
+        const featureOff = (settingsRows ?? []).some(
+          (r) =>
+            r.id !== "site_status" &&
+            (r.system_prompt ?? "on").trim().toLowerCase() === "off"
         );
-        if (off) {
+        if (siteClosed || featureOff) {
           const stream = new ReadableStream({
             start(controller) {
               controller.enqueue(

@@ -23,6 +23,7 @@ import { dbError, userFacingError } from "./db-error";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertAdminSecret } from "@/lib/admin-secret.server";
 
 const DapInput = z.object({
   name: z.string().min(1).max(60),
@@ -230,6 +231,10 @@ export const adminReviewDap = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ context, data }) => {
+    // Approving or rejecting a DAP publishes it to every user, so it is a
+    // site change and carries the same secret requirement as the console's
+    // other writes. The admin check itself lives inside admin_review_dap.
+    assertAdminSecret();
     const { data: status, error } = await context.supabase.rpc("admin_review_dap", {
       _id: data.id,
       _approve: data.approve,

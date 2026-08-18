@@ -7,6 +7,7 @@
  * fetched once during SSR and shared by every component.
  */
 import { createServerFn } from "@tanstack/react-start";
+import { parseSiteStatus, type SiteStatus } from "@/lib/site-status";
 
 export const FEATURE_KEYS = [
   "ai_enabled",
@@ -32,7 +33,10 @@ export const FEATURE_KEYS = [
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
 export interface SiteConfig {
+  /** True when the site is open to everyone. False in "admin" and "off". */
   enabled: boolean;
+  /** The raw three-way setting, so admins can be let through "admin". */
+  status: SiteStatus;
   flags: Record<FeatureKey, boolean>;
   /** Admin-authored text shown in the typing bar while DAP AI is offline. */
   offlineMessage: string;
@@ -43,6 +47,7 @@ export const DEFAULT_OFFLINE_MESSAGE =
 
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
   enabled: true,
+  status: "on",
   flags: {
     ai_enabled: true,
     pro_model: true,
@@ -71,6 +76,7 @@ export const getPublicSiteConfig = createServerFn({ method: "GET" }).handler(
   async (): Promise<SiteConfig> => {
     const config: SiteConfig = {
       enabled: true,
+      status: "on",
       flags: { ...DEFAULT_SITE_CONFIG.flags },
       offlineMessage: DEFAULT_OFFLINE_MESSAGE,
     };
@@ -93,11 +99,12 @@ export const getPublicSiteConfig = createServerFn({ method: "GET" }).handler(
           if (msg) config.offlineMessage = msg;
           continue;
         }
-        const on = (row.system_prompt ?? "on").trim().toLowerCase() !== "off";
         if (row.id === "site_status") {
-          config.enabled = on;
+          config.status = parseSiteStatus(row.system_prompt);
+          config.enabled = config.status === "on";
           continue;
         }
+        const on = (row.system_prompt ?? "on").trim().toLowerCase() !== "off";
         const key = row.id.replace(/^feature_/, "") as FeatureKey;
         if ((FEATURE_KEYS as readonly string[]).includes(key)) {
           config.flags[key] = on;

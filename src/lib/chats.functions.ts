@@ -38,6 +38,7 @@ import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { isSafetyBlock, SAFETY_BLOCKED_MESSAGE } from "@/lib/safety";
 import { MODEL_IDS, modelInfo, type ModelId } from "@/lib/models";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
+import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
 
 
 
@@ -552,10 +553,18 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         .select("system_prompt")
         .eq("id", "site_status")
         .maybeSingle();
-      if ((status?.system_prompt ?? "on").trim().toLowerCase() === "off") {
-        throw new Error(
-          "DAP AI is undergoing major reworks. Please try again later."
-        );
+      const siteStatus = parseSiteStatus(status?.system_prompt);
+      if (siteStatus !== "on") {
+        // "admin" keeps the site usable for site admins while it is closed
+        // to everyone else, so a change can be tested without opening it up.
+        const { isAdminUser } = await import("./admin.server");
+        const viewerIsAdmin =
+          siteStatus === "admin" ? await isAdminUser(userId).catch(() => false) : false;
+        if (!siteOpenTo(siteStatus, viewerIsAdmin)) {
+          throw new Error(
+            "DAP AI is undergoing major reworks. Please try again later."
+          );
+        }
       }
     }
 

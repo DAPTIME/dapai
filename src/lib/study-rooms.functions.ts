@@ -12,6 +12,7 @@ import { normalizeRoomCode } from "./room-code";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assertAdmin } from "./admin.server";
+import { assertAdminSecret } from "@/lib/admin-secret.server";
 import { dbError } from "./db-error";
 import { firstName } from "./utils";
 import { orchestratorComplete, OrchestratorUnavailableError } from "./dap-orchestrator.server";
@@ -289,6 +290,7 @@ export const adminDeleteStudyRoom = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     if (!(await hasSoftDelete())) throw new Error(SOFT_DELETE_MISSING);
 
     const { data: rows, error } = await supabaseAdmin
@@ -316,6 +318,7 @@ export const adminRestoreStudyRoom = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ id: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     if (!(await hasSoftDelete())) throw new Error(SOFT_DELETE_MISSING);
 
     const { data: rows, error } = await supabaseAdmin

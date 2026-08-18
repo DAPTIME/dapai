@@ -13,8 +13,10 @@ import {
   AdminCheckError,
   type AdminCheckProblem,
 } from "@/lib/admin.server";
+import { assertAdminSecret } from "@/lib/admin-secret.server";
 import { FEATURE_KEYS, MODEL_IDS, type FeatureKey } from "@/lib/admin-config";
 import { DEFAULT_OFFLINE_MESSAGE } from "@/lib/site-config.functions";
+import { SITE_STATUSES, parseSiteStatus, type SiteStatus } from "@/lib/site-status";
 
 
 export const adminListAllChats = createServerFn({ method: "GET" })
@@ -91,6 +93,7 @@ export const adminDeleteChat = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ chatId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error: msgErr } = await supabaseAdmin
       .from("chat_messages")
@@ -149,6 +152,7 @@ export const adminSetBan = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     if (data.userId === context.userId)
       throw new Error("You can't ban your own admin account.");
     const supabaseAdmin = getAdminClient();
@@ -176,6 +180,7 @@ export const adminSetTier = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const patch: { tier: TierId; pro_messages_used?: number } = {
       tier: data.tier,
@@ -242,6 +247,7 @@ export const adminUpdateUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     if (data.email) {
       const { error } = await supabaseAdmin.auth.admin.updateUserById(
@@ -282,6 +288,7 @@ export const adminResetPassword = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.auth.admin.updateUserById(
       data.userId,
@@ -296,6 +303,7 @@ export const adminConfirmEmail = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.auth.admin.updateUserById(
       data.userId,
@@ -310,6 +318,7 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
   .inputValidator((i) => z.object({ userId: z.string().uuid() }).parse(i))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     if (data.userId === context.userId) {
       throw new Error("You can't delete your own admin account.");
@@ -335,21 +344,37 @@ export const getSiteStatus = createServerFn({ method: "GET" }).handler(
       .select("system_prompt")
       .eq("id", "site_status")
       .maybeSingle();
-    const enabled =
-      (data?.system_prompt ?? "on").trim().toLowerCase() !== "off";
-    return { enabled };
+    const status = parseSiteStatus(data?.system_prompt);
+    // enabled is kept alongside status so existing callers that only ask
+    // "is the site up for the public" keep working unchanged.
+    return { status, enabled: status === "on" };
   }
 );
 
 export const adminSetSiteStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ enabled: z.boolean() }).parse(i))
+  .inputValidator((i) =>
+    z
+      .object({
+        // enabled stays accepted so a client mid-deploy that still sends a
+        // boolean does not start failing; status wins when both arrive.
+        status: z.enum(SITE_STATUSES).optional(),
+        enabled: z.boolean().optional(),
+      })
+      .refine((v) => v.status !== undefined || v.enabled !== undefined, {
+        message: "A status is required.",
+      })
+      .parse(i)
+  )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
+    const status: SiteStatus =
+      data.status ?? (data.enabled ? "on" : "off");
     const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.from("ai_settings").upsert({
       id: "site_status",
-      system_prompt: data.enabled ? "on" : "off",
+      system_prompt: status,
       updated_at: new Date().toISOString(),
     });
     if (error) throw dbError(error);
@@ -380,6 +405,7 @@ export const adminSetOfflineMessage = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.from("ai_settings").upsert({
       id: "offline_message",
@@ -429,6 +455,7 @@ export const adminSetFeatureFlag = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.userId);
+    assertAdminSecret();
     const supabaseAdmin = getAdminClient();
     const { error } = await supabaseAdmin.from("ai_settings").upsert({
       id: `feature_${data.key}`,
