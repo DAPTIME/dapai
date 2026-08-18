@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/public/diag-admin")({
           );
           const { data, error } = await supabaseAdmin.auth.admin.listUsers({
             page: 1,
-            perPage: 1,
+            perPage: 200,
           });
           out["users"] = data?.users?.length ?? null;
           out["error"] = error
