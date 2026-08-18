@@ -28,7 +28,14 @@ const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
   }
 });
 
+/* Server functions are same-origin RPC endpoints, so cross-site requests to
+   them are rejected. Public API routes (webhooks, /api/public/*) are left
+   alone — they authenticate their callers themselves. */
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === "serverFn",
+});
+
 export const startInstance = createStart(() => ({
-  requestMiddleware: [errorMiddleware],
+  requestMiddleware: [errorMiddleware, csrfMiddleware],
   functionMiddleware: [attachSupabaseAuth],
 }));
