@@ -26,6 +26,7 @@ export function dbError(error: MaybeError, context?: string): Error {
       error?.code ? `(${error.code}) ` : "",
       error?.message ?? "unknown error",
       error?.details ?? "",
+      new Error("trace").stack,
     );
   } catch {
     /* logging must never break the request */
