@@ -191,7 +191,12 @@ export function describeQueue(view: QueueView, tier?: Tier): string {
     view.etaSeconds && view.etaSeconds > 0
       ? ` — about ${formatWait(view.etaSeconds)}`
       : "";
-  return `Response in queue${eta}`;
+  // The position is safe to show: it is this account's own place in line,
+  // not any lane name, ratio, or where other tiers stand. "Next" reads
+  // better than "position 1" for the one case people actually watch for.
+  const place =
+    view.position && view.position > 1 ? ` — position ${view.position}` : " — next";
+  return `Waiting in line${place}${eta}`;
 }
 
 /** The upgrade nudge, or "" for plans that are already prioritised. */

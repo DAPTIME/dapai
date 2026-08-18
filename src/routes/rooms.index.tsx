@@ -7,6 +7,7 @@ import { Users, Plus, LogIn, Radio, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
+import { normalizeRoomCode } from "@/lib/room-code";
 import {
   createStudyRoom,
   joinStudyRoom,
@@ -60,7 +61,7 @@ function RoomsIndex() {
   });
 
   const joinMut = useMutation({
-    mutationFn: () => join({ data: { code: code.trim() } }),
+    mutationFn: () => join({ data: { code } }),
     onSuccess: (room) => navigate({ to: "/rooms/$code", params: { code: room.code } }),
     onError: (e: Error) => toast.error(e.message),
   });
@@ -121,7 +122,7 @@ function RoomsIndex() {
               </h2>
               <Input
                 value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onChange={(e) => setCode(normalizeRoomCode(e.target.value))}
                 placeholder="ABC123"
                 maxLength={10}
                 className="mt-3 tracking-[0.3em] uppercase"
@@ -129,7 +130,7 @@ function RoomsIndex() {
               <Button
                 variant="outline"
                 className="mt-3 w-full"
-                disabled={joinMut.isPending || code.trim().length < 4}
+                disabled={joinMut.isPending || code.length < 4}
                 onClick={() => joinMut.mutate()}
               >
                 {joinMut.isPending ? "Joining…" : "Join room"}

@@ -182,19 +182,42 @@ export const listChats = createServerFn({ method: "GET" })
        exist yet. */
     let { data, error } = await supabase
       .from("chats")
-      .select("id, title, created_at, updated_at")
+      .select("id, title, created_at, updated_at, pinned")
       .eq("is_incognito", false)
       .is("deleted_at", null)
+      .order("pinned", { ascending: false })
       .order("updated_at", { ascending: false });
     if (error && isLedgerMissing(error)) {
       ({ data, error } = await supabase
         .from("chats")
-        .select("id, title, created_at, updated_at")
+        .select("id, title, created_at, updated_at, pinned")
         .eq("is_incognito", false)
         .order("updated_at", { ascending: false }));
     }
     if (error) throw dbError(error);
     return data;
+  });
+
+/**
+ * Pin or unpin a chat. Pinned chats are exempt from prune_own_chats but
+ * still occupy one of the plan's saved-chat slots — see the migration for
+ * the exact rule. Just an update under RLS; no new grant needed since the
+ * owner can already update their own rows.
+ */
+export const setChatPinned = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z.object({ chatId: z.string().uuid(), pinned: z.boolean() }).parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("chats")
+      .update({ pinned: data.pinned })
+      .eq("id", data.chatId)
+      .eq("user_id", userId);
+    if (error) throw dbError(error);
+    return { ok: true };
   });
 
 /**

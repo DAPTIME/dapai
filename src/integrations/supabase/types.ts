@@ -164,6 +164,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_incognito: boolean
+          pinned: boolean
           title: string
           updated_at: string
           user_id: string
@@ -174,6 +175,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_incognito?: boolean
+          pinned?: boolean
           title?: string
           updated_at?: string
           user_id: string
@@ -184,6 +186,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_incognito?: boolean
+          pinned?: boolean
           title?: string
           updated_at?: string
           user_id?: string
