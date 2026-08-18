@@ -11,7 +11,7 @@ export const Route = createFileRoute("/games/")({
       {
         name: "description",
         content:
-          "Play seven free games right in your browser: 2048, Snake, Spacewar, DAP Track 3D time trials, River Crosser, Flappy and Brick Breaker.",
+          "Play six free games right in your browser: 2048, Snake, DAP Track 3D time trials, River Crosser, Flappy and Brick Breaker.",
       },
       { property: "og:title", content: "DAP Arcade — 8 free games in your browser" },
       {
@@ -30,7 +30,6 @@ export const Route = createFileRoute("/games/")({
 const GAMES = [
   { to: "/games/2048" as const, label: "2048", emoji: "🟨", desc: "Slide, merge, chase 2048." },
   { to: "/games/snake" as const, label: "Snake", emoji: "🐍", desc: "Classic — don't bite yourself." },
-  { to: "/games/spacewar" as const, label: "Spacewar", emoji: "🚀", desc: "Dodge asteroids, blast rocks." },
   { to: "/games/daptrack" as const, label: "DAP Track", emoji: "🏎️", desc: "3D low-poly time trials — checkpoints, ghosts, medals, editor." },
   { to: "/games/river" as const, label: "River Crosser", emoji: "🐸", desc: "Hop cars and logs — don't drown." },
   { to: "/games/flappy" as const, label: "Flappy", emoji: "🐤", desc: "Tap to flap between pipes." },
