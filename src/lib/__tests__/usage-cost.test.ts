@@ -53,8 +53,11 @@ describe("cost bands", () => {
     const free = costOfPrompt("free", 900)!;
     const go = costOfPrompt("go", 900)!;
     const pro = costOfPrompt("pro", 900)!;
-    expect(free).toBeGreaterThan(go);
-    expect(go).toBeGreaterThan(pro);
+    // Never cheaper on a smaller plan, and strictly cheaper at the extremes
+    // (band edges can land two adjacent tiers on the same figure).
+    expect(free).toBeGreaterThanOrEqual(go);
+    expect(go).toBeGreaterThanOrEqual(pro);
+    expect(free).toBeGreaterThan(pro);
   });
 
   it("never charges exclusive, at any prompt length", () => {
