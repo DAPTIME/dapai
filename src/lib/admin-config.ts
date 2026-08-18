@@ -1,6 +1,7 @@
 export { MODEL_IDS, type ModelId } from "@/lib/models";
 
 export const FEATURE_KEYS = [
+  "ai_enabled",
   "pro_model",
   "pro_lite_model",
   "lite_model",
@@ -26,6 +27,7 @@ export const FEATURE_KEYS = [
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
 export const FEATURE_LABELS: Record<FeatureKey, string> = {
+  ai_enabled: "AI Enabled (master switch)",
   pro_model: "DAP AI 4 Pro",
   pro_lite_model: "DAP AI 4 Pro Lite",
   lite_model: "DAP AI 4 Lite",
@@ -50,7 +52,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
 
 /** Which toggles belong together in the admin console. */
 export const FEATURE_GROUPS = {
-  models: ["pro_model", "pro_lite_model", "lite_model"],
+  models: ["ai_enabled", "pro_model", "pro_lite_model", "lite_model"],
   pages: [
     "daps",
     "rooms",

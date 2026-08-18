@@ -233,7 +233,7 @@ export const adminReviewDap = createServerFn({ method: "POST" })
     const { data: status, error } = await context.supabase.rpc("admin_review_dap", {
       _id: data.id,
       _approve: data.approve,
-      _reason: data.reason ?? null,
+      _reason: data.reason ?? undefined,
     });
     if (error) throw userFacingError(error, "adminReviewDap");
     return { status: status as ModerationStatus };
