@@ -75,7 +75,7 @@ function SnakeGame() {
     let last = 0;
     const step = (t: number) => {
       if (!last) last = t;
-      if (t - last > 110) {
+      if (t - last >= TICK_MS[mode]) {
         last = t;
         const s = stateRef.current;
         s.dir = s.nextDir;
