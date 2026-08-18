@@ -146,6 +146,22 @@ export const Route = createFileRoute("/api/chat")({
           );
         }
 
+        /* Rate limit before anything is spent: 4 requests per minute per
+           person, every tier including exclusive. One request is dispatched
+           at a time system-wide, so without this one impatient tab can hold
+           the slot away from everyone else. A missing function (older
+           database) must not block chat, hence the permissive default. */
+        const { data: rateOk, error: rateErr } = await asCaller.rpc("chat_rate_ok");
+        if (!rateErr && rateOk === false) {
+          return Response.json(
+            {
+              error:
+                "You're sending messages faster than DAP AI can answer them. Please wait a moment and try again.",
+            },
+            { status: 429 }
+          );
+        }
+
         const promptTokens = estimateTokens(body.text);
         const cost = costOfPrompt(tier, promptTokens);
         if (cost === null) return Response.json({ error: PROMPT_TOO_LONG_MESSAGE }, { status: 400 });
