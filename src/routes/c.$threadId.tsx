@@ -35,7 +35,7 @@ export const Route = createFileRoute("/c/$threadId")({
 function ChatPage() {
   const { threadId } = Route.useParams();
   const navigate = useNavigate();
-  const { user, loading, ready } = useAuth();
+  const { user, loading, ready, session } = useAuth();
   const qc = useQueryClient();
   const fetchChat = useServerFn(getChat);
   const fetchProfile = useServerFn(getProfile);
@@ -477,11 +477,27 @@ function ChatPage() {
                       )}
                     </span>
                   </div>
+                ) : streamText ? (
+                  // Tokens are already arriving — show them live, still with
+                  // a small spinner so a long pause mid-answer never reads
+                  // as frozen.
+                  <div className="mt-1 text-foreground">
+                    <MarkdownMessage content={streamText} />
+                    <span
+                      className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent align-middle text-muted-foreground"
+                      aria-hidden
+                    />
+                  </div>
                 ) : (
-                  <div className="mt-2">
+                  <div
+                    className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"
+                    role="status"
+                    aria-live="polite"
+                  >
                     <span className="thinking-dot" />
                     <span className="thinking-dot" />
                     <span className="thinking-dot" />
+                    <span>{streamStageLabel}</span>
                   </div>
                 )}
               </div>
@@ -530,15 +546,18 @@ function ChatPage() {
                 /* Stop means stop whichever stage we are in. Queued: leave
                    the line and hand the slot straight back rather than
                    holding it until the reaper notices. Generating: abort
-                   the upstream call. */
+                   the live SSE connection (already-streamed tokens stay on
+                   screen — streamText is left alone) and release the
+                   queue slot/refund server-side. */
                 wasCancelled.current = true;
                 if (queue.view.waiting) {
                   void queue.giveUp(true);
                   toast.info("Left the queue");
                   return;
                 }
+                abortRef.current?.abort();
                 void stop({ data: { chatId: threadId } }).catch(() => {});
-                toast.info("Stopping…");
+                toast.info("Stopped");
               }}
               quotaInfo={
                 profileQuery.data
