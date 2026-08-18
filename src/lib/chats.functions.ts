@@ -910,7 +910,11 @@ export const sendChatMessage = createServerFn({ method: "POST" })
        into a second error on top of it. Safety refusals and stopped
        replies are not refunded — both were served. */
     if (dispatchFailed && chargedCost > 0) {
-      const { error: refundErr } = await supabase.rpc("refund_usage", {
+      const { supabaseAdmin } = await import(
+        "@/integrations/supabase/client.server"
+      );
+      const { error: refundErr } = await supabaseAdmin.rpc("admin_refund_usage", {
+        _user_id: userId,
         _cost: chargedCost,
         _images: chargedImages,
       });
@@ -995,7 +999,6 @@ export const stopChatMessage = createServerFn({ method: "POST" })
       .object({
         chatId: z.string().uuid(),
         partialText: z.string().max(200_000).optional(),
-        refundCost: z.number().min(0).max(10_000).optional(),
       })
       .parse(i)
   )
@@ -1016,12 +1019,12 @@ export const stopChatMessage = createServerFn({ method: "POST" })
       supabase.rpc("queue_release", { _id: data.chatId, _cancelled: true })
     ).catch(() => {});
 
-    // No image was produced, so nothing is charged against the image quota.
-    if (data.refundCost && data.refundCost > 0) {
-      await Promise.resolve(
-        supabase.rpc("refund_usage", { _cost: data.refundCost, _images: 0 })
-      ).catch(() => {});
-    }
+    /* No refund here, for two reasons. The amount arrived from the browser
+       as refundCost, so it was the caller's to choose — the hole this
+       closes. And a stopped reply is a served reply: tokens were produced
+       and shown, and stopping is a decision about the rest of them, which
+       is what refund_usage has always documented. The client never sent
+       the field anyway. */
 
     const partial = (data.partialText ?? "").trim();
     if (partial) {

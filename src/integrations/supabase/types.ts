@@ -691,6 +691,10 @@ export type Database = {
           name: string
         }[]
       }
+      admin_refund_usage: {
+        Args: { _cost: number; _images?: number; _user_id: string }
+        Returns: boolean
+      }
       admin_restore_study_room: { Args: { _id: string }; Returns: boolean }
       admin_review_dap: {
         Args: { _approve: boolean; _id: string; _reason?: string }

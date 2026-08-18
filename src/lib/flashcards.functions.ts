@@ -101,7 +101,7 @@ export const generateFlashcards = createServerFn({ method: "POST" })
       });
     } catch (e) {
       // No cards were produced, so the charge should not stand.
-      await refundPrompt(context.supabase, cardsCharge);
+      await refundPrompt(context.userId, cardsCharge);
       throw e instanceof OrchestratorUnavailableError
         ? new Error("DAP AI is offline right now — try again in a moment.")
         : e;

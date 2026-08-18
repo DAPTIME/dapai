@@ -71,16 +71,25 @@ export async function chargeForPrompt(
 /**
  * Give back a charge for a request that produced nothing.
  *
+ * Goes through the service-role client, not the caller's. The client-facing
+ * refund_usage took the amount as an argument and subtracted it from
+ * whoever was calling, so holding that grant meant a signed-in account
+ * could loop it and keep its quota at zero. The grant is gone; refunds now
+ * name the user explicitly and are reachable only from the server, which
+ * passes back the amount it charged moments earlier.
+ *
  * Best effort and never fatal — a failed refund must not turn an outage
  * into a second error stacked on top of it. Safety refusals and stopped
  * replies are not refunded: both were served.
  */
 export async function refundPrompt(
-  supabase: CallerClient,
+  userId: string,
   charged: Charged
 ): Promise<void> {
   if (charged.cost <= 0) return;
-  const { error } = await supabase.rpc("refund_usage", {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.rpc("admin_refund_usage", {
+    _user_id: userId,
     _cost: charged.cost,
     _images: charged.images,
   });

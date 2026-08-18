@@ -264,8 +264,16 @@ export const Route = createFileRoute("/api/chat")({
 
         const releaseAndRefund = async (opts: { refund: boolean }) => {
           if (opts.refund && chargedCost > 0) {
+            // Through the service-role client: refund_usage is no longer
+            // granted to authenticated, because taking the amount as an
+            // argument from whoever is calling let a signed-in account loop
+            // it and hold its own quota at zero.
             await Promise.resolve(
-              asCaller.rpc("refund_usage", { _cost: chargedCost, _images: chargedImages })
+              supabaseAdmin.rpc("admin_refund_usage", {
+                _user_id: callerId,
+                _cost: chargedCost,
+                _images: chargedImages,
+              })
             ).catch(() => {});
           }
           await Promise.resolve(

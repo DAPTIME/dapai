@@ -605,13 +605,13 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
         e instanceof Error ? e.message : e
       );
       // The room got no answer, so the sender keeps their tokens.
-      await refundPrompt(context.supabase, roomCharge);
+      await refundPrompt(context.userId, roomCharge);
       throw e instanceof OrchestratorUnavailableError
         ? new Error(await offlineMessage())
         : new Error(await offlineMessage());
     }
     if (!reply) {
-      await refundPrompt(context.supabase, roomCharge);
+      await refundPrompt(context.userId, roomCharge);
       throw new Error(await offlineMessage());
     }
 
