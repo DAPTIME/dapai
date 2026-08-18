@@ -1,0 +1,1 @@
+DELETE FROM public.email_rate_limits WHERE kind IN ('signup', 'resend');

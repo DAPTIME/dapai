@@ -9,6 +9,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 export const FEATURE_KEYS = [
+  "ai_enabled",
   "pro_model",
   "pro_lite_model",
   "lite_model",
@@ -45,6 +46,7 @@ export const DEFAULT_OFFLINE_MESSAGE =
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
   enabled: true,
   flags: {
+    ai_enabled: true,
     pro_model: true,
     pro_lite_model: true,
     lite_model: true,

@@ -731,6 +731,7 @@ export type Database = {
         Returns: string
       }
       delete_custom_dap: { Args: { _id: string }; Returns: boolean }
+      delete_own_chat: { Args: { _id: string }; Returns: boolean }
       find_study_room_by_code: {
         Args: { _code: string }
         Returns: {
@@ -810,6 +811,7 @@ export type Database = {
           week_used: number
         }[]
       }
+      prune_own_chats: { Args: { _keep: number }; Returns: number }
       queue_beat: { Args: { _id: string }; Returns: undefined }
       queue_claim: { Args: { _id: string }; Returns: boolean }
       queue_eta_seconds: { Args: { _lane: string }; Returns: number }
@@ -843,6 +845,10 @@ export type Database = {
           pos: number
           state: string
         }[]
+      }
+      refund_usage: {
+        Args: { _cost: number; _images?: number }
+        Returns: undefined
       }
       set_track_published: {
         Args: { _id: string; _public: boolean }

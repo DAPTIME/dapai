@@ -67,7 +67,7 @@ export const joinAiQueue = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { data: row, error } = await context.supabase
-      .rpc("queue_join", { _chat_id: data.chatId ?? null })
+      .rpc("queue_join", { _chat_id: data.chatId ?? undefined })
       .maybeSingle();
     if (error) {
       if (isQueueMissing(error)) return null;

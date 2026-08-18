@@ -73,7 +73,7 @@ export async function aiEnabled(): Promise<boolean> {
     const { data } = await supabaseAdmin
       .from("ai_settings")
       .select("system_prompt")
-      .eq("id", "ai_enabled")
+      .eq("id", "feature_ai_enabled")
       .maybeSingle();
     return (data?.system_prompt ?? "on").trim().toLowerCase() !== "off";
   } catch (e) {
