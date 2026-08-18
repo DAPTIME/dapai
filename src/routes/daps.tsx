@@ -496,6 +496,10 @@ function Daps() {
           ))}
         </div>
       </section>
+
+      {/* Starting a Custom AI creates a chat, so it goes through the same
+          saved-chat limit warning as the composer. */}
+      {newChatGuard.dialog}
     </div>
   );
 }
