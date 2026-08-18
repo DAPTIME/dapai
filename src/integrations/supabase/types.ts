@@ -92,27 +92,6 @@ export type Database = {
         }
         Relationships: []
       }
-      beta_testers: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          sort_order: number
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          sort_order?: number
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          sort_order?: number
-        }
-        Relationships: []
-      }
       chat_messages: {
         Row: {
           chat_id: string

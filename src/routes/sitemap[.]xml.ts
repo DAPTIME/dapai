@@ -24,7 +24,6 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/about-dap-ai", changefreq: "weekly", priority: "0.9" },
           { path: "/daps", changefreq: "weekly", priority: "0.8" },
           { path: "/help", changefreq: "monthly", priority: "0.5" },
-          { path: "/team", changefreq: "monthly", priority: "0.5" },
           // The arcade was missing entirely. These are real pages with real
           // content, and they are the ones people search for by name —
           // nobody googles "AI workspace", plenty of people google the name

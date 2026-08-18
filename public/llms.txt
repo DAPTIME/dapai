@@ -20,7 +20,6 @@ third-party inference API.
 - [About DAP AI](/about-dap-ai): What DAP AI is, and the hardware it runs on.
 - [DAPs](/daps): Custom assistants with their own instructions layered over the base model.
 - [Help](/help): Frequently asked questions.
-- [Team](/team): The people behind DAP AI.
 - [Arcade](/games): Browser games, including DAP Track, a 3D time-trial racer with a track editor and leaderboards.
 - [Terms](/terms): Terms of service, acceptable use, and payment terms.
 

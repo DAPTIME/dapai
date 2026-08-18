@@ -11,7 +11,6 @@ import {
   Trash2,
   Scale,
   Info,
-  Users,
   Gamepad2,
   Users2,
   Pin,
@@ -46,7 +45,6 @@ import { useSiteConfig } from "@/lib/site-config";
 const main = [
   { title: "Custom AI's", url: "/daps", icon: Sparkles },
   { title: "Study Rooms", url: "/rooms", icon: Users2 },
-  { title: "Our Team", url: "/team", icon: Users },
 ] as const;
 
 export function AppSidebar() {

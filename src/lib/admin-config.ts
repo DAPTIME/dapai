@@ -7,7 +7,6 @@ export const FEATURE_KEYS = [
   "lite_model",
   "daps",
   "rooms",
-  "team",
   "account",
   "settings",
   "security",
@@ -32,7 +31,6 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   lite_model: "DAP AI 4 Lite",
   daps: "DAPs (Custom assistants)",
   rooms: "Study Rooms",
-  team: "Our Team page",
   account: "Account page",
   settings: "Settings page",
   security: "Security page",
@@ -54,7 +52,6 @@ export const FEATURE_GROUPS = {
   pages: [
     "daps",
     "rooms",
-    "team",
     "account",
     "settings",
     "security",

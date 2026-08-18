@@ -17,7 +17,6 @@ export const GAME_FLAGS: Record<string, FeatureKey> = {
 const PAGE_FLAGS: Array<[string, FeatureKey]> = [
   ["/daps", "daps"],
   ["/rooms", "rooms"],
-  ["/team", "team"],
   ["/account", "account"],
   ["/settings", "settings"],
   ["/security", "security"],

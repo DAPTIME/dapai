@@ -68,7 +68,6 @@ export const PLANS: Plan[] = [
       "No usage limits at all",
       "Unlimited images",
       "First look at unreleased features",
-      "Your name on the beta testers page",
     ],
   },
 ];
