@@ -9,6 +9,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 export const FEATURE_KEYS = [
+  "ai_enabled",
   "pro_model",
   "pro_lite_model",
   "lite_model",
