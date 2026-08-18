@@ -35,11 +35,17 @@ const CELL = 20;
 
 type Pt = { x: number; y: number };
 
+/* One block per second on easy, two per second on hard — the snake moves in
+   whole cells, so the tick interval is simply 1000ms or 500ms. */
+type Mode = "easy" | "hard";
+const TICK_MS: Record<Mode, number> = { easy: 1000, hard: 500 };
+
 function SnakeGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [running, setRunning] = useState(false);
   const [dead, setDead] = useState(false);
+  const [mode, setMode] = useState<Mode>("easy");
   const stateRef = useRef({
     snake: [{ x: 10, y: 10 }] as Pt[],
     dir: { x: 1, y: 0 },
@@ -58,6 +64,7 @@ function SnakeGame() {
     setDead(false);
     setRunning(true);
   };
+
 
   useEffect(() => {
     if (!running) return;
