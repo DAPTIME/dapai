@@ -53,18 +53,24 @@ export type Database = {
         }
         Relationships: []
       }
-      ai_queue_lane_state: {
+      ai_queue_counters: {
         Row: {
-          consecutive_high: number
-          lane: string
+          go_since_free: number
+          only_row: boolean
+          pro_since_go: number
+          updated_at: string
         }
         Insert: {
-          consecutive_high?: number
-          lane: string
+          go_since_free?: number
+          only_row?: boolean
+          pro_since_go?: number
+          updated_at?: string
         }
         Update: {
-          consecutive_high?: number
-          lane?: string
+          go_since_free?: number
+          only_row?: boolean
+          pro_since_go?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -154,6 +160,7 @@ export type Database = {
       chats: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           is_incognito: boolean
           title: string
@@ -162,6 +169,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_incognito?: boolean
           title?: string
@@ -170,6 +178,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           is_incognito?: boolean
           title?: string
@@ -814,7 +823,7 @@ export type Database = {
       prune_own_chats: { Args: { _keep: number }; Returns: number }
       queue_beat: { Args: { _id: string }; Returns: undefined }
       queue_claim: { Args: { _id: string }; Returns: boolean }
-      queue_eta_seconds: { Args: { _lane: string }; Returns: number }
+      queue_eta_seconds: { Args: never; Returns: number }
       queue_join: {
         Args: { _chat_id?: string }
         Returns: {
@@ -828,10 +837,17 @@ export type Database = {
         Args: { _tier: Database["public"]["Enums"]["account_tier"] }
         Returns: string
       }
-      queue_priority: {
-        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
-        Returns: number
+      queue_next_lane: {
+        Args: {
+          _free_waiting: boolean
+          _go_since_free: number
+          _go_waiting: boolean
+          _pro_since_go: number
+          _pro_waiting: boolean
+        }
+        Returns: string
       }
+      queue_position: { Args: { _id: string }; Returns: number }
       queue_reap: { Args: never; Returns: undefined }
       queue_release: {
         Args: { _cancelled?: boolean; _id: string }
