@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_queue: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          finished_at: string | null
+          heartbeat_at: string
+          id: string
+          lane: string
+          started_at: string | null
+          state: string
+          tier: Database["public"]["Enums"]["account_tier"]
+          user_id: string
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          finished_at?: string | null
+          heartbeat_at?: string
+          id?: string
+          lane: string
+          started_at?: string | null
+          state?: string
+          tier: Database["public"]["Enums"]["account_tier"]
+          user_id: string
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          finished_at?: string | null
+          heartbeat_at?: string
+          id?: string
+          lane?: string
+          started_at?: string | null
+          state?: string
+          tier?: Database["public"]["Enums"]["account_tier"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_queue_lane_state: {
+        Row: {
+          consecutive_high: number
+          lane: string
+        }
+        Insert: {
+          consecutive_high?: number
+          lane: string
+        }
+        Update: {
+          consecutive_high?: number
+          lane?: string
+        }
+        Relationships: []
+      }
       ai_settings: {
         Row: {
           id: string
@@ -29,39 +83,6 @@ export type Database = {
           id?: string
           system_prompt?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      ai_queue: {
-        Row: {
-          id: string
-          user_id: string
-          tier: string
-          lane: string
-          state: string
-          chat_id: string | null
-          created_at: string
-          started_at: string | null
-          finished_at: string | null
-          heartbeat_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          tier: string
-          lane: string
-          state?: string
-          chat_id?: string | null
-          created_at?: string
-          started_at?: string | null
-          finished_at?: string | null
-          heartbeat_at?: string
-        }
-        Update: {
-          state?: string
-          started_at?: string | null
-          finished_at?: string | null
-          heartbeat_at?: string
         }
         Relationships: []
       }
@@ -132,7 +153,6 @@ export type Database = {
       }
       chats: {
         Row: {
-          deleted_at: string | null
           created_at: string
           id: string
           is_incognito: boolean
@@ -167,10 +187,17 @@ export type Database = {
           id: string
           install_count: number
           mcp_url: string | null
+          moderation_status: string
           name: string
+          notice_seen_at: string | null
           opener: string
           published: boolean
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewed_hash: string | null
           source_id: string | null
+          submitted_at: string | null
           system_prompt: string
           user_id: string
         }
@@ -182,10 +209,17 @@ export type Database = {
           id?: string
           install_count?: number
           mcp_url?: string | null
+          moderation_status?: string
           name: string
+          notice_seen_at?: string | null
           opener?: string
           published?: boolean
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_hash?: string | null
           source_id?: string | null
+          submitted_at?: string | null
           system_prompt: string
           user_id: string
         }
@@ -197,10 +231,17 @@ export type Database = {
           id?: string
           install_count?: number
           mcp_url?: string | null
+          moderation_status?: string
           name?: string
+          notice_seen_at?: string | null
           opener?: string
           published?: boolean
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_hash?: string | null
           source_id?: string | null
+          submitted_at?: string | null
           system_prompt?: string
           user_id?: string
         }
@@ -626,6 +667,21 @@ export type Database = {
     }
     Functions: {
       admin_delete_study_room: { Args: { _id: string }; Returns: boolean }
+      admin_list_dap_submissions: {
+        Args: never
+        Returns: {
+          author_email: string
+          author_name: string
+          description: string
+          emoji: string
+          id: string
+          moderation_status: string
+          name: string
+          rejection_reason: string
+          submitted_at: string
+          system_prompt: string
+        }[]
+      }
       admin_list_study_rooms: {
         Args: never
         Returns: {
@@ -642,80 +698,11 @@ export type Database = {
         }[]
       }
       admin_restore_study_room: { Args: { _id: string }; Returns: boolean }
-      can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
-      queue_beat: { Args: { _id: string }; Returns: undefined }
-      queue_claim: { Args: { _id: string }; Returns: boolean }
-      queue_eta_seconds: { Args: Record<PropertyKey, never>; Returns: number }
-      queue_join: {
-        Args: { _chat_id?: string | null }
-        Returns: { id: string; lane: string; pos: number | null; state: string }[]
-      }
-      queue_release: { Args: { _id: string; _cancelled?: boolean }; Returns: boolean }
-      queue_status: {
-        Args: { _id: string }
-        Returns: { id: string; lane: string; pos: number | null; state: string }[]
-      }
-      create_custom_dap: {
-        Args: { _name: string; _description: string; _emoji: string; _system_prompt: string; _opener: string }
-        Returns: string
-      }
-      submit_custom_dap: { Args: { _id: string }; Returns: string }
-      unpublish_custom_dap: { Args: { _id: string }; Returns: boolean }
-      delete_custom_dap: { Args: { _id: string }; Returns: boolean }
-      dap_content_hash: { Args: { _name: string; _emoji: string; _prompt: string }; Returns: string }
-      tier_at_least: { Args: { _tier: string; _min: string }; Returns: boolean }
-      my_tier: { Args: Record<PropertyKey, never>; Returns: string }
-      mark_dap_notices_seen: { Args: Record<PropertyKey, never>; Returns: number }
-      my_dap_notices: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          name: string
-          emoji: string
-          moderation_status: string
-          rejection_reason: string | null
-          reviewed_at: string
-        }[]
-      }
-      admin_list_dap_submissions: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          name: string
-          emoji: string
-          description: string
-          system_prompt: string
-          author_name: string
-          author_email: string
-          submitted_at: string
-          moderation_status: string
-          rejection_reason: string | null
-        }[]
-      }
       admin_review_dap: {
-        Args: { _id: string; _approve: boolean; _reason?: string | null }
+        Args: { _approve: boolean; _id: string; _reason?: string }
         Returns: string
       }
-      marketplace_daps: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          name: string
-          description: string
-          emoji: string
-          author_name: string
-          install_count: number
-          mcp_url: string | null
-          user_id: string
-          created_at: string
-        }[]
-      }
-      refund_usage: {
-        Args: { _cost: number; _images?: number }
-        Returns: boolean
-      }
-      delete_own_chat: { Args: { _id: string }; Returns: boolean }
-      prune_own_chats: { Args: { _keep: number }; Returns: number }
+      can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
       charge_usage: {
         Args: { _cost: number; _images?: number }
         Returns: {
@@ -729,6 +716,21 @@ export type Database = {
           week_used: number
         }[]
       }
+      create_custom_dap: {
+        Args: {
+          _description: string
+          _emoji: string
+          _name: string
+          _opener: string
+          _system_prompt: string
+        }
+        Returns: string
+      }
+      dap_content_hash: {
+        Args: { _emoji: string; _name: string; _prompt: string }
+        Returns: string
+      }
+      delete_custom_dap: { Args: { _id: string }; Returns: boolean }
       find_study_room_by_code: {
         Args: { _code: string }
         Returns: {
@@ -767,6 +769,36 @@ export type Database = {
           name: string
         }[]
       }
+      mark_dap_notices_seen: { Args: never; Returns: number }
+      marketplace_daps: {
+        Args: never
+        Returns: {
+          author_name: string
+          created_at: string
+          description: string
+          emoji: string
+          id: string
+          install_count: number
+          mcp_url: string
+          name: string
+          user_id: string
+        }[]
+      }
+      my_dap_notices: {
+        Args: never
+        Returns: {
+          emoji: string
+          id: string
+          moderation_status: string
+          name: string
+          rejection_reason: string
+          reviewed_at: string
+        }[]
+      }
+      my_tier: {
+        Args: never
+        Returns: Database["public"]["Enums"]["account_tier"]
+      }
       my_usage: {
         Args: never
         Returns: {
@@ -778,8 +810,50 @@ export type Database = {
           week_used: number
         }[]
       }
+      queue_beat: { Args: { _id: string }; Returns: undefined }
+      queue_claim: { Args: { _id: string }; Returns: boolean }
+      queue_eta_seconds: { Args: { _lane: string }; Returns: number }
+      queue_join: {
+        Args: { _chat_id?: string }
+        Returns: {
+          id: string
+          lane: string
+          pos: number
+          state: string
+        }[]
+      }
+      queue_lane_for: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: string
+      }
+      queue_priority: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
+      }
+      queue_reap: { Args: never; Returns: undefined }
+      queue_release: {
+        Args: { _cancelled?: boolean; _id: string }
+        Returns: boolean
+      }
+      queue_status: {
+        Args: { _id: string }
+        Returns: {
+          id: string
+          lane: string
+          pos: number
+          state: string
+        }[]
+      }
       set_track_published: {
         Args: { _id: string; _public: boolean }
+        Returns: boolean
+      }
+      submit_custom_dap: { Args: { _id: string }; Returns: string }
+      tier_at_least: {
+        Args: {
+          _min: Database["public"]["Enums"]["account_tier"]
+          _tier: Database["public"]["Enums"]["account_tier"]
+        }
         Returns: boolean
       }
       tier_rank: {
@@ -790,6 +864,8 @@ export type Database = {
         Args: { _tier: Database["public"]["Enums"]["account_tier"] }
         Returns: number
       }
+      unpublish_custom_dap: { Args: { _id: string }; Returns: boolean }
+      usage_day: { Args: never; Returns: string }
       usage_limit: {
         Args: { _tier: Database["public"]["Enums"]["account_tier"] }
         Returns: {
@@ -798,6 +874,7 @@ export type Database = {
           tokens_week: number
         }[]
       }
+      usage_week: { Args: never; Returns: string }
       verify_own_track: {
         Args: { _id: string; _time_ms: number }
         Returns: string
