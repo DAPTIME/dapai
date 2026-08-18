@@ -38,7 +38,6 @@ import { Route as GamesBreakoutRouteImport } from './routes/games.breakout'
 import { Route as GamesFlappyRouteImport } from './routes/games.flappy'
 import { Route as GamesRiverRouteImport } from './routes/games.river'
 import { Route as GamesSnakeRouteImport } from './routes/games.snake'
-import { Route as GamesSpacewarRouteImport } from './routes/games.spacewar'
 import { Route as RoomsIndexRouteImport } from './routes/rooms.index'
 import { Route as RoomsCodeRouteImport } from './routes/rooms.$code'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -198,11 +197,6 @@ const GamesSnakeRoute = GamesSnakeRouteImport.update({
   path: '/snake',
   getParentRoute: () => GamesRoute,
 } as any)
-const GamesSpacewarRoute = GamesSpacewarRouteImport.update({
-  id: '/spacewar',
-  path: '/spacewar',
-  getParentRoute: () => GamesRoute,
-} as any)
 const RoomsIndexRoute = RoomsIndexRouteImport.update({
   id: '/rooms/',
   path: '/rooms/',
@@ -290,7 +284,6 @@ export interface FileRoutesByFullPath {
   '/games/flappy': typeof GamesFlappyRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
-  '/games/spacewar': typeof GamesSpacewarRoute
   '/rooms/$code': typeof RoomsCodeRoute
   '/games/': typeof GamesIndexRoute
   '/rooms/': typeof RoomsIndexRoute
@@ -332,7 +325,6 @@ export interface FileRoutesByTo {
   '/games/flappy': typeof GamesFlappyRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
-  '/games/spacewar': typeof GamesSpacewarRoute
   '/rooms/$code': typeof RoomsCodeRoute
   '/games': typeof GamesIndexRoute
   '/rooms': typeof RoomsIndexRoute
@@ -376,7 +368,6 @@ export interface FileRoutesById {
   '/games/flappy': typeof GamesFlappyRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
-  '/games/spacewar': typeof GamesSpacewarRoute
   '/rooms/$code': typeof RoomsCodeRoute
   '/games/': typeof GamesIndexRoute
   '/rooms/': typeof RoomsIndexRoute
@@ -421,7 +412,6 @@ export interface FileRouteTypes {
     | '/games/flappy'
     | '/games/river'
     | '/games/snake'
-    | '/games/spacewar'
     | '/rooms/$code'
     | '/games/'
     | '/rooms/'
@@ -463,7 +453,6 @@ export interface FileRouteTypes {
     | '/games/flappy'
     | '/games/river'
     | '/games/snake'
-    | '/games/spacewar'
     | '/rooms/$code'
     | '/games'
     | '/rooms'
@@ -506,7 +495,6 @@ export interface FileRouteTypes {
     | '/games/flappy'
     | '/games/river'
     | '/games/snake'
-    | '/games/spacewar'
     | '/rooms/$code'
     | '/games/'
     | '/rooms/'
@@ -757,13 +745,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamesSnakeRouteImport
       parentRoute: typeof GamesRoute
     }
-    '/games/spacewar': {
-      id: '/games/spacewar'
-      path: '/spacewar'
-      fullPath: '/games/spacewar'
-      preLoaderRoute: typeof GamesSpacewarRouteImport
-      parentRoute: typeof GamesRoute
-    }
     '/rooms/': {
       id: '/rooms/'
       path: '/rooms'
@@ -850,7 +831,6 @@ interface GamesRouteChildren {
   GamesFlappyRoute: typeof GamesFlappyRoute
   GamesRiverRoute: typeof GamesRiverRoute
   GamesSnakeRoute: typeof GamesSnakeRoute
-  GamesSpacewarRoute: typeof GamesSpacewarRoute
   GamesIndexRoute: typeof GamesIndexRoute
   GamesDaptrackBrowseRoute: typeof GamesDaptrackBrowseRoute
   GamesDaptrackEditorRoute: typeof GamesDaptrackEditorRoute
@@ -866,7 +846,6 @@ const GamesRouteChildren: GamesRouteChildren = {
   GamesFlappyRoute: GamesFlappyRoute,
   GamesRiverRoute: GamesRiverRoute,
   GamesSnakeRoute: GamesSnakeRoute,
-  GamesSpacewarRoute: GamesSpacewarRoute,
   GamesIndexRoute: GamesIndexRoute,
   GamesDaptrackBrowseRoute: GamesDaptrackBrowseRoute,
   GamesDaptrackEditorRoute: GamesDaptrackEditorRoute,
