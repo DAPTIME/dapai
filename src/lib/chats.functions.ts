@@ -631,24 +631,31 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       const promptTokens = estimateTokens(data.text);
       const cost = costOfPrompt(callerTier, promptTokens);
       if (cost === null) throw new Error(PROMPT_TOO_LONG_MESSAGE);
-      chargedCost = cost;
-      chargedImages = Math.min(imageCount, 1);
 
-      // charge_usage does the check and the debit under a row lock, so two
-      // messages sent at once cannot both spend the last token. Charged
-      // before the orchestrator is dialled, because a reply that arrives
-      // after the allowance ran out is a reply we gave away.
-      const { data: charged, error: chargeErr } = await supabase
-        .rpc("charge_usage", { _cost: cost, _images: Math.min(imageCount, 1) })
-        .maybeSingle();
-      if (chargeErr) {
-        // No ledger installed yet means no limit configured, not a limit
-        // reached. Anything else fails closed.
-        if (!isLedgerMissing(chargeErr)) throw dbError(chargeErr, "charge_usage");
-        console.warn("[usage] charge_usage missing — not counting this message");
-      }
-      if (charged && charged.ok === false) {
-        throw new Error(limitRefusal(charged as ChargeResult, callerTier));
+      /* Exclusive is never checked and never deducted from — not even a
+         zero-cost call, which would still tick the image counter. Everyone
+         else goes through charge_usage, which does the check and the debit
+         under a row lock, so two messages sent at once cannot both spend
+         the last token. */
+      if (callerTier === "exclusive") {
+        chargedCost = 0;
+        chargedImages = 0;
+      } else {
+        chargedCost = cost;
+        chargedImages = Math.min(imageCount, 1);
+
+        const { data: charged, error: chargeErr } = await supabase
+          .rpc("charge_usage", { _cost: cost, _images: chargedImages })
+          .maybeSingle();
+        if (chargeErr) {
+          // No ledger installed yet means no limit configured, not a limit
+          // reached. Anything else fails closed.
+          if (!isLedgerMissing(chargeErr)) throw dbError(chargeErr, "charge_usage");
+          console.warn("[usage] charge_usage missing — not counting this message");
+        }
+        if (charged && charged.ok === false) {
+          throw new Error(limitRefusal(charged as ChargeResult, callerTier));
+        }
       }
     }
 
