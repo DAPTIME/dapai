@@ -48,11 +48,16 @@ export const updateMyName = createServerFn({ method: "POST" })
       .update({ name: data.name })
       .eq("id", userId);
     if (error) throw dbError(error);
-    // keep auth user_metadata.name in sync
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.auth.admin.updateUserById(userId, {
-      user_metadata: { name: data.name },
-    });
+    // Keep auth user_metadata.name in sync — best effort. The rename above
+    // already succeeded through the caller's own client, so a missing
+    // service-role key must not turn a completed rename into an error toast.
+    const { tryAdminClient } = await import("./admin-client.server");
+    const adminClient = await tryAdminClient();
+    if (adminClient) {
+      await adminClient.auth.admin
+        .updateUserById(userId, { user_metadata: { name: data.name } })
+        .catch((e) => console.warn("[profile] metadata sync skipped:", e?.message));
+    }
     return { ok: true };
   });
 

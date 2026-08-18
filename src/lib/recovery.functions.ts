@@ -62,6 +62,19 @@ export const getRecoveryQuestion = createServerFn({ method: "POST" })
     z.object({ email: z.string().trim().email({ message: "Please enter a valid email address." }).max(255) }).parse(i)
   )
   .handler(async ({ data }) => {
+    /* Recovery genuinely needs the service-role key (it reads other
+       accounts' recovery fields, which RLS rightly refuses to everyone
+       else). Without the key the flow cannot work — but the failure must
+       not be a toast full of environment-variable instructions shown to
+       any visitor who types an email address. Say it plainly instead. */
+    {
+      const { hasAdminEnv } = await import("./admin-client.server");
+      if (!hasAdminEnv()) {
+        throw new Error(
+          "Password recovery is temporarily unavailable. Please try again later."
+        );
+      }
+    }
     const email = data.email.toLowerCase();
 
     /* Bounded per IP. This endpoint takes any address, says whether it has
@@ -111,6 +124,19 @@ export const resetPasswordWithAnswer = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ data }) => {
+    /* Recovery genuinely needs the service-role key (it reads other
+       accounts' recovery fields, which RLS rightly refuses to everyone
+       else). Without the key the flow cannot work — but the failure must
+       not be a toast full of environment-variable instructions shown to
+       any visitor who types an email address. Say it plainly instead. */
+    {
+      const { hasAdminEnv } = await import("./admin-client.server");
+      if (!hasAdminEnv()) {
+        throw new Error(
+          "Password recovery is temporarily unavailable. Please try again later."
+        );
+      }
+    }
     const email = data.email.toLowerCase();
     const { consumeAttempt, clearAttempts, RECOVERY_ANSWER_POLICY } =
       await import("./attempt-limit.server");
@@ -363,6 +389,19 @@ export const sendPasswordResetLink = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ data }) => {
+    /* Recovery genuinely needs the service-role key (it reads other
+       accounts' recovery fields, which RLS rightly refuses to everyone
+       else). Without the key the flow cannot work — but the failure must
+       not be a toast full of environment-variable instructions shown to
+       any visitor who types an email address. Say it plainly instead. */
+    {
+      const { hasAdminEnv } = await import("./admin-client.server");
+      if (!hasAdminEnv()) {
+        throw new Error(
+          "Password recovery is temporarily unavailable. Please try again later."
+        );
+      }
+    }
     const email = data.email.toLowerCase();
     const { consumeEmailQuota, requestIp } = await import("./rate-limit.server");
     await consumeEmailQuota("password-reset", email);
@@ -416,6 +455,19 @@ export const resetPasswordWithLink = createServerFn({ method: "POST" })
       .parse(i)
   )
   .handler(async ({ data }) => {
+    /* Recovery genuinely needs the service-role key (it reads other
+       accounts' recovery fields, which RLS rightly refuses to everyone
+       else). Without the key the flow cannot work — but the failure must
+       not be a toast full of environment-variable instructions shown to
+       any visitor who types an email address. Say it plainly instead. */
+    {
+      const { hasAdminEnv } = await import("./admin-client.server");
+      if (!hasAdminEnv()) {
+        throw new Error(
+          "Password recovery is temporarily unavailable. Please try again later."
+        );
+      }
+    }
     const email = data.email.toLowerCase();
     const { consumeResetSession } = await import("./reset-session.server");
     await consumeResetSession(email, data.token);

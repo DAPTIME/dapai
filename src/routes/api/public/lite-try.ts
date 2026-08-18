@@ -38,7 +38,11 @@ export const Route = createFileRoute("/api/public/lite-try")({
            caller can run the orchestrator flat out for free, which costs
            real money and starves signed-in users. */
         const { consumeIpQuota } = await import("@/lib/rate-limit.server");
-        if (!(await consumeIpQuota("attempt:lite-try", 5, 10 * 60 * 1000))) {
+        // .catch(true): the limiter fails open by contract, and an API
+        // route must answer JSON even when a dependency throws — this
+        // handler was returning the framework's HTML 500 page when the
+        // limiter died before its own error handling.
+        if (!(await consumeIpQuota("attempt:lite-try", 5, 10 * 60 * 1000).catch(() => true))) {
           return new Response(
             JSON.stringify({
               error:
