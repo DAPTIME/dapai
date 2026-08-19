@@ -24,19 +24,26 @@ export interface ChatStreamFrame {
   message?: string;
 }
 
-/** Human-facing copy for each stage, per spec. */
+/**
+ * Human-facing copy for each stage.
+ *
+ * The stage names are the backend's own pipeline vocabulary — routing,
+ * refining, expert n of m, stitching. Showing that verbatim narrated our
+ * internals to the reader and changed wording several times mid-answer for
+ * no benefit to them. Once a request is on its way there are only two
+ * things a person needs to know: it was sent, and the reply is coming.
+ *
+ * The n/of fields are still accepted so the frame shape is unchanged; they
+ * are simply not shown.
+ */
 export function describeStage(frame: { stage?: ChatStreamStage; n?: number; of?: number }): string {
   switch (frame.stage) {
-    case "routing":
-      return "Thinking...";
     case "refining":
-      return "Preparing your request...";
+      return "Sending request...";
     case "expert":
-      return frame.n && frame.of
-        ? `Consulting specialist ${frame.n} of ${frame.of}...`
-        : "Consulting specialist...";
     case "stitching":
-      return "Composing the answer...";
+      return "AI is replying...";
+    case "routing":
     default:
       return "Thinking...";
   }
