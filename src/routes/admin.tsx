@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { sendChatMessage } from "@/lib/chats.functions";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe, EyeOff } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1287,10 +1287,21 @@ function StudyRoomsTab() {
         <Button size="sm" variant="outline" disabled={restore.isPending}
           onClick={() => restore.mutate(r.id)}>Restore</Button>
       ) : (
-        <Button size="sm" variant="outline" className="text-destructive"
-          onClick={() => setConfirming({ id: r.id, name: r.name })}>
-          <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
-        </Button>
+        <>
+          {/* Opens the room without joining it: no membership row is
+              written and no presence is broadcast, so the people in the
+              room see no change. Reading only — posting is disabled there,
+              since a message would announce who sent it. */}
+          <Button asChild size="sm" variant="outline">
+            <Link to="/rooms/$code" params={{ code: r.code }} title="Read this room without appearing in it">
+              <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Join room
+            </Link>
+          </Button>
+          <Button size="sm" variant="outline" className="text-destructive"
+            onClick={() => setConfirming({ id: r.id, name: r.name })}>
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
+          </Button>
+        </>
       )}
     </li>
   );

@@ -11,7 +11,7 @@ import { z } from "zod";
 import { normalizeRoomCode } from "./room-code";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { assertAdmin } from "./admin.server";
+import { assertAdmin, isAdminUser } from "./admin.server";
 import { assertAdminSecret } from "@/lib/admin-secret.server";
 import { dbError } from "./db-error";
 import { firstName } from "./utils";
@@ -396,7 +396,48 @@ export const getStudyRoom = createServerFn({ method: "POST" })
     const isMember = (members ?? []).some(
       (m: { user_id: string }) => m.user_id === userId
     );
-    if (!isMember) return { room: { ...room, joined: false }, members: [], messages: [] };
+
+    /* Site admins can read a room they have not joined, without joining it.
+       Moderating a live room previously meant joining it, which announced
+       itself twice over: a row in study_room_members that everyone sees in
+       the member list, and a presence entry on the realtime channel. Both
+       change the room being observed.
+
+       So this returns the transcript to an admin while deliberately doing
+       none of the things joining does — no membership row is written, no
+       display name is repaired, and `joined` stays false so nothing
+       downstream treats them as a participant. `observing` is the flag the
+       room page uses to subscribe for live messages without broadcasting
+       presence, and to hide the composer: an admin who posted would reveal
+       themselves anyway, so watching is all this grants.
+
+       Admins with a real membership row fall through to the normal path
+       below and appear like any other member, which is what they chose. */
+    if (!isMember) {
+      const observing = await isAdminUser(userId, supabase).catch(() => false);
+      if (!observing) {
+        return { room: { ...room, joined: false }, members: [], messages: [] };
+      }
+      const { data: observedMessages } = await supabase
+        .from("study_room_messages")
+        .select("id, user_id, author_name, role, content, created_at")
+        .eq("room_id", room.id)
+        .order("created_at", { ascending: true })
+        .limit(200);
+      return {
+        room: { ...room, joined: false, observing: true, isHost: false },
+        members: members ?? [],
+        messages: (observedMessages ?? []).map((message: any) => {
+          if (message.role === "assistant") return message;
+          const member = (members ?? []).find(
+            (c: { user_id: string }) => c.user_id === message.user_id
+          );
+          return member?.display_name
+            ? { ...message, author_name: member.display_name }
+            : message;
+        }),
+      };
+    }
 
     // Repair old memberships saved as "Guest" and keep room identity synced
     // with the caller's current profile name.
@@ -538,6 +579,25 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
     // closed down.
     if (room.deleted_at) throw new Error(ROOM_DELETED_NOTICE);
     if (!room.is_open) throw new Error("That study room has been closed.");
+
+    /* Only members may post. This was unchecked: the handler verified the
+       room existed and was open but never that the sender belonged to it,
+       so anyone signed in who had a room's id could write into a private
+       room without joining it. createStudyRoom inserts the creator as a
+       member, so hosts satisfy this too.
+
+       It is also what makes admin observation honest — an admin reading a
+       room they have not joined holds no membership row, so the server
+       refuses a post from them exactly as the hidden composer does. */
+    const { data: membership } = await supabase
+      .from("study_room_members")
+      .select("user_id")
+      .eq("room_id", room.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!membership) {
+      throw new Error("Join this room before sending a message.");
+    }
 
     // The reply runs on the sender's plan: they pick the model, it must be
     // allowed by their own tier, and the usage counts against their account.

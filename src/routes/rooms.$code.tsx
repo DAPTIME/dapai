@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Send, Users, Lock, Copy, ShieldCheck } from "lucide-react";
+import { Send, Users, Lock, Copy, ShieldCheck, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LINKTREE_URL } from "@/lib/plans";
 import { Input } from "@/components/ui/input";
@@ -67,11 +67,16 @@ function RoomPage() {
 
   const roomId = roomQuery.data?.room?.id;
   const joined = roomQuery.data?.room?.joined;
+  /* Site admin reading a room they have not joined. They see the room and
+     its live messages, and are invisible to it: no membership row exists
+     server-side, and the presence/typing broadcasts below are skipped. */
+  const observing = (roomQuery.data?.room as { observing?: boolean } | undefined)?.observing === true;
+  const inRoom = joined || observing;
   const me = firstName(user?.name ?? user?.email, "Guest");
 
   // Live transcript + presence/typing over Supabase Realtime.
   useEffect(() => {
-    if (!roomId || !joined || !user) return;
+    if (!roomId || !inRoom || !user) return;
     const channel = supabase
       .channel(`study-room-${roomId}`, { config: { presence: { key: user.id } } })
       .on(
@@ -162,7 +167,9 @@ function RoomPage() {
         );
       })
       .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
+        // An observing admin subscribes but never tracks: track() is what
+        // puts a name into presenceState for everyone else in the room.
+        if (status === "SUBSCRIBED" && !observing) {
           await channel.track({ name: me, typing: false });
         }
       });
@@ -171,12 +178,12 @@ function RoomPage() {
       roomChannelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [roomId, joined, user, code, qc, me]);
+  }, [roomId, inRoom, observing, user, code, qc, me]);
 
   // Broadcast typing state (debounced off after 2s of stillness).
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const signalTyping = () => {
-    if (!roomId || !user) return;
+    if (!roomId || !user || observing) return;
     const channel = roomChannelRef.current;
     if (!channel) return;
     void channel.track({ name: me, typing: true });
@@ -259,7 +266,7 @@ function RoomPage() {
     );
   }
 
-  if (!joined) {
+  if (!inRoom) {
     return (
       <div className="mx-auto max-w-lg px-6 py-24 text-center">
         <h1 className="text-2xl font-semibold">Join this Study Room?</h1>
@@ -303,6 +310,11 @@ function RoomPage() {
           <Users className="h-3 w-3" />
           {online.length > 0 ? `${online.length} online` : `${memberNames.length} member${memberNames.length === 1 ? "" : "s"}`}
         </span>
+        {observing && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] text-amber-600 dark:text-amber-400">
+            <EyeOff className="h-3 w-3" /> Observing — hidden from this room
+          </span>
+        )}
         {"isHost" in room && room.isHost && (
           <Button
             size="sm"
@@ -360,6 +372,13 @@ function RoomPage() {
         </div>
       </div>
 
+      {observing ? (
+        <div className="border-t border-border px-4 py-3 text-center text-xs text-muted-foreground">
+          You are reading this room as an admin. Nobody here can see you —
+          you are not in the member list and not shown as online. Sending a
+          message would reveal you, so posting is disabled.
+        </div>
+      ) : (
       <form
         className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur"
         onSubmit={(e) => {
@@ -416,6 +435,7 @@ function RoomPage() {
           messages.
         </p>
       </form>
+      )}
     </div>
   );
 }
