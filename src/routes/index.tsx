@@ -6,7 +6,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 
 import { SuggestionChips, ChatComposer } from "@/components/chat-composer";
-import { DapIntro } from "@/components/dap-intro";
 
 import { createChat, getProfile } from "@/lib/chats.functions";
 import { useSiteConfig } from "@/lib/site-config";
@@ -152,9 +151,8 @@ function Home() {
   const maintenance = !MODELS.some(
     (m) => TIER_RANK[tier] >= TIER_RANK[m.minTier] && siteConfig.flags[m.flag] !== false,
   );
-  const [showIntro, setShowIntro] = useState(false);
 
-  // Just confirmed their email: notify + play the short DAP AI intro.
+  // Just confirmed their email: say so, and take the marker out of the URL.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -167,7 +165,6 @@ function Home() {
         `${window.location.pathname}${qs ? `?${qs}` : ""}`
       );
       toast.success("Your account is confirmed — welcome to DAP AI!");
-      setShowIntro(true);
     }
   }, []);
 
@@ -270,7 +267,6 @@ function Home() {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden">
-      {showIntro && <DapIntro onClose={() => setShowIntro(false)} />}
 
       <div className="flex-1 overflow-y-auto">
         <div className="relative mx-auto flex min-h-full max-w-3xl flex-col items-center justify-center px-4 py-4 text-center">
