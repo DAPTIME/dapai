@@ -170,34 +170,83 @@ export async function openOrchestratorStream(opts: {
   return res;
 }
 
-/** Parse an SSE body into orchestrator events. */
+/**
+ * Parse an SSE body into orchestrator events, and report how it ended.
+ *
+ * A generation that dies part-way looks identical from outside to one that
+ * never started: the caller just never sees "done". The number that tells
+ * them apart is how long the orchestrator went quiet before the connection
+ * closed. A long silence then a close is an idle timeout in the tunnel; a
+ * close right after the last token is the orchestrator giving up. Neither
+ * is visible unless it is measured here.
+ */
 export async function* readOrchestratorEvents(
   res: Response
 ): AsyncGenerator<OrchestratorEvent> {
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let nl: number;
-    while ((nl = buffer.indexOf("\n")) !== -1) {
-      const line = buffer.slice(0, nl).replace(/\r$/, "");
-      buffer = buffer.slice(nl + 1);
-      if (!line.startsWith("data:")) continue;
-      const payload = line.slice(5).trim();
-      if (!payload || payload === "[DONE]") {
-        if (payload === "[DONE]") yield { type: "done" };
-        continue;
-      }
-      try {
-        const evt = JSON.parse(payload) as OrchestratorEvent;
-        if (evt && typeof evt.type === "string") yield evt;
-      } catch {
-        /* ignore keep-alive / malformed frames */
+  const startedAt = Date.now();
+  let lastEventAt = startedAt;
+  let lastKind = "nothing";
+  let tokens = 0;
+  let sawDone = false;
+
+  const report = () => {
+    const secs = (ms: number) => Math.round(ms / 100) / 10;
+    const total = secs(Date.now() - startedAt);
+    const silent = secs(Date.now() - lastEventAt);
+    const head =
+      `[orchestrator] stream ${sawDone ? "completed" : "ENDED WITHOUT done"} ` +
+      `after ${total}s: ${tokens} token(s), last event ${lastKind}, ` +
+      `quiet for ${silent}s before it closed`;
+    if (sawDone) console.log(head);
+    else
+      console.error(
+        `${head} — a long quiet stretch here is an idle timeout between us and the orchestrator, not a refusal`,
+      );
+  };
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, nl).replace(/\r$/, "");
+        buffer = buffer.slice(nl + 1);
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === "[DONE]") {
+          if (payload === "[DONE]") {
+            sawDone = true;
+            lastEventAt = Date.now();
+            lastKind = "done";
+            yield { type: "done" };
+          }
+          continue;
+        }
+        try {
+          const evt = JSON.parse(payload) as OrchestratorEvent;
+          if (evt && typeof evt.type === "string") {
+            lastEventAt = Date.now();
+            if (evt.type === "token") {
+              tokens += 1;
+              lastKind = "token";
+            } else {
+              lastKind = evt.type === "status" ? `status:${evt.stage}` : evt.type;
+              if (evt.type === "done") sawDone = true;
+            }
+            yield evt;
+          }
+        } catch {
+          /* ignore keep-alive / malformed frames */
+        }
       }
     }
+  } finally {
+    report();
   }
 }
 
