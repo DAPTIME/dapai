@@ -573,6 +573,7 @@ export type Database = {
           created_at: string
           day_date: string
           day_images: number
+          day_pro_lite: number
           day_tokens: number
           updated_at: string
           user_id: string
@@ -584,6 +585,7 @@ export type Database = {
           created_at?: string
           day_date?: string
           day_images?: number
+          day_pro_lite?: number
           day_tokens?: number
           updated_at?: string
           user_id: string
@@ -595,6 +597,7 @@ export type Database = {
           created_at?: string
           day_date?: string
           day_images?: number
+          day_pro_lite?: number
           day_tokens?: number
           updated_at?: string
           user_id?: string
@@ -701,6 +704,14 @@ export type Database = {
         Returns: string
       }
       can_join_study_room: { Args: { _room_id: string }; Returns: boolean }
+      charge_pro_lite: {
+        Args: never
+        Returns: {
+          allowance: number
+          ok: boolean
+          used: number
+        }[]
+      }
       charge_usage: {
         Args: { _cost: number; _images?: number }
         Returns: {
@@ -756,6 +767,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      images_per_prompt: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
+      }
       install_custom_dap: { Args: { _source_id: string }; Returns: string }
       is_room_member: {
         Args: { _room_id: string; _user_id: string }
@@ -805,10 +820,17 @@ export type Database = {
           day_limit: number
           day_used: number
           images_limit: number
+          images_per_prompt: number
           images_used: number
+          pro_lite_limit: number
+          pro_lite_used: number
           week_limit: number
           week_used: number
         }[]
+      }
+      pro_lite_per_day: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
       }
       prune_own_chats: { Args: { _keep: number }; Returns: number }
       queue_beat: { Args: { _id: string }; Returns: undefined }
