@@ -19,6 +19,7 @@ import { getProfile } from "@/lib/chats.functions";
 import { useUpgradeGate, TIER_LABEL } from "@/lib/tier-gate";
 import { type Tier } from "@/lib/tier-rank";
 import { MODELS } from "@/lib/models";
+import { listModels } from "@/lib/models.functions";
 import { useSiteConfig } from "@/lib/site-config";
 import { useSiteOpen } from "@/lib/use-site-open";
 
@@ -77,15 +78,25 @@ export function ChatComposer({
   // "admin" mode keeps the site usable for site admins and reads as offline
   // to everyone else — useSiteOpen answers that for the current viewer.
   const siteOpen = useSiteOpen();
+  /* Models are managed in the admin console now. The compiled-in list is
+     the fallback while this loads (and if it fails), so the picker is never
+     empty and never blocks a send. */
+  const fetchModels = useServerFn(listModels);
+  const modelsQuery = useQuery({
+    queryKey: ["models"],
+    queryFn: () => fetchModels(),
+    staleTime: 5 * 60_000,
+  });
+  const models = (modelsQuery.data as typeof MODELS | undefined) ?? MODELS;
   const isOffline = offline || !siteOpen;
   const offlineText = offlineMessage?.trim() || siteConfig.offlineMessage;
 
   const flagOn = (id: string) => {
-    const m = MODELS.find((mm) => mm.id === id);
+    const m = models.find((mm) => mm.id === id);
     return m ? siteConfig.flags[m.flag] !== false : false;
   };
   const allowed = (id: string) => {
-    const m = MODELS.find((mm) => mm.id === id);
+    const m = models.find((mm) => mm.id === id);
     if (!m) return false;
     return hasTier(m.minTier) && flagOn(m.id);
   };
@@ -109,7 +120,7 @@ export function ChatComposer({
     const saved =
       typeof window !== "undefined" ? localStorage.getItem("dap.model") : null;
     const best =
-      [...MODELS].reverse().find((m) => allowed(m.id))?.id ?? "dap-ai-lite";
+      [...models].reverse().find((m) => allowed(m.id))?.id ?? "dap-ai-lite";
     const resolved = saved && allowed(saved) ? saved : best;
     setModel(resolved);
     if (typeof window !== "undefined") {
@@ -154,7 +165,7 @@ export function ChatComposer({
     setImages([]);
   };
 
-  const activeModel = MODELS.find((m) => m.id === model) ?? MODELS[0];
+  const activeModel = models.find((m) => m.id === model) ?? models[0]!;
 
   return (
     <form
@@ -236,7 +247,7 @@ export function ChatComposer({
             value={model}
             onChange={(e) => {
               const next = e.target.value;
-              const m = MODELS.find((mm) => mm.id === next);
+              const m = models.find((mm) => mm.id === next);
               if (!m) return;
               if (!flagOn(m.id)) return;
               // Selecting a locked model pops the upgrade screen instead of
@@ -257,7 +268,7 @@ export function ChatComposer({
                 capability order because the "best model this account may
                 use" logic above depends on it; only the display is
                 reversed. */}
-            {[...MODELS].reverse().map((m) => {
+            {[...models].reverse().map((m) => {
               const modelOffline = !flagOn(m.id);
               const locked = !hasTier(m.minTier);
               const suffix = modelOffline

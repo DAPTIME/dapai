@@ -18,6 +18,14 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { sendChatMessage } from "@/lib/chats.functions";
 import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe, EyeOff } from "lucide-react";
+import { TIER_LABEL } from "@/lib/tier-gate";
+import {
+  adminListModels,
+  adminSaveModel,
+  adminDeleteModel,
+  adminReorderModels,
+  type StoredModel,
+} from "@/lib/models.functions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -240,6 +248,7 @@ function Admin() {
               description="Turn an individual DAP AI model off for everyone."
               keys={FEATURE_GROUPS.models}
             />
+            <ModelManager />
           </TabsContent>
           <TabsContent value="rooms" className="mt-6">
             <StudyRoomsTab />
@@ -1461,6 +1470,165 @@ function DapReviewTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Add, rename, reorder, enable and remove the models the picker offers.
+ *
+ * The label is the part that matters operationally: it is sent to the
+ * orchestrator verbatim as the model to route on, so renaming one changes
+ * what the hardware is asked for. The form says that where it is relevant
+ * rather than in a note nobody reads.
+ */
+function ModelManager() {
+  const qc = useQueryClient();
+  const list = useServerFn(adminListModels);
+  const save = useServerFn(adminSaveModel);
+  const remove = useServerFn(adminDeleteModel);
+  const reorder = useServerFn(adminReorderModels);
+  const [draft, setDraft] = useState<StoredModel | null>(null);
+
+  const models = useQuery({ queryKey: ["admin-models"], queryFn: () => list() });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["admin-models"] });
+    qc.invalidateQueries({ queryKey: ["models"] });
+  };
+
+  const saveMut = useMutation({
+    mutationFn: (m: StoredModel) => save({ data: m }),
+    onSuccess: () => { setDraft(null); refresh(); toast.success("Model saved."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const delMut = useMutation({
+    mutationFn: (id: string) => remove({ data: { id } }),
+    onSuccess: () => { refresh(); toast.success("Model removed."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const orderMut = useMutation({
+    mutationFn: (ids: string[]) => reorder({ data: { ids } }),
+    onSuccess: () => { refresh(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rows = (models.data ?? []) as StoredModel[];
+  const move = (i: number, dir: -1 | 1) => {
+    const next = [...rows];
+    const j = i + dir;
+    if (j < 0 || j >= next.length) return;
+    [next[i], next[j]] = [next[j]!, next[i]!];
+    orderMut.mutate(next.map((m) => m.id));
+  };
+
+  const blank: StoredModel = {
+    id: "", label: "", description: "", min_tier: "free",
+    lite: true, enabled: true, sort_order: (rows.length + 1) * 10,
+  };
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6">
+      <h2 className="text-lg font-semibold">Model list</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        What the picker offers, top to bottom. The name is sent to the
+        inference hardware exactly as written here — renaming a model changes
+        which one it asks for.
+      </p>
+
+      {models.isLoading ? (
+        <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+      ) : models.isError ? (
+        <p className="mt-4 text-sm text-destructive">Couldn&rsquo;t load the models.</p>
+      ) : (
+        <ul className="mt-5 space-y-2">
+          {rows.map((m, i) => (
+            <li key={m.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3">
+              <div className="flex flex-col gap-1">
+                <Button size="sm" variant="outline" className="h-6 w-6 p-0"
+                  disabled={i === 0 || orderMut.isPending} onClick={() => move(i, -1)}
+                  aria-label="Move up">↑</Button>
+                <Button size="sm" variant="outline" className="h-6 w-6 p-0"
+                  disabled={i === rows.length - 1 || orderMut.isPending} onClick={() => move(i, 1)}
+                  aria-label="Move down">↓</Button>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">
+                  {m.label}{" "}
+                  <span className="font-mono text-xs text-muted-foreground">{m.id}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {TIER_LABEL[m.min_tier as keyof typeof TIER_LABEL] ?? m.min_tier} and up ·{" "}
+                  {m.lite ? "lite backend" : "full backend"} ·{" "}
+                  {m.enabled ? "shown in the picker" : "hidden"}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setDraft(m)}>
+                <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
+              </Button>
+              <Button size="sm" variant="outline" className="text-destructive"
+                disabled={delMut.isPending}
+                onClick={() => delMut.mutate(m.id)}>
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <Button className="mt-4" size="sm" variant="outline" onClick={() => setDraft(blank)}>
+        <Plus className="mr-1.5 h-3.5 w-3.5" /> Add a model
+      </Button>
+
+      {draft && (
+        <div className="mt-5 space-y-3 rounded-xl border border-border bg-muted/30 p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">
+              <span className="text-muted-foreground">Name shown to users, and sent to the hardware</span>
+              <Input className="mt-1" value={draft.label}
+                onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
+            </label>
+            <label className="text-sm">
+              <span className="text-muted-foreground">Internal id (cannot change later)</span>
+              <Input className="mt-1 font-mono" value={draft.id}
+                disabled={rows.some((r) => r.id === draft.id)}
+                placeholder="dap-ai-something"
+                onChange={(e) => setDraft({ ...draft, id: e.target.value })} />
+            </label>
+          </div>
+          <label className="block text-sm">
+            <span className="text-muted-foreground">Description under the picker</span>
+            <Input className="mt-1" value={draft.description}
+              onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+          </label>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="text-sm">
+              <span className="text-muted-foreground">Minimum plan</span>
+              <select className="ml-2 rounded-md border border-border bg-background px-2 py-1 text-sm"
+                value={draft.min_tier}
+                onChange={(e) => setDraft({ ...draft, min_tier: e.target.value })}>
+                {["free", "go", "pro", "exclusive"].map((t) => (
+                  <option key={t} value={t}>{TIER_LABEL[t as keyof typeof TIER_LABEL] ?? t}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={draft.lite}
+                onChange={(e) => setDraft({ ...draft, lite: e.target.checked })} />
+              Lite backend (text only)
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={draft.enabled}
+                onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />
+              Show in the picker
+            </label>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" disabled={!draft.id || !draft.label || saveMut.isPending}
+              onClick={() => saveMut.mutate(draft)}>Save</Button>
+            <Button size="sm" variant="outline" onClick={() => setDraft(null)}>Cancel</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

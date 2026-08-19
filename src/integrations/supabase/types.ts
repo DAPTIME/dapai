@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_models: {
+        Row: {
+          created_at: string
+          description: string
+          enabled: boolean
+          id: string
+          label: string
+          lite: boolean
+          min_tier: Database["public"]["Enums"]["account_tier"]
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          id: string
+          label: string
+          lite?: boolean
+          min_tier?: Database["public"]["Enums"]["account_tier"]
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          id?: string
+          label?: string
+          lite?: boolean
+          min_tier?: Database["public"]["Enums"]["account_tier"]
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_queue: {
         Row: {
           chat_id: string | null
