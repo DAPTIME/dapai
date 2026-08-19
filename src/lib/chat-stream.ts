@@ -22,6 +22,8 @@ export interface ChatStreamFrame {
   of?: number;
   text?: string;
   message?: string;
+  /** Diagnostic detail on a failed stream. Not shown to the reader. */
+  detail?: string;
 }
 
 export interface StreamChatOptions {

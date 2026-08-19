@@ -18,6 +18,8 @@ import {
 import {
   openOrchestratorStream,
   readOrchestratorEvents,
+  newStreamOutcome,
+  describeOutcome,
   OrchestratorUnavailableError,
 } from "@/lib/dap-orchestrator.server";
 import { sanitizeLiteReply, hasLiteReasoningLeak } from "@/lib/lite-sanitize";
@@ -327,6 +329,9 @@ export const Route = createFileRoute("/api/chat")({
 
         let assistantText = "";
         let gotDone = false;
+        /* How the orchestrator stream ended, so a failure can say which
+           kind it was instead of only that it happened. */
+        const outcome = newStreamOutcome();
 
         /* Hold the slot while the answer is being generated.
            queue_claim stamps heartbeat_at once and nothing here refreshed
@@ -396,7 +401,7 @@ export const Route = createFileRoute("/api/chat")({
                 messages,
                 signal: ctrl.signal,
               });
-              for await (const evt of readOrchestratorEvents(res)) {
+              for await (const evt of readOrchestratorEvents(res, outcome)) {
                 if (evt.type === "token") {
                   assistantText += evt.text ?? "";
                   // No sanitising per token: this used to run the full
@@ -427,7 +432,15 @@ export const Route = createFileRoute("/api/chat")({
               if (!gotDone) {
                 await persistStopped();
                 await releaseAndRefund({ refund: true });
-                send({ type: "error", message: "Connection lost. Please try again." });
+                send({
+                  type: "error",
+                  message: "Connection lost. Please try again.",
+                  /* Timing and stage only — no URL, no secret. The UI shows
+                     `message`; this is here so a lost answer can be
+                     diagnosed from the response itself rather than needing
+                     the deployment's logs. */
+                  detail: describeOutcome(outcome),
+                });
               }
             } catch (e) {
               const err = e as Error;
@@ -442,6 +455,7 @@ export const Route = createFileRoute("/api/chat")({
                     e instanceof OrchestratorUnavailableError
                       ? "Sorry, DAP AI is offline right now."
                       : "Connection lost. Please try again.",
+                  detail: describeOutcome(outcome),
                 });
               }
             } finally {

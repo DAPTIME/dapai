@@ -44,6 +44,49 @@ export type OrchestratorEvent =
   | { type: "done" }
   | { type: "error"; message: string };
 
+/**
+ * How a stream ended, filled in as it is read.
+ *
+ * closedCleanly is the one that matters when nothing arrived. A body that
+ * reaches EOF without a "done" frame means the orchestrator finished
+ * talking and chose not to say so — it gave up, or it died. A transport
+ * error instead means something between us cut the connection while it was
+ * still mid-answer, which is a tunnel or proxy timeout, not the model.
+ * Guessing between those two sends you to the wrong logs.
+ */
+export interface StreamOutcome {
+  closedCleanly: boolean;
+  sawDone: boolean;
+  tokens: number;
+  lastEvent: string;
+  totalMs: number;
+  quietMs: number;
+  transportError?: string;
+}
+
+/** A blank outcome, for a caller that wants one to hand in. */
+export function newStreamOutcome(): StreamOutcome {
+  return {
+    closedCleanly: false,
+    sawDone: false,
+    tokens: 0,
+    lastEvent: "nothing",
+    totalMs: 0,
+    quietMs: 0,
+  };
+}
+
+/** One line a person can act on, safe to show a caller: no URL, no secret. */
+export function describeOutcome(o: StreamOutcome): string {
+  const s = (ms: number) => `${Math.round(ms / 100) / 10}s`;
+  return (
+    `${o.sawDone ? "completed" : "no done frame"}, ` +
+    `${o.closedCleanly ? "closed cleanly" : `transport error (${o.transportError ?? "unknown"})`}, ` +
+    `${o.tokens} token(s), last event ${o.lastEvent}, ` +
+    `ran ${s(o.totalMs)}, quiet ${s(o.quietMs)} before the end`
+  );
+}
+
 export class OrchestratorUnavailableError extends Error {
   constructor(message = "AI backend unavailable") {
     super(message);
@@ -181,7 +224,8 @@ export async function openOrchestratorStream(opts: {
  * is visible unless it is measured here.
  */
 export async function* readOrchestratorEvents(
-  res: Response
+  res: Response,
+  outcome: StreamOutcome = newStreamOutcome(),
 ): AsyncGenerator<OrchestratorEvent> {
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
@@ -193,24 +237,35 @@ export async function* readOrchestratorEvents(
   let sawDone = false;
 
   const report = () => {
-    const secs = (ms: number) => Math.round(ms / 100) / 10;
-    const total = secs(Date.now() - startedAt);
-    const silent = secs(Date.now() - lastEventAt);
-    const head =
-      `[orchestrator] stream ${sawDone ? "completed" : "ENDED WITHOUT done"} ` +
-      `after ${total}s: ${tokens} token(s), last event ${lastKind}, ` +
-      `quiet for ${silent}s before it closed`;
-    if (sawDone) console.log(head);
-    else
-      console.error(
-        `${head} — a long quiet stretch here is an idle timeout between us and the orchestrator, not a refusal`,
-      );
+    outcome.sawDone = sawDone;
+    outcome.tokens = tokens;
+    outcome.lastEvent = lastKind;
+    outcome.totalMs = Date.now() - startedAt;
+    outcome.quietMs = Date.now() - lastEventAt;
+    const line = `[orchestrator] stream ${describeOutcome(outcome)}`;
+    if (sawDone) console.log(line);
+    else console.error(line);
   };
 
   try {
     while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch (e) {
+        /* The body was cut mid-answer rather than ending. Recorded rather
+           than guessed at: EOF and a severed connection are the difference
+           between the orchestrator giving up and something between us
+           timing the connection out. */
+        const err = e as Error;
+        outcome.transportError = `${err.name}: ${err.message}`.slice(0, 120);
+        throw e;
+      }
+      const { value, done } = chunk;
+      if (done) {
+        outcome.closedCleanly = true;
+        break;
+      }
       buffer += decoder.decode(value, { stream: true });
       let nl: number;
       while ((nl = buffer.indexOf("\n")) !== -1) {
