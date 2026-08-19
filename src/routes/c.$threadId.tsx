@@ -60,6 +60,11 @@ function ChatPage() {
   const abortRef = useRef<AbortController | null>(null);
   const [streamStageLabel, setStreamStageLabel] = useState<string>("Thinking...");
   const [streamText, setStreamText] = useState<string>("");
+  /* The reply we just streamed is already fully on screen. When the refetch
+     replaces it with the persisted row, that row must not fade in from
+     opacity:0 or the finished answer blinks out and re-reveals. Set on
+     stream completion, cleared as soon as the next send starts. */
+  const [skipFadeAfterStream, setSkipFadeAfterStream] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
     id: string;
@@ -161,6 +166,7 @@ function ChatPage() {
       const controller = new AbortController();
       abortRef.current = controller;
       setStreaming(true);
+      setSkipFadeAfterStream(false);
       setStreamText("");
       setStreamStageLabel("Thinking...");
 
@@ -207,6 +213,7 @@ function ChatPage() {
     onSuccess: (result: any) => {
       setOptimisticUserMessage(null);
       setStreaming(false);
+      setSkipFadeAfterStream(true);
       // Whether it finished, was stopped, or lost connection, the tokens
       // already streamed stay visible via streamText until this refetch
       // brings back whatever the server actually persisted.
@@ -383,7 +390,7 @@ function ChatPage() {
             </div>
           )}
 
-          {visible.map((m) => (
+          {visible.map((m, mi) => (
             <div key={m.id} className="flex gap-3 message-in">
               {m.role === "user" ? (
                 <div
@@ -409,6 +416,7 @@ function ChatPage() {
                   <div className="mt-1 text-foreground">
                     <MarkdownMessage
                       content={m.model === "dap-ai-lite" ? sanitizeLiteReply(m.content) : m.content}
+                      animate={!(skipFadeAfterStream && mi === visible.length - 1)}
                     />
                     {extractArtifacts(m.id, m.content).length > 0 && (
                       <Button
@@ -482,7 +490,11 @@ function ChatPage() {
                   // a small spinner so a long pause mid-answer never reads
                   // as frozen.
                   <div className="mt-1 text-foreground">
-                    <MarkdownMessage content={streamText} />
+                    {/* animate={false}: the words arriving IS the
+                        animation. Fading them in on a stagger that restarts
+                        every token left new text invisible for over a
+                        second — see useWordFader. */}
+                    <MarkdownMessage content={streamText} animate={false} />
                     <span
                       className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent align-middle text-muted-foreground"
                       aria-hidden

@@ -7,15 +7,26 @@ import "katex/dist/katex.min.css";
 import { parseCopyBlocks } from "@/lib/copy-blocks";
 import { CopyBlock } from "@/components/copy-block";
 
-// Wraps every word in the rendered tree with a span that fades in with
-// a tiny staggered delay. Reset the counter per render so each new
-// message starts its animation from the first word.
-function useWordFader() {
+/**
+ * Wraps every word in a span that fades in on a small stagger.
+ *
+ * Only for messages that are already complete. While a reply is streaming
+ * this must be off, and the reason is the counter below: it restarts at
+ * zero on every render, and a streaming reply re-renders on every token.
+ * Past roughly the 67th word the stagger hits MAX_DELAY_MS, so each newly
+ * arrived word was being handed the full 1.2s delay — and .word-fade starts
+ * at opacity:0. The text was arriving on time and then sitting invisible,
+ * which read as the stream stalling and catching up in bursts. Re-parsing
+ * also reshapes the element tree as prose grows (a line becoming a list),
+ * remounting spans and flashing already-visible words back out.
+ */
+function useWordFader(enabled = true) {
   const counter = { i: 0 };
   const MAX_DELAY_MS = 1200;
   const STEP_MS = 18;
 
   const wrap = (node: React.ReactNode, keyPrefix = "w"): React.ReactNode => {
+    if (!enabled) return node;
     if (node == null || typeof node === "boolean") return node;
     if (typeof node === "number") return wrap(String(node), keyPrefix);
     if (typeof node === "string") {
@@ -46,8 +57,14 @@ function useWordFader() {
   return wrap;
 }
 
-function MarkdownProse({ content }: { content: string }) {
-  const wrap = useWordFader();
+const MarkdownProse = React.memo(function MarkdownProse({
+  content,
+  animate,
+}: {
+  content: string;
+  animate: boolean;
+}) {
+  const wrap = useWordFader(animate);
   return (
     <div className="markdown-body max-w-none break-words text-foreground text-[15px] leading-relaxed">
       <ReactMarkdown
@@ -115,7 +132,7 @@ function MarkdownProse({ content }: { content: string }) {
       </ReactMarkdown>
     </div>
   );
-}
+});
 
 /**
  * Assistant messages use literal copy_block_start_dap_ai / _end_dap_ai
@@ -124,7 +141,14 @@ function MarkdownProse({ content }: { content: string }) {
  * then render prose through the normal markdown pipeline and blocks
  * through <CopyBlock>, which never assumes/forces syntax highlighting.
  */
-export function MarkdownMessage({ content }: { content: string }) {
+export const MarkdownMessage = React.memo(function MarkdownMessage({
+  content,
+  animate = true,
+}: {
+  content: string;
+  /** Off while a reply is streaming — see useWordFader. */
+  animate?: boolean;
+}) {
   const segments = parseCopyBlocks(content);
   return (
     <>
@@ -132,9 +156,9 @@ export function MarkdownMessage({ content }: { content: string }) {
         seg.type === "block" ? (
           <CopyBlock key={i} content={seg.content} />
         ) : seg.content ? (
-          <MarkdownProse key={i} content={seg.content} />
+          <MarkdownProse key={i} content={seg.content} animate={animate} />
         ) : null
       )}
     </>
   );
-}
+});

@@ -351,8 +351,12 @@ export const Route = createFileRoute("/api/chat")({
               for await (const evt of readOrchestratorEvents(res)) {
                 if (evt.type === "token") {
                   assistantText += evt.text ?? "";
-                  let cleaned = sanitizeLiteReply(assistantText);
-                  void cleaned;
+                  // No sanitising per token: this used to run the full
+                  // sanitizeLiteReply regex suite over the entire text so
+                  // far on every single token and then discard the result,
+                  // which is quadratic in reply length and slowed the
+                  // stream down as the answer grew. The one pass that
+                  // matters happens once, on "done", below.
                   send(evt);
                 } else if (evt.type === "status") {
                   send(evt);
