@@ -76,15 +76,46 @@ export interface StreamChatOptions {
 export async function streamChat(opts: StreamChatOptions): Promise<void> {
   const { accessToken, chatId, text, images, studyMode, signal } = opts;
 
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ chatId, text, images, studyMode }),
-    signal,
-  });
+  const send = (bearer: string) =>
+    fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${bearer}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ chatId, text, images, studyMode }),
+      signal,
+    });
+
+  let res = await send(accessToken);
+
+  /* A 401 here means the server could not verify the token, not that the
+     person is logged out — the browser still holds a session it believes
+     in. That happens when a stored token outlives a change in how tokens
+     are signed: the session keeps refreshing on the client while the
+     server rejects every send, and the reader just sees "Unauthorized" on
+     each attempt with nothing to act on.
+
+     So take the server's word for it once: force a refresh and retry. If
+     the refreshed token is rejected too, the session really is finished
+     and the message below says so in those terms. */
+  if (res.status === 401) {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase.auth.refreshSession();
+      const renewed = data.session?.access_token;
+      if (renewed && renewed !== accessToken) res = await send(renewed);
+    } catch {
+      /* refresh unavailable — fall through to the error below */
+    }
+  }
+
+  if (res.status === 401) {
+    opts.onError?.(
+      "Your sign-in has expired. Please sign out and sign back in to continue."
+    );
+    return;
+  }
 
   if (!res.ok || !res.body) {
     let message = `Request failed (${res.status})`;
