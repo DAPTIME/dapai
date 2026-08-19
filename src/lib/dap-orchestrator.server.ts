@@ -5,7 +5,16 @@
  *
  *   POST {DAP_ORCHESTRATOR_URL}/v1/chat
  *   X-DAP-Auth: {DAP_SHARED_SECRET}
- *   { "tier": "free" | "go" | "pro" | "exclusive", "messages": [...] }
+ *   {
+ *     "tier":  "free" | "go" | "pro" | "exclusive",
+ *     "model": "DAP AI 4 Lite" | "DAP AI 4 Pro Lite" | "DAP AI 4 Pro",
+ *     "messages": [...]
+ *   }
+ *
+ * `model` is the picker's display name, verbatim — the orchestrator matches
+ * on the substrings "lite" and "pro lite", so an id or a lowercased copy
+ * routes to the wrong pipeline. It caps the tier downwards only; `tier`
+ * remains the account's real plan and stays the ceiling.
  *
  * The response is Server-Sent Events, each line `data: ` + JSON:
  *   { "type": "token",  "text": "..." }
@@ -92,6 +101,36 @@ export async function openOrchestratorStream(opts: {
   signal?: AbortSignal;
 }): Promise<Response> {
   const { url, secret } = orchestratorConfig();
+
+  /* Exactly what goes on the wire, built once so the log and the request
+     cannot drift apart. An empty `model` is the failure this logging exists
+     to catch: the orchestrator prints MODEL picked='' for it and silently
+     runs the full pipeline, which looks like slowness rather than a bug. */
+  const payload = {
+    tier: opts.tier || "free",
+    model: opts.model || "",
+    messages: opts.messages,
+  };
+
+  /* The body, never the secret. X-DAP-Auth is reported as present/absent
+     only — a missing or wrong one comes back as 404 from the orchestrator,
+     which reads like a routing mistake, so it is worth being able to tell
+     the two apart from the log alone. */
+  console.log(
+    `[orchestrator] POST ${url} auth=${secret ? "present" : "MISSING"} ` +
+      `body=${JSON.stringify({
+        tier: payload.tier,
+        model: payload.model,
+        messages: `[${payload.messages.length} messages]`,
+      })}`,
+  );
+  if (!payload.model) {
+    console.warn(
+      "[orchestrator] model is empty — the orchestrator will log MODEL picked='' " +
+        "and ignore the picker. Every caller should pass a display name.",
+    );
+  }
+
   let res: Response;
   try {
     res = await fetch(url, {
@@ -105,11 +144,7 @@ export async function openOrchestratorStream(opts: {
          orchestrator routes on. Without it the orchestrator logged
          MODEL picked='' and fell back to a default, so the picker in the
          UI selected a model that never reached the hardware. */
-      body: JSON.stringify({
-        tier: opts.tier || "free",
-        model: opts.model || "",
-        messages: opts.messages,
-      }),
+      body: JSON.stringify(payload),
       signal: opts.signal,
       // Never follow a redirect. The runtime keeps custom headers across a
       // cross-origin redirect, so a 3xx from the tunnel host would re-send

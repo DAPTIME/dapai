@@ -21,7 +21,13 @@ import {
   OrchestratorUnavailableError,
 } from "@/lib/dap-orchestrator.server";
 import { sanitizeLiteReply, hasLiteReasoningLeak } from "@/lib/lite-sanitize";
-import { MODEL_IDS, modelInfo, type ModelId } from "@/lib/models";
+import {
+  MODEL_IDS,
+  modelInfo,
+  effectiveModelFor,
+  orchestratorModelName,
+  type ModelId,
+} from "@/lib/models";
 import { TIER_RANK } from "@/lib/tier-gate";
 import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
 
@@ -183,19 +189,12 @@ export const Route = createFileRoute("/api/chat")({
         const tier = ((profile?.tier as Tier | undefined) ?? "free") as Tier;
         const limits = TIER_LIMITS[tier];
 
-        /* Same gate the non-streaming path applies: honour the picked model
-           only if this account may use it, otherwise fall back to the best
-           one it may. Until now this endpoint took no model at all, so the
-           picker changed nothing and the orchestrator logged MODEL picked=''
-           on every request. */
-        const requestedModel = body.model ?? "dap-ai-lite";
-        const requestedInfo = modelInfo(requestedModel);
-        const effectiveModel: ModelId =
-          requestedInfo && TIER_RANK[tier] >= TIER_RANK[requestedInfo.minTier]
-            ? (requestedModel as ModelId)
-            : TIER_RANK[tier] >= TIER_RANK["go"]
-              ? "dap-ai-pro-lite"
-              : "dap-ai-lite";
+        /* Same gate the non-streaming path applies, and now literally the
+           same function: honour the picked model only if this account may
+           use it, otherwise fall back to the best one it may. Until this
+           endpoint accepted a model at all, the picker changed nothing and
+           the orchestrator logged MODEL picked='' on every request. */
+        const effectiveModel: ModelId = effectiveModelFor(tier, body.model);
 
         const imageCount = body.images?.length ?? 0;
         if (imageCount > MAX_IMAGES_PER_RESPONSE) {
@@ -370,7 +369,7 @@ export const Route = createFileRoute("/api/chat")({
               const res = await openOrchestratorStream({
                 tier,
                 // The display name is what the orchestrator routes on.
-                model: modelInfo(effectiveModel)?.label ?? effectiveModel,
+                model: orchestratorModelName(effectiveModel),
                 messages,
                 signal: ctrl.signal,
               });

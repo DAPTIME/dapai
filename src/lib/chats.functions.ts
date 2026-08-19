@@ -36,7 +36,13 @@ import {
 } from "@/lib/ai-queue";
 import { hasLiteReasoningLeak, sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { isSafetyBlock, SAFETY_BLOCKED_MESSAGE } from "@/lib/safety";
-import { MODEL_IDS, modelInfo, type ModelId } from "@/lib/models";
+import {
+  MODEL_IDS,
+  modelInfo,
+  effectiveModelFor,
+  orchestratorModelName,
+  type ModelId,
+} from "@/lib/models";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
 
@@ -608,14 +614,8 @@ export const sendChatMessage = createServerFn({ method: "POST" })
 
     // Tier gate: downgrade to the best model this account may actually use.
     const callerTier = ((profile.tier as Tier | undefined) ?? "free") as Tier;
-    const requested = modelInfo(data.model)!;
-    let effectiveModel: ModelId = data.model;
-    let forcedToLite = false;
-    if (TIER_RANK[callerTier] < TIER_RANK[requested.minTier]) {
-      effectiveModel =
-        TIER_RANK[callerTier] >= TIER_RANK["go"] ? "dap-ai-pro-lite" : "dap-ai-lite";
-      forcedToLite = true;
-    }
+    const effectiveModel: ModelId = effectiveModelFor(callerTier, data.model);
+    const forcedToLite = effectiveModel !== data.model;
     const active = modelInfo(effectiveModel)!;
 
     // Enforce per-model feature flags set in the admin console.
@@ -916,7 +916,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         try {
           const out = await orchestratorComplete({
             tier: callerTier,
-            model: modelInfo(effectiveModel)?.label ?? effectiveModel,
+            model: orchestratorModelName(effectiveModel),
             messages: messages as Array<{
               role: "system" | "user" | "assistant";
               content: unknown;

@@ -8,7 +8,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { dbError } from "./db-error";
 import { orchestratorComplete, OrchestratorUnavailableError } from "./dap-orchestrator.server";
-import { MODEL_IDS, modelInfo } from "@/lib/models";
+import { MODEL_IDS, effectiveModelFor, orchestratorModelName } from "@/lib/models";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { chargeForPrompt, refundPrompt } from "@/lib/charge-usage.server";
 import type { Tier } from "@/lib/tier-rank";
@@ -85,11 +85,16 @@ export const generateFlashcards = createServerFn({ method: "POST" })
       transcript
     );
 
+    /* Cards go through the same ceiling as chat. This path used to send
+       whatever model id it was handed, so a Free account could ask for
+       "DAP AI 4 Pro" here and have that name reach the orchestrator — the
+       one place the picker could name a model the plan does not allow. */
+    const cardsTier = (prof?.tier as Tier) ?? "free";
     let raw: string;
     try {
       raw = await orchestratorComplete({
-        tier: (prof?.tier as Tier) ?? "free",
-        model: modelInfo(data.model)?.label ?? "DAP AI 4 Lite",
+        tier: cardsTier,
+        model: orchestratorModelName(effectiveModelFor(cardsTier, data.model)),
         messages: [
           {
             role: "system",

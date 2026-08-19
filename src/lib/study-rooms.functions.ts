@@ -16,7 +16,7 @@ import { assertAdminSecret } from "@/lib/admin-secret.server";
 import { dbError } from "./db-error";
 import { firstName } from "./utils";
 import { orchestratorComplete, OrchestratorUnavailableError } from "./dap-orchestrator.server";
-import { modelInfo, MODEL_IDS, type ModelId } from "./models";
+import { modelInfo, orchestratorModelName, MODEL_IDS, type ModelId } from "./models";
 import { TIER_RANK } from "./tier-rank";
 import { TIER_LIMITS } from "./usage-limits";
 import type { Tier } from "./tier-gate";
@@ -655,7 +655,7 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
       reply = (
         await orchestratorComplete({
           tier: myTier,
-          model: info.label,
+          model: orchestratorModelName(chosen),
           messages: [
             {
               role: "system",
