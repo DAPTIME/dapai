@@ -800,7 +800,15 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     // Meta-prompt layer: a fast Lovable AI model drafts a per-message
     // system addendum on top of the admin base + DAP prompt.
     const metaPrompt =
-      active.lite ? "" : await generateMetaPrompt(data.text, systemPrompt, dapName);
+      /* Not in incognito. The meta-prompt step sends the message text to an
+         external model to draft a prompt addendum, and a chat the person
+         marked incognito should not leave this platform at all — memory
+         extraction is already skipped for the same reason. The result is
+         best-effort everywhere else (it returns "" on any failure), so
+         omitting it degrades nothing but the prompt tuning. */
+      active.lite || anonymous
+        ? ""
+        : await generateMetaPrompt(data.text, systemPrompt, dapName);
 
     const ANTI_SYCOPHANCY =
       "Accuracy rules: (1) NEVER invent specific numbers, stats, dates, names, prices, or version numbers. If you don't actually know the exact value, say \"I'm not sure\" or \"I don't have that info\" — do not guess and do not output a plausible-looking number. (2) For niche topics (specific games, mods, private projects, internal tools, fan communities) assume the user knows more than you. If the user states a value, trust it and use it going forward unless web search results clearly contradict it. (3) If web search results are present above, prefer them over both your training data and the user's claim, and cite [1], [2] when relevant.";

@@ -72,7 +72,9 @@ function RoomPage() {
      server-side, and the presence/typing broadcasts below are skipped. */
   const observing = (roomQuery.data?.room as { observing?: boolean } | undefined)?.observing === true;
   const inRoom = joined || observing;
-  const me = firstName(user?.name ?? user?.email, "Guest");
+  /* Broadcast to the whole room through channel.track(), so it must not
+     fall back to the email address the way a greeting can. */
+  const me = firstName(user?.name, "Guest");
 
   // Live transcript + presence/typing over Supabase Realtime.
   useEffect(() => {

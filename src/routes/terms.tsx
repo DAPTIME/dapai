@@ -78,13 +78,19 @@ function Terms() {
         <div>
           <h2 className="text-lg font-semibold text-foreground">3. Description of Services</h2>
           <p className="mt-2">
-            DAP AI provides an AI-powered conversational platform that allows Users to interact with large language models, create custom AI personas (“DAPs”), manage chat histories, and use additional features such as games and community content. The Services include both free and paid tiers.
+            DAP AI provides an AI-powered conversational platform that allows Users to interact with large language models, create custom AI personas (“DAPs”), manage chat histories, and use additional features such as games and community content. The Services are organised into plans. Every plan is currently provided free of charge; see the Payments section below for what happens if that changes.
           </p>
           <p className="mt-2">
-            DAP AI is delivered using small language models operated by DAP AI. The models used, their size, and the way requests are routed between them may change at any time as the Services are developed, and no particular model, parameter size, response quality, or speed is guaranteed as part of any plan.
+            DAP AI is delivered using language models operated by DAP AI. The models used, their size, and the way requests are routed between them may change at any time as the Services are developed, and no particular model, parameter size, response quality, or speed is guaranteed as part of any plan.
           </p>
           <p className="mt-2">
-            Inference runs on hardware operated by DAP AI rather than a third-party model provider. Your conversations are not forwarded to OpenAI, Anthropic, or Google for the purpose of generating replies. This does not apply to web search: where a message triggers a search, a query derived from it is sent to a third-party search provider, as described in Section 4.
+            The reply you read is generated on hardware operated by DAP AI, not by a third-party model provider. That is the part people usually mean by &ldquo;where does my conversation go&rdquo;, and it is true. It is not the whole answer, and the rest is set out here rather than left implied.
+          </p>
+          <p className="mt-2 font-medium text-foreground">
+            Parts of your message are sent to external AI services owned by third parties, over an API gateway, for steps other than writing the reply. Today those steps are: drafting a short instruction addendum that primes the answering model, and — if your plan includes Memory — deciding whether your message contains a durable fact worth remembering. Both currently run on a Google Gemini model reached through the Lovable AI gateway. Where a message triggers a web search, a query derived from it also goes to a third-party search provider, as described in Section 4.
+          </p>
+          <p className="mt-2">
+            What that means in practice: assume the text you type may be transmitted to a third-party AI provider, even though the answer itself is produced on our own hardware. Chats you mark incognito are excluded from both of the steps above and are not sent to those services. We are describing current behaviour, not promising an architecture forever; if this changes we will update this section.
           </p>
           <p className="mt-2 font-medium text-foreground">
             The Services are experimental. You acknowledge that DAP AI is developed and operated by a small independent team, that features may be incomplete, unstable, or withdrawn, and that the Services should be treated as a beta or evaluation product rather than a production-grade system.
@@ -139,7 +145,16 @@ function Terms() {
             The Services let you create content: custom AI personas (“DAPs”) with instructions you write, race tracks built in the track editor, display names, and the text and files you submit. All of this is “User Content”.
           </p>
           <p className="mt-2">
-            You retain ownership of your User Content. By submitting it you grant us a worldwide, royalty-free, sublicensable, transferable licence to host, store, reproduce, modify, adapt, publish, and display it for the purpose of operating, securing, and improving the Services. Where you choose to publish a track or otherwise make User Content available to other Users, you additionally grant every User a licence to access, play, and interact with it through the Services.
+            You retain ownership of your User Content. This section is the only licence you grant us over it.
+          </p>
+          <p className="mt-2">
+            For User Content you keep private, you grant us a worldwide, royalty-free licence to host, store, back up, reproduce and adapt it only so far as running the Services requires — storing your chats so you can return to them, transmitting them to our inference hardware to produce a reply, backing them up, and investigating a fault or abuse report. That licence does not include publishing or displaying private content to anyone else, and it ends for a given piece of content when we delete it under the retention rules in Section 21.
+          </p>
+          <p className="mt-2">
+            For User Content you choose to make public — publishing a track, listing a DAP in the marketplace, posting in a study room — you additionally grant us and every User a licence to display it and to access, play and interact with it through the Services, for as long as you keep it public.
+          </p>
+          <p className="mt-2">
+            “Improving the Services” in these Terms means fixing faults, measuring reliability, tuning performance, and handling abuse. It does not mean training. We do not use your private conversations, uploads, or Memories to train or fine-tune models. If that ever changes we will update these Terms and tell you before it takes effect, and we will not apply it retroactively to content you submitted under this version.
           </p>
           <p className="mt-2">
             You are solely responsible for your User Content and for any consequence of publishing it. You warrant that it is lawful, that it is yours to publish, and that it does not infringe the rights of any third party or contain anything prohibited by Section 15 or Section 16.
@@ -229,6 +244,12 @@ function Terms() {
             Administrators may also change an account&rsquo;s plan, reset a password, confirm an email address, delete an account, alter the instructions given to the model, enable or disable features, and take the Services offline.
           </p>
           <p className="mt-2">
+            Limits we hold ourselves to. Administrator rights are granted only to people who need them to operate the Services, and are removed when that stops being true. Administrators are to access account records and conversations only where one of the reasons above actually applies — not out of curiosity, and not because access happens to be available. Where an administrator reads a study room, the Services show them as an observer to us rather than joining silently on their own account.
+          </p>
+          <p className="mt-2">
+            What we do not yet do, stated rather than implied. We do not currently keep a per-access audit log of administrator reads, so we cannot promise you a record of who opened a given conversation, and we will not claim otherwise. Building that log, and a way for you to ask what was accessed, is on the list. Until it exists, treat the paragraph below as the accurate description of your exposure.
+          </p>
+          <p className="mt-2">
             Because of this, and because no system is perfectly secure, you should treat the Services as you would any hosted product: do not submit anything you could not tolerate being read by a person operating the platform, disclosed under legal compulsion, or exposed in a security incident.
           </p>
         </div>
@@ -263,7 +284,7 @@ function Terms() {
             <li>Use any robot, spider, scraper, or other automated means to access the Services without our express written permission.</li>
             <li>Reverse engineer, decompile, or disassemble any aspect of the Services, or attempt to extract model weights, prompts, or training data.</li>
             <li>Use the Services to develop, train, or improve any competing artificial intelligence or machine-learning model without our written consent.</li>
-            <li>Resell, sublicense, or commercially exploit the Services or their output without our written consent.</li>
+            <li>Resell, sublicense, or redistribute the Services themselves — for example by reselling access, wrapping them in another product, or offering them as your own service — without our written consent. This does not restrict what you do with the output you generate: you may use it for your own purposes, including commercial ones, subject to the rest of these Terms.</li>
           </ul>
           <p className="mt-2">
             We may investigate any suspected breach and may remove content, restrict features, or suspend or terminate accounts at our sole discretion. We may report unlawful activity to the relevant authorities.
@@ -302,10 +323,13 @@ function Terms() {
             Subject to your compliance with these Terms, we grant you a limited, non-exclusive, non-transferable, non-sublicensable, revocable license to access and use the Services for your personal or internal business purposes.
           </p>
           <p className="mt-2">
-            You retain ownership of any content you submit, post, or display through the Services (“User Content”). By submitting User Content, you grant us a worldwide, royalty-free, sublicensable, and transferable license to use, reproduce, modify, adapt, publish, and display such content solely for the purpose of operating and improving the Services.
+            User Content is dealt with in Section 7, which is the single governing statement of what you own and what you licence to us. Nothing in this section grants us any wider licence over User Content than Section 7 does; if the two ever appear to differ, Section 7 prevails.
           </p>
           <p className="mt-2">
             You represent and warrant that you own or have all necessary rights to your User Content, and that it does not infringe the rights of any third party. You are solely responsible for your User Content and for any claim arising from it.
+          </p>
+          <p className="mt-2">
+            As between you and us, you own the output generated from your prompts, and you may use it for any lawful purpose, including commercially. We claim no ownership of it and no licence to it beyond what Section 7 grants over User Content generally.
           </p>
           <p className="mt-2">
             We make no representation that output generated by the Services is original, non-infringing, or capable of protection. Output may be similar or identical to output provided to other Users. You are responsible for confirming that your use of any output does not infringe the rights of others.
@@ -373,7 +397,10 @@ function Terms() {
             We do not guarantee that your data will be retained, backed up, or recoverable. You are solely responsible for keeping your own copies of anything you value.
           </p>
           <p className="mt-2 font-medium text-foreground">
-            Deleting a chat removes it from your chat history but does not remove it from our systems. Deleted conversations, including their messages, are retained by us indefinitely and remain accessible to administrators. The same applies to conversations removed automatically when your plan's saved-chat limit is reached, and to conversations started in incognito mode.
+            Deleting a chat removes it from your chat history immediately and completely — you will not see it again. It does not erase it from our systems. The conversation and its messages are kept, flagged as deleted, and remain readable by administrators. The same applies to conversations dropped automatically when your plan's saved-chat limit is reached, and to conversations started in incognito mode, which are stored like any other.
+          </p>
+          <p className="mt-2 font-medium text-foreground">
+            We keep those records until an administrator removes them or your account is deleted. There is no fixed retention period today, and we would rather say so plainly than imply a schedule we do not operate. To have your account and its data removed, write to us at the address in Section 34 and we will action it; a self-service delete-and-export is being built, and until it exists that request route is the way to exercise this.
           </p>
           <p className="mt-2">
             Chat histories, custom personas, saved times, uploaded files, and any other stored content may be deleted, corrupted, truncated, or lost — including as a result of quota limits, plan changes, migration, hardware failure, or error — and we accept no liability for any such loss. Where a plan imposes a memory or retention limit, older content may be discarded automatically.
@@ -389,7 +416,7 @@ function Terms() {
             You may stop using the Services at any time and may request deletion of your account. Termination does not entitle you to any refund except where required by law.
           </p>
           <p className="mt-2">
-            Upon termination, all licenses granted to you under these Terms immediately cease and we may delete your data without further notice. You remain liable for all amounts due up to and including the date of termination. Provisions that by their nature should survive termination shall survive, including Sections 15 through 27 and Section 35.
+            Upon termination, all licences granted to you under these Terms immediately cease and we may delete your data without further notice. Termination does not by itself erase conversations already flagged as deleted under Section 21 — those follow the rule in that section — and if you want everything removed, say so when you ask us to close the account. You remain liable for all amounts due up to and including the date of termination. Provisions that by their nature should survive termination shall survive, including Sections 15 through 27 and Section 35.
           </p>
         </div>
 

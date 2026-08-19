@@ -42,7 +42,11 @@ async function displayName(
     .select("name, email")
     .eq("id", userId)
     .maybeSingle();
-  return firstName(data?.name ?? data?.email, "Guest");
+  /* Deliberately not data.email: this label is shown to everyone else in
+     the room, and firstName() strips the domain off an address rather than
+     rejecting it — which turned "someone@example.com" into "Someone".
+     A member who set no name shows as a neutral label instead. */
+  return firstName(data?.name, "Guest");
 }
 
 /** What someone is told when the room they were in has been closed down. */

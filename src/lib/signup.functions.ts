@@ -30,7 +30,13 @@ export const registerAccount = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const email = data.email.toLowerCase();
-    const name = data.name?.trim() || email.split("@")[0] || "there";
+    /* Never seed a display name from the email address. The name reaches
+       public places — the track leaderboard, the member list of a study
+       room — so defaulting it to the half of an address before the @ put
+       what is usually a real name in front of strangers, for someone who
+       simply left the optional Name field blank. An empty name is left
+       empty; the places that show one supply their own neutral label. */
+    const name = data.name?.trim() || "";
 
     const { consumeEmailQuota } = await import("./rate-limit.server");
     await consumeEmailQuota("signup", email);
@@ -179,7 +185,15 @@ export const registerAccount = createServerFn({ method: "POST" })
         .eq("id", created.id);
     }
 
-    await deliverConfirmation({ email, name, link, origin: data.origin });
+    // The greeting in the person's own confirmation email may fall back to
+    // their address — it is going to them, and reveals nothing they do not
+    // already know. Only the stored profile name is kept empty.
+    await deliverConfirmation({
+      email,
+      name: name || email.split("@")[0] || "there",
+      link,
+      origin: data.origin,
+    });
 
     return { ok: true, pending: true };
   });
