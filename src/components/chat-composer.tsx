@@ -20,8 +20,7 @@ import { useUpgradeGate, TIER_LABEL } from "@/lib/tier-gate";
 import { type Tier } from "@/lib/tier-rank";
 import { MODELS } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
-import { adminAmIAdmin } from "@/lib/admin.functions";
-import { siteOpenTo } from "@/lib/site-status";
+import { useSiteOpen } from "@/lib/use-site-open";
 
 
 export interface QuotaInfo {
@@ -75,17 +74,10 @@ export function ChatComposer({
   const { requireTier, hasTier } = useUpgradeGate();
 
   const siteConfig = useSiteConfig();
-  // In "admin" mode the site stays usable for site admins and reads as
-  // offline to everyone else, so the composer has to ask who is looking.
-  const amIAdmin = useServerFn(adminAmIAdmin);
-  const adminQuery = useQuery({
-    queryKey: ["am-i-admin"],
-    queryFn: () => amIAdmin(),
-    enabled: !!user && siteConfig.status === "admin",
-    staleTime: 60_000,
-  });
-  const isOffline =
-    offline || !siteOpenTo(siteConfig.status, adminQuery.data?.isAdmin === true);
+  // "admin" mode keeps the site usable for site admins and reads as offline
+  // to everyone else — useSiteOpen answers that for the current viewer.
+  const siteOpen = useSiteOpen();
+  const isOffline = offline || !siteOpen;
   const offlineText = offlineMessage?.trim() || siteConfig.offlineMessage;
 
   const flagOn = (id: string) => {

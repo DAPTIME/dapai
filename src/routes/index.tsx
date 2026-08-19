@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 
 import logo from "@/assets/logo.png.asset.json";
+import { useSiteOpen } from "@/lib/use-site-open";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -126,7 +127,10 @@ function Home() {
   const create = useServerFn(createChat);
   const newChatGuard = useNewChatGuard();
   const siteConfig = useSiteConfig();
-  const siteEnabled = siteConfig.enabled;
+  /* Admin-aware: siteConfig.enabled means "open to the public", which is
+     false in admin mode even for an admin. Using it here forced the
+     composer offline for the very person admin mode exists for. */
+  const siteEnabled = useSiteOpen();
   const proEnabled = siteConfig.flags.pro_model;
   const liteEnabled = siteConfig.flags.lite_model;
 

@@ -40,6 +40,19 @@ export default defineConfig({
           "icons/apple-touch-icon.png",
         ],
         workbox: {
+          /* Navigations must go to the network, always.
+             workbox's generateSW defaults navigateFallback to index.html,
+             which registers a NavigationRoute that answers every navigation
+             from the *precached* shell. That shell names the hashed chunks
+             from the build it shipped with, and runtimeCaching below serves
+             scripts CacheFirst — so a returning visitor kept getting the
+             previous deploy's HTML and the previous deploy's JS, and stayed
+             a release behind however many times they reloaded. Shipped
+             fixes were invisible to exactly the people who use the site
+             most.
+             The comment below already said navigations should not be
+             intercepted; this is the line that actually does it. */
+          navigateFallback: null,
           globPatterns: ["**/*.{js,css,html,png,svg,webmanifest,woff,woff2}"],
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
           cleanupOutdatedCaches: true,

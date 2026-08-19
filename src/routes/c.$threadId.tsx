@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Brain, GraduationCap, Layers, PanelRight, ShieldCheck } from "lucide-react";
 import { ArtifactPanel } from "@/components/artifact-panel";
 import { extractArtifacts, type Artifact } from "@/lib/artifacts";
+import { useSiteOpen } from "@/lib/use-site-open";
 
 export const Route = createFileRoute("/c/$threadId")({
   head: () => ({
@@ -91,7 +92,10 @@ function ChatPage() {
     enabled: !!user,
   });
   const siteConfig = useSiteConfig();
-  const siteEnabled = siteConfig.enabled;
+  /* Admin-aware: siteConfig.enabled means "open to the public", which is
+     false in admin mode even for an admin. Using it here forced the
+     composer offline for the very person admin mode exists for. */
+  const siteEnabled = useSiteOpen();
   const proEnabled = siteConfig.flags.pro_model;
   const liteEnabled = siteConfig.flags.lite_model;
 
