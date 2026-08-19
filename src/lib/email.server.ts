@@ -7,10 +7,29 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
 /** Resend's shared sandbox sender. Only ever reaches the account owner. */
 const SANDBOX_SENDER = "DAP AI <onboarding@resend.dev>";
 
+/** The Resend-verified sending domain (DKIM/SPF/MX live). */
+const VERIFIED_DOMAIN = "dapai.dpdns.org";
+
+/**
+ * Repair a sender whose domain lost its TLD.
+ *
+ * The configured sender was `...@dapai.dpdns`, and Resend answered every
+ * send with 550 "This API key is not authorized to send emails from
+ * dapai.dpdns" — the key is authorised for `dapai.dpdns.org`. The value
+ * lives in an environment variable that only the operator can rewrite, so
+ * the missing suffix is repaired here instead of silently failing every
+ * confirmation email.
+ */
+function normalizeSender(raw: string) {
+  return raw.replace(/@dapai\.dpdns(?![.\w])/gi, `@${VERIFIED_DOMAIN}`);
+}
+
 /** Sender address. Override with the RESEND_FROM secret once a domain is verified. */
 export function senderAddress() {
-  return process.env["RESEND_FROM"] || SANDBOX_SENDER;
+  const configured = (process.env["RESEND_FROM"] || "").trim();
+  return configured ? normalizeSender(configured) : SANDBOX_SENDER;
 }
+
 
 /**
  * Whether mail is still going out through Resend's shared sandbox address.
