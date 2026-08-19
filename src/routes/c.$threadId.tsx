@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
 import { getChat, stopChatMessage, getProfile, discardEmptyChat } from "@/lib/chats.functions";
-import { streamChat, describeStage, type ChatStreamFrame } from "@/lib/chat-stream";
+import { streamChat } from "@/lib/chat-stream";
+import { useThinkingWord } from "@/lib/thinking-words";
 import { useAiQueue, describeQueue, queueUpgradeHint } from "@/lib/use-ai-queue";
 import { MODELS, modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
@@ -59,7 +60,6 @@ function ChatPage() {
     }
   };
   const abortRef = useRef<AbortController | null>(null);
-  const [streamStageLabel, setStreamStageLabel] = useState<string>("Thinking...");
   const [streamText, setStreamText] = useState<string>("");
   /* The reply we just streamed is already fully on screen. When the refetch
      replaces it with the persisted row, that row must not fade in from
@@ -67,6 +67,11 @@ function ChatPage() {
      stream completion, cleared as soon as the next send starts. */
   const [skipFadeAfterStream, setSkipFadeAfterStream] = useState(false);
   const [streaming, setStreaming] = useState(false);
+  /* The word under the dots while we wait for the first token. Three
+     looping dots alone read as frozen after a few seconds; a word that
+     changes every 3s is the signal that the request is still moving.
+     Stops the moment text starts arriving — the text is the signal then. */
+  const thinkingWord = useThinkingWord(streaming && streamText.length === 0);
   const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
     id: string;
     role: "user";
@@ -172,7 +177,6 @@ function ChatPage() {
       setStreaming(true);
       setSkipFadeAfterStream(false);
       setStreamText("");
-      setStreamStageLabel("Thinking...");
 
       let connectionLost = false;
       let streamError: string | null = null;
@@ -188,7 +192,6 @@ function ChatPage() {
           // message but never sent, so the server always ran its default.
           model: effective,
           signal: controller.signal,
-          onStage: (frame: ChatStreamFrame) => setStreamStageLabel(describeStage(frame)),
           onToken: (delta) => setStreamText((prev) => prev + delta),
           onDone: () => {},
           onError: (message) => {
@@ -516,7 +519,14 @@ function ChatPage() {
                     <span className="thinking-dot" />
                     <span className="thinking-dot" />
                     <span className="thinking-dot" />
-                    <span>{streamStageLabel}</span>
+                    {/* The rotating word is hidden from assistive tech: this
+                        is a live region, and announcing a new synonym every
+                        3 seconds is noise. The stable line below is what a
+                        screen reader hears, once. */}
+                    <span key={thinkingWord} className="thinking-word" aria-hidden>
+                      {thinkingWord}...
+                    </span>
+                    <span className="sr-only">Working on your reply</span>
                   </div>
                 )}
               </div>
