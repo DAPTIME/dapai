@@ -21,6 +21,8 @@ import {
   OrchestratorUnavailableError,
 } from "@/lib/dap-orchestrator.server";
 import { sanitizeLiteReply, hasLiteReasoningLeak } from "@/lib/lite-sanitize";
+import { MODEL_IDS, modelInfo, type ModelId } from "@/lib/models";
+import { TIER_RANK } from "@/lib/tier-gate";
 import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
 
 /**
@@ -41,6 +43,10 @@ const Body = z.object({
   text: z.string().min(1).max(8000),
   images: z.array(z.string().startsWith("data:image/").max(8_000_000)).max(4).optional(),
   studyMode: z.boolean().optional(),
+  /* The model the picker selected. Optional so an older client that does
+     not send one still works; the tier gate below decides what actually
+     runs either way, so this is a request, never an authorisation. */
+  model: z.enum(MODEL_IDS).optional(),
 });
 
 const STUDY_MODE_PROMPT =
@@ -176,6 +182,20 @@ export const Route = createFileRoute("/api/chat")({
           .maybeSingle();
         const tier = ((profile?.tier as Tier | undefined) ?? "free") as Tier;
         const limits = TIER_LIMITS[tier];
+
+        /* Same gate the non-streaming path applies: honour the picked model
+           only if this account may use it, otherwise fall back to the best
+           one it may. Until now this endpoint took no model at all, so the
+           picker changed nothing and the orchestrator logged MODEL picked=''
+           on every request. */
+        const requestedModel = body.model ?? "dap-ai-lite";
+        const requestedInfo = modelInfo(requestedModel);
+        const effectiveModel: ModelId =
+          requestedInfo && TIER_RANK[tier] >= TIER_RANK[requestedInfo.minTier]
+            ? (requestedModel as ModelId)
+            : TIER_RANK[tier] >= TIER_RANK["go"]
+              ? "dap-ai-pro-lite"
+              : "dap-ai-lite";
 
         const imageCount = body.images?.length ?? 0;
         if (imageCount > MAX_IMAGES_PER_RESPONSE) {
@@ -347,7 +367,13 @@ export const Route = createFileRoute("/api/chat")({
           async start(controller) {
             const send = (obj: unknown) => controller.enqueue(encoder.encode(sse(obj)));
             try {
-              const res = await openOrchestratorStream({ tier, messages, signal: ctrl.signal });
+              const res = await openOrchestratorStream({
+                tier,
+                // The display name is what the orchestrator routes on.
+                model: modelInfo(effectiveModel)?.label ?? effectiveModel,
+                messages,
+                signal: ctrl.signal,
+              });
               for await (const evt of readOrchestratorEvents(res)) {
                 if (evt.type === "token") {
                   assistantText += evt.text ?? "";

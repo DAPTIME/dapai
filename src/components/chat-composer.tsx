@@ -253,7 +253,11 @@ export function ChatComposer({
             aria-label="Select model"
             title={activeModel.description}
           >
-            {MODELS.map((m) => {
+            {/* Most capable first. The MODELS array stays in ascending
+                capability order because the "best model this account may
+                use" logic above depends on it; only the display is
+                reversed. */}
+            {[...MODELS].reverse().map((m) => {
               const modelOffline = !flagOn(m.id);
               const locked = !hasTier(m.minTier);
               const suffix = modelOffline

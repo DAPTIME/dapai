@@ -77,6 +77,7 @@ export const Route = createFileRoute("/api/public/lite-try")({
         try {
           const raw = await orchestratorComplete({
             tier: "free",
+            model: "DAP AI 4 Lite",
             timeoutMs: 60_000,
             messages: [
               { role: "system", content: LITE_NO_THINK_PROMPT },

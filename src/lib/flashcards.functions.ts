@@ -8,7 +8,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { dbError } from "./db-error";
 import { orchestratorComplete, OrchestratorUnavailableError } from "./dap-orchestrator.server";
-import { MODEL_IDS } from "@/lib/models";
+import { MODEL_IDS, modelInfo } from "@/lib/models";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { chargeForPrompt, refundPrompt } from "@/lib/charge-usage.server";
 import type { Tier } from "@/lib/tier-rank";
@@ -89,6 +89,7 @@ export const generateFlashcards = createServerFn({ method: "POST" })
     try {
       raw = await orchestratorComplete({
         tier: (prof?.tier as Tier) ?? "free",
+        model: modelInfo(data.model)?.label ?? "DAP AI 4 Lite",
         messages: [
           {
             role: "system",

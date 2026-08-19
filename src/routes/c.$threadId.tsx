@@ -184,6 +184,9 @@ function ChatPage() {
           text,
           images,
           studyMode,
+          // The picker's choice. It was resolved above for the optimistic
+          // message but never sent, so the server always ran its default.
+          model: effective,
           signal: controller.signal,
           onStage: (frame: ChatStreamFrame) => setStreamStageLabel(describeStage(frame)),
           onToken: (delta) => setStreamText((prev) => prev + delta),

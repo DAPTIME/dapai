@@ -53,6 +53,8 @@ export interface StreamChatOptions {
   accessToken: string;
   chatId: string;
   text: string;
+  /** Model id the sender picked. The server still re-checks their tier. */
+  model?: string;
   images?: string[];
   studyMode?: boolean;
   signal?: AbortSignal;
@@ -74,7 +76,7 @@ export interface StreamChatOptions {
  * asked for that).
  */
 export async function streamChat(opts: StreamChatOptions): Promise<void> {
-  const { accessToken, chatId, text, images, studyMode, signal } = opts;
+  const { accessToken, chatId, text, images, studyMode, model, signal } = opts;
 
   const send = (bearer: string) =>
     fetch("/api/chat", {
@@ -83,7 +85,7 @@ export async function streamChat(opts: StreamChatOptions): Promise<void> {
         Authorization: `Bearer ${bearer}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ chatId, text, images, studyMode }),
+      body: JSON.stringify({ chatId, text, images, studyMode, model }),
       signal,
     });
 

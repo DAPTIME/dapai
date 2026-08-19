@@ -655,6 +655,7 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
       reply = (
         await orchestratorComplete({
           tier: myTier,
+          model: info.label,
           messages: [
             {
               role: "system",

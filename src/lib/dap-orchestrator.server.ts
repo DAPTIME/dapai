@@ -86,6 +86,8 @@ export async function aiEnabled(): Promise<boolean> {
 /** Open the streaming request. Throws OrchestratorUnavailableError on failure. */
 export async function openOrchestratorStream(opts: {
   tier: string;
+  /** Display name of the model the sender picked, e.g. "DAP AI 4 Lite". */
+  model?: string;
   messages: OrchestratorMessage[];
   signal?: AbortSignal;
 }): Promise<Response> {
@@ -99,8 +101,13 @@ export async function openOrchestratorStream(opts: {
         Accept: "text/event-stream",
         "X-DAP-Auth": secret,
       },
+      /* model is the picked model's display name, which is what the
+         orchestrator routes on. Without it the orchestrator logged
+         MODEL picked='' and fell back to a default, so the picker in the
+         UI selected a model that never reached the hardware. */
       body: JSON.stringify({
         tier: opts.tier || "free",
+        model: opts.model || "",
         messages: opts.messages,
       }),
       signal: opts.signal,
@@ -166,6 +173,8 @@ export async function* readOrchestratorEvents(
  */
 export async function orchestratorComplete(opts: {
   tier: string;
+  /** Display name of the model the sender picked, e.g. "DAP AI 4 Lite". */
+  model?: string;
   messages: OrchestratorMessage[];
   timeoutMs?: number;
   signal?: AbortSignal;
@@ -177,6 +186,7 @@ export async function orchestratorComplete(opts: {
   try {
     const res = await openOrchestratorStream({
       tier: opts.tier,
+      model: opts.model,
       messages: opts.messages,
       signal: ctrl.signal,
     });

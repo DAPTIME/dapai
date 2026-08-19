@@ -916,6 +916,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
         try {
           const out = await orchestratorComplete({
             tier: callerTier,
+            model: modelInfo(effectiveModel)?.label ?? effectiveModel,
             messages: messages as Array<{
               role: "system" | "user" | "assistant";
               content: unknown;
