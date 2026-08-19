@@ -328,7 +328,30 @@ export const Route = createFileRoute("/api/chat")({
         let assistantText = "";
         let gotDone = false;
 
+        /* Hold the slot while the answer is being generated.
+           queue_claim stamps heartbeat_at once and nothing here refreshed
+           it, while queue_reap cancels any running ticket whose heartbeat
+           is over 90 seconds old. Lite answers in about ten seconds so it
+           never noticed; Pro takes 90-150 by design, so every Pro
+           generation would have its own ticket reaped out from under it
+           mid-flight and the lane handed to the next request — on hardware
+           that runs one generation at a time. That only became reachable
+           when the queue started working at all, so it has never actually
+           bitten, and it would have on the first slow answer.
+
+           A timer rather than beating per token: the expert phase is
+           legitimately silent for minutes, and "this request is still
+           open" is exactly what the heartbeat means. */
+        let beat: ReturnType<typeof setInterval> | undefined = setInterval(() => {
+          void Promise.resolve(asCaller.rpc("queue_beat", { _id: ticketId })).catch(() => {});
+        }, 25_000);
+        const stopBeating = () => {
+          if (beat) clearInterval(beat);
+          beat = undefined;
+        };
+
         const releaseAndRefund = async (opts: { refund: boolean }) => {
+          stopBeating();
           if (opts.refund && chargedCost > 0) {
             // Through the service-role client: refund_usage is no longer
             // granted to authenticated, because taking the amount as an
@@ -422,10 +445,12 @@ export const Route = createFileRoute("/api/chat")({
                 });
               }
             } finally {
+              stopBeating();
               controller.close();
             }
           },
           cancel() {
+            stopBeating();
             ctrl.abort();
           },
         });
