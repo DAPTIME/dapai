@@ -104,6 +104,13 @@ export async function openOrchestratorStream(opts: {
         messages: opts.messages,
       }),
       signal: opts.signal,
+      // Never follow a redirect. The runtime keeps custom headers across a
+      // cross-origin redirect, so a 3xx from the tunnel host would re-send
+      // X-DAP-Auth (the shared inference secret) to wherever it points. The
+      // orchestrator answers 200 with a stream in normal operation, so this
+      // changes nothing there — it only turns a redirect into the graceful
+      // "offline" path below instead of a secret disclosure.
+      redirect: "manual",
     });
   } catch (e) {
     const err = e as Error;

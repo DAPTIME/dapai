@@ -39,6 +39,11 @@ export async function sendEmail(opts: {
 
   const res = await fetch(`${GATEWAY_URL}/emails`, {
     method: "POST",
+    // A redirect would carry X-Connection-Api-Key (the Resend key) to the
+    // redirect target; refuse it. Adds a 15s ceiling so a hung gateway
+    // cannot stall signup/reset mail indefinitely.
+    redirect: "manual",
+    signal: AbortSignal.timeout(15_000),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${lovableKey}`,

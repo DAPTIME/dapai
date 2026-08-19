@@ -30,20 +30,28 @@ export const Route = createFileRoute("/api/public/hooks/cleanup-old-chats")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Fail closed. This endpoint hard-deletes every chat older than a
+        // week, so its auth must be a real secret. The previous fallback —
+        // "if CLEANUP_HOOK_SECRET is unset, accept the publishable key
+        // instead" — accepted a value that ships in the browser bundle, so
+        // a deployment that forgot the secret let anyone delete week-old
+        // chats. No secret configured now means the hook refuses to run
+        // rather than trusting a public value.
         const secret = process.env.CLEANUP_HOOK_SECRET ?? "";
+        if (!secret) {
+          console.error(
+            "[cleanup] CLEANUP_HOOK_SECRET is not set; refusing to run. " +
+              "Set it to enable the cleanup hook."
+          );
+          return new Response("Cleanup hook not configured", { status: 503 });
+        }
         const offered =
           request.headers.get("x-cleanup-secret") ??
           request.headers.get("apikey") ??
           "";
-
-        const authorized = secret
-          ? safeEqual(offered, secret)
-          : (() => {
-              const legacy = process.env.SUPABASE_PUBLISHABLE_KEY ?? "";
-              return !!legacy && safeEqual(offered, legacy);
-            })();
-
-        if (!authorized) return new Response("Unauthorized", { status: 401 });
+        if (!safeEqual(offered, secret)) {
+          return new Response("Unauthorized", { status: 401 });
+        }
 
         try {
           const { supabaseAdmin } = await import(
