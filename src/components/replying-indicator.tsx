@@ -11,10 +11,20 @@ import { useThinkingWord } from "@/lib/thinking-words";
 
 export function ReplyingIndicator({
   active = true,
+  showLogo = true,
   className = "",
 }: {
   /** Pass false to freeze the rotation when nothing is pending. */
   active?: boolean;
+  /**
+   * Whether to draw the mark.
+   *
+   * A one-to-one chat already shows the DAP AI avatar beside the message
+   * this sits inside, so drawing it here too gave the same logo twice in a
+   * row. A Study Room has no avatar column, so there it is the only thing
+   * identifying who is thinking.
+   */
+  showLogo?: boolean;
   className?: string;
 }) {
   const word = useThinkingWord(active);
@@ -25,12 +35,14 @@ export function ReplyingIndicator({
       role="status"
       aria-live="polite"
     >
-      <img
-        src={logo.url}
-        alt=""
-        className="h-6 w-6 shrink-0 rounded-full object-contain"
-        aria-hidden
-      />
+      {showLogo && (
+        <img
+          src={logo.url}
+          alt=""
+          className="h-6 w-6 shrink-0 rounded-full object-contain"
+          aria-hidden
+        />
+      )}
       <span className="thinking-dot" />
       <span className="thinking-dot" />
       <span className="thinking-dot" />

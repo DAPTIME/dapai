@@ -598,7 +598,7 @@ function ChatPage() {
                     />
                   </div>
                 ) : (
-                  <ReplyingIndicator className="mt-2" active={streaming} />
+                  <ReplyingIndicator className="mt-2" active={streaming} showLogo={false} />
                 )}
               </div>
             </div>

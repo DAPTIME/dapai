@@ -16,7 +16,7 @@ import { getProfile } from "@/lib/chats.functions";
 import { useAuth } from "@/lib/auth";
 import { useSiteConfig } from "@/lib/site-config";
 import type { FeatureKey } from "@/lib/site-config.functions";
-import { TIER_RANK, type Tier } from "@/lib/tier-rank";
+import { TIER_RANK, TIER_LABEL, type Tier } from "@/lib/tier-rank";
 
 export interface BetaState {
   /** Is this feature in beta at all? */
@@ -59,9 +59,13 @@ export function useBeta(): (key: FeatureKey) => BetaState {
   };
 }
 
-/** Sentence for someone who cannot reach a beta yet. */
+/**
+ * Sentence for someone who cannot reach a beta yet.
+ *
+ * Named after the plan, not a model: the tiers are Free, Go, Pro and
+ * Exclusive, and "DAP AI 4 Pro Lite" is a model Go accounts may use, not
+ * the name of the plan itself.
+ */
 export function betaLockMessage(label: string, minTier: Tier): string {
-  const plan =
-    minTier === "go" ? "DAP AI 4 Pro Lite" : minTier === "pro" ? "DAP AI 4 Pro" : "Exclusive";
-  return `${label} is in beta — it needs the ${plan} plan while we're testing it.`;
+  return `${label} is in beta — it needs the ${TIER_LABEL[minTier]} plan while we're testing it.`;
 }

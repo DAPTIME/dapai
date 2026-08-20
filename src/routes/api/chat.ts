@@ -264,14 +264,36 @@ export const Route = createFileRoute("/api/chat")({
           chargedCost = chargeErr ? 0 : cost;
         }
 
-        // Queue slot: only one generation runs system-wide at a time.
+        /* Queue slot: only one generation runs system-wide at a time.
+           That is what the comment here used to say, and it was not true.
+           queue_claim returns whether the slot was actually taken and the
+           answer was being thrown away, so every request dialled the
+           orchestrator immediately no matter how many were already running.
+           On one box that is how you get several generations competing and
+           connections dropping for no reason anyone can see.
+
+           So wait for the claim to succeed. Fail open on a timeout — being
+           slow is better than being broken, and a queue fault must not be
+           able to take chat down — but under normal load this is now a
+           real queue rather than a record of one. */
         const { data: ticket } = await Promise.resolve(
           asCaller.rpc("queue_join", { _chat_id: body.chatId }).maybeSingle()
         ).catch(() => ({ data: null }) as { data: null });
         const ticketId = (ticket as { id?: string } | null)?.id ?? body.chatId;
-        await Promise.resolve(asCaller.rpc("queue_claim", { _id: ticketId })).catch(
-          () => {}
-        );
+
+        const claimDeadline = Date.now() + 120_000;
+        let claimed = false;
+        for (;;) {
+          claimed = await Promise.resolve(
+            asCaller.rpc("queue_claim", { _id: ticketId })
+          )
+            .then((r: { data?: unknown }) => r.data === true)
+            .catch(() => false);
+          if (claimed || Date.now() > claimDeadline) break;
+          // Long enough not to hammer the database, short enough that the
+          // wait is not noticeable once the box frees up.
+          await new Promise((r) => setTimeout(r, 1_500));
+        }
 
         const storedUserContent =
           imageCount > 0
@@ -344,7 +366,25 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         const ctrl = new AbortController();
-        request.signal.addEventListener("abort", () => ctrl.abort());
+
+        /* Closing the tab does not cancel the answer.
+
+           The browser dropping this connection used to abort the
+           orchestrator call, so switching away mid-reply threw the
+           generation away — the work was already being done, the box was
+           already busy doing it, and the person came back to nothing.
+
+           Now the connection going away only stops us writing to it. The
+           generation runs to the end and the reply is saved, so it is
+           waiting in the thread when they return. Pressing Stop is a
+           different thing entirely and still stops it: that goes through
+           stopChatMessage, which records the interruption and stores
+           whatever had been streamed. */
+        let clientGone = false;
+        const startedAt = new Date().toISOString();
+        request.signal.addEventListener("abort", () => {
+          clientGone = true;
+        });
 
         let assistantText = "";
         let gotDone = false;
@@ -415,7 +455,16 @@ export const Route = createFileRoute("/api/chat")({
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
           async start(controller) {
-            const send = (obj: unknown) => controller.enqueue(encoder.encode(sse(obj)));
+            const send = (obj: unknown) => {
+              if (clientGone) return;
+              try {
+                controller.enqueue(encoder.encode(sse(obj)));
+              } catch {
+                // The reader has gone. Keep generating and persisting; the
+                // answer is for the thread, not for this connection.
+                clientGone = true;
+              }
+            };
             try {
               const res = await openOrchestratorStream({
                 tier,
@@ -440,6 +489,29 @@ export const Route = createFileRoute("/api/chat")({
                   gotDone = true;
                   let cleaned = assistantText;
                   if (hasLiteReasoningLeak(cleaned)) cleaned = sanitizeLiteReply(cleaned);
+
+                  /* Did Stop get there first?
+
+                     Now that closing the tab no longer cancels the answer,
+                     the only way this generation ends early is someone
+                     pressing Stop — and that path already stores what had
+                     been streamed, with the interrupted marker. Writing
+                     again here would leave the thread holding the same
+                     reply twice, once stopped and once whole. */
+                  const { data: alreadyWritten } = await asCaller
+                    .from("chat_messages")
+                    .select("id")
+                    .eq("chat_id", body.chatId)
+                    .eq("role", "assistant")
+                    .gt("created_at", startedAt)
+                    .limit(1)
+                    .maybeSingle<{ id: string }>();
+                  if (alreadyWritten) {
+                    await releaseAndRefund({ refund: false });
+                    send({ type: "done" });
+                    continue;
+                  }
+
                   await asCaller.from("chat_messages").insert({
                     chat_id: body.chatId,
                     user_id: ownerId,
@@ -487,8 +559,9 @@ export const Route = createFileRoute("/api/chat")({
             }
           },
           cancel() {
-            stopBeating();
-            ctrl.abort();
+            // Not an abort: see the note above. The reply is still finished
+            // and saved for when they come back.
+            clientGone = true;
           },
         });
 

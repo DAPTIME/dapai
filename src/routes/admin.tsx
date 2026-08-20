@@ -1186,9 +1186,9 @@ function BetaList({ keys }: { keys: readonly FeatureKey[] }) {
 
   const OPTIONS: Array<{ value: string; label: string }> = [
     { value: "off", label: "Not in beta" },
-    { value: "go", label: "Pro Lite and up" },
-    { value: "pro", label: "Pro and up" },
-    { value: "exclusive", label: "Exclusive only" },
+    { value: "go", label: `${TIER_LABEL.go} and up` },
+    { value: "pro", label: `${TIER_LABEL.pro} and up` },
+    { value: "exclusive", label: `${TIER_LABEL.exclusive} only` },
   ];
 
   return (
