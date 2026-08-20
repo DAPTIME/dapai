@@ -815,14 +815,34 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
     const chosen = info.id;
 
     const author = await displayName(supabase, userId);
-    const { error } = await supabase.from("study_room_messages").insert({
-      room_id: data.roomId,
-      user_id: userId,
-      author_name: author,
-      role: "user",
-      content: data.text,
-    });
-    if (error) throw dbError(error);
+
+    /* Asking the same thing again re-asks it; it does not say it twice.
+       When the backend cannot be reached the question is already saved and
+       the answer is not, so the natural move is to send it again — and that
+       used to leave the room holding the question twice with still no
+       answer. An identical message from the same person within two minutes
+       is treated as that retry: no second row, straight on to asking. */
+    const { data: recent } = await supabaseAdmin
+      .from("study_room_messages")
+      .select("id")
+      .eq("room_id", data.roomId)
+      .eq("user_id", userId)
+      .eq("role", "user")
+      .eq("content", data.text)
+      .gt("created_at", new Date(Date.now() - 120_000).toISOString())
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+
+    if (!recent) {
+      const { error } = await supabase.from("study_room_messages").insert({
+        room_id: data.roomId,
+        user_id: userId,
+        author_name: author,
+        role: "user",
+        content: data.text,
+      });
+      if (error) throw dbError(error);
+    }
 
 
     if (!data.askAi) return { ok: true, replied: false };
@@ -910,9 +930,9 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
       .eq("id", userId);
 
 
-    const { supabaseAdmin } = await import(
-      "@/integrations/supabase/client.server"
-    );
+    // supabaseAdmin is imported at the top of this module; re-importing it
+    // here shadowed that binding and put the earlier uses in its temporal
+    // dead zone.
     await supabaseAdmin.from("study_room_messages").insert({
       room_id: data.roomId,
       user_id: null,
