@@ -45,6 +45,7 @@ import {
 } from "@/lib/models";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
+import { CUTOFF_MARKER } from "@/lib/cutoff-marker";
 
 
 
@@ -1083,7 +1084,7 @@ export const stopChatMessage = createServerFn({ method: "POST" })
           chat_id: data.chatId,
           user_id: userId,
           role: "assistant",
-          content: `${partial}\n\n_Stopped._`,
+          content: `${partial}\n\n${CUTOFF_MARKER}`,
         })
       ).catch(() => {});
     }
@@ -1119,10 +1120,55 @@ export const saveStoppedReply = createServerFn({ method: "POST" })
         chat_id: data.chatId,
         user_id: userId,
         role: "assistant",
-        content: `${data.text.trim()}\n\n_Stopped._`,
+        content: `${data.text.trim()}\n\n${CUTOFF_MARKER}`,
       })
     ).catch(() => {});
     return { ok: true };
   });
 
 
+
+/**
+ * Editing a message rewrites history in place — no conversation trees.
+ *
+ * The edited message and everything after it are dropped, then the client
+ * sends the new text as a fresh turn. The chat is verified as the caller's
+ * through their own RLS-scoped client first; the removal itself uses the
+ * service role because users hold no DELETE on chat_messages.
+ */
+export const truncateChatFrom = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({ chatId: z.string().uuid(), messageId: z.string().uuid() })
+      .parse(i)
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: owned, error } = await supabase
+      .from("chats")
+      .select("id")
+      .eq("id", data.chatId)
+      .maybeSingle();
+    if (error) throw dbError(error);
+    if (!owned) throw new Error("Chat not found.");
+
+    const { data: msg, error: mErr } = await supabase
+      .from("chat_messages")
+      .select("id, created_at, role")
+      .eq("id", data.messageId)
+      .eq("chat_id", data.chatId)
+      .maybeSingle();
+    if (mErr) throw dbError(mErr);
+    if (!msg) throw new Error("Message not found.");
+    if (msg.role !== "user") throw new Error("Only your own messages can be edited.");
+
+    const { error: dErr } = await supabaseAdmin
+      .from("chat_messages")
+      .delete()
+      .eq("chat_id", data.chatId)
+      .eq("user_id", userId)
+      .gte("created_at", msg.created_at);
+    if (dErr) throw dbError(dErr);
+    return { ok: true };
+  });
