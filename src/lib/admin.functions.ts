@@ -438,6 +438,40 @@ export const getFeatureFlags = createServerFn({ method: "GET" }).handler(
   }
 );
 
+/**
+ * Put a feature into beta, or take it out.
+ *
+ * "off" means not in beta. Any other value is the lowest plan that may use
+ * it, and is clamped to BETA_MIN_TIER — beta access is something people pay
+ * for, so a beta open to free accounts is not a state worth storing. The
+ * clamp is applied here as well as on read, so a value written by anything
+ * other than this console still cannot open a beta below the floor.
+ */
+export const adminSetBetaTier = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        key: z.enum(FEATURE_KEYS),
+        tier: z.enum(["off", "free", "go", "pro", "exclusive"]),
+      })
+      .parse(i),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId, context.supabase);
+    assertAdminSecret();
+    const { parseBetaTier } = await import("@/lib/site-config.functions");
+    const stored = data.tier === "off" ? "off" : (parseBetaTier(data.tier) ?? "off");
+    const supabaseAdmin = getAdminClient();
+    const { error } = await supabaseAdmin.from("ai_settings").upsert({
+      id: `beta_${data.key}`,
+      system_prompt: stored,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw dbError(error);
+    return { ok: true, tier: stored };
+  });
+
 export const adminSetFeatureFlag = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>

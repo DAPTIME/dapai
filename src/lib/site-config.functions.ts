@@ -8,6 +8,28 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { parseSiteStatus, type SiteStatus } from "@/lib/site-status";
+import { TIER_RANK, type Tier } from "@/lib/tier-rank";
+
+/**
+ * Nothing can be put into beta below Go.
+ *
+ * Beta access is a thing people pay for, so "beta, but free accounts get
+ * it too" is not a state worth allowing — a stored value below this is
+ * read as Go rather than honoured.
+ */
+export const BETA_MIN_TIER: Tier = "go";
+
+/** The tiers an admin may choose as a beta's floor. */
+export const BETA_TIERS: readonly Tier[] = ["go", "pro", "exclusive"];
+
+/** Read a stored beta setting, clamped to the floor. "off" means not beta. */
+export function parseBetaTier(raw: string | null | undefined): Tier | null {
+  const v = (raw ?? "").trim().toLowerCase();
+  if (!v || v === "off" || v === "none") return null;
+  if (!(v in TIER_RANK)) return null;
+  const tier = v as Tier;
+  return TIER_RANK[tier] < TIER_RANK[BETA_MIN_TIER] ? BETA_MIN_TIER : tier;
+}
 
 /* One list, in admin-config.ts. It used to be written out here as well,
    and the two copies had to be kept in step by hand — the same trap as
@@ -22,6 +44,12 @@ export interface SiteConfig {
   /** The raw three-way setting, so admins can be let through "admin". */
   status: SiteStatus;
   flags: Record<FeatureKey, boolean>;
+  /**
+   * Features currently in beta, and the lowest plan that may use each.
+   * A key that is absent is not in beta and is open to anyone the ordinary
+   * feature flag allows.
+   */
+  beta: Partial<Record<FeatureKey, Tier>>;
   /** Admin-authored text shown in the typing bar while DAP AI is offline. */
   offlineMessage: string;
 }
@@ -61,6 +89,7 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     nav_terms: true,
     nav_about: true,
   },
+  beta: {},
   offlineMessage: DEFAULT_OFFLINE_MESSAGE,
 };
 
@@ -70,6 +99,7 @@ export const getPublicSiteConfig = createServerFn({ method: "GET" }).handler(
       enabled: true,
       status: "on",
       flags: { ...DEFAULT_SITE_CONFIG.flags },
+      beta: {},
       offlineMessage: DEFAULT_OFFLINE_MESSAGE,
     };
     try {
@@ -80,6 +110,7 @@ export const getPublicSiteConfig = createServerFn({ method: "GET" }).handler(
         "site_status",
         "offline_message",
         ...FEATURE_KEYS.map((k) => `feature_${k}`),
+        ...FEATURE_KEYS.map((k) => `beta_${k}`),
       ];
       const { data } = await supabaseAdmin
         .from("ai_settings")
@@ -94,6 +125,14 @@ export const getPublicSiteConfig = createServerFn({ method: "GET" }).handler(
         if (row.id === "site_status") {
           config.status = parseSiteStatus(row.system_prompt);
           config.enabled = config.status === "on";
+          continue;
+        }
+        if (row.id.startsWith("beta_")) {
+          const bKey = row.id.replace(/^beta_/, "") as FeatureKey;
+          if ((FEATURE_KEYS as readonly string[]).includes(bKey)) {
+            const tier = parseBetaTier(row.system_prompt);
+            if (tier) config.beta[bKey] = tier;
+          }
           continue;
         }
         const on = (row.system_prompt ?? "on").trim().toLowerCase() !== "off";

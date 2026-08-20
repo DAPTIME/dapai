@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useSiteConfig } from "@/lib/site-config";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { sendChatMessage } from "@/lib/chats.functions";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe, EyeOff, PanelLeft } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe, EyeOff, PanelLeft, FlaskConical } from "lucide-react";
 import { TIER_LABEL } from "@/lib/tier-gate";
 import {
   adminListModels,
@@ -53,6 +54,7 @@ import {
   adminSetOfflineMessage,
   getFeatureFlags,
   adminSetFeatureFlag,
+  adminSetBetaTier,
 } from "@/lib/admin.functions";
 
 
@@ -77,6 +79,7 @@ const SECTIONS = [
   { id: "models", label: "Models", icon: Cpu },
   { id: "pages", label: "Pages", icon: Eye },
   { id: "sidebar", label: "Sidebar", icon: PanelLeft },
+  { id: "beta", label: "Beta", icon: FlaskConical },
   { id: "arcade", label: "Arcade", icon: Gamepad2 },
   { id: "rooms", label: "Study Rooms", icon: Gamepad2 },
   { id: "daps", label: "DAP Review", icon: Sparkles },
@@ -270,6 +273,9 @@ function Admin() {
               description="Turn an entry off to take it out of everyone's sidebar. The page itself keeps working for anyone with the link — use Pages & features to close a page outright. You will still see a hidden entry yourself, greyed out and marked, so you can find your way back to it."
               keys={FEATURE_GROUPS.sidebar}
             />
+          </TabsContent>
+          <TabsContent value="beta" className="mt-6">
+            <BetaList keys={FEATURE_GROUPS.beta} />
           </TabsContent>
           <TabsContent value="arcade" className="mt-6">
             <FeatureList
@@ -1152,6 +1158,88 @@ function OfflineMessageEditor() {
   );
 }
 
+
+
+/**
+ * Which features are in beta, and the lowest plan that may use one.
+ *
+ * Off is the ordinary state. Choosing a plan puts the feature behind it
+ * while it is being tried out; Go is the floor, because beta access is
+ * something people pay for. The site config is the source of truth here —
+ * the same read every page and the sidebar use — so this reflects exactly
+ * what visitors are getting.
+ */
+function BetaList({ keys }: { keys: readonly FeatureKey[] }) {
+  const qc = useQueryClient();
+  const siteConfig = useSiteConfig();
+  const setBeta = useServerFn(adminSetBetaTier);
+
+  const save = useMutation({
+    mutationFn: (v: { key: FeatureKey; tier: string }) =>
+      setBeta({ data: { key: v.key, tier: v.tier as "off" | "go" | "pro" | "exclusive" } }),
+    onSuccess: () => {
+      toast.success("Saved");
+      qc.invalidateQueries({ queryKey: ["site-config"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const OPTIONS: Array<{ value: string; label: string }> = [
+    { value: "off", label: "Not in beta" },
+    { value: "go", label: "Pro Lite and up" },
+    { value: "pro", label: "Pro and up" },
+    { value: "exclusive", label: "Exclusive only" },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-6">
+      <h2 className="text-lg font-semibold">Beta features</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Put something behind a plan while you are still testing it. Anyone
+        below the plan you choose will not see it in the sidebar, and is sent
+        home if they open the link. Go is the lowest a beta can be set to.
+        Turning a feature off under Pages still closes it for everyone.
+      </p>
+
+      <ul className="mt-5 divide-y divide-border">
+        {keys.map((key) => {
+          const current = siteConfig.beta[key] ?? "off";
+          return (
+            <li key={key} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                      current === "off" ? "bg-muted-foreground" : "bg-primary"
+                    }`}
+                  />
+                  <span className="font-medium">{FEATURE_LABELS[key]}</span>
+                  {current !== "off" && (
+                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                      Beta
+                    </span>
+                  )}
+                </div>
+              </div>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm sm:w-56"
+                value={current}
+                disabled={save.isPending}
+                onChange={(e) => save.mutate({ key, tier: e.target.value })}
+              >
+                {OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 function FeatureList({
   title,

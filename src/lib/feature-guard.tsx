@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useSiteConfig } from "@/lib/site-config";
 import { FEATURE_LABELS, type FeatureKey } from "@/lib/admin-config";
+import { useBeta, betaLockMessage } from "@/lib/use-beta";
 
 /** Which flag owns each arcade route, so a single game can be turned off. */
 export const GAME_FLAGS: Record<string, FeatureKey> = {
@@ -48,14 +49,29 @@ export function gameFlagFor(pathname: string): FeatureKey | null {
 export function useFeatureGuard(key: FeatureKey | null | undefined): boolean {
   const siteConfig = useSiteConfig();
   const navigate = useNavigate();
+  const beta = useBeta();
   const off = !!key && siteConfig.flags[key] === false;
   const label = key ? FEATURE_LABELS[key] : "";
 
-  useEffect(() => {
-    if (!off) return;
-    toast.info(`${label} is under maintenance right now.`);
-    void navigate({ to: "/", replace: true });
-  }, [off, label, navigate]);
+  /* A beta nobody on this plan may open is as closed as a feature that is
+     switched off, but for a different reason — so it gets a different
+     sentence. Somebody told "under maintenance" would wait for it to come
+     back; what they actually need to know is that it is a plan away. */
+  const state = key ? beta(key) : null;
+  const lockedByBeta = !off && !!state?.lockedByBeta;
+  const betaTier = state?.minTier ?? null;
 
-  return off;
+  useEffect(() => {
+    if (off) {
+      toast.info(`${label} is under maintenance right now.`);
+      void navigate({ to: "/", replace: true });
+      return;
+    }
+    if (lockedByBeta && betaTier) {
+      toast.info(betaLockMessage(label, betaTier));
+      void navigate({ to: "/", replace: true });
+    }
+  }, [off, lockedByBeta, betaTier, label, navigate]);
+
+  return off || lockedByBeta;
 }

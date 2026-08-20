@@ -80,6 +80,7 @@ export const FEATURE_GROUPS = {
     "about",
     "games",
   ],
+  beta: ["daps", "rooms", "games", "pro_model", "pro_lite_model"],
   sidebar: [
     "nav_daps",
     "nav_rooms",

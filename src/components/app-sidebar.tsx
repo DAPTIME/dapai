@@ -41,6 +41,7 @@ import {
 } from "@/lib/chats.functions";
 import { useIncognito } from "@/lib/use-incognito";
 import { useSiteConfig } from "@/lib/site-config";
+import { useBeta } from "@/lib/use-beta";
 import type { FeatureKey } from "@/lib/site-config.functions";
 
 /* Each entry names the admin flag that controls it, so "hide this from
@@ -59,6 +60,18 @@ const main = [
   /** Turning this off only takes the entry out of the sidebar. */
   nav: FeatureKey;
 }[];
+
+/** Shown beside an entry that is in beta, to someone who may use it. */
+function BetaMark() {
+  return (
+    <span
+      className="ml-auto shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
+      title="In beta — still being tested"
+    >
+      Beta
+    </span>
+  );
+}
 
 /** Shown to an admin beside an entry the console is hiding from everyone. */
 function HiddenMark() {
@@ -95,6 +108,7 @@ export function AppSidebar() {
   const isAdmin = adminQuery.data?.isAdmin === true;
 
   const siteConfig = useSiteConfig();
+  const beta = useBeta();
 
   /* A flag that is explicitly off hides the item. Anything the config
      doesn't mention stays visible, so a failed config read leaves the
@@ -107,7 +121,13 @@ export function AppSidebar() {
      Settings should not also remove the admin's own way back to it. */
   const showEntry = (...flags: FeatureKey[]) => !hiddenByAdmin(...flags) || isAdmin;
 
-  const nav = main.filter((item) => showEntry(item.flag, item.nav));
+  /* A beta the account cannot reach is not listed at all. Showing a link
+     that only leads to "you need a higher plan" is a worse answer than not
+     offering it — the upgrade page is where that conversation belongs.
+     Admins keep seeing it, as with a hidden entry. */
+  const betaBlocks = (flag: FeatureKey) => beta(flag).lockedByBeta && !isAdmin;
+
+  const nav = main.filter((item) => showEntry(item.flag, item.nav) && !betaBlocks(item.flag));
 
 
   const chatsQuery = useQuery({
@@ -145,6 +165,7 @@ export function AppSidebar() {
   const showChatCount =
     typeof chatLimit === "number" && Number.isFinite(chatLimit) && threads.length > 0;
   const closeIfMobile = () => { if (isMobile) setOpenMobile(false); };
+  const showChatHistory = !!user && !incognito && showEntry("nav_chats");
 
   return (
     <Sidebar collapsible="icon">
@@ -201,7 +222,11 @@ export function AppSidebar() {
                     >
                       <item.icon />
                       <span>{item.title}</span>
-                      {hiddenByAdmin(item.flag, item.nav) && <HiddenMark />}
+                      {hiddenByAdmin(item.flag, item.nav) ? (
+                        <HiddenMark />
+                      ) : (
+                        beta(item.flag).isBeta && <BetaMark />
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -211,7 +236,7 @@ export function AppSidebar() {
                   its artwork, which is a better way to pick one than a
                   column of names — and it saves a click for the common
                   case of just wanting the arcade. */}
-              {showEntry("games", "nav_games") && (
+              {showEntry("games", "nav_games") && !betaBlocks("games") && (
                 <SidebarMenuItem
                   className="animate-fade-in"
                   style={{ animationDelay: `${(nav.length + 1) * 60}ms` }}
@@ -228,7 +253,11 @@ export function AppSidebar() {
                     >
                       <Gamepad2 />
                       <span>Arcade</span>
-                      {hiddenByAdmin("games", "nav_games") && <HiddenMark />}
+                      {hiddenByAdmin("games", "nav_games") ? (
+                        <HiddenMark />
+                      ) : (
+                        beta("games").isBeta && <BetaMark />
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -237,8 +266,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-
-        {user && !incognito && showEntry("nav_chats") && (
+        {showChatHistory && (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel className="justify-between">
               <span className="flex items-center">
