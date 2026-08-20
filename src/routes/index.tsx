@@ -45,16 +45,8 @@ export const Route = createFileRoute("/")({
       },
       { property: "og:url", content: "https://dapai.lovable.app/" },
 
-      {
-        property: "og:image",
-        content:
-          "https://dapai.lovable.app/og-image.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://dapai.lovable.app/og-image.png",
-      },
+      { property: "og:image", content: "https://dapai.lovable.app/og-image.png" },
+      { name: "twitter:image", content: "https://dapai.lovable.app/og-image.png" },
     ],
     links: [
       { rel: "canonical", href: "https://dapai.lovable.app/" },
