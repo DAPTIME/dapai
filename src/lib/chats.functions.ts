@@ -929,7 +929,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     }
 
 
-    const { offlineMessage } = await import("./offline-message.server");
+    const { BACKEND_UNREACHABLE } = await import("./offline-message.server");
     const {
       aiEnabled,
       orchestratorComplete,
@@ -939,10 +939,9 @@ export const sendChatMessage = createServerFn({ method: "POST" })
     } = await import("./dap-orchestrator.server");
 
     /* Set wherever the reply is an outage rather than an answer, so the
-       charge can be given back. A flag rather than matching the text of
-       offlineMessage(), which is admin-configurable — the day someone
-       reworded it, string matching would stop refunding and nobody would
-       notice. */
+       charge can be given back. A flag rather than matching the text of the
+       message: the day someone rewords one, string matching would stop
+       refunding and nobody would notice. */
     let dispatchFailed = false;
 
     let replyText = "";
@@ -970,7 +969,7 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           });
           if (!out.trim()) {
             dispatchFailed = true;
-            return await offlineMessage();
+            return BACKEND_UNREACHABLE;
           }
           let cleaned = sanitizeLiteReply(out);
           if (hasLiteReasoningLeak(cleaned)) cleaned = sanitizeLiteReply(cleaned);
@@ -987,10 +986,10 @@ export const sendChatMessage = createServerFn({ method: "POST" })
           if (err instanceof OrchestratorUnavailableError) {
             return err.message === CONNECTION_LOST_MESSAGE
               ? CONNECTION_LOST_MESSAGE
-              : await offlineMessage();
+              : BACKEND_UNREACHABLE;
           }
           console.error(`[chat] orchestrator failed: ${err.name}: ${err.message}`);
-          return await offlineMessage();
+          return BACKEND_UNREACHABLE;
         } finally {
           unregisterAborter(data.chatId);
         }

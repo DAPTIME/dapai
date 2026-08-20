@@ -868,7 +868,7 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
       ).catch(() => {});
     };
 
-    const { offlineMessage } = await import("./offline-message.server");
+    const { BACKEND_UNREACHABLE } = await import("./offline-message.server");
     let reply = "";
     try {
       reply = (
@@ -894,14 +894,12 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
       await releaseRoomSlot(true);
       // The room got no answer, so the sender keeps their tokens.
       await refundPrompt(context.userId, roomCharge);
-      throw e instanceof OrchestratorUnavailableError
-        ? new Error(await offlineMessage())
-        : new Error(await offlineMessage());
+      throw new Error(BACKEND_UNREACHABLE);
     }
     if (!reply) {
       await releaseRoomSlot(true);
       await refundPrompt(context.userId, roomCharge);
-      throw new Error(await offlineMessage());
+      throw new Error(BACKEND_UNREACHABLE);
     }
     await releaseRoomSlot(false);
 

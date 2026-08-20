@@ -31,6 +31,7 @@ import {
   type ModelId,
 } from "@/lib/models";
 import { CUTOFF_MARKER } from "@/lib/cutoff-marker";
+import { BACKEND_UNREACHABLE } from "@/lib/offline-message.server";
 import { TIER_RANK } from "@/lib/tier-gate";
 import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
 
@@ -516,7 +517,7 @@ export const Route = createFileRoute("/api/chat")({
                     chat_id: body.chatId,
                     user_id: ownerId,
                     role: "assistant",
-                    content: cleaned || "Sorry, DAP AI is offline right now.",
+                    content: cleaned || BACKEND_UNREACHABLE,
                   });
                   await releaseAndRefund({ refund: false });
                   send({ type: "done" });
@@ -547,9 +548,7 @@ export const Route = createFileRoute("/api/chat")({
                 const neverOpened = e instanceof OrchestratorUnavailableError;
                 send({
                   type: "error",
-                  message: neverOpened
-                    ? "Sorry, DAP AI is offline right now."
-                    : "Connection lost. Please try again.",
+                  message: neverOpened ? BACKEND_UNREACHABLE : "Connection lost. Please try again.",
                   /* When the stream never opened there is no outcome to
                      describe, and reporting the blank one read as
                      "transport error, ran 0s" — which looks like a mid-answer
