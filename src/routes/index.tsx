@@ -30,30 +30,30 @@ import { useSiteOpen } from "@/lib/use-site-open";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "DAP AI — The only chatbot you'll ever need" },
+      { title: "DAP AI — Free AI Chatbot" },
       {
         name: "description",
         content:
-          "Start chatting with DAP AI free, no signup needed for your first message. Ask questions, write, study, code, and build custom AI assistants called DAPs.",
+          "DAP AI is a fast, friendly AI chatbot and workspace for answers, writing, studying, coding, and custom AI assistants.",
       },
       { name: "keywords", content: "DAP AI, DAPAI, AI chatbot, free AI chat, AI assistant, DAPs" },
-      { property: "og:title", content: "Chat with DAP AI — free, no signup for your first message" },
+      { property: "og:title", content: "DAP AI — Free AI Chatbot" },
       {
         property: "og:description",
         content:
-          "Try DAP AI instantly in your browser: answers, writing help, studying, coding, custom DAP assistants and the DAP arcade.",
+          "DAP AI is a fast, friendly AI chatbot and workspace for answers, writing, studying, coding, and custom AI assistants.",
       },
       { property: "og:url", content: "https://dapai.lovable.app/" },
 
       {
         property: "og:image",
         content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d4ddeeda-a5fa-491c-98ac-e5bf7f678179/id-preview-60df72d6--4e5794db-69e7-4998-9ede-a9b885182642.lovable.app-1780308353128.png",
+          "https://dapai.lovable.app/og-image.png",
       },
       {
         name: "twitter:image",
         content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d4ddeeda-a5fa-491c-98ac-e5bf7f678179/id-preview-60df72d6--4e5794db-69e7-4998-9ede-a9b885182642.lovable.app-1780308353128.png",
+          "https://dapai.lovable.app/og-image.png",
       },
     ],
     links: [
