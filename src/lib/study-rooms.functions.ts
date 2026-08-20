@@ -354,7 +354,21 @@ export const getStudyRoom = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    const { data: lookup, error } = await supabase.rpc(
+    /* Through the trusted client, not the caller's.
+       find_study_room_by_code is server-only by design: EXECUTE was revoked
+       from anon and authenticated deliberately, because a six-character code
+       from a small alphabet is guessable and the REST endpoint would let
+       anyone signed in walk the space and discover rooms they were never
+       given a code for. This call was still going through the caller's
+       client, so every lookup came back "permission denied" and the room
+       page showed "Room not found" for rooms that existed — which is what
+       broke Study Rooms outright.
+
+       Reaching it with the service-role client keeps the endpoint closed
+       while letting this handler, which requireSupabaseAuth has already
+       gated, do the lookup. Membership is still decided below against the
+       caller's own client. */
+    const { data: lookup, error } = await supabaseAdmin.rpc(
       "find_study_room_by_code",
       { _code: data.code.toUpperCase() }
     );
