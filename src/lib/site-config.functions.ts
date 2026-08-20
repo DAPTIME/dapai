@@ -9,28 +9,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { parseSiteStatus, type SiteStatus } from "@/lib/site-status";
 
-export const FEATURE_KEYS = [
-  "ai_enabled",
-  "pro_model",
-  "pro_lite_model",
-  "lite_model",
-  "daps",
-  "rooms",
-  "account",
-  "settings",
-  "security",
-  "help",
-  "terms",
-  "about",
-  "games",
-  "game_2048",
-  "game_snake",
-  "game_daptrack",
-  "game_river",
-  "game_flappy",
-  "game_breakout",
-] as const;
-export type FeatureKey = (typeof FEATURE_KEYS)[number];
+/* One list, in admin-config.ts. It used to be written out here as well,
+   and the two copies had to be kept in step by hand — the same trap as
+   two sources of truth for the model list. Re-exported so every existing
+   importer of this module keeps working. */
+import { FEATURE_KEYS, type FeatureKey } from "@/lib/admin-config";
+export { FEATURE_KEYS, type FeatureKey };
 
 export interface SiteConfig {
   /** True when the site is open to everyone. False in "admin" and "off". */
@@ -68,6 +52,14 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     game_river: true,
     game_flappy: true,
     game_breakout: true,
+    nav_daps: true,
+    nav_rooms: true,
+    nav_games: true,
+    nav_chats: true,
+    nav_settings: true,
+    nav_help: true,
+    nav_terms: true,
+    nav_about: true,
   },
   offlineMessage: DEFAULT_OFFLINE_MESSAGE,
 };

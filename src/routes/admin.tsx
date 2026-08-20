@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { sendChatMessage } from "@/lib/chats.functions";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe, EyeOff } from "lucide-react";
+import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe, EyeOff, PanelLeft } from "lucide-react";
 import { TIER_LABEL } from "@/lib/tier-gate";
 import {
   adminListModels,
@@ -76,6 +76,7 @@ const SECTIONS = [
   { id: "chats", label: "All Chats", icon: MessageSquare },
   { id: "models", label: "Models", icon: Cpu },
   { id: "pages", label: "Pages", icon: Eye },
+  { id: "sidebar", label: "Sidebar", icon: PanelLeft },
   { id: "arcade", label: "Arcade", icon: Gamepad2 },
   { id: "rooms", label: "Study Rooms", icon: Gamepad2 },
   { id: "daps", label: "DAP Review", icon: Sparkles },
@@ -261,6 +262,13 @@ function Admin() {
               title="Pages & features"
               description="Anyone using a page you turn off is sent back to the home page."
               keys={FEATURE_GROUPS.pages}
+            />
+          </TabsContent>
+          <TabsContent value="sidebar" className="mt-6">
+            <FeatureList
+              title="Sidebar"
+              description="Turn an entry off to take it out of everyone's sidebar. The page itself keeps working for anyone with the link — use Pages & features to close a page outright. You will still see a hidden entry yourself, greyed out and marked, so you can find your way back to it."
+              keys={FEATURE_GROUPS.sidebar}
             />
           </TabsContent>
           <TabsContent value="arcade" className="mt-6">

@@ -20,6 +20,18 @@ export const FEATURE_KEYS = [
   "game_river",
   "game_flappy",
   "game_breakout",
+  // Sidebar visibility. Deliberately separate from the page flags above: a
+  // page flag turns the feature off for everyone, these only decide whether
+  // the entry is listed in the sidebar. Hiding a link and closing a page
+  // are different intentions.
+  "nav_daps",
+  "nav_rooms",
+  "nav_games",
+  "nav_chats",
+  "nav_settings",
+  "nav_help",
+  "nav_terms",
+  "nav_about",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -44,6 +56,14 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   game_river: "River Crosser",
   game_flappy: "Flappy",
   game_breakout: "Brick Breaker",
+  nav_daps: "Custom AI's",
+  nav_rooms: "Study Rooms",
+  nav_games: "Arcade",
+  nav_chats: "Chat history list",
+  nav_settings: "Settings",
+  nav_help: "Help",
+  nav_terms: "Terms",
+  nav_about: "About DAP AI",
 };
 
 /** Which toggles belong together in the admin console. */
@@ -59,6 +79,16 @@ export const FEATURE_GROUPS = {
     "terms",
     "about",
     "games",
+  ],
+  sidebar: [
+    "nav_daps",
+    "nav_rooms",
+    "nav_games",
+    "nav_chats",
+    "nav_settings",
+    "nav_help",
+    "nav_terms",
+    "nav_about",
   ],
   games: [
     "game_2048",

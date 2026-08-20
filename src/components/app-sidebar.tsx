@@ -48,13 +48,16 @@ import type { FeatureKey } from "@/lib/site-config.functions";
    The flags already existed and the console already wrote them; this
    sidebar was simply never reading them. */
 const main = [
-  { title: "Custom AI's", url: "/daps", icon: Sparkles, flag: "daps" },
-  { title: "Study Rooms", url: "/rooms", icon: Users2, flag: "rooms" },
+  { title: "Custom AI's", url: "/daps", icon: Sparkles, flag: "daps", nav: "nav_daps" },
+  { title: "Study Rooms", url: "/rooms", icon: Users2, flag: "rooms", nav: "nav_rooms" },
 ] as const satisfies readonly {
   title: string;
   url: string;
   icon: typeof Sparkles;
+  /** Turning the feature off closes the page for everyone. */
   flag: FeatureKey;
+  /** Turning this off only takes the entry out of the sidebar. */
+  nav: FeatureKey;
 }[];
 
 /** Shown to an admin beside an entry the console is hiding from everyone. */
@@ -62,7 +65,7 @@ function HiddenMark() {
   return (
     <span
       className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
-      title="Hidden from everyone — turn it back on under Pages & features"
+      title="Hidden from everyone — turn it back on under Sidebar, or Pages &amp; features"
     >
       Hidden
     </span>
@@ -96,14 +99,15 @@ export function AppSidebar() {
   /* A flag that is explicitly off hides the item. Anything the config
      doesn't mention stays visible, so a failed config read leaves the
      sidebar intact rather than emptying it. */
-  const hiddenByAdmin = (flag: FeatureKey) => siteConfig.flags[flag] === false;
+  const hiddenByAdmin = (...flags: FeatureKey[]) =>
+    flags.some((f) => siteConfig.flags[f] === false);
 
   /* Hidden means hidden for everyone — that is what the toggle is for.
      An admin still sees the entry, dimmed and marked, because hiding
      Settings should not also remove the admin's own way back to it. */
-  const showEntry = (flag: FeatureKey) => !hiddenByAdmin(flag) || isAdmin;
+  const showEntry = (...flags: FeatureKey[]) => !hiddenByAdmin(...flags) || isAdmin;
 
-  const nav = main.filter((item) => showEntry(item.flag));
+  const nav = main.filter((item) => showEntry(item.flag, item.nav));
 
 
   const chatsQuery = useQuery({
@@ -193,11 +197,11 @@ export function AppSidebar() {
                     <Link
                       to={item.url}
                       onClick={closeIfMobile}
-                      className={hiddenByAdmin(item.flag) ? "opacity-60" : undefined}
+                      className={hiddenByAdmin(item.flag, item.nav) ? "opacity-60" : undefined}
                     >
                       <item.icon />
                       <span>{item.title}</span>
-                      {hiddenByAdmin(item.flag) && <HiddenMark />}
+                      {hiddenByAdmin(item.flag, item.nav) && <HiddenMark />}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -207,7 +211,7 @@ export function AppSidebar() {
                   its artwork, which is a better way to pick one than a
                   column of names — and it saves a click for the common
                   case of just wanting the arcade. */}
-              {showEntry("games") && (
+              {showEntry("games", "nav_games") && (
                 <SidebarMenuItem
                   className="animate-fade-in"
                   style={{ animationDelay: `${(nav.length + 1) * 60}ms` }}
@@ -220,11 +224,11 @@ export function AppSidebar() {
                     <Link
                       to="/games"
                       onClick={closeIfMobile}
-                      className={hiddenByAdmin("games") ? "opacity-60" : undefined}
+                      className={hiddenByAdmin("games", "nav_games") ? "opacity-60" : undefined}
                     >
                       <Gamepad2 />
                       <span>Arcade</span>
-                      {hiddenByAdmin("games") && <HiddenMark />}
+                      {hiddenByAdmin("games", "nav_games") && <HiddenMark />}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -234,7 +238,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
 
-        {user && !incognito && (
+        {user && !incognito && showEntry("nav_chats") && (
           <SidebarGroup className="group-data-[collapsible=icon]:hidden">
             <SidebarGroupLabel className="justify-between">
               <span className="flex items-center">
@@ -344,7 +348,7 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
-          {showEntry("settings") && (
+          {showEntry("settings", "nav_settings") && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -354,16 +358,16 @@ export function AppSidebar() {
                 <Link
                   to="/settings"
                   onClick={closeIfMobile}
-                  className={hiddenByAdmin("settings") ? "opacity-60" : undefined}
+                  className={hiddenByAdmin("settings", "nav_settings") ? "opacity-60" : undefined}
                 >
                   <Settings />
                   <span>Settings</span>
-                  {hiddenByAdmin("settings") && <HiddenMark />}
+                  {hiddenByAdmin("settings", "nav_settings") && <HiddenMark />}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
-          {showEntry("help") && (
+          {showEntry("help", "nav_help") && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -372,16 +376,16 @@ export function AppSidebar() {
                 <Link
                   to="/help"
                   onClick={closeIfMobile}
-                  className={hiddenByAdmin("help") ? "opacity-60" : undefined}
+                  className={hiddenByAdmin("help", "nav_help") ? "opacity-60" : undefined}
                 >
                   <HelpCircle />
                   <span>Help</span>
-                  {hiddenByAdmin("help") && <HiddenMark />}
+                  {hiddenByAdmin("help", "nav_help") && <HiddenMark />}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
-          {showEntry("terms") && (
+          {showEntry("terms", "nav_terms") && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -391,16 +395,16 @@ export function AppSidebar() {
                 <Link
                   to="/terms"
                   onClick={closeIfMobile}
-                  className={hiddenByAdmin("terms") ? "opacity-60" : undefined}
+                  className={hiddenByAdmin("terms", "nav_terms") ? "opacity-60" : undefined}
                 >
                   <Scale />
                   <span>Terms</span>
-                  {hiddenByAdmin("terms") && <HiddenMark />}
+                  {hiddenByAdmin("terms", "nav_terms") && <HiddenMark />}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
-          {showEntry("about") && (
+          {showEntry("about", "nav_about") && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -410,11 +414,11 @@ export function AppSidebar() {
                 <Link
                   to="/about-dap-ai"
                   onClick={closeIfMobile}
-                  className={hiddenByAdmin("about") ? "opacity-60" : undefined}
+                  className={hiddenByAdmin("about", "nav_about") ? "opacity-60" : undefined}
                 >
                   <Info />
                   <span>About DAP AI</span>
-                  {hiddenByAdmin("about") && <HiddenMark />}
+                  {hiddenByAdmin("about", "nav_about") && <HiddenMark />}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
