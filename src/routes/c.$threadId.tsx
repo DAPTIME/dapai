@@ -24,9 +24,8 @@ import { useAuth } from "@/lib/auth";
 import { sanitizeLiteReply } from "@/lib/lite-sanitize";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { trackAiReply } from "@/lib/ai-reply-notifier";
-import { FlashcardsDialog } from "@/components/flashcards-dialog";
 import { Button } from "@/components/ui/button";
-import { Brain, GraduationCap, Layers, PanelRight, Pencil, ShieldCheck } from "lucide-react";
+import { Brain, GraduationCap, PanelRight, Pencil, ShieldCheck } from "lucide-react";
 import { ArtifactPanel } from "@/components/artifact-panel";
 import { extractArtifacts, type Artifact } from "@/lib/artifacts";
 import { useSiteOpen } from "@/lib/use-site-open";
@@ -51,7 +50,6 @@ function ChatPage() {
   const stop = useServerFn(stopChatMessage);
   const [searchingWeb, setSearchingWeb] = useState(false);
   const [studyMode, setStudyMode] = useState(false);
-  const [cardsOpen, setCardsOpen] = useState(false);
   const [artifactId, setArtifactId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
@@ -386,16 +384,6 @@ function ChatPage() {
                 <GraduationCap className="h-3.5 w-3.5" />
                 Study Mode
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 gap-1.5 rounded-full px-3 text-xs"
-                onClick={() => setCardsOpen(true)}
-              >
-                <Layers className="h-3.5 w-3.5" />
-                Flashcards
-              </Button>
               {artifacts.length > 0 && (
                 <Button
                   type="button"
@@ -645,16 +633,6 @@ function ChatPage() {
           </div>
         )}
       </div>
-      <FlashcardsDialog
-        chatId={threadId}
-        model={
-          ((typeof window !== "undefined"
-            ? (localStorage.getItem("dap.model") as ModelId | null)
-            : null) ?? "dap-ai-lite") as ModelId
-        }
-        open={cardsOpen}
-        onOpenChange={setCardsOpen}
-      />
       <div className="border-t border-border bg-background/60 px-4 py-4 backdrop-blur">
         {!siteEnabled || maintenance ? (
           <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-6 text-center">

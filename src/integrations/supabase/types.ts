@@ -343,56 +343,6 @@ export type Database = {
         }
         Relationships: []
       }
-      flashcards: {
-        Row: {
-          back: string
-          chat_id: string | null
-          created_at: string
-          due_at: string
-          ease: number
-          front: string
-          id: string
-          interval_days: number
-          reps: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          back: string
-          chat_id?: string | null
-          created_at?: string
-          due_at?: string
-          ease?: number
-          front: string
-          id?: string
-          interval_days?: number
-          reps?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          back?: string
-          chat_id?: string | null
-          created_at?: string
-          due_at?: string
-          ease?: number
-          front?: string
-          id?: string
-          interval_days?: number
-          reps?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "flashcards_chat_id_fkey"
-            columns: ["chat_id"]
-            isOneToOne: false
-            referencedRelation: "chats"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       password_reset_sessions: {
         Row: {
           created_at: string

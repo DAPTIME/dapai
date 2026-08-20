@@ -193,7 +193,7 @@ function PrivacyRow() {
         <p className="mt-1 text-sm text-muted-foreground">
           Your chats are answered by DAP AI models running on our own local
           hardware — not rented from a big AI cloud. Nothing you type is sold,
-          and your conversations, memories and flashcards are stored against
+          and your conversations and memories are stored against
           your account only, so no other user (or model provider) can read
           them. You'll see a <strong className="font-medium text-foreground">Private</strong>{" "}
           badge on every chat as a reminder.

@@ -307,7 +307,7 @@ export async function* readOrchestratorEvents(
 
 /**
  * Non-streaming convenience wrapper: run a turn and return the whole reply.
- * Used by short internal tasks (flashcards, study rooms, the fallback
+ * Used by short internal tasks (study rooms, the fallback
  * server-function path).
  */
 export async function orchestratorComplete(opts: {

@@ -2,7 +2,7 @@
  * Charging a request against the caller's allowance, in one place.
  *
  * The chat route grew its own copy of this and the raw relay grew another,
- * which is how study rooms and flashcards ended up reaching the model for
+ * which is how study rooms ended up reaching the model for
  * free: they are AI features that nobody remembered to wire a third copy
  * into. Every path that dials the orchestrator should call this, so adding
  * a feature does not mean re-deriving the rule.
