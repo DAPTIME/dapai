@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { toast } from "sonner";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -15,6 +17,8 @@ import {
   Users2,
   Pin,
   PinOff,
+  Pencil,
+  Check,
 } from "lucide-react";
 
 import { adminAmIAdmin } from "@/lib/admin.functions";
@@ -37,6 +41,7 @@ import {
   listChats,
   deleteChat,
   setChatPinned,
+  renameChat,
   getProfile,
 } from "@/lib/chats.functions";
 import { useIncognito } from "@/lib/use-incognito";
@@ -153,6 +158,37 @@ export function AppSidebar() {
     enabled: !!user && !incognito,
     staleTime: 15_000,
   });
+
+  /* Renaming happens in place in the list: the row becomes a text box and
+     goes back to being a link when you are done. A dialog for one short
+     string would be more chrome than the job needs. */
+  const rename = useServerFn(renameChat);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState("");
+  const renameMut = useMutation({
+    mutationFn: (v: { id: string; title: string }) =>
+      rename({ data: { chatId: v.id, title: v.title } }),
+    onSuccess: () => {
+      setRenamingId(null);
+      qc.invalidateQueries({ queryKey: ["chats"] });
+      qc.invalidateQueries({ queryKey: ["chat"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const commitRename = (id: string) => {
+    const next = renameText.trim();
+    // Nothing typed, or nothing changed: just stop editing. Saving an empty
+    // title would leave a row with no name in the list.
+    const current = threads.find((t: { id: string }) => t.id === id) as
+      | { title?: string }
+      | undefined;
+    if (!next || next === current?.title) {
+      setRenamingId(null);
+      return;
+    }
+    renameMut.mutate({ id, title: next });
+  };
 
   const pinMut = useMutation({
     mutationFn: (v: { id: string; pinned: boolean }) =>
@@ -300,20 +336,64 @@ export function AppSidebar() {
                           active ? "bg-sidebar-accent" : ""
                         }`}
                       >
-                        <SidebarMenuButton
-                          asChild
-                          isActive={active}
-                          className="flex-1"
+                        {renamingId === t.id ? (
+                          <input
+                            autoFocus
+                            value={renameText}
+                            disabled={renameMut.isPending}
+                            onChange={(e) => setRenameText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                commitRename(t.id);
+                              }
+                              if (e.key === "Escape") setRenamingId(null);
+                            }}
+                            /* Blur saves rather than discards: clicking away
+                               from a name you have just typed almost never
+                               means "throw that away". Escape is there for
+                               when it does. */
+                            onBlur={() => commitRename(t.id)}
+                            maxLength={80}
+                            aria-label="Chat name"
+                            className="h-10 flex-1 rounded bg-background px-2 text-sm outline-none ring-1 ring-primary/40 md:h-7"
+                          />
+                        ) : (
+                          <SidebarMenuButton asChild isActive={active} className="flex-1">
+                            <Link
+                              to="/c/$threadId"
+                              params={{ threadId: t.id }}
+                              onClick={closeIfMobile}
+                              className="text-sm"
+                            >
+                              <span className="truncate">{t.title}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        )}
+                        <button
+                          type="button"
+                          disabled={renameMut.isPending}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (renamingId === t.id) {
+                              commitRename(t.id);
+                              return;
+                            }
+                            setRenameText(t.title ?? "");
+                            setRenamingId(t.id);
+                          }}
+                          className="flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 md:hidden md:h-7 md:w-7 md:group-hover/row:flex"
+                          aria-label={renamingId === t.id ? "Save name" : "Rename chat"}
+                          title={renamingId === t.id ? "Save name" : "Rename chat"}
+                          style={renamingId === t.id ? { display: "flex" } : undefined}
                         >
-                          <Link
-                            to="/c/$threadId"
-                            params={{ threadId: t.id }}
-                            onClick={closeIfMobile}
-                            className="text-sm"
-                          >
-                            <span className="truncate">{t.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
+                          {renamingId === t.id ? (
+                            <Check className="h-3.5 w-3.5 text-primary" />
+                          ) : (
+                            <Pencil className="h-3.5 w-3.5" />
+                          )}
+                        </button>
                         <button
                           type="button"
                           disabled={pinMut.isPending}

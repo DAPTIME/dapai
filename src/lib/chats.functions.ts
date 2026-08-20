@@ -229,6 +229,46 @@ export const setChatPinned = createServerFn({ method: "POST" })
   });
 
 /**
+ * Rename a chat.
+ *
+ * Titles are written by the model from the first message, which is a guess
+ * — sometimes a poor one, and always someone else's words for your own
+ * conversation. This lets the owner say what it is instead.
+ *
+ * Scoped by user_id as well as id, so the row only matches when it is the
+ * caller's, and the caller's own client is used so RLS has the final say
+ * too. An empty title is refused rather than stored: a chat with no name is
+ * unfindable in the list.
+ */
+export const renameChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        chatId: z.string().uuid(),
+        title: z
+          .string()
+          .trim()
+          .min(1, "Give the chat a name.")
+          .max(80, "That name is too long — 80 characters at most."),
+      })
+      .parse(i),
+  )
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: row, error } = await supabase
+      .from("chats")
+      .update({ title: data.title })
+      .eq("id", data.chatId)
+      .eq("user_id", userId)
+      .select("id, title")
+      .maybeSingle<{ id: string; title: string }>();
+    if (error) throw dbError(error);
+    if (!row) throw new Error("That chat is no longer there.");
+    return { ok: true, title: row.title };
+  });
+
+/**
  * Drop a chat that never got an answer.
  *
  * A thread with a question and no reply is not a conversation, and leaving
