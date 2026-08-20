@@ -50,6 +50,20 @@ export type TierLimits = {
   webSearch: boolean;
   /** Stored memory sent with each request. */
   memory: boolean;
+  /**
+   * How many past turns of this conversation the model is shown, where a
+   * turn is one message and its reply.
+   *
+   * This belongs to the account, not to the model the picker is on. The
+   * orchestrator derives an effective tier from min(account tier, model)
+   * and has been applying its history depth from that, so choosing a
+   * faster model quietly shortened what DAP AI could remember — a Pro
+   * account asking a quick question on Lite lost most of its thread.
+   * Sending an already-trimmed history states the intent here instead of
+   * relying on the far end to infer it, and stops a long thread being
+   * re-sent in full on every single turn.
+   */
+  historyTurns: number;
 };
 
 export const TIER_LIMITS: Record<Tier, TierLimits> = {
@@ -62,6 +76,7 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
     imageSteps: 0,
     webSearch: false,
     memory: false,
+    historyTurns: 3,
   },
   go: {
     tokensPerDay: 25,
@@ -72,6 +87,7 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
     imageSteps: 2,
     webSearch: true,
     memory: true,
+    historyTurns: 5,
   },
   pro: {
     tokensPerDay: 50,
@@ -82,6 +98,7 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
     imageSteps: 3,
     webSearch: true,
     memory: true,
+    historyTurns: 8,
   },
   exclusive: {
     tokensPerDay: INF,
@@ -92,6 +109,7 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
     imageSteps: 3,
     webSearch: true,
     memory: true,
+    historyTurns: 10,
   },
 };
 

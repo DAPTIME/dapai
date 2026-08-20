@@ -785,11 +785,16 @@ export const sendChatMessage = createServerFn({ method: "POST" })
             .join("\n")}`
         : "";
 
-    const { data: history } = await supabase
+    /* The last N turns for this account's plan, newest-first with a limit
+       and then reversed, so a long thread is not pulled back in full just
+       to be trimmed. */
+    const { data: historyDesc } = await supabase
       .from("chat_messages")
       .select("role, content")
       .eq("chat_id", data.chatId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false })
+      .limit(TIER_LIMITS[callerTier].historyTurns * 2);
+    const history = (historyDesc ?? []).slice().reverse();
 
     // Detect an active DAP from the chat's first system message (set by
     // createChat when dapId was passed). Lets the meta-prompt know what
@@ -841,12 +846,14 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       ...(data.studyMode ? [{ role: "system" as const, content: STUDY_MODE_PROMPT }] : []),
 
 
-      /* The full conversation, untrimmed. History depth is the
-         orchestrator's job: it derives the effective tier from
-         min(account tier, model) and applies its own context window,
-         history depth (free 3 / go 5 / pro 8 / exclusive 10) and output
-         cap. Trimming here would silently override that. */
-      ...(history ?? []).map((m) => ({
+      /* Trimmed to the account's own plan above, deliberately. History
+         depth used to be left entirely to the orchestrator, which derives
+         an effective tier from min(account tier, model) — so picking a
+         faster model also shortened what DAP AI could remember, and a Pro
+         account asking something quick on Lite lost most of its thread.
+         What the model is chosen for is how hard it thinks, not how much
+         it is allowed to know about the conversation. */
+      ...history.map((m) => ({
         role: m.role as "user" | "assistant" | "system",
         content:
           active.lite && m.role === "assistant"

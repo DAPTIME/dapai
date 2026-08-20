@@ -663,7 +663,14 @@ function ChatPage() {
                   return;
                 }
                 abortRef.current?.abort();
-                void stop({ data: { chatId: threadId } }).catch(() => {});
+                /* Hand back what was streamed so far. stopChatMessage only
+                   stores a partial reply if it is given one, and this call
+                   was not sending it — so stopping a reply threw the whole
+                   answer away, which is exactly what it looked like from
+                   the outside. */
+                void stop({
+                  data: { chatId: threadId, partialText: streamText },
+                }).catch(() => {});
                 toast.info("Stopped");
               }}
               quotaInfo={

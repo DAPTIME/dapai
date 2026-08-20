@@ -633,12 +633,15 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
 
     if (!data.askAi) return { ok: true, replied: false };
 
+    /* How far back DAP AI can see follows the plan of whoever asked, the
+       same rule as a one-to-one chat, rather than a fixed 20 for everyone.
+       A turn is a message and its reply. */
     const { data: history } = await supabase
       .from("study_room_messages")
       .select("author_name, role, content")
       .eq("room_id", data.roomId)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(TIER_LIMITS[myTier].historyTurns * 2);
 
     const transcript = (history ?? [])
       .slice()

@@ -30,6 +30,7 @@ import {
   orchestratorModelName,
   type ModelId,
 } from "@/lib/models";
+import { CUTOFF_MARKER } from "@/lib/cutoff-marker";
 import { TIER_RANK } from "@/lib/tier-gate";
 import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
 
@@ -308,17 +309,24 @@ export const Route = createFileRoute("/api/chat")({
             ? `What you remember about this user (use naturally, don't recite):\n${memRows.map((m) => `- ${m.content}`).join("\n")}`
             : "";
 
-        const { data: history } = await asCaller
+        /* How far back DAP AI can see is a property of the account, not of
+           the model the picker happens to be on. Ordering newest-first with
+           a limit and reversing gets the last N turns in one query, rather
+           than pulling an entire thread back to trim it — this used to send
+           every message ever sent in the chat, on every turn. */
+        const { data: historyDesc } = await asCaller
           .from("chat_messages")
           .select("role, content")
           .eq("chat_id", body.chatId)
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: false })
+          .limit(limits.historyTurns * 2);
+        const history = (historyDesc ?? []).slice().reverse();
 
         const messages: Array<{ role: "system" | "user" | "assistant"; content: unknown }> = [
           ...(systemPrompt ? [{ role: "system" as const, content: systemPrompt }] : []),
           ...(memoryBlock ? [{ role: "system" as const, content: memoryBlock }] : []),
           ...(body.studyMode ? [{ role: "system" as const, content: STUDY_MODE_PROMPT }] : []),
-          ...(history ?? []).map((m) => ({ role: m.role as "system" | "user" | "assistant", content: m.content })),
+          ...history.map((m) => ({ role: m.role as "system" | "user" | "assistant", content: m.content })),
         ];
         if ((body.images?.length ?? 0) > 0) {
           for (let i = messages.length - 1; i >= 0; i--) {
@@ -389,9 +397,13 @@ export const Route = createFileRoute("/api/chat")({
         };
 
         const persistStopped = async () => {
+          /* Same marker as the stop button writes. The reader never sees
+             it — the UI strips it — but it stays in the stored text, which
+             is what goes back to the model as history, so the next turn
+             knows the previous answer was cut off rather than finished. */
           const content = assistantText.trim()
-            ? `${assistantText.trim()}\n\n_Stopped._`
-            : "_Stopped._";
+            ? `${assistantText.trim()}\n\n${CUTOFF_MARKER}`
+            : CUTOFF_MARKER;
           await asCaller.from("chat_messages").insert({
             chat_id: body.chatId,
             user_id: ownerId,
