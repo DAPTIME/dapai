@@ -41,11 +41,33 @@ import {
 } from "@/lib/chats.functions";
 import { useIncognito } from "@/lib/use-incognito";
 import { useSiteConfig } from "@/lib/site-config";
+import type { FeatureKey } from "@/lib/site-config.functions";
 
+/* Each entry names the admin flag that controls it, so "hide this from
+   the sidebar" is one toggle in the console rather than a code change.
+   The flags already existed and the console already wrote them; this
+   sidebar was simply never reading them. */
 const main = [
-  { title: "Custom AI's", url: "/daps", icon: Sparkles },
-  { title: "Study Rooms", url: "/rooms", icon: Users2 },
-] as const;
+  { title: "Custom AI's", url: "/daps", icon: Sparkles, flag: "daps" },
+  { title: "Study Rooms", url: "/rooms", icon: Users2, flag: "rooms" },
+] as const satisfies readonly {
+  title: string;
+  url: string;
+  icon: typeof Sparkles;
+  flag: FeatureKey;
+}[];
+
+/** Shown to an admin beside an entry the console is hiding from everyone. */
+function HiddenMark() {
+  return (
+    <span
+      className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+      title="Hidden from everyone — turn it back on under Pages & features"
+    >
+      Hidden
+    </span>
+  );
+}
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
@@ -70,7 +92,18 @@ export function AppSidebar() {
   const isAdmin = adminQuery.data?.isAdmin === true;
 
   const siteConfig = useSiteConfig();
-  const nav = main;
+
+  /* A flag that is explicitly off hides the item. Anything the config
+     doesn't mention stays visible, so a failed config read leaves the
+     sidebar intact rather than emptying it. */
+  const hiddenByAdmin = (flag: FeatureKey) => siteConfig.flags[flag] === false;
+
+  /* Hidden means hidden for everyone — that is what the toggle is for.
+     An admin still sees the entry, dimmed and marked, because hiding
+     Settings should not also remove the admin's own way back to it. */
+  const showEntry = (flag: FeatureKey) => !hiddenByAdmin(flag) || isAdmin;
+
+  const nav = main.filter((item) => showEntry(item.flag));
 
 
   const chatsQuery = useQuery({
@@ -157,9 +190,14 @@ export function AppSidebar() {
                     isActive={pathname === item.url}
                     className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
                   >
-                    <Link to={item.url} onClick={closeIfMobile}>
+                    <Link
+                      to={item.url}
+                      onClick={closeIfMobile}
+                      className={hiddenByAdmin(item.flag) ? "opacity-60" : undefined}
+                    >
                       <item.icon />
                       <span>{item.title}</span>
+                      {hiddenByAdmin(item.flag) && <HiddenMark />}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -169,21 +207,28 @@ export function AppSidebar() {
                   its artwork, which is a better way to pick one than a
                   column of names — and it saves a click for the common
                   case of just wanting the arcade. */}
-              <SidebarMenuItem
-                className="animate-fade-in"
-                style={{ animationDelay: `${(nav.length + 1) * 60}ms` }}
-              >
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/games")}
-                  className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
+              {showEntry("games") && (
+                <SidebarMenuItem
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${(nav.length + 1) * 60}ms` }}
                 >
-                  <Link to="/games" onClick={closeIfMobile}>
-                    <Gamepad2 />
-                    <span>Arcade</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith("/games")}
+                    className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
+                  >
+                    <Link
+                      to="/games"
+                      onClick={closeIfMobile}
+                      className={hiddenByAdmin("games") ? "opacity-60" : undefined}
+                    >
+                      <Gamepad2 />
+                      <span>Arcade</span>
+                      {hiddenByAdmin("games") && <HiddenMark />}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -299,53 +344,81 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname === "/settings"}
-              className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:rotate-45"
-            >
-              <Link to="/settings" onClick={closeIfMobile}>
-                <Settings />
-                <span>Settings</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
-            >
-              <Link to="/help" onClick={closeIfMobile}>
-                <HelpCircle />
-                <span>Help</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname === "/terms"}
-              className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
-            >
-              <Link to="/terms" onClick={closeIfMobile}>
-                <Scale />
-                <span>Terms</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname === "/about-dap-ai"}
-              className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
-            >
-              <Link to="/about-dap-ai" onClick={closeIfMobile}>
-                <Info />
-                <span>About DAP AI</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {showEntry("settings") && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === "/settings"}
+                className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:rotate-45"
+              >
+                <Link
+                  to="/settings"
+                  onClick={closeIfMobile}
+                  className={hiddenByAdmin("settings") ? "opacity-60" : undefined}
+                >
+                  <Settings />
+                  <span>Settings</span>
+                  {hiddenByAdmin("settings") && <HiddenMark />}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          {showEntry("help") && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
+              >
+                <Link
+                  to="/help"
+                  onClick={closeIfMobile}
+                  className={hiddenByAdmin("help") ? "opacity-60" : undefined}
+                >
+                  <HelpCircle />
+                  <span>Help</span>
+                  {hiddenByAdmin("help") && <HiddenMark />}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          {showEntry("terms") && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === "/terms"}
+                className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
+              >
+                <Link
+                  to="/terms"
+                  onClick={closeIfMobile}
+                  className={hiddenByAdmin("terms") ? "opacity-60" : undefined}
+                >
+                  <Scale />
+                  <span>Terms</span>
+                  {hiddenByAdmin("terms") && <HiddenMark />}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          {showEntry("about") && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === "/about-dap-ai"}
+                className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
+              >
+                <Link
+                  to="/about-dap-ai"
+                  onClick={closeIfMobile}
+                  className={hiddenByAdmin("about") ? "opacity-60" : undefined}
+                >
+                  <Info />
+                  <span>About DAP AI</span>
+                  {hiddenByAdmin("about") && <HiddenMark />}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
 
         </SidebarMenu>
       </SidebarFooter>

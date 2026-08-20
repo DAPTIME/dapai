@@ -6,9 +6,16 @@ import { toast } from "sonner";
 
 import { ChatComposer } from "@/components/chat-composer";
 import logo from "@/assets/logo.png.asset.json";
-import { getChat, stopChatMessage, getProfile, discardEmptyChat } from "@/lib/chats.functions";
+import {
+  getChat,
+  stopChatMessage,
+  getProfile,
+  discardEmptyChat,
+  truncateChatFrom,
+} from "@/lib/chats.functions";
 import { streamChat } from "@/lib/chat-stream";
 import { useThinkingWord } from "@/lib/thinking-words";
+import { stripCutoffMarker, wasCutOff } from "@/lib/cutoff-marker";
 import { useAiQueue, describeQueue, queueUpgradeHint } from "@/lib/use-ai-queue";
 import { MODELS, modelInfo, type ModelId } from "@/lib/models";
 import { useSiteConfig } from "@/lib/site-config";
@@ -19,7 +26,7 @@ import { MarkdownMessage } from "@/components/markdown-message";
 import { trackAiReply } from "@/lib/ai-reply-notifier";
 import { FlashcardsDialog } from "@/components/flashcards-dialog";
 import { Button } from "@/components/ui/button";
-import { Brain, GraduationCap, Layers, PanelRight, ShieldCheck } from "lucide-react";
+import { Brain, GraduationCap, Layers, PanelRight, Pencil, ShieldCheck } from "lucide-react";
 import { ArtifactPanel } from "@/components/artifact-panel";
 import { extractArtifacts, type Artifact } from "@/lib/artifacts";
 import { useSiteOpen } from "@/lib/use-site-open";
@@ -123,6 +130,13 @@ function ChatPage() {
      rather than state because only the leaving effect reads it, and it must
      not trigger a render. */
   const wasCancelled = useRef(false);
+
+  /* Editing a message. The UI for this shipped without the state it reads,
+     so every thread threw "editingId is not defined" on render and the
+     whole chat route fell to the error boundary. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const truncateFrom = useServerFn(truncateChatFrom);
 
   const sendMut = useMutation({
     mutationFn: async ({ text, images }: { text: string; images?: string[] }) => {
@@ -308,6 +322,25 @@ function ChatPage() {
         : []
     );
   const busy = sendMut.isPending;
+
+  /* Save & resend: editing rewrites history in place rather than branching.
+     The edited message and everything after it are dropped server-side,
+     then the new text goes out as an ordinary turn — so it queues, charges
+     and streams exactly like any other message, with no second path to
+     keep in step. */
+  const saveEdit = async (messageId: string) => {
+    const text = editText.trim();
+    if (!text || busy) return;
+    setEditingId(null);
+    try {
+      await truncateFrom({ data: { chatId: threadId, messageId } });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't edit that message.");
+      return;
+    }
+    await qc.invalidateQueries({ queryKey: ["chat", threadId] });
+    sendMut.mutate({ text });
+  };
 
   // Artifacts: anything runnable/renderable DAP AI produced in this thread.
   const artifacts: Artifact[] = visible.flatMap((m) =>
