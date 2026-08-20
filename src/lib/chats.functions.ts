@@ -48,9 +48,9 @@ import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
 
 
 
-// Lite gets a smaller rolling window so the boss model's context
-// never overflows. Pro keeps the full history.
-const LITE_HISTORY_LIMIT = 12;
+// History depth is decided by the orchestrator from the account tier
+// (free 3 / go 5 / pro 8 / exclusive 10). Nothing here trims it.
+
 
 /* Same idea for memory extraction: a named throw so the best-effort catch
    below stays honest about what it is swallowing. */
@@ -840,16 +840,12 @@ export const sendChatMessage = createServerFn({ method: "POST" })
       ...(data.studyMode ? [{ role: "system" as const, content: STUDY_MODE_PROMPT }] : []),
 
 
-      // Keep the system message at the head (for DAP context) and trim
-      // the rolling history for Lite so it fits the boss model's smaller
-      // context window.
-      ...(() => {
-        const all = history ?? [];
-        if (!active.lite) return all;
-        const sys = all.filter((m) => m.role === "system");
-        const rest = all.filter((m) => m.role !== "system");
-        return [...sys, ...rest.slice(-LITE_HISTORY_LIMIT)];
-      })().map((m) => ({
+      /* The full conversation, untrimmed. History depth is the
+         orchestrator's job: it derives the effective tier from
+         min(account tier, model) and applies its own context window,
+         history depth (free 3 / go 5 / pro 8 / exclusive 10) and output
+         cap. Trimming here would silently override that. */
+      ...(history ?? []).map((m) => ({
         role: m.role as "user" | "assistant" | "system",
         content:
           active.lite && m.role === "assistant"
