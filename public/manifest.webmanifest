@@ -1,7 +1,7 @@
 {
   "name": "DAP AI",
   "short_name": "DAP AI",
-  "description": "DAP AI — your AI assistant",
+  "description": "DAP AI is a fast, friendly AI chatbot and workspace for answers, writing, studying, coding, and custom AI assistants.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
