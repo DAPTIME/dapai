@@ -219,10 +219,21 @@ export const Route = createFileRoute("/api/chat")({
            database) must not block chat, hence the permissive default. */
         const { data: rateOk, error: rateErr } = await asCaller.rpc("chat_rate_ok");
         if (!rateErr && rateOk === false) {
+          /* Say what the allowance actually is. "Slow down" leaves someone
+             guessing whether they are near a limit or have hit a fault,
+             and on a paid plan it matters that the number is higher. */
+          const { data: perMinute } = await asCaller
+            .rpc("my_messages_per_minute")
+            .single();
+          const allowance =
+            typeof perMinute === "number"
+              ? ` Your plan allows ${perMinute} message${perMinute === 1 ? "" : "s"} a minute.`
+              : "";
           return Response.json(
             {
               error:
-                "You're sending messages faster than DAP AI can answer them. Please wait a moment and try again.",
+                "You're sending messages faster than DAP AI can answer them. Please wait a moment and try again." +
+                allowance,
             },
             { status: 429 }
           );
