@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfile } from "@/lib/chats.functions";
 import { useAuth } from "@/lib/auth";
+import { adminAmIAdmin } from "@/lib/admin.functions";
 import { useSiteConfig } from "@/lib/site-config";
 import type { FeatureKey } from "@/lib/site-config.functions";
 import { TIER_RANK, TIER_LABEL, type Tier } from "@/lib/tier-rank";
@@ -29,8 +30,17 @@ export interface BetaState {
   lockedByBeta: boolean;
 }
 
-/** The signed-in account's plan, from the same cached read the sidebar uses. */
-export function useMyTier(): Tier {
+/**
+ * The signed-in account's plan, from the same cached read the sidebar uses,
+ * and whether we actually know it yet.
+ *
+ * `ready` matters more than it looks. The profile arrives a moment after
+ * the first render, and until it does the tier is unknown — reading that as
+ * "free" is what made the page guard throw a Pro account off a Pro-gated
+ * beta before its own plan had loaded. A signed-out visitor is free and
+ * that is known immediately, so they are ready straight away.
+ */
+export function useMyTier(): { tier: Tier; ready: boolean } {
   const { user } = useAuth();
   const fetchProfile = useServerFn(getProfile);
   const profileQuery = useQuery({
@@ -39,17 +49,35 @@ export function useMyTier(): Tier {
     enabled: !!user,
     staleTime: 15_000,
   });
-  return ((profileQuery.data?.tier as Tier | undefined) ?? "free") as Tier;
+  const tier = ((profileQuery.data?.tier as Tier | undefined) ?? "free") as Tier;
+  const ready = !user || profileQuery.isSuccess || profileQuery.isError;
+  return { tier, ready };
 }
 
 export function useBeta(): (key: FeatureKey) => BetaState {
   const siteConfig = useSiteConfig();
-  const tier = useMyTier();
+  const { user } = useAuth();
+  const { tier, ready } = useMyTier();
+
+  /* Admins are never held out of a beta. They are the people who turn one
+     on, and being unable to open the thing you just gated makes the switch
+     untestable. Same exemption the sidebar already makes. */
+  const amIAdmin = useServerFn(adminAmIAdmin);
+  const adminQuery = useQuery({
+    queryKey: ["admin", "me"],
+    queryFn: () => amIAdmin(),
+    enabled: !!user,
+    retry: false,
+  });
+  const isAdmin = adminQuery.data?.isAdmin === true;
 
   return (key: FeatureKey): BetaState => {
     const minTier = siteConfig.beta[key] ?? null;
     const flagOn = siteConfig.flags[key] !== false;
-    const highEnough = minTier === null || TIER_RANK[tier] >= TIER_RANK[minTier];
+    /* Nothing is locked until the plan is known. Guessing "free" during
+       that gap turned a slow profile read into a redirect off the page. */
+    const highEnough =
+      minTier === null || !ready || isAdmin || TIER_RANK[tier] >= TIER_RANK[minTier];
     return {
       isBeta: minTier !== null,
       minTier,

@@ -544,13 +544,20 @@ export const Route = createFileRoute("/api/chat")({
                 await releaseAndRefund({ refund: true });
               }
               if (err.name !== "AbortError") {
+                const neverOpened = e instanceof OrchestratorUnavailableError;
                 send({
                   type: "error",
-                  message:
-                    e instanceof OrchestratorUnavailableError
-                      ? "Sorry, DAP AI is offline right now."
-                      : "Connection lost. Please try again.",
-                  detail: describeOutcome(outcome),
+                  message: neverOpened
+                    ? "Sorry, DAP AI is offline right now."
+                    : "Connection lost. Please try again.",
+                  /* When the stream never opened there is no outcome to
+                     describe, and reporting the blank one read as
+                     "transport error, ran 0s" — which looks like a mid-answer
+                     drop rather than never having connected at all. Those
+                     are different faults and should not print the same. */
+                  detail: neverOpened
+                    ? "the orchestrator was not reachable — no stream was opened"
+                    : describeOutcome(outcome),
                 });
               }
             } finally {
