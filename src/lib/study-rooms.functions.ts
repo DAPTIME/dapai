@@ -125,11 +125,30 @@ export const createStudyRoom = createServerFn({ method: "POST" })
     }
     if (!room) throw dbError(lastError);
 
-    await supabase.from("study_room_members").insert({
+    /* The host joins their own room through the trusted client, and the
+       result is checked.
+
+       This insert went through the caller's client and its error was
+       thrown away. The policy behind it calls can_join_study_room, which
+       spent a day with EXECUTE revoked — so the insert failed, silently,
+       and the person who had just made a room was not in it. That is why
+       "Your rooms" stayed empty after creating one, with nothing on screen
+       to say so.
+
+       Someone creating a room is allowed to be in it by definition, and
+       requireSupabaseAuth has already established who they are, so there
+       is nothing here for the policy to decide. */
+    const { error: memberError } = await supabaseAdmin.from("study_room_members").insert({
       room_id: room.id,
       user_id: userId,
       display_name: await displayName(supabase, userId),
     });
+    if (memberError) {
+      console.error(
+        `[rooms] host could not join own room: ${memberError.code ?? "?"} ${memberError.message}`,
+      );
+      throw dbError(memberError);
+    }
     return room;
   });
 
@@ -354,31 +373,28 @@ export const getStudyRoom = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const { supabase, userId } = context;
-    /* Through the trusted client, not the caller's.
-       find_study_room_by_code is server-only by design: EXECUTE was revoked
-       from anon and authenticated deliberately, because a six-character code
-       from a small alphabet is guessable and the REST endpoint would let
-       anyone signed in walk the space and discover rooms they were never
-       given a code for. This call was still going through the caller's
-       client, so every lookup came back "permission denied" and the room
-       page showed "Room not found" for rooms that existed — which is what
-       broke Study Rooms outright.
 
-       Reaching it with the service-role client keeps the endpoint closed
-       while letting this handler, which requireSupabaseAuth has already
-       gated, do the lookup. Membership is still decided below against the
-       caller's own client. */
-    const { data: lookup, error } = await supabaseAdmin.rpc(
-      "find_study_room_by_code",
-      { _code: data.code.toUpperCase() }
-    );
-    if (error) throw dbError(error);
-    const found = (lookup ?? [])[0] ?? null;
-    if (!found) throw new Error("No study room with that code.");
-    const { data: full } = await supabase
+    /* One lookup, with the trusted client, exactly the way joinStudyRoom
+       does it.
+
+       This used to call find_study_room_by_code through the caller's own
+       client. EXECUTE on that function was revoked from anon and
+       authenticated on purpose — a six-character code from a small alphabet
+       is guessable, and an open /rest/v1/rpc endpoint would let anyone
+       signed in walk the space and find rooms they were never given a code
+       for — so every lookup came back "permission denied" and the page
+       said "Room not found" for rooms that existed.
+
+       Reading the table directly with the service-role client needs no
+       grant at all, so the endpoint stays shut and there is one less thing
+       that has to be granted correctly for Study Rooms to work. This
+       handler is already gated by requireSupabaseAuth, and who may *read*
+       a room is still decided by the membership checks below. */
+    const soft = await hasSoftDelete();
+    const { data: room, error } = await supabaseAdmin
       .from("study_rooms")
-      .select(roomColumns(await hasSoftDelete()))
-      .eq("id", found.id)
+      .select(roomColumns(soft))
+      .eq("code", data.code.toUpperCase())
       .maybeSingle<{
         id: string;
         code: string;
@@ -389,12 +405,15 @@ export const getStudyRoom = createServerFn({ method: "POST" })
         created_at: string | null;
         deleted_at?: string | null;
       }>();
-    const room = full ?? {
-      ...found,
-      host_id: null as string | null,
-      model: "dap-ai-lite",
-      created_at: null as string | null,
-    };
+    if (error) {
+      // The code goes to the reader, the whole error to the log: enough to
+      // tell two failures apart without a generic "something went wrong".
+      console.error(`[rooms] room lookup failed: ${error.code ?? "?"} ${error.message}`);
+      throw new Error(
+        `Couldn't load that room (${error.code ?? "unknown"}). Please try again.`,
+      );
+    }
+    if (!room) throw new Error("No study room with that code.");
 
     // A deleted room still resolves, so its members get an explanation
     // instead of the "no room with that code" they'd get from a hard
