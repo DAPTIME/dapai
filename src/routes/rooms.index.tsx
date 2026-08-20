@@ -62,7 +62,15 @@ function RoomsIndex() {
 
   const joinMut = useMutation({
     mutationFn: () => join({ data: { code } }),
-    onSuccess: (room) => navigate({ to: "/rooms/$code", params: { code: room.code } }),
+    onSuccess: (room) => {
+      /* Joining is a request now, so say which of the two happened rather
+         than dropping someone on a page that says "waiting" with no
+         explanation of why. */
+      if ((room as { status?: string }).status === "pending") {
+        toast.success("Asked to join — the room's owner has to let you in.");
+      }
+      navigate({ to: "/rooms/$code", params: { code: room.code } });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 

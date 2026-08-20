@@ -14,7 +14,7 @@ import {
   truncateChatFrom,
 } from "@/lib/chats.functions";
 import { streamChat } from "@/lib/chat-stream";
-import { useThinkingWord } from "@/lib/thinking-words";
+import { ReplyingIndicator } from "@/components/replying-indicator";
 import { stripCutoffMarker, wasCutOff } from "@/lib/cutoff-marker";
 import { useAiQueue, describeQueue, queueUpgradeHint } from "@/lib/use-ai-queue";
 import { MODELS, modelInfo, type ModelId } from "@/lib/models";
@@ -76,7 +76,6 @@ function ChatPage() {
      looping dots alone read as frozen after a few seconds; a word that
      changes every 3s is the signal that the request is still moving.
      Stops the moment text starts arriving — the text is the signal then. */
-  const thinkingWord = useThinkingWord(streaming && streamText.length === 0);
   const [optimisticUserMessage, setOptimisticUserMessage] = useState<{
     id: string;
     role: "user";
@@ -599,23 +598,7 @@ function ChatPage() {
                     />
                   </div>
                 ) : (
-                  <div
-                    className="mt-2 flex items-center gap-2 text-sm text-muted-foreground"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <span className="thinking-dot" />
-                    <span className="thinking-dot" />
-                    <span className="thinking-dot" />
-                    {/* The rotating word is hidden from assistive tech: this
-                        is a live region, and announcing a new synonym every
-                        3 seconds is noise. The stable line below is what a
-                        screen reader hears, once. */}
-                    <span key={thinkingWord} className="thinking-word" aria-hidden>
-                      {thinkingWord}...
-                    </span>
-                    <span className="sr-only">Working on your reply</span>
-                  </div>
+                  <ReplyingIndicator className="mt-2" active={streaming} />
                 )}
               </div>
             </div>

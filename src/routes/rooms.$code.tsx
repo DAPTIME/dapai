@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ReplyingIndicator } from "@/components/replying-indicator";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -19,6 +20,8 @@ import {
   joinStudyRoom,
   postStudyRoomMessage,
   setStudyRoomOpen,
+  listJoinRequests,
+  decideJoinRequest,
 } from "@/lib/study-rooms.functions";
 
 export const Route = createFileRoute("/rooms/$code")({
@@ -40,6 +43,8 @@ function RoomPage() {
   const join = useServerFn(joinStudyRoom);
   const post = useServerFn(postStudyRoomMessage);
   const setOpen = useServerFn(setStudyRoomOpen);
+  const fetchRequests = useServerFn(listJoinRequests);
+  const decideRequest = useServerFn(decideJoinRequest);
 
   const { tier: myTier } = useUpgradeGate();
   const allowedModels = MODELS.filter(
@@ -66,6 +71,33 @@ function RoomPage() {
   });
 
   const roomId = roomQuery.data?.room?.id;
+  /* Who is waiting to be let in. The server returns [] to anyone who is not
+     the host, so this is safe to run for everyone; polling keeps a host who
+     is mid-conversation from having to reload to notice someone knocking. */
+  const roomIdForRequests = roomQuery.data?.room?.id ?? null;
+  const isHostHere =
+    !!roomQuery.data?.room &&
+    "isHost" in roomQuery.data.room &&
+    (roomQuery.data.room as { isHost?: boolean }).isHost === true;
+  const requestsQuery = useQuery({
+    queryKey: ["study-room-requests", roomIdForRequests],
+    queryFn: () => fetchRequests({ data: { roomId: roomIdForRequests as string } }),
+    enabled: !!roomIdForRequests && isHostHere,
+    refetchInterval: 15_000,
+  });
+  const decideMut = useMutation({
+    mutationFn: (v: { userId: string; approve: boolean }) =>
+      decideRequest({
+        data: { roomId: roomIdForRequests as string, userId: v.userId, approve: v.approve },
+      }),
+    onSuccess: (_r, v) => {
+      toast.success(v.approve ? "Let them in" : "Request declined");
+      qc.invalidateQueries({ queryKey: ["study-room-requests", roomIdForRequests] });
+      qc.invalidateQueries({ queryKey: ["study-room", code] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const joined = roomQuery.data?.room?.joined;
   /* Site admin reading a room they have not joined. They see the room and
      its live messages, and are invisible to it: no membership row exists
@@ -246,6 +278,31 @@ function RoomPage() {
     );
   }
 
+  /* Asked to join and still waiting. The room is deliberately not shown —
+     not the transcript, not the member list — because "pending" would mean
+     nothing if you could read everything while you waited. */
+  if ((roomQuery.data?.room as { pending?: boolean } | undefined)?.pending) {
+    return (
+      <div className="mx-auto max-w-lg px-6 py-24 text-center">
+        <h1 className="text-2xl font-semibold">Waiting to be let in</h1>
+        <p className="mt-3 text-muted-foreground">
+          {roomQuery.data?.room?.name
+            ? `You've asked to join ${roomQuery.data.room.name}. `
+            : "You've asked to join this room. "}
+          The person who made it decides who comes in.
+        </p>
+        <div className="mt-6 flex justify-center gap-2">
+          <Button variant="outline" onClick={() => void roomQuery.refetch()}>
+            Check again
+          </Button>
+          <Button asChild variant="ghost">
+            <Link to="/rooms">Back to Study Rooms</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // A room the admin closed down still resolves, so the people who were in
   // it get told what happened instead of "room not found".
   if ((roomQuery.data?.room as { deleted?: boolean } | undefined)?.deleted) {
@@ -317,6 +374,11 @@ function RoomPage() {
             <EyeOff className="h-3 w-3" /> Observing — hidden from this room
           </span>
         )}
+        {"isHost" in room && room.isHost && (requestsQuery.data ?? []).length > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+            {(requestsQuery.data ?? []).length} waiting to join
+          </span>
+        )}
         {"isHost" in room && room.isHost && (
           <Button
             size="sm"
@@ -333,6 +395,41 @@ function RoomPage() {
           </Button>
         )}
       </div>
+
+      {/* The host's door. Only shown when somebody is actually waiting, so it
+          costs a room with no requests nothing. */}
+      {isHostHere && (requestsQuery.data ?? []).length > 0 && (
+        <div className="border-b border-border bg-card/60 px-4 py-3">
+          <div className="mx-auto max-w-3xl">
+            <p className="text-xs font-medium text-muted-foreground">Asking to join</p>
+            <ul className="mt-2 space-y-2">
+              {(requestsQuery.data ?? []).map((r) => (
+                <li key={r.user_id} className="flex items-center gap-3">
+                  <span className="flex-1 truncate text-sm">{r.display_name}</span>
+                  <Button
+                    size="sm"
+                    className="h-7 rounded-full px-3 text-xs text-primary-foreground"
+                    style={{ background: "var(--gradient-brand)" }}
+                    disabled={decideMut.isPending}
+                    onClick={() => decideMut.mutate({ userId: r.user_id, approve: true })}
+                  >
+                    Let in
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 rounded-full px-3 text-xs"
+                    disabled={decideMut.isPending}
+                    onClick={() => decideMut.mutate({ userId: r.user_id, approve: false })}
+                  >
+                    Decline
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
@@ -364,12 +461,14 @@ function RoomPage() {
               <div className="user-bubble mt-1 inline-block whitespace-pre-wrap">{optimisticText}</div>
             </div>
           )}
-          {(sendMut.isPending || typing.length > 0) && (
-            <p className="text-xs text-muted-foreground">
-              {sendMut.isPending
-                ? "DAP AI is replying…"
-                : `${typing.join(", ")} ${typing.length === 1 ? "is" : "are"} typing…`}
-            </p>
+          {sendMut.isPending ? (
+            <ReplyingIndicator active={sendMut.isPending} />
+          ) : (
+            typing.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {`${typing.join(", ")} ${typing.length === 1 ? "is" : "are"} typing…`}
+              </p>
+            )
           )}
         </div>
       </div>

@@ -86,6 +86,24 @@ async function hasSoftDelete(): Promise<boolean> {
   return true;
 }
 
+/**
+ * Is the join-approval column there yet?
+ *
+ * Same shape, and same reason, as hasSoftDelete: this repo's migrations and
+ * its deploys do not land in lockstep, and code that assumes a column that
+ * has not arrived takes the feature down rather than degrading. When the
+ * column is missing, joining behaves as it always did — straight in — and
+ * starts requiring approval the moment the migration lands, with no second
+ * deploy needed.
+ */
+async function hasJoinApproval(): Promise<boolean> {
+  const { error } = await supabaseAdmin
+    .from("study_room_members")
+    .select("status")
+    .limit(1);
+  return !error;
+}
+
 /** The columns a room is read with, which depends on the above. */
 const roomColumns = (soft: boolean) =>
   `id, code, name, host_id, model, is_open, created_at${soft ? ", deleted_at" : ""}`;
@@ -193,6 +211,7 @@ export const joinStudyRoom = createServerFn({ method: "POST" })
         id: string;
         code: string;
         name: string;
+        host_id: string | null;
         is_open: boolean;
         deleted_at?: string | null;
       }>();
@@ -201,21 +220,49 @@ export const joinStudyRoom = createServerFn({ method: "POST" })
     if (room.deleted_at) throw new Error(ROOM_DELETED_NOTICE);
     if (!room.is_open) throw new Error("That study room has been closed.");
 
-    // You join as yourself: the id comes from the verified session, never
-    // from anything the caller sent.
-    const { error: joinError } = await supabaseAdmin
+    /* You ask as yourself: the id comes from the verified session, never
+       from anything the caller sent.
+
+       A code is one short string that spreads by being pasted, so anyone
+       who ends up with it used to be in the room whether the host wanted
+       them or not. Now a join is a request, and the host decides. The host
+       joining their own room is not a request — createStudyRoom writes that
+       membership approved — and an existing member re-entering keeps
+       whatever status they already had, so approving somebody once is
+       enough. */
+    const approvals = await hasJoinApproval();
+    const { data: existing } = await supabaseAdmin
       .from("study_room_members")
-      .upsert(
-        {
+      .select(approvals ? "user_id, status" : "user_id")
+      .eq("room_id", room.id)
+      .eq("user_id", userId)
+      .maybeSingle<{ user_id: string; status?: string }>();
+
+    if (!existing) {
+      const isHost = room.host_id === userId;
+      const { error: joinError } = await supabaseAdmin
+        .from("study_room_members")
+        .insert({
           room_id: room.id,
           user_id: userId,
           display_name: await displayName(supabaseAdmin, userId),
-        },
-        { onConflict: "room_id,user_id" }
-      );
-    if (joinError) throw dbError(joinError);
+          ...(approvals ? { status: isHost ? "approved" : "pending" } : {}),
+        });
+      if (joinError) throw dbError(joinError);
+      return {
+        id: room.id,
+        code: room.code,
+        name: room.name,
+        status: approvals && !isHost ? "pending" : "approved",
+      };
+    }
 
-    return { id: room.id, code: room.code, name: room.name };
+    return {
+      id: room.id,
+      code: room.code,
+      name: room.name,
+      status: (existing.status as string | undefined) ?? "approved",
+    };
   });
 
 /**
@@ -354,6 +401,95 @@ export const adminRestoreStudyRoom = createServerFn({ method: "POST" })
     return { ok: (rows ?? []).length > 0 };
   });
 
+/**
+ * Who is waiting to be let into a room, for the host.
+ *
+ * Returns [] when the approval column has not landed yet, and [] for anyone
+ * who is not the host — a waiting list is the host's business, and someone
+ * else's pending request is not something a member needs to see.
+ */
+export const listJoinRequests = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) => z.object({ roomId: z.string().uuid() }).parse(i))
+  .handler(async ({ context, data }) => {
+    const { userId } = context;
+    if (!(await hasJoinApproval())) return [];
+
+    const { data: room } = await supabaseAdmin
+      .from("study_rooms")
+      .select("id, host_id")
+      .eq("id", data.roomId)
+      .maybeSingle<{ id: string; host_id: string | null }>();
+    if (!room || room.host_id !== userId) return [];
+
+    const { data: rows } = await supabaseAdmin
+      .from("study_room_members")
+      .select("user_id, display_name, joined_at")
+      .eq("room_id", data.roomId)
+      .eq("status", "pending")
+      .order("joined_at", { ascending: true });
+    return (rows ?? []) as Array<{
+      user_id: string;
+      display_name: string;
+      joined_at: string;
+    }>;
+  });
+
+/**
+ * The host lets somebody in, or turns them away.
+ *
+ * Declining removes the row rather than marking it declined, so the person
+ * can ask again later — a "no" here is about this moment, not a ban. The
+ * host is the only one who may do either, and that is checked here rather
+ * than left to a policy, because this writes with the service role.
+ */
+export const decideJoinRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i) =>
+    z
+      .object({
+        roomId: z.string().uuid(),
+        userId: z.string().uuid(),
+        approve: z.boolean(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ context, data }) => {
+    const { userId: callerId } = context;
+    if (!(await hasJoinApproval())) {
+      throw new Error("Approving members isn't available yet.");
+    }
+
+    const { data: room } = await supabaseAdmin
+      .from("study_rooms")
+      .select("id, host_id")
+      .eq("id", data.roomId)
+      .maybeSingle<{ id: string; host_id: string | null }>();
+    if (!room) throw new Error("No study room with that code.");
+    if (room.host_id !== callerId) {
+      throw new Error("Only the person who made the room can let people in.");
+    }
+
+    if (data.approve) {
+      const { error } = await supabaseAdmin
+        .from("study_room_members")
+        .update({ status: "approved" })
+        .eq("room_id", data.roomId)
+        .eq("user_id", data.userId);
+      if (error) throw dbError(error);
+      return { ok: true, approved: true };
+    }
+
+    const { error } = await supabaseAdmin
+      .from("study_room_members")
+      .delete()
+      .eq("room_id", data.roomId)
+      .eq("user_id", data.userId)
+      .eq("status", "pending");
+    if (error) throw dbError(error);
+    return { ok: true, approved: false };
+  });
+
 export const getStudyRoom = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i) =>
@@ -426,13 +562,38 @@ export const getStudyRoom = createServerFn({ method: "POST" })
       };
     }
 
-    const { data: members } = await supabase
+    /* Only approved people are in the room. Someone who has asked and not
+       been let in yet is not a member: they are not listed, they cannot
+       read the transcript, and the page tells them they are waiting.
+
+       Read with the trusted client and filtered here, so the member list
+       does not depend on a policy being written to exclude pending rows. */
+    const approvals = await hasJoinApproval();
+    const { data: allMembers } = await supabaseAdmin
       .from("study_room_members")
-      .select("user_id, display_name")
+      .select(approvals ? "user_id, display_name, status" : "user_id, display_name")
       .eq("room_id", room.id);
-    const isMember = (members ?? []).some(
-      (m: { user_id: string }) => m.user_id === userId
-    );
+    // Cast through unknown: the column list is chosen at runtime, which
+    // supabase-js's return-type parser cannot follow.
+    const memberRows = (allMembers ?? []) as unknown as Array<{
+      user_id: string;
+      display_name: string;
+      status?: string;
+    }>;
+    const isApproved = (m: { status?: string }) =>
+      !approvals || (m.status ?? "approved") === "approved";
+    const members = memberRows.filter(isApproved);
+    const mine = memberRows.find((m) => m.user_id === userId);
+    const isMember = !!mine && isApproved(mine);
+
+    // Asked, not yet let in: say so rather than showing an empty room.
+    if (mine && !isMember) {
+      return {
+        room: { ...room, joined: false, pending: true },
+        members: [],
+        messages: [],
+      };
+    }
 
     /* Site admins can read a room they have not joined, without joining it.
        Moderating a live room previously meant joining it, which announced

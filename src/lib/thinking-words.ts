@@ -57,7 +57,8 @@ function shuffled(words: readonly string[]): string[] {
 }
 
 /**
- * Returns a word that changes every `intervalMs` while `active`.
+ * Returns a word that changes every `intervalMs` while `active` — eight
+ * seconds by default, which is long enough to read one and notice the next.
  *
  * Draws from a shuffled bag rather than picking at random each tick, so the
  * whole list is seen before any word repeats, and the bag is re-cut so its
@@ -68,7 +69,7 @@ function shuffled(words: readonly string[]): string[] {
  * component that server-renders, and a random first word would differ between
  * the server's HTML and the client's first render.
  */
-export function useThinkingWord(active: boolean, intervalMs = 3000): string {
+export function useThinkingWord(active: boolean, intervalMs = 8000): string {
   const [word, setWord] = useState<string>(THINKING_WORDS[0]);
   const bag = useRef<string[]>([]);
   const current = useRef<string>(THINKING_WORDS[0]);
@@ -90,7 +91,7 @@ export function useThinkingWord(active: boolean, intervalMs = 3000): string {
     };
 
     bag.current = [];
-    draw(); // first word straight away, not after a 3s pause
+    draw(); // first word straight away, not after a pause
     const id = setInterval(draw, intervalMs);
     return () => clearInterval(id);
   }, [active, intervalMs]);

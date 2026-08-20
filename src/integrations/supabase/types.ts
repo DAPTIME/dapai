@@ -429,18 +429,21 @@ export type Database = {
           display_name: string
           joined_at: string
           room_id: string
+          status: string
           user_id: string
         }
         Insert: {
           display_name?: string
           joined_at?: string
           room_id: string
+          status?: string
           user_id: string
         }
         Update: {
           display_name?: string
           joined_at?: string
           room_id?: string
+          status?: string
           user_id?: string
         }
         Relationships: [
