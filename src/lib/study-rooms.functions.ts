@@ -652,6 +652,28 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
           : { role: "user" as const, content: `${m.author_name}: ${m.content}` }
       );
 
+    /* Take a slot before dialling the orchestrator, the same as a
+       one-to-one chat does. Inference runs on one box, and this path was
+       going straight at it: a room reply could start while a chat
+       generation was already running, so the queue that exists to stop
+       exactly that was being bypassed by every room message.
+
+       Best-effort on purpose — the queue must never be what stops a room
+       working, which is the same call api/chat.ts makes. */
+    const { data: roomTicket } = await Promise.resolve(
+      supabase.rpc("queue_join", {}).maybeSingle(),
+    ).catch(() => ({ data: null }) as { data: null });
+    const roomTicketId = (roomTicket as { id?: string } | null)?.id ?? null;
+    if (roomTicketId) {
+      await Promise.resolve(supabase.rpc("queue_claim", { _id: roomTicketId })).catch(() => {});
+    }
+    const releaseRoomSlot = async (cancelled: boolean) => {
+      if (!roomTicketId) return;
+      await Promise.resolve(
+        supabase.rpc("queue_release", { _id: roomTicketId, _cancelled: cancelled }),
+      ).catch(() => {});
+    };
+
     const { offlineMessage } = await import("./offline-message.server");
     let reply = "";
     try {
@@ -675,6 +697,7 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
         `[rooms] ${chosen} reply failed:`,
         e instanceof Error ? e.message : e
       );
+      await releaseRoomSlot(true);
       // The room got no answer, so the sender keeps their tokens.
       await refundPrompt(context.userId, roomCharge);
       throw e instanceof OrchestratorUnavailableError
@@ -682,9 +705,11 @@ export const postStudyRoomMessage = createServerFn({ method: "POST" })
         : new Error(await offlineMessage());
     }
     if (!reply) {
+      await releaseRoomSlot(true);
       await refundPrompt(context.userId, roomCharge);
       throw new Error(await offlineMessage());
     }
+    await releaseRoomSlot(false);
 
     // Count the reply against the sender's own usage.
     await supabase
