@@ -419,15 +419,81 @@ function ChatPage() {
                   {m.role === "user" ? "You" : "DAP AI"}
                 </div>
                 {m.role === "user" ? (
-                  <div className="user-bubble mt-1 inline-block whitespace-pre-wrap">
-                    {m.content}
-                  </div>
+                  editingId === m.id ? (
+                    <div className="mt-1">
+                      <textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        rows={3}
+                        className="w-full rounded-2xl border border-border bg-card p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            void saveEdit(m.id);
+                          }
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                      />
+                      <div className="mt-2 flex gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-7 rounded-full px-3 text-xs"
+                          style={{ background: "var(--gradient-brand)" }}
+                          disabled={!editText.trim() || busy}
+                          onClick={() => void saveEdit(m.id)}
+                        >
+                          Save & resend
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 rounded-full px-3 text-xs"
+                          onClick={() => setEditingId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="group mt-1 flex items-start gap-2">
+                      <div className="user-bubble inline-block whitespace-pre-wrap">
+                        {m.content}
+                      </div>
+                      {!m.id.startsWith("optimistic-") && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100"
+                          aria-label="Edit message"
+                          title="Edit message"
+                          disabled={busy}
+                          onClick={() => {
+                            setEditingId(m.id);
+                            setEditText(m.content);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  )
                 ) : (
                   <div className="mt-1 text-foreground">
                     <MarkdownMessage
-                      content={m.model === "dap-ai-lite" ? sanitizeLiteReply(m.content) : m.content}
+                      content={(() => {
+                        const shown = stripCutoffMarker(m.content);
+                        return m.model === "dap-ai-lite" ? sanitizeLiteReply(shown) : shown;
+                      })()}
                       animate={!(skipFadeAfterStream && mi === visible.length - 1)}
                     />
+                    {wasCutOff(m.content) && (
+                      <span className="mt-2 inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] italic text-muted-foreground">
+                        Stopped
+                      </span>
+                    )}
                     {extractArtifacts(m.id, m.content).length > 0 && (
                       <Button
                         type="button"
@@ -453,6 +519,7 @@ function ChatPage() {
               </div>
             </div>
           ))}
+
           {busy && (
             <div className="flex gap-3 message-in">
               <img
