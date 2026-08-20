@@ -48,9 +48,9 @@ import { parseSiteStatus, siteOpenTo } from "@/lib/site-status";
 
 
 
-// Lite gets a smaller rolling window so the boss model's context
-// never overflows. Pro keeps the full history.
-const LITE_HISTORY_LIMIT = 12;
+// History depth is decided by the orchestrator from the account tier
+// (free 3 / go 5 / pro 8 / exclusive 10). Nothing here trims it.
+
 
 /* Same idea for memory extraction: a named throw so the best-effort catch
    below stays honest about what it is swallowing. */
