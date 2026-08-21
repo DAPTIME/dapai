@@ -788,6 +788,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      messages_per_minute: {
+        Args: { _tier: Database["public"]["Enums"]["account_tier"] }
+        Returns: number
+      }
       my_dap_notices: {
         Args: never
         Returns: {
@@ -799,6 +803,7 @@ export type Database = {
           reviewed_at: string
         }[]
       }
+      my_messages_per_minute: { Args: never; Returns: number }
       my_tier: {
         Args: never
         Returns: Database["public"]["Enums"]["account_tier"]
