@@ -45,7 +45,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "DAP AI — Free AI Chatbot" },
       { name: "application-name", content: "DAP AI" },
       { name: "apple-mobile-web-app-title", content: "DAP AI" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
@@ -53,19 +52,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "theme-color", content: "#090d15" },
       { property: "og:site_name", content: "DAP AI" },
-
-
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "google-site-verification", content: "ihyVMpSKja5zvyeVXgKwlPewFA3s5qzQJX9FolcYAHI" },
       { property: "og:image", content: "https://dapai.lovable.app/og-image.png" },
       { name: "twitter:image", content: "https://dapai.lovable.app/og-image.png" },
-      { property: "og:title", content: "DAP AI — Free AI Chatbot" },
-      { name: "twitter:title", content: "DAP AI — Free AI Chatbot" },
-      { name: "description", content: "DAP AI is a fast, friendly AI chatbot and workspace for answers, writing, studying, coding, and custom AI assistants." },
-      { property: "og:description", content: "DAP AI is a fast, friendly AI chatbot and workspace for answers, writing, studying, coding, and custom AI assistants." },
-      { name: "twitter:description", content: "DAP AI is a fast, friendly AI chatbot and workspace for answers, writing, studying, coding, and custom AI assistants." },
-      { name: "keywords", content: "DAP AI, dapai, dap ai, dap, DAP, AI, ai chat, ai chatbot, dapai chat, dap chatbot, free AI, DAP AI 4 Pro, DAP AI 4 Lite, DAP arcade, DAP Track" },
 
     ],
     links: [
