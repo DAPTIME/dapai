@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.charge_pro_lite() FROM authenticated;
