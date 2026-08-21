@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AiHomeworkHelperRouteImport } from './routes/ai-homework-helper'
 import { Route as DapsRouteImport } from './routes/daps'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as GamesRouteImport } from './routes/games'
@@ -68,6 +69,11 @@ const AccountRoute = AccountRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiHomeworkHelperRoute = AiHomeworkHelperRouteImport.update({
+  id: '/ai-homework-helper',
+  path: '/ai-homework-helper',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DapsRoute = DapsRouteImport.update({
@@ -260,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/ai-homework-helper': typeof AiHomeworkHelperRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/games': typeof GamesRouteWithChildren
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/ai-homework-helper': typeof AiHomeworkHelperRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
@@ -344,6 +352,7 @@ export interface FileRoutesById {
   '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
+  '/ai-homework-helper': typeof AiHomeworkHelperRoute
   '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/games': typeof GamesRouteWithChildren
@@ -388,6 +397,7 @@ export interface FileRouteTypes {
     | '/about-dap-ai'
     | '/account'
     | '/admin'
+    | '/ai-homework-helper'
     | '/daps'
     | '/forgot-password'
     | '/games'
@@ -430,6 +440,7 @@ export interface FileRouteTypes {
     | '/about-dap-ai'
     | '/account'
     | '/admin'
+    | '/ai-homework-helper'
     | '/daps'
     | '/forgot-password'
     | '/help'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/about-dap-ai'
     | '/account'
     | '/admin'
+    | '/ai-homework-helper'
     | '/daps'
     | '/forgot-password'
     | '/games'
@@ -514,6 +526,7 @@ export interface RootRouteChildren {
   AboutDapAiRoute: typeof AboutDapAiRoute
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
+  AiHomeworkHelperRoute: typeof AiHomeworkHelperRoute
   DapsRoute: typeof DapsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   GamesRoute: typeof GamesRouteWithChildren
@@ -568,6 +581,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-homework-helper': {
+      id: '/ai-homework-helper'
+      path: '/ai-homework-helper'
+      fullPath: '/ai-homework-helper'
+      preLoaderRoute: typeof AiHomeworkHelperRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/daps': {
@@ -862,6 +882,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutDapAiRoute: AboutDapAiRoute,
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
+  AiHomeworkHelperRoute: AiHomeworkHelperRoute,
   DapsRoute: DapsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   GamesRoute: GamesRouteWithChildren,
