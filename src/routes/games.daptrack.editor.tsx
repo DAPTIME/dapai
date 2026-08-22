@@ -22,6 +22,7 @@ import {
 import { EditorCanvas, TILE_COLOR, TILE_GLYPH, type EditorTool } from "@/components/track-editor/editor-canvas";
 import { PolyTrackRunner } from "@/components/polytrack-runner";
 import { createTrack, updateTrack, publishTrack, unpublishTrack, deleteTrack, verifyTrack, getMyTrack } from "@/lib/tracks.functions";
+import { AdRail } from "@/components/ads/ad-rail";
 
 const searchSchema = z.object({ id: z.string().uuid().optional() });
 
@@ -363,7 +364,8 @@ function EditorPage() {
 
   if (testing) {
     return (
-      <div>
+      <div className="relative pt-[50px] pb-[60px]">
+        <AdRail />
         <div className="mx-auto mb-2 flex max-w-4xl justify-end">
           <Button size="sm" variant="secondary" onClick={() => setTesting(false)}>← Back to editor</Button>
         </div>
@@ -382,8 +384,10 @@ function EditorPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-5 animate-fade-in lg:grid-cols-[minmax(0,1fr)_300px]">
-      <div className="min-w-0">
+    <div className="relative pt-[50px] pb-[60px]">
+      <AdRail />
+      <div className="mx-auto grid max-w-7xl gap-5 animate-fade-in lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h1 className="text-2xl font-bold">✏️ Track Editor</h1>
@@ -635,6 +639,7 @@ function EditorPage() {
         >
           + Start a new track
         </Link>
+      </div>
       </div>
     </div>
   );
