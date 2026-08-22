@@ -14,7 +14,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, name, email, avatar_url")
+      .select("id, name, email, avatar_url, tier")
       .eq("id", userId)
       .maybeSingle();
     if (error) throw dbError(error);
@@ -33,6 +33,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
       email: data?.email ?? null,
       avatarPath: data?.avatar_url ?? null,
       avatarUrl: avatarSignedUrl,
+      tier: (data?.tier ?? "free") as string,
     };
   });
 
