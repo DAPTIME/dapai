@@ -3,6 +3,7 @@ import { Gamepad2 } from "lucide-react";
 import { useSiteConfig } from "@/lib/site-config";
 import { GAME_FLAGS, gameFlagFor, useFeatureGuard } from "@/lib/feature-guard";
 import { GameFocusLock } from "@/components/game-focus-lock";
+import { AdBanner } from "@/components/ads/ad-banner";
 import { toast } from "sonner";
 
 const GAMES_DESCRIPTION =
@@ -122,10 +123,12 @@ function GamesLayout() {
           })}
         </nav>
       </aside>
-      <div className="flex-1 p-4 md:p-8">
+      <div className="flex-1 space-y-4 p-4 md:p-8">
+        <AdBanner placement="top" />
         <GameFocusLock>
           <Outlet />
         </GameFocusLock>
+        <AdBanner placement="bottom" />
       </div>
     </div>
   );
