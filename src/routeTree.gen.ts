@@ -10,11 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AboutDapAiRouteImport } from './routes/about-dap-ai'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AiHomeworkHelperRouteImport } from './routes/ai-homework-helper'
-import { Route as DapsRouteImport } from './routes/daps'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as GamesRouteImport } from './routes/games'
 import { Route as HelpRouteImport } from './routes/help'
@@ -25,24 +22,17 @@ import { Route as SecurityRouteImport } from './routes/security'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as SlmVsLlmRouteImport } from './routes/slm-vs-llm'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-import { Route as CThreadIdRouteImport } from './routes/c.$threadId'
-import { Route as ChatNRouteImport } from './routes/chat.$n'
 import { Route as GamesIndexRouteImport } from './routes/games.index'
 import { Route as Games2048RouteImport } from './routes/games.2048'
 import { Route as GamesBreakoutRouteImport } from './routes/games.breakout'
 import { Route as GamesFlappyRouteImport } from './routes/games.flappy'
 import { Route as GamesRiverRouteImport } from './routes/games.river'
 import { Route as GamesSnakeRouteImport } from './routes/games.snake'
-import { Route as RoomsIndexRouteImport } from './routes/rooms.index'
-import { Route as RoomsCodeRouteImport } from './routes/rooms.$code'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
-import { Route as ApiPublicLiteTryRouteImport } from './routes/api/public/lite-try'
 import { Route as GamesDaptrackIndexRouteImport } from './routes/games.daptrack.index'
 import { Route as GamesDaptrackBrowseRouteImport } from './routes/games.daptrack.browse'
 import { Route as GamesDaptrackEditorRouteImport } from './routes/games.daptrack.editor'
@@ -56,11 +46,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AboutDapAiRoute = AboutDapAiRouteImport.update({
-  id: '/about-dap-ai',
-  path: '/about-dap-ai',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AccountRoute = AccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -69,16 +54,6 @@ const AccountRoute = AccountRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AiHomeworkHelperRoute = AiHomeworkHelperRouteImport.update({
-  id: '/ai-homework-helper',
-  path: '/ai-homework-helper',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DapsRoute = DapsRouteImport.update({
-  id: '/daps',
-  path: '/daps',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -131,11 +106,6 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SlmVsLlmRoute = SlmVsLlmRouteImport.update({
-  id: '/slm-vs-llm',
-  path: '/slm-vs-llm',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -153,24 +123,9 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth/callback',
   path: '/auth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CThreadIdRoute = CThreadIdRouteImport.update({
-  id: '/c/$threadId',
-  path: '/c/$threadId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChatNRoute = ChatNRouteImport.update({
-  id: '/chat/$n',
-  path: '/chat/$n',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GamesIndexRoute = GamesIndexRouteImport.update({
@@ -203,27 +158,12 @@ const GamesSnakeRoute = GamesSnakeRouteImport.update({
   path: '/snake',
   getParentRoute: () => GamesRoute,
 } as any)
-const RoomsIndexRoute = RoomsIndexRouteImport.update({
-  id: '/rooms/',
-  path: '/rooms/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RoomsCodeRoute = RoomsCodeRouteImport.update({
-  id: '/rooms/$code',
-  path: '/rooms/$code',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicLiteTryRoute = ApiPublicLiteTryRouteImport.update({
-  id: '/api/public/lite-try',
-  path: '/api/public/lite-try',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const GamesDaptrackIndexRoute = GamesDaptrackIndexRouteImport.update({
   id: '/daptrack/',
   path: '/daptrack/',
@@ -263,11 +203,8 @@ const GamesDaptrackTrackIdRoute = GamesDaptrackTrackIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
-  '/ai-homework-helper': typeof AiHomeworkHelperRoute
-  '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/games': typeof GamesRouteWithChildren
   '/help': typeof HelpRoute
@@ -278,24 +215,17 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/slm-vs-llm': typeof SlmVsLlmRoute
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/api/chat': typeof ApiChatRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/c/$threadId': typeof CThreadIdRoute
-  '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
   '/games/breakout': typeof GamesBreakoutRoute
   '/games/flappy': typeof GamesFlappyRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
-  '/rooms/$code': typeof RoomsCodeRoute
   '/games/': typeof GamesIndexRoute
-  '/rooms/': typeof RoomsIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
   '/games/daptrack/editor': typeof GamesDaptrackEditorRoute
   '/games/polytrack/$': typeof GamesPolytrackSplatRoute
@@ -306,11 +236,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
-  '/ai-homework-helper': typeof AiHomeworkHelperRoute
-  '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
@@ -320,24 +247,17 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/slm-vs-llm': typeof SlmVsLlmRoute
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/api/chat': typeof ApiChatRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/c/$threadId': typeof CThreadIdRoute
-  '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
   '/games/breakout': typeof GamesBreakoutRoute
   '/games/flappy': typeof GamesFlappyRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
-  '/rooms/$code': typeof RoomsCodeRoute
   '/games': typeof GamesIndexRoute
-  '/rooms': typeof RoomsIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
   '/games/daptrack/editor': typeof GamesDaptrackEditorRoute
   '/games/polytrack/$': typeof GamesPolytrackSplatRoute
@@ -349,11 +269,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/about-dap-ai': typeof AboutDapAiRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
-  '/ai-homework-helper': typeof AiHomeworkHelperRoute
-  '/daps': typeof DapsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/games': typeof GamesRouteWithChildren
   '/help': typeof HelpRoute
@@ -364,24 +281,17 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/slm-vs-llm': typeof SlmVsLlmRoute
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/api/chat': typeof ApiChatRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/c/$threadId': typeof CThreadIdRoute
-  '/chat/$n': typeof ChatNRoute
   '/games/2048': typeof Games2048Route
   '/games/breakout': typeof GamesBreakoutRoute
   '/games/flappy': typeof GamesFlappyRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
-  '/rooms/$code': typeof RoomsCodeRoute
   '/games/': typeof GamesIndexRoute
-  '/rooms/': typeof RoomsIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/api/public/lite-try': typeof ApiPublicLiteTryRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
   '/games/daptrack/editor': typeof GamesDaptrackEditorRoute
   '/games/polytrack/$': typeof GamesPolytrackSplatRoute
@@ -394,11 +304,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/about-dap-ai'
     | '/account'
     | '/admin'
-    | '/ai-homework-helper'
-    | '/daps'
     | '/forgot-password'
     | '/games'
     | '/help'
@@ -409,24 +316,17 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
-    | '/slm-vs-llm'
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/api/chat'
     | '/auth/callback'
-    | '/c/$threadId'
-    | '/chat/$n'
     | '/games/2048'
     | '/games/breakout'
     | '/games/flappy'
     | '/games/river'
     | '/games/snake'
-    | '/rooms/$code'
     | '/games/'
-    | '/rooms/'
     | '/.mcp/invoke-tool/$tool'
-    | '/api/public/lite-try'
     | '/games/daptrack/browse'
     | '/games/daptrack/editor'
     | '/games/polytrack/$'
@@ -437,11 +337,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/about-dap-ai'
     | '/account'
     | '/admin'
-    | '/ai-homework-helper'
-    | '/daps'
     | '/forgot-password'
     | '/help'
     | '/login'
@@ -451,24 +348,17 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
-    | '/slm-vs-llm'
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/api/chat'
     | '/auth/callback'
-    | '/c/$threadId'
-    | '/chat/$n'
     | '/games/2048'
     | '/games/breakout'
     | '/games/flappy'
     | '/games/river'
     | '/games/snake'
-    | '/rooms/$code'
     | '/games'
-    | '/rooms'
     | '/.mcp/invoke-tool/$tool'
-    | '/api/public/lite-try'
     | '/games/daptrack/browse'
     | '/games/daptrack/editor'
     | '/games/polytrack/$'
@@ -479,11 +369,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/about-dap-ai'
     | '/account'
     | '/admin'
-    | '/ai-homework-helper'
-    | '/daps'
     | '/forgot-password'
     | '/games'
     | '/help'
@@ -494,24 +381,17 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
-    | '/slm-vs-llm'
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/api/chat'
     | '/auth/callback'
-    | '/c/$threadId'
-    | '/chat/$n'
     | '/games/2048'
     | '/games/breakout'
     | '/games/flappy'
     | '/games/river'
     | '/games/snake'
-    | '/rooms/$code'
     | '/games/'
-    | '/rooms/'
     | '/.mcp/invoke-tool/$tool'
-    | '/api/public/lite-try'
     | '/games/daptrack/browse'
     | '/games/daptrack/editor'
     | '/games/polytrack/$'
@@ -523,11 +403,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AboutDapAiRoute: typeof AboutDapAiRoute
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
-  AiHomeworkHelperRoute: typeof AiHomeworkHelperRoute
-  DapsRoute: typeof DapsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   GamesRoute: typeof GamesRouteWithChildren
   HelpRoute: typeof HelpRoute
@@ -538,18 +415,11 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  SlmVsLlmRoute: typeof SlmVsLlmRoute
   TermsRoute: typeof TermsRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  ApiChatRoute: typeof ApiChatRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
-  CThreadIdRoute: typeof CThreadIdRoute
-  ChatNRoute: typeof ChatNRoute
-  RoomsCodeRoute: typeof RoomsCodeRoute
-  RoomsIndexRoute: typeof RoomsIndexRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
-  ApiPublicLiteTryRoute: typeof ApiPublicLiteTryRoute
   ApiPublicHooksCleanupOldChatsRoute: typeof ApiPublicHooksCleanupOldChatsRoute
 }
 
@@ -560,13 +430,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about-dap-ai': {
-      id: '/about-dap-ai'
-      path: '/about-dap-ai'
-      fullPath: '/about-dap-ai'
-      preLoaderRoute: typeof AboutDapAiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -581,20 +444,6 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ai-homework-helper': {
-      id: '/ai-homework-helper'
-      path: '/ai-homework-helper'
-      fullPath: '/ai-homework-helper'
-      preLoaderRoute: typeof AiHomeworkHelperRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/daps': {
-      id: '/daps'
-      path: '/daps'
-      fullPath: '/daps'
-      preLoaderRoute: typeof DapsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -667,13 +516,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/slm-vs-llm': {
-      id: '/slm-vs-llm'
-      path: '/slm-vs-llm'
-      fullPath: '/slm-vs-llm'
-      preLoaderRoute: typeof SlmVsLlmRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -695,32 +537,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/c/$threadId': {
-      id: '/c/$threadId'
-      path: '/c/$threadId'
-      fullPath: '/c/$threadId'
-      preLoaderRoute: typeof CThreadIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chat/$n': {
-      id: '/chat/$n'
-      path: '/chat/$n'
-      fullPath: '/chat/$n'
-      preLoaderRoute: typeof ChatNRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/games/': {
@@ -765,32 +586,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamesSnakeRouteImport
       parentRoute: typeof GamesRoute
     }
-    '/rooms/': {
-      id: '/rooms/'
-      path: '/rooms'
-      fullPath: '/rooms/'
-      preLoaderRoute: typeof RoomsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rooms/$code': {
-      id: '/rooms/$code'
-      path: '/rooms/$code'
-      fullPath: '/rooms/$code'
-      preLoaderRoute: typeof RoomsCodeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
       fullPath: '/.mcp/invoke-tool/$tool'
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/lite-try': {
-      id: '/api/public/lite-try'
-      path: '/api/public/lite-try'
-      fullPath: '/api/public/lite-try'
-      preLoaderRoute: typeof ApiPublicLiteTryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/games/daptrack/': {
@@ -879,11 +679,8 @@ const GamesRouteWithChildren = GamesRoute._addFileChildren(GamesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AboutDapAiRoute: AboutDapAiRoute,
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
-  AiHomeworkHelperRoute: AiHomeworkHelperRoute,
-  DapsRoute: DapsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   GamesRoute: GamesRouteWithChildren,
   HelpRoute: HelpRoute,
@@ -894,19 +691,12 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  SlmVsLlmRoute: SlmVsLlmRoute,
   TermsRoute: TermsRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
-  ApiChatRoute: ApiChatRoute,
   AuthCallbackRoute: AuthCallbackRoute,
-  CThreadIdRoute: CThreadIdRoute,
-  ChatNRoute: ChatNRoute,
-  RoomsCodeRoute: RoomsCodeRoute,
-  RoomsIndexRoute: RoomsIndexRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
-  ApiPublicLiteTryRoute: ApiPublicLiteTryRoute,
   ApiPublicHooksCleanupOldChatsRoute: ApiPublicHooksCleanupOldChatsRoute,
 }
 export const routeTree = rootRouteImport
