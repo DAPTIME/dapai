@@ -16,14 +16,11 @@ export const GAME_FLAGS: Record<string, FeatureKey> = {
 };
 
 const PAGE_FLAGS: Array<[string, FeatureKey]> = [
-  ["/daps", "daps"],
-  ["/rooms", "rooms"],
   ["/account", "account"],
   ["/settings", "settings"],
   ["/security", "security"],
   ["/help", "help"],
   ["/terms", "terms"],
-  ["/about-dap-ai", "about"],
   ["/games", "games"],
 ];
 
@@ -53,10 +50,6 @@ export function useFeatureGuard(key: FeatureKey | null | undefined): boolean {
   const off = !!key && siteConfig.flags[key] === false;
   const label = key ? FEATURE_LABELS[key] : "";
 
-  /* A beta nobody on this plan may open is as closed as a feature that is
-     switched off, but for a different reason — so it gets a different
-     sentence. Somebody told "under maintenance" would wait for it to come
-     back; what they actually need to know is that it is a plan away. */
   const state = key ? beta(key) : null;
   const lockedByBeta = !off && !!state?.lockedByBeta;
   const betaTier = state?.minTier ?? null;

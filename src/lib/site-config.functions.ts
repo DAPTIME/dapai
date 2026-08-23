@@ -50,29 +50,22 @@ export interface SiteConfig {
    * feature flag allows.
    */
   beta: Partial<Record<FeatureKey, Tier>>;
-  /** Admin-authored text shown in the typing bar while DAP AI is offline. */
+  /** Admin-authored text shown while DAP Games is offline. */
   offlineMessage: string;
 }
 
 export const DEFAULT_OFFLINE_MESSAGE =
-  "DAP AI is offline right now — check back soon.";
+  "DAP Games is offline right now — check back soon.";
 
 export const DEFAULT_SITE_CONFIG: SiteConfig = {
   enabled: true,
   status: "on",
   flags: {
-    ai_enabled: true,
-    pro_model: true,
-    pro_lite_model: true,
-    lite_model: true,
-    daps: true,
-    rooms: true,
     account: true,
     settings: true,
     security: true,
     help: true,
     terms: true,
-    about: true,
     games: true,
     game_2048: true,
     game_snake: true,
@@ -80,14 +73,29 @@ export const DEFAULT_SITE_CONFIG: SiteConfig = {
     game_river: true,
     game_flappy: true,
     game_breakout: true,
-    nav_daps: true,
-    nav_rooms: true,
+    game_tetris: true,
+    game_minesweeper: true,
+    game_memory: true,
+    game_simon: true,
+    game_tictactoe: true,
+    game_connect4: true,
+    game_reaction: true,
+    game_whackamole: true,
+    game_pong: true,
+    game_spaceshooter: true,
+    game_higherlower: true,
+    game_wordscramble: true,
+    game_hangman: true,
+    game_fifteen: true,
+    game_lightsout: true,
+    game_maze: true,
+    game_typing: true,
+    game_colormatch: true,
+    game_rps: true,
     nav_games: true,
-    nav_chats: true,
     nav_settings: true,
     nav_help: true,
     nav_terms: true,
-    nav_about: true,
   },
   beta: {},
   offlineMessage: DEFAULT_OFFLINE_MESSAGE,
