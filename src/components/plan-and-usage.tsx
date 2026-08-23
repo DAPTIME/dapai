@@ -158,45 +158,12 @@ export function PlanAndUsage() {
           )}
           {/* Exclusive is uncapped: nothing is checked or deducted for it, so
               showing meters would only invent limits that do not exist. */}
-          {usage.data && tier === "exclusive" && (
-            <p className="text-sm text-muted-foreground">
-              Nothing is counted on this plan — no daily or weekly caps, no image
-              limit, and your chat history is never pruned.
-            </p>
-          )}
-          {usage.data && tier !== "exclusive" && (
-            <>
-              <Meter
-                label="Chat history"
-                used={usage.data.chats.used}
-                limit={usage.data.chats.limit}
-                note="Older chats are pruned when you start a new one."
-              />
-              <Meter
-                label="Tracks created"
-                used={usage.data.tracks.used}
-                limit={Number.isFinite(usage.data.tracks.limit) ? usage.data.tracks.limit : null}
-              />
-              <Meter
-                label="Usage tokens today"
-                used={usage.data.tokensToday.used}
-                limit={usage.data.tokensToday.limit}
-                hideNumbers
-                note="Resets at midnight UTC."
-              />
-              <Meter
-                label="Usage tokens this week"
-                used={usage.data.tokensWeek.used}
-                limit={usage.data.tokensWeek.limit}
-                hideNumbers
-                note="Your week resets on Monday at midnight UTC."
-              />
-              <Meter
-                label="Images today"
-                used={usage.data.imagesToday.used}
-                limit={usage.data.imagesToday.limit}
-              />
-            </>
+          {usage.data && (
+            <Meter
+              label="Tracks created"
+              used={usage.data.tracks.used}
+              limit={Number.isFinite(usage.data.tracks.limit) ? usage.data.tracks.limit : null}
+            />
           )}
         </div>
 

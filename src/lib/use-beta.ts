@@ -12,7 +12,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getProfile } from "@/lib/chats.functions";
+import { getMyProfile } from "@/lib/profile.functions";
 import { useAuth } from "@/lib/auth";
 import { adminAmIAdmin } from "@/lib/admin.functions";
 import { useSiteConfig } from "@/lib/site-config";
@@ -42,7 +42,7 @@ export interface BetaState {
  */
 export function useMyTier(): { tier: Tier; ready: boolean } {
   const { user } = useAuth();
-  const fetchProfile = useServerFn(getProfile);
+  const fetchProfile = useServerFn(getMyProfile);
   const profileQuery = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: () => fetchProfile(),
