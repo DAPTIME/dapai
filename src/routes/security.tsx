@@ -21,11 +21,16 @@ import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
 export const Route = createFileRoute("/security")({
   head: () => ({
     meta: [
-      { title: "Security — DAP AI" },
+      { title: "Security — DAP Games" },
       {
         name: "description",
         content:
-          "Change your DAP AI password or update your recovery question by answering the current one.",
+          "Change your DAP Games password or update your recovery question by answering the current one.",
+      },
+      { property: "og:title", content: "Security — DAP Games" },
+      {
+        property: "og:description",
+        content: "Manage your DAP Games account password and recovery question.",
       },
       { name: "robots", content: "noindex, nofollow" },
     ],

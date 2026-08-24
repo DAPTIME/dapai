@@ -1,24 +1,16 @@
-import { useState } from "react";
-import { toast } from "sonner";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  MessageSquarePlus,
-  Sparkles,
-  History,
+  Gamepad2,
+  Grid3x3,
+  Users2,
+  PenSquare,
   Settings,
   HelpCircle,
-  Cpu,
-  Trash2,
   Scale,
-  Info,
-  Gamepad2,
-  Users2,
-  Pin,
-  PinOff,
-  Pencil,
-  Check,
+  Cpu,
+  User as UserIcon,
 } from "lucide-react";
 
 import { adminAmIAdmin } from "@/lib/admin.functions";
@@ -37,46 +29,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
-import {
-  listChats,
-  deleteChat,
-  setChatPinned,
-  renameChat,
-  getProfile,
-} from "@/lib/chats.functions";
-import { useIncognito } from "@/lib/use-incognito";
 import { useSiteConfig } from "@/lib/site-config";
 import { useBeta } from "@/lib/use-beta";
 import type { FeatureKey } from "@/lib/site-config.functions";
-
-/* Each entry names the admin flag that controls it, so "hide this from
-   the sidebar" is one toggle in the console rather than a code change.
-   The flags already existed and the console already wrote them; this
-   sidebar was simply never reading them. */
-const main = [
-  { title: "Custom AI's", url: "/daps", icon: Sparkles, flag: "daps", nav: "nav_daps" },
-  { title: "Study Rooms", url: "/rooms", icon: Users2, flag: "rooms", nav: "nav_rooms" },
-] as const satisfies readonly {
-  title: string;
-  url: string;
-  icon: typeof Sparkles;
-  /** Turning the feature off closes the page for everyone. */
-  flag: FeatureKey;
-  /** Turning this off only takes the entry out of the sidebar. */
-  nav: FeatureKey;
-}[];
-
-/** Shown beside an entry that is in beta, to someone who may use it. */
-function BetaMark() {
-  return (
-    <span
-      className="ml-auto shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
-      title="In beta — still being tested"
-    >
-      Beta
-    </span>
-  );
-}
+import { topGames } from "@/lib/game-catalog";
 
 /** Shown to an admin beside an entry the console is hiding from everyone. */
 function HiddenMark() {
@@ -95,12 +51,6 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isMobile, setOpenMobile } = useSidebar();
-  const qc = useQueryClient();
-  const incognito = useIncognito();
-  const list = useServerFn(listChats);
-  const remove = useServerFn(deleteChat);
-  const pin = useServerFn(setChatPinned);
-  const fetchProfile = useServerFn(getProfile);
 
   // Same query key as the account menu, so both read one cached answer.
   const amIAdmin = useServerFn(adminAmIAdmin);
@@ -126,82 +76,12 @@ export function AppSidebar() {
      Settings should not also remove the admin's own way back to it. */
   const showEntry = (...flags: FeatureKey[]) => !hiddenByAdmin(...flags) || isAdmin;
 
-  /* A beta the account cannot reach is not listed at all. Showing a link
-     that only leads to "you need a higher plan" is a worse answer than not
-     offering it — the upgrade page is where that conversation belongs.
-     Admins keep seeing it, as with a hidden entry. */
+  /* A beta the account cannot reach is not listed at all. */
   const betaBlocks = (flag: FeatureKey) => beta(flag).lockedByBeta && !isAdmin;
 
-  const nav = main.filter((item) => showEntry(item.flag, item.nav) && !betaBlocks(item.flag));
-
-
-  const chatsQuery = useQuery({
-    queryKey: ["chats", user?.id ?? "anon"],
-    queryFn: () => list(),
-    enabled: !!user && !incognito,
-  });
-
-  const deleteMut = useMutation({
-    mutationFn: (id: string) => remove({ data: { chatId: id } }),
-    onSuccess: (_d, id) => {
-      qc.invalidateQueries({ queryKey: ["chats"] });
-      if (isMobile) setOpenMobile(false);
-      if (pathname === `/c/${id}`) navigate({ to: "/" });
-    },
-  });
-
-  /* The saved-chat counter needs the plan's limit, which the profile
-     already carries. Exclusive has no limit, so it gets no counter. */
-  const profileQuery = useQuery({
-    queryKey: ["profile", user?.id],
-    queryFn: () => fetchProfile(),
-    enabled: !!user && !incognito,
-    staleTime: 15_000,
-  });
-
-  /* Renaming happens in place in the list: the row becomes a text box and
-     goes back to being a link when you are done. A dialog for one short
-     string would be more chrome than the job needs. */
-  const rename = useServerFn(renameChat);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameText, setRenameText] = useState("");
-  const renameMut = useMutation({
-    mutationFn: (v: { id: string; title: string }) =>
-      rename({ data: { chatId: v.id, title: v.title } }),
-    onSuccess: () => {
-      setRenamingId(null);
-      qc.invalidateQueries({ queryKey: ["chats"] });
-      qc.invalidateQueries({ queryKey: ["chat"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const commitRename = (id: string) => {
-    const next = renameText.trim();
-    // Nothing typed, or nothing changed: just stop editing. Saving an empty
-    // title would leave a row with no name in the list.
-    const current = threads.find((t: { id: string }) => t.id === id) as
-      | { title?: string }
-      | undefined;
-    if (!next || next === current?.title) {
-      setRenamingId(null);
-      return;
-    }
-    renameMut.mutate({ id, title: next });
-  };
-
-  const pinMut = useMutation({
-    mutationFn: (v: { id: string; pinned: boolean }) =>
-      pin({ data: { chatId: v.id, pinned: v.pinned } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["chats"] }),
-  });
-
-  const threads = chatsQuery.data ?? [];
-  const chatLimit = profileQuery.data?.chatLimit;
-  const showChatCount =
-    typeof chatLimit === "number" && Number.isFinite(chatLimit) && threads.length > 0;
   const closeIfMobile = () => { if (isMobile) setOpenMobile(false); };
-  const showChatHistory = !!user && !incognito && showEntry("nav_chats");
+
+  const topPicks = topGames(6);
 
   return (
     <Sidebar collapsible="icon">
@@ -209,77 +89,52 @@ export function AppSidebar() {
         <Link to="/" onClick={closeIfMobile} className="group/logo flex items-center gap-2">
           <img
             src={logo.url}
-            alt="DAP AI"
+            alt="DAP Games"
             className="h-[3.03rem] w-[3.03rem] rounded-xl object-contain transition-transform duration-300 ease-out group-hover/logo:scale-110 group-hover/logo:rotate-3"
           />
           <span className="text-lg font-semibold tracking-tight transition-colors group-hover/logo:text-primary group-data-[collapsible=icon]:hidden">
-            DAP AI
+            DAP Games
           </span>
         </Link>
       </SidebarHeader>
 
       <SidebarContent>
+        {showEntry("games", "nav_games") && !betaBlocks("games") && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Top Games</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {topPicks.map((g, i) => (
+                  <SidebarMenuItem
+                    key={g.slug}
+                    className="animate-fade-in"
+                    style={{ animationDelay: `${i * 40}ms` }}
+                  >
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === g.route || pathname.startsWith(`${g.route}/`)}
+                      className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm"
+                    >
+                      <Link to={g.route} onClick={closeIfMobile}>
+                        <span aria-hidden className="text-base leading-none">{g.emoji}</span>
+                        <span>{g.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem className="animate-fade-in" style={{ animationDelay: "0ms" }}>
-                <SidebarMenuButton
-                  onClick={() => {
-                    closeIfMobile();
-                    if (!user) {
-                      navigate({ to: "/login" });
-                      return;
-                    }
-                    // A new chat starts from the home screen; the thread is
-                    // created once the first message is sent.
-                    navigate({ to: "/" });
-                  }}
-                  className="group/item transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
-                >
-                  <MessageSquarePlus />
-                  <span>New chat</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {nav.map((item, i) => (
-                <SidebarMenuItem
-                  key={item.url}
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${(i + 1) * 60}ms` }}
-                >
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.url}
-                    className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
-                  >
-                    <Link
-                      to={item.url}
-                      onClick={closeIfMobile}
-                      className={hiddenByAdmin(item.flag, item.nav) ? "opacity-60" : undefined}
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                      {hiddenByAdmin(item.flag, item.nav) ? (
-                        <HiddenMark />
-                      ) : (
-                        beta(item.flag).isBeta && <BetaMark />
-                      )}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              {/* Arcade goes straight to the games page rather than
-                  unfolding the list here. The page shows every game with
-                  its artwork, which is a better way to pick one than a
-                  column of names — and it saves a click for the common
-                  case of just wanting the arcade. */}
               {showEntry("games", "nav_games") && !betaBlocks("games") && (
-                <SidebarMenuItem
-                  className="animate-fade-in"
-                  style={{ animationDelay: `${(nav.length + 1) * 60}ms` }}
-                >
+                <SidebarMenuItem className="animate-fade-in">
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname.startsWith("/games")}
+                    isActive={pathname === "/games"}
                     className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
                   >
                     <Link
@@ -287,171 +142,60 @@ export function AppSidebar() {
                       onClick={closeIfMobile}
                       className={hiddenByAdmin("games", "nav_games") ? "opacity-60" : undefined}
                     >
-                      <Gamepad2 />
-                      <span>Arcade</span>
-                      {hiddenByAdmin("games", "nav_games") ? (
-                        <HiddenMark />
-                      ) : (
-                        beta("games").isBeta && <BetaMark />
-                      )}
+                      <Grid3x3 />
+                      <span>All Games</span>
+                      {hiddenByAdmin("games", "nav_games") && <HiddenMark />}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+              <SidebarMenuItem className="animate-fade-in">
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/games/daptrack/browse"}
+                  className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
+                >
+                  <Link to="/games/daptrack/browse" onClick={closeIfMobile}>
+                    <Users2 />
+                    <span>Community Tracks</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem className="animate-fade-in">
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/games/daptrack/editor"}
+                  className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
+                >
+                  <Link
+                    to="/games/daptrack/editor"
+                    onClick={() => {
+                      closeIfMobile();
+                      if (!user) navigate({ to: "/login" });
+                    }}
+                  >
+                    <PenSquare />
+                    <span>Track Editor</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {showChatHistory && (
-          <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-            <SidebarGroupLabel className="justify-between">
-              <span className="flex items-center">
-                <History className="mr-1.5 h-3.5 w-3.5" /> Chats
-              </span>
-              {showChatCount && (
-                <span
-                  className={
-                    threads.length >= (chatLimit as number)
-                      ? "text-[0.7rem] font-normal text-destructive"
-                      : "text-[0.7rem] font-normal text-muted-foreground"
-                  }
-                >
-                  {threads.length} of {chatLimit} chats
-                </span>
-              )}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {threads.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">
-                    {chatsQuery.isLoading ? "Loading…" : "No chats yet"}
-                  </div>
-                )}
-                {threads.map((t) => {
-                  const active = pathname === `/c/${t.id}`;
-                  return (
-                    <SidebarMenuItem key={t.id}>
-                      <div
-                        className={`group/row flex items-center gap-1 rounded-md ${
-                          active ? "bg-sidebar-accent" : ""
-                        }`}
-                      >
-                        {renamingId === t.id ? (
-                          <input
-                            autoFocus
-                            value={renameText}
-                            disabled={renameMut.isPending}
-                            onChange={(e) => setRenameText(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                commitRename(t.id);
-                              }
-                              if (e.key === "Escape") setRenamingId(null);
-                            }}
-                            /* Blur saves rather than discards: clicking away
-                               from a name you have just typed almost never
-                               means "throw that away". Escape is there for
-                               when it does. */
-                            onBlur={() => commitRename(t.id)}
-                            maxLength={80}
-                            aria-label="Chat name"
-                            className="h-10 flex-1 rounded bg-background px-2 text-sm outline-none ring-1 ring-primary/40 md:h-7"
-                          />
-                        ) : (
-                          <SidebarMenuButton asChild isActive={active} className="flex-1">
-                            <Link
-                              to="/c/$threadId"
-                              params={{ threadId: t.id }}
-                              onClick={closeIfMobile}
-                              className="text-sm"
-                            >
-                              <span className="truncate">{t.title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        )}
-                        <button
-                          type="button"
-                          disabled={renameMut.isPending}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (renamingId === t.id) {
-                              commitRename(t.id);
-                              return;
-                            }
-                            setRenameText(t.title ?? "");
-                            setRenamingId(t.id);
-                          }}
-                          className="flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 md:hidden md:h-7 md:w-7 md:group-hover/row:flex"
-                          aria-label={renamingId === t.id ? "Save name" : "Rename chat"}
-                          title={renamingId === t.id ? "Save name" : "Rename chat"}
-                          style={renamingId === t.id ? { display: "flex" } : undefined}
-                        >
-                          {renamingId === t.id ? (
-                            <Check className="h-3.5 w-3.5 text-primary" />
-                          ) : (
-                            <Pencil className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={pinMut.isPending}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            pinMut.mutate({ id: t.id, pinned: !t.pinned });
-                          }}
-                          className="flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 md:h-7 md:w-7 md:group-hover/row:flex"
-                          aria-label={t.pinned ? "Unpin chat" : "Pin chat"}
-                          title={
-                            t.pinned
-                              ? "Pinned — never removed automatically"
-                              : "Pin so it is never removed automatically"
-                          }
-                          style={{ display: t.pinned ? "flex" : undefined }}
-                        >
-                          {t.pinned ? (
-                            <Pin className="h-3.5 w-3.5 fill-current text-primary" />
-                          ) : (
-                            <PinOff className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={deleteMut.isPending}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            deleteMut.mutate(t.id);
-                          }}
-                          className="mr-1 flex h-10 w-10 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 md:hidden md:h-7 md:w-7 md:group-hover/row:flex"
-                          aria-label="Delete chat"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
 
       <SidebarFooter className="pb-4">
         <SidebarMenu>
-          {isAdmin && (
+          {user && showEntry("account") && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === "/admin"}
-                className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
+                isActive={pathname === "/account"}
+                className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
               >
-                <Link to="/admin" onClick={closeIfMobile}>
-                  <Cpu />
-                  <span>Admin</span>
+                <Link to="/account" onClick={closeIfMobile}>
+                  <UserIcon />
+                  <span>Account</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -479,6 +223,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
+                isActive={pathname === "/help"}
                 className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
               >
                 <Link
@@ -512,26 +257,20 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
-          {showEntry("about", "nav_about") && (
+          {isAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === "/about-dap-ai"}
-                className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110"
+                isActive={pathname === "/admin"}
+                className="transition-all duration-200 hover:translate-x-0.5 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
               >
-                <Link
-                  to="/about-dap-ai"
-                  onClick={closeIfMobile}
-                  className={hiddenByAdmin("about", "nav_about") ? "opacity-60" : undefined}
-                >
-                  <Info />
-                  <span>About DAP AI</span>
-                  {hiddenByAdmin("about", "nav_about") && <HiddenMark />}
+                <Link to="/admin" onClick={closeIfMobile}>
+                  <Cpu />
+                  <span>Admin</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
-
         </SidebarMenu>
       </SidebarFooter>
 

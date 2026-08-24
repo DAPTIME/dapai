@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -17,16 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { sendChatMessage } from "@/lib/chats.functions";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe, EyeOff, PanelLeft, FlaskConical } from "lucide-react";
+import { Cpu, Shield, Lock, KeyRound, Pencil, Eye, Trash2, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Globe, PanelLeft, FlaskConical, Flag } from "lucide-react";
 import { TIER_LABEL } from "@/lib/tier-gate";
-import {
-  adminListModels,
-  adminSaveModel,
-  adminDeleteModel,
-  adminReorderModels,
-  type StoredModel,
-} from "@/lib/models.functions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,9 +37,6 @@ import {
   adminResetPassword,
   adminSetBan,
   adminDeleteUser,
-  adminListAllChats,
-  adminDeleteChat,
-  adminGetChat,
   getSiteStatus,
   adminSetSiteStatus,
   getOfflineMessage,
@@ -55,6 +44,9 @@ import {
   getFeatureFlags,
   adminSetFeatureFlag,
   adminSetBetaTier,
+  adminListPublicTracks,
+  adminSetTrackPublished,
+  adminDeleteTrack,
 } from "@/lib/admin.functions";
 
 
@@ -65,37 +57,22 @@ import {
 } from "@/lib/admin-config";
 
 const FEATURE_DESCRIPTIONS: Partial<Record<FeatureKey, string>> = {
-  pro_model: "Block sending messages with the DAP AI 4 Pro model.",
-  pro_lite_model: "Block sending messages with the DAP AI 4 Pro Lite model.",
-  lite_model: "Block sending messages with the DAP AI 4 Lite model.",
-  daps: "Hide the /daps page and disable starting Custom AI chats.",
   games: "Hide the whole arcade: the sidebar link, /games and every game.",
 };
 
 /** The console's sections, in the order they appear. */
 const SECTIONS = [
   { id: "users", label: "Users", icon: Shield },
-  { id: "chats", label: "All Chats", icon: MessageSquare },
-  { id: "models", label: "Models", icon: Cpu },
+  { id: "site", label: "Site", icon: Cpu },
   { id: "pages", label: "Pages", icon: Eye },
   { id: "sidebar", label: "Sidebar", icon: PanelLeft },
   { id: "beta", label: "Beta", icon: FlaskConical },
   { id: "arcade", label: "Arcade", icon: Gamepad2 },
-  { id: "rooms", label: "Study Rooms", icon: Gamepad2 },
-  { id: "daps", label: "DAP Review", icon: Sparkles },
+  { id: "tracks", label: "DAP Track", icon: Flag },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
 
 
-import {
-  adminListStudyRooms,
-  adminDeleteStudyRoom,
-  adminRestoreStudyRoom,
-} from "@/lib/study-rooms.functions";
-import {
-  adminListDapSubmissions,
-  adminReviewDap,
-} from "@/lib/custom-daps.functions";
 import {
   SITE_STATUSES,
   SITE_STATUS_LABELS,
@@ -106,7 +83,7 @@ import {
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Console — DAP AI" },
+      { title: "Admin Console — DAP Games" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -242,23 +219,11 @@ function Admin() {
           <TabsContent value="users" className="mt-6">
             <UsersTab />
           </TabsContent>
-          <TabsContent value="chats" className="mt-6">
-            <ChatsTab />
-          </TabsContent>
-          <TabsContent value="models" className="mt-6 space-y-6">
+          <TabsContent value="site" className="mt-6 space-y-6">
             <SiteTab />
-            <FeatureList
-              title="Models"
-              description="Turn an individual DAP AI model off for everyone."
-              keys={FEATURE_GROUPS.models}
-            />
-            <ModelManager />
           </TabsContent>
-          <TabsContent value="rooms" className="mt-6">
-            <StudyRoomsTab />
-          </TabsContent>
-          <TabsContent value="daps" className="mt-6">
-            <DapReviewTab />
+          <TabsContent value="tracks" className="mt-6">
+            <TrackReviewTab />
           </TabsContent>
           <TabsContent value="pages" className="mt-6">
             <FeatureList
@@ -820,181 +785,6 @@ function ResetPasswordDialog({
   );
 }
 
-function ChatsTab() {
-  const qc = useQueryClient();
-  const listAll = useServerFn(adminListAllChats);
-  const getOne = useServerFn(adminGetChat);
-  const removeChat = useServerFn(adminDeleteChat);
-  const send = useServerFn(sendChatMessage);
-
-  const chatsQuery = useQuery({
-    queryKey: ["admin", "all-chats"],
-    queryFn: () => listAll(),
-  });
-
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
-  const detail = useQuery({
-    queryKey: ["admin", "chat", openId],
-    queryFn: () => getOne({ data: { chatId: openId! } }),
-    enabled: !!openId,
-  });
-
-  const del = useMutation({
-    mutationFn: (id: string) => removeChat({ data: { chatId: id } }),
-    onSuccess: () => {
-      toast.success("Chat deleted");
-      setOpenId(null);
-      qc.invalidateQueries({ queryKey: ["admin", "all-chats"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const reply = useMutation({
-    mutationFn: (text: string) =>
-      send({ data: { chatId: openId!, text, model: "dap-ai-lite" } }),
-    onSuccess: () => {
-      setDraft("");
-      qc.invalidateQueries({ queryKey: ["admin", "chat", openId] });
-      qc.invalidateQueries({ queryKey: ["admin", "all-chats"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const chats = chatsQuery.data ?? [];
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <h2 className="text-lg font-semibold">All chats</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Every user's chats. Open one to read it, see the sender's IP per
-        message, reply inside it, or delete it.
-      </p>
-      {chatsQuery.error && (
-        <div className="mt-3 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
-          Failed to load chats: {(chatsQuery.error as Error).message}
-        </div>
-      )}
-      <div className="mt-4 max-h-[560px] overflow-y-auto rounded-md border border-border">
-        {chats.length === 0 && (
-          <div className="p-4 text-sm text-muted-foreground">
-            {chatsQuery.isLoading ? "Loading…" : "No chats yet."}
-          </div>
-        )}
-        {chats.map((c) => (
-          <div
-            key={c.id}
-            className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm hover:bg-muted/40"
-          >
-            <button
-              onClick={() => setOpenId(c.id)}
-              className="min-w-0 flex-1 text-left"
-            >
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate font-medium">{c.title}</span>
-                {/* Kept after the owner deleted it — they cannot see it any
-                    more, so the console has to say which state it is in. */}
-                {c.deleted_at && (
-                  <span className="shrink-0 rounded bg-destructive/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-destructive">
-                    Deleted
-                  </span>
-                )}
-                {c.is_incognito && (
-                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Incognito
-                  </span>
-                )}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {c.user_name || c.user_email || c.user_id.slice(0, 8)} ·{" "}
-                {new Date(c.updated_at).toLocaleString()}
-                {c.deleted_at &&
-                  ` · deleted ${new Date(c.deleted_at).toLocaleString()}`}
-              </div>
-            </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive"
-              aria-label="Delete chat"
-              disabled={del.isPending}
-              onClick={() => {
-                if (
-                  confirm(
-                    "Permanently delete this chat and all of its messages? This removes it from the database for good — a user's own delete only hides it."
-                  )
-                ) {
-                  del.mutate(c.id);
-                }
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      <Dialog
-        open={!!openId}
-        onOpenChange={(o) => {
-          if (!o) {
-            setOpenId(null);
-            setDraft("");
-          }
-        }}
-      >
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Chat conversation</DialogTitle>
-          </DialogHeader>
-          {detail.isLoading && (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          )}
-          {detail.error && (
-            <p className="text-sm text-destructive">
-              Failed to load chat: {(detail.error as Error).message}
-            </p>
-          )}
-          {detail.data && (
-            <div className="space-y-3">
-              {detail.data.messages.length === 0 && (
-                <p className="text-sm text-muted-foreground">Empty chat.</p>
-              )}
-              {detail.data.messages.map((m) => (
-                <div key={m.id} className="rounded-md border border-border p-2">
-                  <div className="mb-1 flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                    <span>{m.role}</span>
-                    {m.model ? <span>· {m.model}</span> : null}
-                    <span className="ml-auto rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] normal-case">
-                      IP: {m.ip ?? "unknown"}
-                    </span>
-                  </div>
-                  <div className="whitespace-pre-wrap text-sm">{m.content}</div>
-                </div>
-              ))}
-
-              <div className="flex items-end gap-2 border-t border-border pt-3">
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Reply in this chat as the user…"
-                  rows={2}
-                  className="flex-1 resize-none rounded-md border border-border bg-background p-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
-                />
-                <Button
-                  disabled={!draft.trim() || reply.isPending}
-                  onClick={() => reply.mutate(draft.trim())}
-                >
-                  {reply.isPending ? "Sending…" : "Send"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
 
 
 function SiteTab() {
@@ -1345,111 +1135,6 @@ function FeatureList({
  * in it can be told why it is gone. A hard delete would give them "no room
  * with that code", which reads as a fault rather than as a decision.
  */
-function StudyRoomsTab() {
-  const qc = useQueryClient();
-  const listRooms = useServerFn(adminListStudyRooms);
-  const removeRoom = useServerFn(adminDeleteStudyRoom);
-  const restoreRoom = useServerFn(adminRestoreStudyRoom);
-  const [confirming, setConfirming] = useState<{ id: string; name: string } | null>(null);
-
-  const rooms = useQuery({ queryKey: ["admin-rooms"], queryFn: () => listRooms() });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-rooms"] });
-
-  const del = useMutation({
-    mutationFn: (id: string) => removeRoom({ data: { id } }),
-    onSuccess: () => { setConfirming(null); refresh(); toast.success("Room closed."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const restore = useMutation({
-    mutationFn: (id: string) => restoreRoom({ data: { id } }),
-    onSuccess: () => { refresh(); toast.success("Room restored."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  if (rooms.isLoading) return <p className="text-sm text-muted-foreground">Loading rooms…</p>;
-  if (rooms.isError) return <p className="text-sm text-destructive">Couldn't load the rooms.</p>;
-
-  const all = (rooms.data ?? []) as Array<{
-    id: string; code: string; name: string; model: string; is_open: boolean;
-    created_at: string; deleted_at: string | null; host_name: string;
-    member_count: number; message_count: number;
-  }>;
-  const active = all.filter((r) => !r.deleted_at);
-  const closed = all.filter((r) => r.deleted_at);
-
-  const Row = ({ r }: { r: (typeof all)[number] }) => (
-    <li className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-4">
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">
-          {r.name} <span className="font-mono text-xs text-muted-foreground">{r.code}</span>
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {r.host_name} · {r.member_count} member{r.member_count === 1 ? "" : "s"} ·{" "}
-          {r.message_count} message{r.message_count === 1 ? "" : "s"} · {r.model}
-        </p>
-      </div>
-      {r.deleted_at ? (
-        <Button size="sm" variant="outline" disabled={restore.isPending}
-          onClick={() => restore.mutate(r.id)}>Restore</Button>
-      ) : (
-        <>
-          {/* Opens the room without joining it: no membership row is
-              written and no presence is broadcast, so the people in the
-              room see no change. Reading only — posting is disabled there,
-              since a message would announce who sent it. */}
-          <Button asChild size="sm" variant="outline">
-            <Link to="/rooms/$code" params={{ code: r.code }} title="Read this room without appearing in it">
-              <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Join room
-            </Link>
-          </Button>
-          <Button size="sm" variant="outline" className="text-destructive"
-            onClick={() => setConfirming({ id: r.id, name: r.name })}>
-            <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
-          </Button>
-        </>
-      )}
-    </li>
-  );
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-sm font-medium">Active ({active.length})</h2>
-        {active.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">No rooms open right now.</p>
-        ) : (
-          <ul className="mt-3 space-y-2">{active.map((r) => <Row key={r.id} r={r} />)}</ul>
-        )}
-      </div>
-      {closed.length > 0 && (
-        <div>
-          <h2 className="text-sm font-medium">Closed ({closed.length})</h2>
-          <ul className="mt-3 space-y-2 opacity-70">{closed.map((r) => <Row key={r.id} r={r} />)}</ul>
-        </div>
-      )}
-
-      <Dialog open={!!confirming} onOpenChange={(o) => !o && setConfirming(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Close "{confirming?.name}" down?</DialogTitle>
-            <DialogDescription>
-              Everyone in it will see: "Sorry, this room has been deleted by the
-              admin. Please contact us for any inquiries." You can restore it later.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => setConfirming(null)}>Keep it</Button>
-            <Button className="text-destructive-foreground" style={{ background: "hsl(var(--destructive))" }}
-              disabled={del.isPending}
-              onClick={() => confirming && del.mutate(confirming.id)}>
-              {del.isPending ? "Closing…" : "Close it down"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
 
 /**
  * Custom DAPs waiting to go on the marketplace.
@@ -1578,153 +1263,3 @@ function DapReviewTab() {
  * what the hardware is asked for. The form says that where it is relevant
  * rather than in a note nobody reads.
  */
-function ModelManager() {
-  const qc = useQueryClient();
-  const list = useServerFn(adminListModels);
-  const save = useServerFn(adminSaveModel);
-  const remove = useServerFn(adminDeleteModel);
-  const reorder = useServerFn(adminReorderModels);
-  const [draft, setDraft] = useState<StoredModel | null>(null);
-
-  const models = useQuery({ queryKey: ["admin-models"], queryFn: () => list() });
-  const refresh = () => {
-    qc.invalidateQueries({ queryKey: ["admin-models"] });
-    qc.invalidateQueries({ queryKey: ["models"] });
-  };
-
-  const saveMut = useMutation({
-    mutationFn: (m: StoredModel) => save({ data: m }),
-    onSuccess: () => { setDraft(null); refresh(); toast.success("Model saved."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const delMut = useMutation({
-    mutationFn: (id: string) => remove({ data: { id } }),
-    onSuccess: () => { refresh(); toast.success("Model removed."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  const orderMut = useMutation({
-    mutationFn: (ids: string[]) => reorder({ data: { ids } }),
-    onSuccess: () => { refresh(); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const rows = (models.data ?? []) as StoredModel[];
-  const move = (i: number, dir: -1 | 1) => {
-    const next = [...rows];
-    const j = i + dir;
-    if (j < 0 || j >= next.length) return;
-    [next[i], next[j]] = [next[j]!, next[i]!];
-    orderMut.mutate(next.map((m) => m.id));
-  };
-
-  const blank: StoredModel = {
-    id: "", label: "", description: "", min_tier: "free",
-    lite: true, enabled: true, sort_order: (rows.length + 1) * 10,
-  };
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-6">
-      <h2 className="text-lg font-semibold">Model list</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        What the picker offers, top to bottom. The name is sent to the
-        inference hardware exactly as written here — renaming a model changes
-        which one it asks for.
-      </p>
-
-      {models.isLoading ? (
-        <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
-      ) : models.isError ? (
-        <p className="mt-4 text-sm text-destructive">Couldn&rsquo;t load the models.</p>
-      ) : (
-        <ul className="mt-5 space-y-2">
-          {rows.map((m, i) => (
-            <li key={m.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3">
-              <div className="flex flex-col gap-1">
-                <Button size="sm" variant="outline" className="h-6 w-6 p-0"
-                  disabled={i === 0 || orderMut.isPending} onClick={() => move(i, -1)}
-                  aria-label="Move up">↑</Button>
-                <Button size="sm" variant="outline" className="h-6 w-6 p-0"
-                  disabled={i === rows.length - 1 || orderMut.isPending} onClick={() => move(i, 1)}
-                  aria-label="Move down">↓</Button>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">
-                  {m.label}{" "}
-                  <span className="font-mono text-xs text-muted-foreground">{m.id}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {TIER_LABEL[m.min_tier as keyof typeof TIER_LABEL] ?? m.min_tier} and up ·{" "}
-                  {m.lite ? "lite backend" : "full backend"} ·{" "}
-                  {m.enabled ? "shown in the picker" : "hidden"}
-                </p>
-              </div>
-              <Button size="sm" variant="outline" onClick={() => setDraft(m)}>
-                <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit
-              </Button>
-              <Button size="sm" variant="outline" className="text-destructive"
-                disabled={delMut.isPending}
-                onClick={() => delMut.mutate(m.id)}>
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <Button className="mt-4" size="sm" variant="outline" onClick={() => setDraft(blank)}>
-        <Plus className="mr-1.5 h-3.5 w-3.5" /> Add a model
-      </Button>
-
-      {draft && (
-        <div className="mt-5 space-y-3 rounded-xl border border-border bg-muted/30 p-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">
-              <span className="text-muted-foreground">Name shown to users, and sent to the hardware</span>
-              <Input className="mt-1" value={draft.label}
-                onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
-            </label>
-            <label className="text-sm">
-              <span className="text-muted-foreground">Internal id (cannot change later)</span>
-              <Input className="mt-1 font-mono" value={draft.id}
-                disabled={rows.some((r) => r.id === draft.id)}
-                placeholder="dap-ai-something"
-                onChange={(e) => setDraft({ ...draft, id: e.target.value })} />
-            </label>
-          </div>
-          <label className="block text-sm">
-            <span className="text-muted-foreground">Description under the picker</span>
-            <Input className="mt-1" value={draft.description}
-              onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-          </label>
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="text-sm">
-              <span className="text-muted-foreground">Minimum plan</span>
-              <select className="ml-2 rounded-md border border-border bg-background px-2 py-1 text-sm"
-                value={draft.min_tier}
-                onChange={(e) => setDraft({ ...draft, min_tier: e.target.value })}>
-                {["free", "go", "pro", "exclusive"].map((t) => (
-                  <option key={t} value={t}>{TIER_LABEL[t as keyof typeof TIER_LABEL] ?? t}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={draft.lite}
-                onChange={(e) => setDraft({ ...draft, lite: e.target.checked })} />
-              Lite backend (text only)
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={draft.enabled}
-                onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />
-              Show in the picker
-            </label>
-          </div>
-          <div className="flex gap-2">
-            <Button size="sm" disabled={!draft.id || !draft.label || saveMut.isPending}
-              onClick={() => saveMut.mutate(draft)}>Save</Button>
-            <Button size="sm" variant="outline" onClick={() => setDraft(null)}>Cancel</Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
