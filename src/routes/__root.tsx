@@ -4,23 +4,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarSwipeGestures } from "@/components/sidebar-swipe-gestures";
-import { AiReplyListener } from "@/components/ai-reply-listener";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Toaster } from "@/components/ui/sonner";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { EyeOff, Eye, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { UpgradeGateProvider, useUpgradeGate } from "@/lib/tier-gate";
+import { UpgradeGateProvider } from "@/lib/tier-gate";
 import { AccountSetupGate } from "@/components/account-setup-gate";
 import { SuspendedGate } from "@/components/suspended-gate";
 
@@ -29,10 +18,11 @@ import { AppContextMenu } from "@/components/app-context-menu";
 import { InstallAppButton } from "@/components/install-app-button";
 import { registerServiceWorker } from "@/lib/register-sw";
 import { useTheme } from "@/lib/theme";
-import { LINKTREE_URL } from "@/lib/plans";
 import { pageFlagFor, useFeatureGuard } from "@/lib/feature-guard";
+import { ProDialog } from "@/components/pro-dialog";
+import { AdSenseScript } from "@/components/ads/adsense-script";
 
-import { getProfile } from "@/lib/chats.functions";
+import { getMyProfile } from "@/lib/profile.functions";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
 import {
   getPublicSiteConfig,
@@ -45,18 +35,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "application-name", content: "DAP AI" },
-      { name: "apple-mobile-web-app-title", content: "DAP AI" },
+      { name: "application-name", content: "DAP Games" },
+      { name: "apple-mobile-web-app-title", content: "DAP Games" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "theme-color", content: "#090d15" },
-      { property: "og:site_name", content: "DAP AI" },
+      { property: "og:site_name", content: "DAP Games" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "google-site-verification", content: "ihyVMpSKja5zvyeVXgKwlPewFA3s5qzQJX9FolcYAHI" },
-      { property: "og:image", content: "https://dapai.lovable.app/og-image.png" },
-      { name: "twitter:image", content: "https://dapai.lovable.app/og-image.png" },
+      { property: "og:image", content: "https://dapgames.lovable.app/og-image.png" },
+      { name: "twitter:image", content: "https://dapgames.lovable.app/og-image.png" },
 
     ],
     links: [
@@ -74,16 +64,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@graph": [
             {
               "@type": "Organization",
-              name: "DAP AI",
-              alternateName: ["DAP AI Chatbot", "DAPAI", "dapai"],
-              url: "https://dapai.lovable.app/",
-              logo: "https://dapai.lovable.app/favicon.png",
+              name: "DAP Games",
+              alternateName: ["DAP Games Arcade", "DAPGames", "dapgames"],
+              url: "https://dapgames.lovable.app/",
+              logo: "https://dapgames.lovable.app/favicon.png",
             },
             {
               "@type": "WebSite",
-              name: "DAP AI",
-              alternateName: "DAP AI Chatbot",
-              url: "https://dapai.lovable.app/",
+              name: "DAP Games",
+              alternateName: "DAP Games Arcade",
+              url: "https://dapgames.lovable.app/",
             },
           ],
 
@@ -171,7 +161,7 @@ function RootComponent() {
         <AppContextMenu>
           <SidebarProvider>
             <SidebarSwipeGestures />
-            <AiReplyListener />
+            <AdSenseScript />
             <div className="flex min-h-screen w-full bg-background">
               <AppSidebar />
               {/* min-w-0: a flex item defaults to min-width:auto, so this
@@ -201,54 +191,11 @@ function RootComponent() {
   );
 }
 
-function IncognitoToggle() {
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setOn(localStorage.getItem("dap.incognito") === "1");
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { key: string; value: boolean } | undefined;
-      if (detail?.key === "dap.incognito") setOn(!!detail.value);
-    };
-    window.addEventListener("dap.setting", handler);
-    return () => window.removeEventListener("dap.setting", handler);
-  }, []);
-  const toggle = () => {
-    const next = !on;
-    setOn(next);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("dap.incognito", next ? "1" : "0");
-      window.dispatchEvent(new CustomEvent("dap.setting", { detail: { key: "dap.incognito", value: next } }));
-      document.documentElement.classList.toggle("incognito", next);
-    }
-  };
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant={on ? "default" : "ghost"}
-            size="sm"
-            onClick={toggle}
-            className="gap-1.5"
-            aria-pressed={on}
-            aria-label={on ? "Incognito on — hide this chat from your history" : "Incognito off"}
-          >
-            {on ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            <span>Incognito</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{on ? "Incognito on — kept out of your chat history" : "Incognito — keep a chat out of your history"}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
 function HeaderBar() {
   const { user } = useAuth();
-  const { openUpgrade } = useUpgradeGate();
+  const [proOpen, setProOpen] = useState(false);
 
-  const fetchProfile = useServerFn(getProfile);
+  const fetchProfile = useServerFn(getMyProfile);
   const profileQuery = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: () => fetchProfile(),
@@ -257,9 +204,6 @@ function HeaderBar() {
   const isPro =
     TIER_RANK[(profileQuery.data?.tier as Tier | undefined) ?? "free"] >=
     TIER_RANK.pro;
-
-  const headerPath = useRouterState({ select: (st) => st.location.pathname });
-  const isHome = headerPath === "/";
 
   /* The two groups inside the header were flex items with nothing
      stopping them growing, so on a phone the account controls pushed it
@@ -279,34 +223,22 @@ function HeaderBar() {
       </div>
       <div className="flex min-w-0 shrink items-center gap-2">
         <InstallAppButton />
-        {/* Home only, and signed in only. It was in the header on every
-            page, where on a phone it collapsed to a bare eye with no label
-            — a control nobody could identify, sitting one tap from turning
-            itself on. Starting a chat is the only moment the choice means
-            anything, so that is the only place it appears.
 
-            Signed out it meant even less than that: every model is locked
-            behind sign-in, so a visitor cannot start a chat for it to hide,
-            and it was charging ~110px of a 412px header for the privilege
-            — which is what pushed Sign up off the screen. */}
-        {user && isHome && <IncognitoToggle />}
-
-        {user && !isPro && (
+        {!isPro && (
           <Button
-            asChild
             size="sm"
+            onClick={() => setProOpen(true)}
             className="animate-pulse-glow gap-1 rounded-full px-3 font-semibold text-primary-foreground shadow-md transition-transform hover:scale-105"
             style={{ background: "var(--gradient-brand)" }}
           >
-            <Link to="/account">
-              <Sparkles className="h-3.5 w-3.5" />
-              Upgrade
-            </Link>
+            <Sparkles className="h-3.5 w-3.5" />
+            Go Pro — no ads
           </Button>
         )}
 
         <AccountMenu />
       </div>
+      <ProDialog open={proOpen} onOpenChange={setProOpen} />
     </header>
   );
 }
@@ -325,13 +257,10 @@ function RouteTransition({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Footer link, on every page except the chat surface itself.
- *
- * The main page and a thread are one continuous scroll ending at the
- * composer; a footer under that would sit below the input box or push
- * it off screen, so those are excluded by path.
+ * Footer link, on every page except the game surfaces themselves, where a
+ * footer would sit under the board or push the controls off screen.
  */
-const FOOTERLESS = ["/", "/c", "/chat"];
+const FOOTERLESS = ["/", "/games"];
 
 function SiteFooter() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -340,14 +269,7 @@ function SiteFooter() {
 
   return (
     <footer className="border-t border-border px-6 py-6 text-center">
-      <a
-        href={LINKTREE_URL}
-        target="_blank"
-        rel="noreferrer"
-        className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-      >
-        {LINKTREE_URL.replace(/^https?:\/\//, "")}
-      </a>
+      <span className="text-xs text-muted-foreground">DAP Games</span>
     </footer>
   );
 }
