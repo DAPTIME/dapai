@@ -2,10 +2,11 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /settings
+Disallow: /security
 Disallow: /login
 Disallow: /signup
 Disallow: /forgot-password
-Disallow: /c/
-Disallow: /rooms/
+Disallow: /reset-password
+Disallow: /account
 
-Sitemap: https://dapai.lovable.app/sitemap.xml
+Sitemap: https://dapgames.lovable.app/sitemap.xml

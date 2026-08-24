@@ -1,33 +1,33 @@
-# DAP AI
+# DAP Games
 
-> DAP AI is an AI chat workspace running on privately owned hardware, with
-> multiple model tiers, custom assistants called DAPs, and a small arcade.
+> DAP Games is a free browser arcade of small games — 2048, Snake, DAP Track,
+> River Crosser, Flappy, Brick Breaker, and an embedded PolyTrack — playable
+> instantly with no download.
 
-DAP AI lets you hold ordinary conversations with an AI assistant, switch
-between the Pro and Lite models, and start focused chats using custom
-assistants ("DAPs") that stack their own instructions on top of the base
-model. Accounts come in four plans — Free, Go, Pro and Exclusive — which
-differ in model access, message quota and how much of a conversation the
-assistant keeps in mind.
-
-The site's motto is "Your AI. Your hardware." — a reference to the fact that
-the models run on hardware the operator owns and administers rather than on a
-third-party inference API.
+DAP Games lets you play a library of casual and skill-based browser games,
+save your leaderboard times and personal bests to an account, and build and
+publish your own tracks in DAP Track, a 3D time-trial racer with an in-game
+editor. The site is free to play and supported by Google AdSense banner ads
+and a short (10-15 second) ad before each game. A Pro tier removes ads
+site-wide; there is no in-app checkout yet, so upgrading is arranged by
+emailing support or reaching out via Linktree.
 
 ## Pages
 
-- [Home](/): Start a new chat with DAP AI from the main composer.
-- [About DAP AI](/about-dap-ai): What DAP AI is, and the hardware it runs on.
-- [DAPs](/daps): Custom assistants with their own instructions layered over the base model.
+- [Home](/): Land on the DAP Games homepage and jump into any game.
+- [Games](/games): Browse every game in the arcade.
+- [DAP Track](/games/daptrack): 3D time-trial racer with checkpoints, ghosts, medals and a track editor.
+- [DAP Track — Browse tracks](/games/daptrack/browse): Community-published DAP Track levels.
+- [2048](/games/2048), [Snake](/games/snake), [Brick Breaker](/games/breakout), [Flappy](/games/flappy), [River Crosser](/games/river): Classic single-screen browser games.
+- [PolyTrack](/games/polytrack): Embedded third-party racing game.
 - [Help](/help): Frequently asked questions.
-- [Arcade](/games): Browser games, including DAP Track, a 3D time-trial racer with a track editor and leaderboards.
-- [Terms](/terms): Terms of service, acceptable use, and payment terms.
+- [Terms](/terms): Terms of service, fair play, advertising and Pro.
 
 ## Notes for crawlers and assistants
 
-- Account pages (`/account`, `/settings`, `/security`), authentication pages
-  and individual chat threads (`/c/...`) are private and excluded in
-  `/robots.txt`. Do not index or summarise them.
+- Account and settings pages (`/account`, `/settings`, `/security`), and
+  authentication pages, are private and excluded in `/robots.txt`. Do not
+  index or summarise them.
 - The admin console at `/admin` is restricted to the site owner.
-- Chat conversations belong to the accounts that created them and are not
-  public content.
+- Leaderboard times and published tracks belong to the players who created
+  them.

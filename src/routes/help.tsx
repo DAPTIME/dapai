@@ -1,81 +1,70 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { LINKTREE_URL, SUPPORT_EMAIL } from "@/lib/plans";
 
 const FAQS = [
   {
-    q: "Is DAP AI connected to a real AI?",
-    a: "Yes — DAP AI routes requests to one of two models (DAP AI 4 Pro and DAP AI 4 Lite) and streams responses back into your chat.",
+    q: "What is DAP Games?",
+    a: "DAP Games is a free browser arcade — 2048, Snake, DAP Track, River Crosser, Flappy, Brick Breaker, and more, all playable instantly with no download.",
   },
   {
-    q: "How do I start a new chat?",
-    a: "Click 'New chat' in the sidebar, the DAP AI logo at the top, or pick a DAP from the DAPs tab.",
+    q: "How do I play a game?",
+    a: "Open the Games page from the sidebar and click any game tile. Most games use arrow keys or WASD; touch controls appear automatically on phones and tablets.",
   },
   {
-    q: "Where do my conversations go?",
-    a: "Recent chats appear under the Chats section in the sidebar. Free accounts keep 5 chats; Pro accounts keep 10.",
+    q: "Do I need an account to play?",
+    a: "No — every game works as a guest. Creating a free account lets you save leaderboard times and track records across visits and devices.",
   },
   {
-    q: "What's the difference between the Pro and Lite models?",
-    a: "DAP AI 4 Pro is the stronger model with better reasoning. DAP AI 4 Lite is faster and unlimited. Free accounts get 5 Pro messages, then switch to Lite automatically.",
+    q: "How are leaderboard times and records saved?",
+    a: "When you're signed in, your best times and records sync to your account. As a guest, progress may only be stored in your browser and can be lost if you clear browser data or switch devices.",
   },
   {
-    q: "What are DAPs?",
-    a: "DAPs are custom AI personas you can create. Each DAP has its own instructions and personality, so you can build a Coding Mentor, a Sous Chef, a Study Buddy — whatever you need.",
+    q: "What is DAP Track?",
+    a: "DAP Track is our 3D time-trial racer with checkpoints, ghosts, medals, and a built-in track editor. You can build your own tracks and publish them for other players.",
   },
   {
-    q: "How do I create a custom DAP?",
-    a: "Go to the DAPs page, scroll to 'New custom DAP', give it a name, emoji, and instructions. Once saved, it appears in your DAP list and you can start chats with it.",
+    q: "How do I report a bad or broken track?",
+    a: "Use the report option on the track's page, or email us at " + SUPPORT_EMAIL + " with a link to the track and a short description of the problem.",
   },
   {
-    q: "Can I delete a custom DAP?",
-    a: "Yes. On the DAPs page, click the trash icon next to any custom DAP you created. This also removes it from the sidebar.",
+    q: "I forgot my password. How do I recover my account?",
+    a: "Use 'Forgot password' on the login page. If you set a recovery question, you can use it to reset your password from the Security page while signed in.",
   },
   {
-    q: "How do I switch models mid-chat?",
-    a: "You don't need to. If you have Pro messages remaining, DAP AI 4 Pro is used automatically. Once those run out, Lite kicks in. You can upgrade to Pro anytime for more Pro messages.",
+    q: "Why do I see ads before a game loads?",
+    a: "DAP Games is free and supported by a short (10-15 second) video ad before each game, plus banner ads around the site. This keeps every game free to play.",
   },
   {
-    q: "Does DAP AI remember my chats?",
-    a: "Yes — each chat thread keeps full context, so the AI remembers what you discussed earlier in that conversation.",
-  },
-  {
-    q: "Keyboard shortcuts",
-    a: "Press Cmd/Ctrl + Enter to send a message. Press Escape to close modals or collapse open panels.",
+    q: "How do I remove ads?",
+    a: "Upgrading to Pro removes ads everywhere on the site. There's no in-app checkout yet — email us at " + SUPPORT_EMAIL + " or reach out via our Linktree and we'll set it up with you directly.",
   },
   {
     q: "Is my data private?",
-    a: "Chats are tied to your account and protected by Row Level Security in our backend. Only you can read your own conversations.",
+    a: "Your account data and saved times are tied to your account and protected by Row Level Security in our backend — only you can read your own records.",
   },
   {
-    q: "How do I upgrade to Pro?",
-    a: "Click your profile in the sidebar, then 'Manage subscription' to upgrade. Pro unlocks more Pro model messages and a larger chat history.",
-  },
-  {
-    q: "The AI gave a weird or wrong answer. What should I do?",
-    a: "Try rephrasing your question or giving more context. You can also start a fresh chat — sometimes a clean thread helps. If it's consistently wrong, let us know through the feedback option.",
-  },
-  {
-    q: "Can I use DAP AI on mobile?",
-    a: "Yes. The site is fully responsive and works on phones and tablets. Just visit the same URL on any device.",
+    q: "Can I play DAP Games on mobile?",
+    a: "Yes. The site is fully responsive and most games support touch controls. Just visit the same URL on any device.",
   },
 ];
 
 export const Route = createFileRoute("/help")({
   head: () => ({
     meta: [
-      { title: "Help & FAQ — DAP AI" },
+      { title: "Help & FAQ — DAP Games" },
       {
         name: "description",
         content:
-          "Answers to common DAP AI questions: starting chats, managing history, model differences, DAPs, and account tiers.",
+          "Answers to common DAP Games questions: how to play, saving leaderboard times, accounts, ads, Pro, and reporting tracks.",
       },
-      { property: "og:title", content: "Help & FAQ — DAP AI" },
+      { property: "og:title", content: "Help & FAQ — DAP Games" },
       {
         property: "og:description",
-        content: "Answers to common DAP AI questions.",
+        content: "Answers to common DAP Games questions.",
       },
-      { property: "og:url", content: "https://dapai.lovable.app/help" },
+      { property: "og:url", content: "https://dapgames.lovable.app/help" },
     ],
-    links: [{ rel: "canonical", href: "https://dapai.lovable.app/help" }],
+    links: [{ rel: "canonical", href: "https://dapgames.lovable.app/help" }],
     scripts: [
       {
         type: "application/ld+json",
@@ -111,6 +100,17 @@ function Help() {
           </details>
         ))}
       </div>
+      <p className="mt-8 text-sm text-muted-foreground">
+        Still stuck? Email{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary underline">
+          {SUPPORT_EMAIL}
+        </a>{" "}
+        or find us via{" "}
+        <a href={LINKTREE_URL} className="text-primary underline" target="_blank" rel="noreferrer">
+          our Linktree
+        </a>
+        .
+      </p>
     </div>
   );
 }
