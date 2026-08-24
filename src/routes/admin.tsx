@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -17,16 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { sendChatMessage } from "@/lib/chats.functions";
-import { Cpu, Shield, Lock, MessageSquare, KeyRound, Pencil, Eye, Trash2, Plus, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Sparkles, Globe, EyeOff, PanelLeft, FlaskConical } from "lucide-react";
+import { Cpu, Shield, Lock, KeyRound, Pencil, Eye, Trash2, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Globe, PanelLeft, FlaskConical, Flag } from "lucide-react";
 import { TIER_LABEL } from "@/lib/tier-gate";
-import {
-  adminListModels,
-  adminSaveModel,
-  adminDeleteModel,
-  adminReorderModels,
-  type StoredModel,
-} from "@/lib/models.functions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,9 +37,6 @@ import {
   adminResetPassword,
   adminSetBan,
   adminDeleteUser,
-  adminListAllChats,
-  adminDeleteChat,
-  adminGetChat,
   getSiteStatus,
   adminSetSiteStatus,
   getOfflineMessage,
@@ -55,6 +44,9 @@ import {
   getFeatureFlags,
   adminSetFeatureFlag,
   adminSetBetaTier,
+  adminListPublicTracks,
+  adminSetTrackPublished,
+  adminDeleteTrack,
 } from "@/lib/admin.functions";
 
 
@@ -65,37 +57,22 @@ import {
 } from "@/lib/admin-config";
 
 const FEATURE_DESCRIPTIONS: Partial<Record<FeatureKey, string>> = {
-  pro_model: "Block sending messages with the DAP AI 4 Pro model.",
-  pro_lite_model: "Block sending messages with the DAP AI 4 Pro Lite model.",
-  lite_model: "Block sending messages with the DAP AI 4 Lite model.",
-  daps: "Hide the /daps page and disable starting Custom AI chats.",
   games: "Hide the whole arcade: the sidebar link, /games and every game.",
 };
 
 /** The console's sections, in the order they appear. */
 const SECTIONS = [
   { id: "users", label: "Users", icon: Shield },
-  { id: "chats", label: "All Chats", icon: MessageSquare },
-  { id: "models", label: "Models", icon: Cpu },
+  { id: "site", label: "Site", icon: Cpu },
   { id: "pages", label: "Pages", icon: Eye },
   { id: "sidebar", label: "Sidebar", icon: PanelLeft },
   { id: "beta", label: "Beta", icon: FlaskConical },
   { id: "arcade", label: "Arcade", icon: Gamepad2 },
-  { id: "rooms", label: "Study Rooms", icon: Gamepad2 },
-  { id: "daps", label: "DAP Review", icon: Sparkles },
+  { id: "tracks", label: "DAP Track", icon: Flag },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
 
 
-import {
-  adminListStudyRooms,
-  adminDeleteStudyRoom,
-  adminRestoreStudyRoom,
-} from "@/lib/study-rooms.functions";
-import {
-  adminListDapSubmissions,
-  adminReviewDap,
-} from "@/lib/custom-daps.functions";
 import {
   SITE_STATUSES,
   SITE_STATUS_LABELS,
@@ -106,7 +83,7 @@ import {
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Console — DAP AI" },
+      { title: "Admin Console — DAP Games" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -242,23 +219,11 @@ function Admin() {
           <TabsContent value="users" className="mt-6">
             <UsersTab />
           </TabsContent>
-          <TabsContent value="chats" className="mt-6">
-            <ChatsTab />
-          </TabsContent>
-          <TabsContent value="models" className="mt-6 space-y-6">
+          <TabsContent value="site" className="mt-6 space-y-6">
             <SiteTab />
-            <FeatureList
-              title="Models"
-              description="Turn an individual DAP AI model off for everyone."
-              keys={FEATURE_GROUPS.models}
-            />
-            <ModelManager />
           </TabsContent>
-          <TabsContent value="rooms" className="mt-6">
-            <StudyRoomsTab />
-          </TabsContent>
-          <TabsContent value="daps" className="mt-6">
-            <DapReviewTab />
+          <TabsContent value="tracks" className="mt-6">
+            <TrackReviewTab />
           </TabsContent>
           <TabsContent value="pages" className="mt-6">
             <FeatureList
