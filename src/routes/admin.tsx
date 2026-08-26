@@ -1129,124 +1129,98 @@ function FeatureList({
 
 
 /**
- * Every study room on the site.
+ * Community DAP Track levels people have published.
  *
- * Closing one down is a soft delete: the row stays so the people who were
- * in it can be told why it is gone. A hard delete would give them "no room
- * with that code", which reads as a fault rather than as a decision.
+ * Unpublishing hides a level from the browser but keeps it for its author;
+ * deleting removes it outright, which is why it asks first.
  */
-
-/**
- * Custom DAPs waiting to go on the marketplace.
- *
- * A published DAP's instructions run in front of other people's
- * conversations on the Orin hardware, so the whole prompt is shown here —
- * reviewing a name and an emoji would be reviewing the label, not the thing.
- */
-function DapReviewTab() {
+function TrackReviewTab() {
   const qc = useQueryClient();
-  const listSubs = useServerFn(adminListDapSubmissions);
-  const review = useServerFn(adminReviewDap);
-  const [rejecting, setRejecting] = useState<{ id: string; name: string } | null>(null);
-  const [reason, setReason] = useState("");
+  const list = useServerFn(adminListPublicTracks);
+  const setPublished = useServerFn(adminSetTrackPublished);
+  const remove = useServerFn(adminDeleteTrack);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
-  const subs = useQuery({ queryKey: ["admin-dap-subs"], queryFn: () => listSubs() });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-dap-subs"] });
+  const tracks = useQuery({ queryKey: ["admin-tracks"], queryFn: () => list() });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-tracks"] });
 
-  const decide = useMutation({
-    mutationFn: (v: { id: string; approve: boolean; reason?: string }) =>
-      review({ data: v }),
-    onSuccess: (_r, v) => {
-      setRejecting(null); setReason(""); refresh();
-      toast.success(v.approve ? "Approved and published." : "Rejected. The author will be told.");
-    },
+  const publish = useMutation({
+    mutationFn: (v: { id: string; isPublic: boolean }) => setPublished({ data: v }),
+    onSuccess: (_r, v) => { refresh(); toast.success(v.isPublic ? "Published." : "Unpublished."); },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (subs.isLoading) return <p className="text-sm text-muted-foreground">Loading submissions…</p>;
-  if (subs.isError) return <p className="text-sm text-destructive">Couldn't load submissions.</p>;
+  const del = useMutation({
+    mutationFn: (id: string) => remove({ data: { id } }),
+    onSuccess: () => { setConfirmDelete(null); refresh(); toast.success("Track deleted."); },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
-  const rows = (subs.data ?? []) as Array<{
-    id: string; name: string; emoji: string; description: string;
-    system_prompt: string; author_name: string; author_email: string;
-    submitted_at: string; moderation_status: string; rejection_reason: string | null;
-  }>;
-  const pending = rows.filter((r) => r.moderation_status === "pending");
-  const done = rows.filter((r) => r.moderation_status !== "pending");
+  if (tracks.isLoading) return <p className="text-sm text-muted-foreground">Loading tracks…</p>;
+  if (tracks.isError) return <p className="text-sm text-destructive">Couldn't load tracks.</p>;
+
+  const rows = tracks.data ?? [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-sm font-medium">Waiting ({pending.length})</h2>
-        {pending.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Nothing to review.</p>
-        ) : (
-          <ul className="mt-3 space-y-3">
-            {pending.map((d) => (
-              <li key={d.id} className="rounded-xl border border-border bg-card p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xl" aria-hidden>{d.emoji}</span>
-                  <span className="font-medium">{d.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    by {d.author_name} ({d.author_email})
-                  </span>
+    <div className="rounded-2xl border border-border bg-card p-6">
+      <h2 className="text-lg font-semibold">Community tracks ({rows.length})</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Every level someone has shared. Unpublish takes it out of the browser
+        and leaves it with its author; delete removes it for good.
+      </p>
+      {rows.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">Nothing shared yet.</p>
+      ) : (
+        <ul className="mt-5 divide-y divide-border">
+          {rows.map((t) => (
+            <li key={t.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex-1">
+                <div className="font-medium">{t.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t.season} · {t.play_count} plays · {t.owner_email ?? t.owner_id}
+                  {!t.is_public && " · unpublished"}
                 </div>
-                {d.description && (
-                  <p className="mt-1 text-sm text-muted-foreground">{d.description}</p>
-                )}
-                <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-muted/40 p-3 text-xs">
-                  {d.system_prompt}
-                </pre>
-                <div className="mt-3 flex gap-2">
-                  <Button size="sm" className="text-primary-foreground"
-                    style={{ background: "var(--gradient-brand)" }}
-                    disabled={decide.isPending}
-                    onClick={() => decide.mutate({ id: d.id, approve: true })}>
-                    <Globe className="mr-1.5 h-3.5 w-3.5" /> Approve
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-destructive"
-                    onClick={() => setRejecting({ id: d.id, name: d.name })}>
-                    Reject
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {done.length > 0 && (
-        <div>
-          <h2 className="text-sm font-medium">Previously rejected ({done.length})</h2>
-          <ul className="mt-3 space-y-2 text-sm opacity-70">
-            {done.map((d) => (
-              <li key={d.id} className="rounded-xl border border-border bg-card p-3">
-                <span aria-hidden>{d.emoji}</span> <span className="font-medium">{d.name}</span>
-                {d.rejection_reason && (
-                  <span className="text-muted-foreground"> — {d.rejection_reason}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={publish.isPending}
+                  onClick={() => publish.mutate({ id: t.id, isPublic: !t.is_public })}
+                >
+                  {t.is_public ? "Unpublish" : "Publish"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-destructive"
+                  onClick={() => setConfirmDelete({ id: t.id, name: t.name })}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
 
-      <Dialog open={!!rejecting} onOpenChange={(o) => !o && setRejecting(null)}>
+      <Dialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reject "{rejecting?.name}"?</DialogTitle>
+            <DialogTitle>Delete "{confirmDelete?.name}"?</DialogTitle>
             <DialogDescription>
-              It stays private and the author is told next time they open the
-              Custom AI's page. A reason helps them fix it.
+              The level and its times are removed for everyone, including its
+              author. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <Input value={reason} onChange={(e) => setReason(e.target.value)}
-            placeholder="Why not? (optional)" maxLength={300} />
           <DialogFooter className="gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => setRejecting(null)}>Cancel</Button>
-            <Button disabled={decide.isPending}
-              onClick={() => rejecting && decide.mutate({ id: rejecting.id, approve: false, reason })}>
-              {decide.isPending ? "Rejecting…" : "Reject"}
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+            <Button
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={del.isPending}
+              onClick={() => confirmDelete && del.mutate(confirmDelete.id)}
+            >
+              {del.isPending ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1254,12 +1228,3 @@ function DapReviewTab() {
     </div>
   );
 }
-
-/**
- * Add, rename, reorder, enable and remove the models the picker offers.
- *
- * The label is the part that matters operationally: it is sent to the
- * orchestrator verbatim as the model to route on, so renaming one changes
- * what the hardware is asked for. The form says that where it is relevant
- * rather than in a note nobody reads.
- */

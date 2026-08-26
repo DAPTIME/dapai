@@ -14,7 +14,7 @@ import {
   type AdminCheckProblem,
 } from "@/lib/admin.server";
 import { assertAdminSecret } from "@/lib/admin-secret.server";
-import { FEATURE_KEYS, MODEL_IDS, type FeatureKey } from "@/lib/admin-config";
+import { FEATURE_KEYS, type FeatureKey } from "@/lib/admin-config";
 import { DEFAULT_OFFLINE_MESSAGE } from "@/lib/site-config.functions";
 import { SITE_STATUSES, parseSiteStatus, type SiteStatus } from "@/lib/site-status";
 
@@ -491,6 +491,58 @@ export const adminSetFeatureFlag = createServerFn({ method: "POST" })
       system_prompt: data.enabled ? "on" : "off",
       updated_at: new Date().toISOString(),
     });
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
+
+/** Every community DAP Track level, newest first, for moderation. */
+export const adminListPublicTracks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId, context.supabase);
+    const supabaseAdmin = getAdminClient();
+    const { data, error } = await supabaseAdmin
+      .from("custom_tracks")
+      .select("id, name, season, is_public, play_count, owner_id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw dbError(error);
+    const ownerIds = Array.from(new Set((data ?? []).map((t) => t.owner_id)));
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email")
+      .in("id", ownerIds.length ? ownerIds : ["00000000-0000-0000-0000-000000000000"]);
+    const emails = new Map((profiles ?? []).map((p) => [p.id, p.email]));
+    return (data ?? []).map((t) => ({
+      ...t,
+      owner_email: emails.get(t.owner_id) ?? null,
+    }));
+  });
+
+/** Show or hide a community track in the browser. */
+export const adminSetTrackPublished = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid(), isPublic: z.boolean() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId, context.supabase);
+    const supabaseAdmin = getAdminClient();
+    const { error } = await supabaseAdmin
+      .from("custom_tracks")
+      .update({ is_public: data.isPublic })
+      .eq("id", data.id);
+    if (error) throw dbError(error);
+    return { ok: true };
+  });
+
+/** Remove a community track outright. */
+export const adminDeleteTrack = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId, context.supabase);
+    const supabaseAdmin = getAdminClient();
+    const { error } = await supabaseAdmin.from("custom_tracks").delete().eq("id", data.id);
     if (error) throw dbError(error);
     return { ok: true };
   });
