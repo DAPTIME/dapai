@@ -66,4 +66,14 @@ export const FEATURE_GROUPS = {
     "game_flappy",
     "game_breakout",
   ],
+  // Anything that can be put behind a plan while it is still being tested.
+  beta: [
+    "games",
+    "game_daptrack",
+    "game_2048",
+    "game_snake",
+    "game_river",
+    "game_flappy",
+    "game_breakout",
+  ],
 } as const satisfies Record<string, readonly FeatureKey[]>;
