@@ -3,22 +3,20 @@ import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Brain, Moon, ShieldCheck, Sun } from "lucide-react";
+import { Moon, ShieldCheck, Sun } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { InstallAppButton } from "@/components/install-app-button";
-import { MemoryVault } from "@/components/memory-vault";
 
 import { useUpgradeGate } from "@/lib/tier-gate";
-import { TIER_LIMITS } from "@/lib/usage-limits";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — DAP AI" },
+      { title: "Settings — DAP Games" },
       {
         name: "description",
         content:
-          "Manage your DAP AI account preferences: chat history, sound effects, beta features, and AI memory.",
+          "Manage your DAP Games account preferences: game history, sound effects and beta features.",
       },
       { name: "robots", content: "noindex, nofollow" },
     ],
@@ -54,7 +52,6 @@ function Settings() {
   // Memory is not part of the Free plan, so the section is not shown
   // at all rather than shown locked: a control someone can never
   // unlock is clutter, and the plans page already says who gets it.
-  const canSeeMemory = TIER_LIMITS[tier].memory;
   const canBeta = hasTier("go");
   // Beta features are Pro and up; anyone lower gets the upgrade screen.
   const setBeta = (v: boolean) => {
@@ -86,9 +83,9 @@ function Settings() {
       <div className="mt-8 space-y-6">
         <div className="flex items-start justify-between rounded-2xl border border-border bg-card p-5">
           <div>
-            <Label className="text-base">Install DAP AI</Label>
+            <Label className="text-base">Install DAP Games</Label>
             <p className="mt-1 text-sm text-muted-foreground">
-              Add DAP AI to your device as an app. If you've already installed
+              Add DAP Games to your device as an app. If you've already installed
               it, or your browser doesn't support it, nothing shows here.
             </p>
           </div>
@@ -112,19 +109,6 @@ function Settings() {
 
         <PrivacyRow />
 
-        {canSeeMemory &&
-          (beta && canBeta ? (
-            <MemoryVault />
-          ) : (
-            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-5 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 font-medium text-foreground">
-                <Brain className="h-4 w-4" /> Memory Vault
-              </div>
-              <p className="mt-1">
-                Enable Beta features above to open your Memory Vault.
-              </p>
-            </div>
-          ))}
       </div>
     </div>
   );
@@ -169,7 +153,7 @@ function ThemeRow() {
 }
 
 /**
- * Private / Local explainer. DAP AI's inference runs on hardware owned by
+ * Private / Local explainer. DAP Games's inference runs on hardware owned by
  * the site operator, not on a third-party AI cloud — this spells that out.
  */
 function PrivacyRow() {
@@ -191,7 +175,7 @@ function PrivacyRow() {
           </span>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your chats are answered by DAP AI models running on our own local
+          Your chats are answered by DAP Games models running on our own local
           hardware — not rented from a big AI cloud. Nothing you type is sold,
           and your conversations and memories are stored against
           your account only, so no other user (or model provider) can read
