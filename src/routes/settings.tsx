@@ -45,15 +45,10 @@ function useLocalToggle(key: string, defaultValue: boolean) {
 }
 
 function Settings() {
-  const [history, setHistory] = useLocalToggle("dap.history", true);
-  const [sounds, setSounds] = useLocalToggle("dap.sounds", false);
   const [beta, setBetaRaw] = useLocalToggle("dap.beta", false);
-  const { hasTier, requireTier, tier } = useUpgradeGate();
-  // Memory is not part of the Free plan, so the section is not shown
-  // at all rather than shown locked: a control someone can never
-  // unlock is clutter, and the plans page already says who gets it.
+  const { hasTier, requireTier } = useUpgradeGate();
   const canBeta = hasTier("go");
-  // Beta features are Pro and up; anyone lower gets the upgrade screen.
+  // Beta features are Go and up; anyone lower gets the upgrade screen.
   const setBeta = (v: boolean) => {
     if (v && !requireTier("go", "Beta features")) return;
     setBetaRaw(v);
@@ -71,10 +66,8 @@ function Settings() {
   }, [glass]);
 
   const rows = [
-    { id: "history", label: "Save chat history", desc: "Keep recent conversations in the sidebar.", checked: history, onChange: setHistory },
-    { id: "sounds", label: "Sound effects", desc: "Play subtle sounds on send/receive.", checked: sounds, onChange: setSounds },
     { id: "glass", label: "Liquid Glass", desc: "Frosted, translucent surfaces across the app.", checked: glass, onChange: setGlassRaw },
-    { id: "beta", label: "Beta features", desc: canBeta ? "Try experimental tools early, including AI Memory." : "Go plan and up. Try experimental tools early, including AI Memory.", checked: beta && canBeta, onChange: setBeta },
+    { id: "beta", label: "Beta features", desc: canBeta ? "Try experimental games and tools early." : "Go plan and up. Try experimental games and tools early.", checked: beta && canBeta, onChange: setBeta },
   ];
 
   return (
