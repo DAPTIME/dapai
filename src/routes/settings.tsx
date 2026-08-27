@@ -16,7 +16,7 @@ export const Route = createFileRoute("/settings")({
       {
         name: "description",
         content:
-          "Manage your DAP Games account preferences: game history, sound effects and beta features.",
+          "Manage your DAP Games account preferences: appearance, Liquid Glass and beta features.",
       },
       { name: "robots", content: "noindex, nofollow" },
     ],
@@ -45,15 +45,10 @@ function useLocalToggle(key: string, defaultValue: boolean) {
 }
 
 function Settings() {
-  const [history, setHistory] = useLocalToggle("dap.history", true);
-  const [sounds, setSounds] = useLocalToggle("dap.sounds", false);
   const [beta, setBetaRaw] = useLocalToggle("dap.beta", false);
-  const { hasTier, requireTier, tier } = useUpgradeGate();
-  // Memory is not part of the Free plan, so the section is not shown
-  // at all rather than shown locked: a control someone can never
-  // unlock is clutter, and the plans page already says who gets it.
+  const { hasTier, requireTier } = useUpgradeGate();
   const canBeta = hasTier("go");
-  // Beta features are Pro and up; anyone lower gets the upgrade screen.
+  // Beta features are Go and up; anyone lower gets the upgrade screen.
   const setBeta = (v: boolean) => {
     if (v && !requireTier("go", "Beta features")) return;
     setBetaRaw(v);
@@ -71,10 +66,8 @@ function Settings() {
   }, [glass]);
 
   const rows = [
-    { id: "history", label: "Save chat history", desc: "Keep recent conversations in the sidebar.", checked: history, onChange: setHistory },
-    { id: "sounds", label: "Sound effects", desc: "Play subtle sounds on send/receive.", checked: sounds, onChange: setSounds },
     { id: "glass", label: "Liquid Glass", desc: "Frosted, translucent surfaces across the app.", checked: glass, onChange: setGlassRaw },
-    { id: "beta", label: "Beta features", desc: canBeta ? "Try experimental tools early, including AI Memory." : "Go plan and up. Try experimental tools early, including AI Memory.", checked: beta && canBeta, onChange: setBeta },
+    { id: "beta", label: "Beta features", desc: canBeta ? "Try experimental games and tools early." : "Go plan and up. Try experimental games and tools early.", checked: beta && canBeta, onChange: setBeta },
   ];
 
   return (
@@ -153,8 +146,8 @@ function ThemeRow() {
 }
 
 /**
- * Private / Local explainer. DAP Games's inference runs on hardware owned by
- * the site operator, not on a third-party AI cloud — this spells that out.
+ * Private / Local explainer. DAP Games runs its games and services on
+ * hardware owned by the site operator — this spells that out.
  */
 function PrivacyRow() {
   return (
@@ -175,12 +168,10 @@ function PrivacyRow() {
           </span>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your chats are answered by DAP Games models running on our own local
-          hardware — not rented from a big AI cloud. Nothing you type is sold,
-          and your conversations and memories are stored against
-          your account only, so no other user (or model provider) can read
-          them. You'll see a <strong className="font-medium text-foreground">Private</strong>{" "}
-          badge on every chat as a reminder.
+          Your DAP Games account, scores and saved progress are stored
+          against your account only — no other player can read them. We don't
+          sell your data, and ads never get access to your account
+          information.
         </p>
       </div>
     </div>
