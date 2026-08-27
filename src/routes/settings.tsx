@@ -146,8 +146,8 @@ function ThemeRow() {
 }
 
 /**
- * Private / Local explainer. DAP Games's inference runs on hardware owned by
- * the site operator, not on a third-party AI cloud — this spells that out.
+ * Private / Local explainer. DAP Games runs its games and services on
+ * hardware owned by the site operator — this spells that out.
  */
 function PrivacyRow() {
   return (
@@ -168,12 +168,10 @@ function PrivacyRow() {
           </span>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your chats are answered by DAP Games models running on our own local
-          hardware — not rented from a big AI cloud. Nothing you type is sold,
-          and your conversations and memories are stored against
-          your account only, so no other user (or model provider) can read
-          them. You'll see a <strong className="font-medium text-foreground">Private</strong>{" "}
-          badge on every chat as a reminder.
+          Your DAP Games account, scores and saved progress are stored
+          against your account only — no other player can read them. We don't
+          sell your data, and ads never get access to your account
+          information.
         </p>
       </div>
     </div>
