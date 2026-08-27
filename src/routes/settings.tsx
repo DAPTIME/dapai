@@ -16,7 +16,7 @@ export const Route = createFileRoute("/settings")({
       {
         name: "description",
         content:
-          "Manage your DAP Games account preferences: game history, sound effects and beta features.",
+          "Manage your DAP Games account preferences: appearance, Liquid Glass and beta features.",
       },
       { name: "robots", content: "noindex, nofollow" },
     ],
