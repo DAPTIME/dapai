@@ -32,6 +32,7 @@ import { Route as GamesBreakoutRouteImport } from './routes/games.breakout'
 import { Route as GamesFlappyRouteImport } from './routes/games.flappy'
 import { Route as GamesRiverRouteImport } from './routes/games.river'
 import { Route as GamesSnakeRouteImport } from './routes/games.snake'
+import { Route as PlaySlugRouteImport } from './routes/play.$slug'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as GamesDaptrackIndexRouteImport } from './routes/games.daptrack.index'
 import { Route as GamesDaptrackBrowseRouteImport } from './routes/games.daptrack.browse'
@@ -158,6 +159,11 @@ const GamesSnakeRoute = GamesSnakeRouteImport.update({
   path: '/snake',
   getParentRoute: () => GamesRoute,
 } as any)
+const PlaySlugRoute = PlaySlugRouteImport.update({
+  id: '/play/$slug',
+  path: '/play/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/games/flappy': typeof GamesFlappyRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
+  '/play/$slug': typeof PlaySlugRoute
   '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
@@ -256,6 +263,7 @@ export interface FileRoutesByTo {
   '/games/flappy': typeof GamesFlappyRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
+  '/play/$slug': typeof PlaySlugRoute
   '/games': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
@@ -290,6 +298,7 @@ export interface FileRoutesById {
   '/games/flappy': typeof GamesFlappyRoute
   '/games/river': typeof GamesRiverRoute
   '/games/snake': typeof GamesSnakeRoute
+  '/play/$slug': typeof PlaySlugRoute
   '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
@@ -325,6 +334,7 @@ export interface FileRouteTypes {
     | '/games/flappy'
     | '/games/river'
     | '/games/snake'
+    | '/play/$slug'
     | '/games/'
     | '/.mcp/invoke-tool/$tool'
     | '/games/daptrack/browse'
@@ -357,6 +367,7 @@ export interface FileRouteTypes {
     | '/games/flappy'
     | '/games/river'
     | '/games/snake'
+    | '/play/$slug'
     | '/games'
     | '/.mcp/invoke-tool/$tool'
     | '/games/daptrack/browse'
@@ -390,6 +401,7 @@ export interface FileRouteTypes {
     | '/games/flappy'
     | '/games/river'
     | '/games/snake'
+    | '/play/$slug'
     | '/games/'
     | '/.mcp/invoke-tool/$tool'
     | '/games/daptrack/browse'
@@ -419,6 +431,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  PlaySlugRoute: typeof PlaySlugRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksCleanupOldChatsRoute: typeof ApiPublicHooksCleanupOldChatsRoute
 }
@@ -586,6 +599,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamesSnakeRouteImport
       parentRoute: typeof GamesRoute
     }
+    '/play/$slug': {
+      id: '/play/$slug'
+      path: '/play/$slug'
+      fullPath: '/play/$slug'
+      preLoaderRoute: typeof PlaySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -696,6 +716,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  PlaySlugRoute: PlaySlugRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksCleanupOldChatsRoute: ApiPublicHooksCleanupOldChatsRoute,
 }
