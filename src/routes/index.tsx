@@ -1,37 +1,36 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { Search } from "lucide-react";
 
 import { AdBanner } from "@/components/ads/ad-banner";
-import {
-  GAME_CATALOG,
-  GAME_CATEGORIES,
-  topGames,
-  type GameCategory,
-} from "@/lib/game-catalog";
+import { GAME_CATALOG } from "@/lib/game-catalog";
+import { FEED_CATEGORIES } from "@/lib/feed-categories";
+import { listFeedGames } from "@/lib/gamepix.functions";
 import { useSiteConfig } from "@/lib/site-config";
 import { GAME_FLAGS } from "@/lib/feature-guard";
 import logo from "@/assets/logo.png.asset.json";
 
 const HOME_DESCRIPTION =
-  "DAP Games — play free browser games instantly: 2048, Snake, Brick Breaker, Flappy, River Crosser and DAP Track, our 3D time-trial racer with a track editor. No download.";
+  "DAP Games — thousands of free games you can play instantly in your browser: arcade, puzzle, racing, .io and shooters, plus DAP Track, our own 3D time-trial racer with a track editor.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "DAP Games — Play Free Online Games" },
+      { title: "DAP Games — Play Thousands of Free Online Games" },
       { name: "description", content: HOME_DESCRIPTION },
       {
         name: "keywords",
-        content: "free online games, browser games, DAP Games, DAP Track, 2048, snake, arcade",
+        content: "free online games, browser games, io games, DAP Games, DAP Track, 2048, snake",
       },
-      { property: "og:title", content: "DAP Games — Play Free Online Games" },
+      { property: "og:title", content: "DAP Games — Play Thousands of Free Online Games" },
       { property: "og:description", content: HOME_DESCRIPTION },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://dapgames.lovable.app/" },
       { property: "og:image", content: "https://dapgames.lovable.app/og-image.png" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "DAP Games — Play Free Online Games" },
+      { name: "twitter:title", content: "DAP Games — Play Thousands of Free Online Games" },
       { name: "twitter:description", content: HOME_DESCRIPTION },
       { name: "twitter:image", content: "https://dapgames.lovable.app/og-image.png" },
     ],
@@ -48,15 +47,10 @@ export const Route = createFileRoute("/")({
           name: "DAP Games",
           description: HOME_DESCRIPTION,
           url: "https://dapgames.lovable.app/",
-          isPartOf: { "@type": "WebSite", name: "DAP Games", url: "https://dapgames.lovable.app" },
-          mainEntity: {
-            "@type": "ItemList",
-            itemListElement: GAME_CATALOG.map((g, i) => ({
-              "@type": "ListItem",
-              position: i + 1,
-              name: g.title,
-              url: `https://dapgames.lovable.app${g.route}`,
-            })),
+          isPartOf: {
+            "@type": "WebSite",
+            name: "DAP Games",
+            url: "https://dapgames.lovable.app",
           },
         }),
       },
@@ -74,45 +68,63 @@ const TILE_BG = [
   "from-lime-500/25 to-green-600/10",
 ];
 
-function GameTile({
-  index,
-  game,
-  size = "sm",
-  off,
-}: {
-  index: number;
-  game: (typeof GAME_CATALOG)[number];
-  size?: "sm" | "lg";
-  off: boolean;
-}) {
+type Tile = {
+  key: string;
+  to: string;
+  title: string;
+  subtitle: string;
+  emoji?: string;
+  thumb?: string;
+  badge?: string;
+  off?: boolean;
+};
+
+function GameTile({ tile, index, big }: { tile: Tile; index: number; big?: boolean }) {
+  const media = tile.thumb ? (
+    <img
+      src={tile.thumb}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+    />
+  ) : (
+    <div
+      className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${
+        TILE_BG[index % TILE_BG.length]
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`${big ? "text-6xl sm:text-7xl" : "text-4xl"} transition-transform duration-300 group-hover:scale-110`}
+      >
+        {tile.emoji ?? "🎮"}
+      </span>
+    </div>
+  );
+
   const body = (
     <>
-      <div
-        className={`flex flex-1 items-center justify-center bg-gradient-to-br ${
-          TILE_BG[index % TILE_BG.length]
-        }`}
-      >
-        <span
-          aria-hidden
-          className={`${size === "lg" ? "text-6xl sm:text-7xl" : "text-4xl"} transition-transform duration-300 group-hover:scale-115`}
-        >
-          {game.emoji}
-        </span>
+      <div className="relative flex-1 overflow-hidden">
+        {media}
+        {tile.badge && (
+          <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+            {tile.badge}
+          </span>
+        )}
       </div>
       <div className="p-2.5">
-        <div className="truncate text-sm font-semibold text-foreground">{game.title}</div>
-        <div className="truncate text-xs text-muted-foreground">
-          {off ? "Under maintenance" : game.description}
-        </div>
+        <div className="truncate text-sm font-semibold text-foreground">{tile.title}</div>
+        <div className="truncate text-xs text-muted-foreground">{tile.subtitle}</div>
       </div>
     </>
   );
 
-  const shell = `group flex ${
-    size === "lg" ? "aspect-[4/3] sm:col-span-2 sm:row-span-2" : "aspect-[4/5]"
-  } flex-col overflow-hidden rounded-2xl border border-border bg-card text-left transition-all`;
+  const shell = `group flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-left transition-all ${
+    big ? "aspect-[4/3] sm:col-span-2 sm:row-span-2" : "aspect-[4/5]"
+  }`;
 
-  if (off) {
+  if (tile.off) {
     return (
       <div className={`${shell} cursor-not-allowed opacity-40 grayscale`} aria-disabled>
         {body}
@@ -121,10 +133,7 @@ function GameTile({
   }
 
   return (
-    <Link
-      to={game.route}
-      className={`${shell} hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl`}
-    >
+    <Link to={tile.to} className={`${shell} hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl`}>
       {body}
     </Link>
   );
@@ -133,39 +142,72 @@ function GameTile({
 function Home() {
   const siteConfig = useSiteConfig();
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<GameCategory | "all">("all");
+  const [category, setCategory] = useState("all");
+  const [pages, setPages] = useState(1);
 
-  const isOff = (route: string) => {
-    const flag = GAME_FLAGS[route as keyof typeof GAME_FLAGS];
-    return flag ? siteConfig.flags[flag] === false : false;
-  };
-
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return GAME_CATALOG.filter((g) => {
-      if (category !== "all" && g.category !== category) return false;
-      if (!q) return true;
-      return (
-        g.title.toLowerCase().includes(q) ||
-        g.description.toLowerCase().includes(q) ||
-        g.tags.some((t) => t.includes(q))
+  const fetchFeed = useServerFn(listFeedGames);
+  const feedQueries = useQuery({
+    queryKey: ["feed", category, pages],
+    queryFn: async () => {
+      const results = await Promise.all(
+        Array.from({ length: pages }, (_, i) =>
+          fetchFeed({ data: { page: i + 1, category: category === "all" ? null : category } }),
+        ),
       );
-    }).sort((a, b) => b.popularity - a.popularity);
-  }, [query, category]);
+      return {
+        games: results.flatMap((r) => r.games),
+        lastPage: results[results.length - 1]?.lastPage ?? 1,
+      };
+    },
+    staleTime: 30 * 60 * 1000,
+  });
 
-  const searching = query.trim().length > 0 || category !== "all";
-  const featured = topGames(GAME_CATALOG.length);
-  const usedCategories = GAME_CATEGORIES.filter(
-    (c) => c.value === "all" || GAME_CATALOG.some((g) => g.category === c.value),
-  );
+  const originals: Tile[] = GAME_CATALOG.map((g) => {
+    const flag = GAME_FLAGS[g.route];
+    return {
+      key: `own-${g.slug}`,
+      to: g.route,
+      title: g.title,
+      subtitle: g.description,
+      emoji: g.emoji,
+      badge: "DAP",
+      off: flag ? siteConfig.flags[flag] === false : false,
+    };
+  }).sort((a, b) => Number(a.off) - Number(b.off));
+
+  const feedTiles: Tile[] = (feedQueries.data?.games ?? []).map((g) => ({
+    key: `feed-${g.slug}`,
+    to: `/play/${g.slug}`,
+    title: g.title,
+    subtitle: g.category.replace(/-/g, " "),
+    thumb: g.thumb,
+  }));
+
+  const q = query.trim().toLowerCase();
+  const tiles = useMemo(() => {
+    const all = category === "all" ? [...originals, ...feedTiles] : feedTiles;
+    if (!q) return all;
+    return all.filter(
+      (t) => t.title.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q),
+    );
+  }, [originals, feedTiles, q, category]);
+
+  const canLoadMore =
+    !q && pages < (feedQueries.data?.lastPage ?? 1) && pages < 40 && !feedQueries.isFetching;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-5">
+    <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-4">
       <AdBanner placement="top" />
 
       <header className="flex flex-col gap-3">
         <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-          <img src={logo.url} alt="" width={36} height={36} className="h-9 w-9 rounded-lg object-contain" />
+          <img
+            src={logo.url}
+            alt=""
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-lg object-contain"
+          />
           <span
             style={{
               backgroundImage: "var(--gradient-text)",
@@ -188,12 +230,15 @@ function Home() {
             className="w-full rounded-full border border-border bg-card py-2.5 pl-9 pr-4 text-sm outline-none transition-colors focus:border-primary"
           />
         </label>
-        <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {usedCategories.map((c) => (
+        <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Categories">
+          {FEED_CATEGORIES.map((c) => (
             <button
               key={c.value}
               type="button"
-              onClick={() => setCategory(c.value)}
+              onClick={() => {
+                setCategory(c.value);
+                setPages(1);
+              }}
               className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
                 category === c.value
                   ? "border-primary bg-primary text-primary-foreground"
@@ -206,52 +251,46 @@ function Home() {
         </nav>
       </header>
 
-      <section aria-label={searching ? "Search results" : "All games"}>
-        {searching && (
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-            {results.length} {results.length === 1 ? "game" : "games"}
-          </h2>
-        )}
-        {results.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            No games match that search yet.
-          </p>
-        ) : (
-          <div className="grid auto-rows-auto grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-            {(searching ? results : featured).map((g, i) => (
-              <GameTile
-                key={g.slug}
-                index={i}
-                game={g}
-                size={!searching && i === 0 ? "lg" : "sm"}
-                off={isOff(g.route)}
+      <section aria-label="Games">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+          {tiles.map((t, i) => (
+            <GameTile key={t.key} tile={t} index={i} big={!q && category === "all" && i === 0} />
+          ))}
+          {feedQueries.isPending &&
+            Array.from({ length: 10 }).map((_, i) => (
+              <div
+                key={`skeleton-${i}`}
+                className="aspect-[4/5] animate-pulse rounded-2xl border border-border bg-card/50"
               />
             ))}
+        </div>
+
+        {tiles.length === 0 && !feedQueries.isPending && (
+          <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            No games match that search.
+          </p>
+        )}
+
+        {feedQueries.isError && (
+          <p className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            The wider game library is unavailable right now — the DAP games above still work.
+          </p>
+        )}
+
+        {canLoadMore && (
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setPages((p) => p + 1)}
+              className="rounded-full border border-border px-6 py-2.5 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
+            >
+              Load more games
+            </button>
           </div>
         )}
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2">
-        <Link
-          to="/games/daptrack/browse"
-          className="rounded-2xl border border-border bg-card/50 p-4 transition-colors hover:border-primary/60"
-        >
-          <div className="flex items-center gap-2 font-semibold">
-            <Sparkles className="h-4 w-4 text-primary" /> Community DAP Track levels
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Race tracks built and shared by other players.
-          </p>
-        </Link>
-        <Link
-          to="/games/daptrack/editor"
-          className="rounded-2xl border border-border bg-card/50 p-4 transition-colors hover:border-primary/60"
-        >
-          <div className="font-semibold">Build your own track</div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Open the DAP Track editor, publish a level, share the link.
-          </p>
-        </Link>
+        {feedQueries.isFetching && !feedQueries.isPending && (
+          <p className="mt-4 text-center text-xs text-muted-foreground">Loading more games…</p>
+        )}
       </section>
 
       <AdBanner placement="bottom" />
