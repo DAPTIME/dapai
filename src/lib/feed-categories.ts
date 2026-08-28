@@ -1,0 +1,23 @@
+/** Browsable categories in the licensed game feed (client-safe). */
+export const FEED_CATEGORIES: { value: string; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "arcade", label: "Arcade" },
+  { value: "puzzle", label: "Puzzle" },
+  { value: "racing", label: "Racing" },
+  { value: "shooter", label: "Shooter" },
+  { value: "io", label: ".io" },
+  { value: "match-3", label: "Match 3" },
+  { value: "sports", label: "Sports" },
+  { value: "adventure", label: "Adventure" },
+  { value: "fighting", label: "Fighting" },
+  { value: "hyper-casual", label: "Hyper casual" },
+  { value: "simulation", label: "Simulation" },
+  { value: "strategy", label: "Strategy" },
+  { value: "animal", label: "Animals" },
+  { value: "educational", label: "Educational" },
+  { value: "memory", label: "Memory" },
+  { value: "battle", label: "Battle" },
+  { value: "zombie", label: "Zombie" },
+  { value: "trivia", label: "Trivia" },
+  { value: "drawing", label: "Drawing" },
+];
