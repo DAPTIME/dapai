@@ -79,7 +79,7 @@ type Tile = {
   off?: boolean;
 };
 
-function GameTile({ tile, index, big }: { tile: Tile; index: number; big?: boolean }) {
+function GameTile({ tile, index }: { tile: Tile; index: number }) {
   const media = tile.thumb ? (
     <img
       src={tile.thumb}
@@ -96,7 +96,7 @@ function GameTile({ tile, index, big }: { tile: Tile; index: number; big?: boole
     >
       <span
         aria-hidden
-        className={`${big ? "text-6xl sm:text-7xl" : "text-4xl"} transition-transform duration-300 group-hover:scale-110`}
+        className="text-4xl transition-transform duration-300 group-hover:scale-110"
       >
         {tile.emoji ?? "🎮"}
       </span>
@@ -120,9 +120,8 @@ function GameTile({ tile, index, big }: { tile: Tile; index: number; big?: boole
     </>
   );
 
-  const shell = `group flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-left transition-all ${
-    big ? "aspect-[4/3] sm:col-span-2 sm:row-span-2" : "aspect-[4/5]"
-  }`;
+  const shell =
+    "group flex aspect-[4/5] flex-col overflow-hidden rounded-2xl border border-border bg-card text-left transition-all";
 
   if (tile.off) {
     return (
@@ -254,7 +253,7 @@ function Home() {
       <section aria-label="Games">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
           {tiles.map((t, i) => (
-            <GameTile key={t.key} tile={t} index={i} big={!q && category === "all" && i === 0} />
+            <GameTile key={t.key} tile={t} index={i} />
           ))}
           {feedQueries.isPending &&
             Array.from({ length: 10 }).map((_, i) => (
