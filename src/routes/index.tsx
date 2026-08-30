@@ -142,23 +142,39 @@ function Home() {
   const siteConfig = useSiteConfig();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
-  const [pages, setPages] = useState(1);
+
+  // Debounce so typing doesn't fire a search request per keystroke.
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(query.trim()), 250);
+    return () => clearTimeout(id);
+  }, [query]);
+  const q = debounced.toLowerCase();
+  const searching = q.length >= 2;
 
   const fetchFeed = useServerFn(listFeedGames);
-  const feedQueries = useQuery({
-    queryKey: ["feed", category, pages],
-    queryFn: async () => {
-      const results = await Promise.all(
-        Array.from({ length: pages }, (_, i) =>
-          fetchFeed({ data: { page: i + 1, category: category === "all" ? null : category } }),
-        ),
-      );
-      return {
-        games: results.flatMap((r) => r.games),
-        lastPage: results[results.length - 1]?.lastPage ?? 1,
-      };
-    },
+  const runSearch = useServerFn(searchFeed);
+
+  // Browsing: append one page at a time and keep the pages already on screen.
+  const feed = useInfiniteQuery({
+    queryKey: ["feed", category],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
+      fetchFeed({
+        data: { page: pageParam, category: category === "all" ? null : category },
+      }),
+    getNextPageParam: (last) =>
+      last.page < Math.min(last.lastPage, 40) ? last.page + 1 : undefined,
     staleTime: 30 * 60 * 1000,
+    enabled: !searching,
+  });
+
+  // Searching: ask the server, which looks across the whole indexed library.
+  const search = useQuery({
+    queryKey: ["feed-search", q],
+    queryFn: () => runSearch({ data: { term: q } }),
+    staleTime: 30 * 60 * 1000,
+    enabled: searching,
   });
 
   const originals: Tile[] = GAME_CATALOG.map((g) => {
@@ -174,7 +190,11 @@ function Home() {
     };
   }).sort((a, b) => Number(a.off) - Number(b.off));
 
-  const feedTiles: Tile[] = (feedQueries.data?.games ?? []).map((g) => ({
+  const feedGames = searching
+    ? (search.data?.games ?? [])
+    : (feed.data?.pages.flatMap((p) => p.games) ?? []);
+
+  const feedTiles: Tile[] = feedGames.map((g) => ({
     key: `feed-${g.slug}`,
     to: `/play/${g.slug}`,
     title: g.title,
@@ -182,17 +202,21 @@ function Home() {
     thumb: g.thumb,
   }));
 
-  const q = query.trim().toLowerCase();
   const tiles = useMemo(() => {
-    const all = category === "all" ? [...originals, ...feedTiles] : feedTiles;
-    if (!q) return all;
-    return all.filter(
-      (t) => t.title.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q),
-    );
-  }, [originals, feedTiles, q, category]);
+    if (searching) {
+      const own = originals.filter(
+        (t) => t.title.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q),
+      );
+      return [...own, ...feedTiles];
+    }
+    return category === "all" ? [...originals, ...feedTiles] : feedTiles;
+  }, [originals, feedTiles, q, category, searching]);
 
-  const canLoadMore =
-    !q && pages < (feedQueries.data?.lastPage ?? 1) && pages < 40 && !feedQueries.isFetching;
+  const isPending = searching ? search.isPending : feed.isPending;
+  const isError = searching ? search.isError : feed.isError;
+  const isFetchingMore = !searching && feed.isFetchingNextPage;
+  const canLoadMore = !searching && feed.hasNextPage && !feed.isFetchingNextPage;
+
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-4">
