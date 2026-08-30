@@ -276,7 +276,7 @@ function Home() {
           {tiles.map((t, i) => (
             <GameTile key={t.key} tile={t} index={i} />
           ))}
-          {feedQueries.isPending &&
+          {(isPending || isFetchingMore) &&
             Array.from({ length: 10 }).map((_, i) => (
               <div
                 key={`skeleton-${i}`}
@@ -285,13 +285,13 @@ function Home() {
             ))}
         </div>
 
-        {tiles.length === 0 && !feedQueries.isPending && (
+        {tiles.length === 0 && !isPending && (
           <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             No games match that search.
           </p>
         )}
 
-        {feedQueries.isError && (
+        {isError && (
           <p className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             The wider game library is unavailable right now — the DAP games above still work.
           </p>
@@ -301,14 +301,14 @@ function Home() {
           <div className="mt-6 flex justify-center">
             <button
               type="button"
-              onClick={() => setPages((p) => p + 1)}
+              onClick={() => void feed.fetchNextPage()}
               className="rounded-full border border-border px-6 py-2.5 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
             >
               Load more games
             </button>
           </div>
         )}
-        {feedQueries.isFetching && !feedQueries.isPending && (
+        {isFetchingMore && (
           <p className="mt-4 text-center text-xs text-muted-foreground">Loading more games…</p>
         )}
       </section>
