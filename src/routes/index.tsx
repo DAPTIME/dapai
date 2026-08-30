@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Search } from "lucide-react";
 
 import { AdBanner } from "@/components/ads/ad-banner";
 import { GAME_CATALOG } from "@/lib/game-catalog";
 import { FEED_CATEGORIES } from "@/lib/feed-categories";
-import { listFeedGames } from "@/lib/gamepix.functions";
+import { listFeedGames, searchFeed } from "@/lib/gamepix.functions";
 import { useSiteConfig } from "@/lib/site-config";
 import { GAME_FLAGS } from "@/lib/feature-guard";
 import logo from "@/assets/logo.png.asset.json";
@@ -142,23 +142,39 @@ function Home() {
   const siteConfig = useSiteConfig();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
-  const [pages, setPages] = useState(1);
+
+  // Debounce so typing doesn't fire a search request per keystroke.
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(query.trim()), 250);
+    return () => clearTimeout(id);
+  }, [query]);
+  const q = debounced.toLowerCase();
+  const searching = q.length >= 2;
 
   const fetchFeed = useServerFn(listFeedGames);
-  const feedQueries = useQuery({
-    queryKey: ["feed", category, pages],
-    queryFn: async () => {
-      const results = await Promise.all(
-        Array.from({ length: pages }, (_, i) =>
-          fetchFeed({ data: { page: i + 1, category: category === "all" ? null : category } }),
-        ),
-      );
-      return {
-        games: results.flatMap((r) => r.games),
-        lastPage: results[results.length - 1]?.lastPage ?? 1,
-      };
-    },
+  const runSearch = useServerFn(searchFeed);
+
+  // Browsing: append one page at a time and keep the pages already on screen.
+  const feed = useInfiniteQuery({
+    queryKey: ["feed", category],
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
+      fetchFeed({
+        data: { page: pageParam, category: category === "all" ? null : category },
+      }),
+    getNextPageParam: (last) =>
+      last.page < Math.min(last.lastPage, 40) ? last.page + 1 : undefined,
     staleTime: 30 * 60 * 1000,
+    enabled: !searching,
+  });
+
+  // Searching: ask the server, which looks across the whole indexed library.
+  const search = useQuery({
+    queryKey: ["feed-search", q],
+    queryFn: () => runSearch({ data: { term: q } }),
+    staleTime: 30 * 60 * 1000,
+    enabled: searching,
   });
 
   const originals: Tile[] = GAME_CATALOG.map((g) => {
@@ -174,7 +190,11 @@ function Home() {
     };
   }).sort((a, b) => Number(a.off) - Number(b.off));
 
-  const feedTiles: Tile[] = (feedQueries.data?.games ?? []).map((g) => ({
+  const feedGames = searching
+    ? (search.data?.games ?? [])
+    : (feed.data?.pages.flatMap((p) => p.games) ?? []);
+
+  const feedTiles: Tile[] = feedGames.map((g) => ({
     key: `feed-${g.slug}`,
     to: `/play/${g.slug}`,
     title: g.title,
@@ -182,17 +202,21 @@ function Home() {
     thumb: g.thumb,
   }));
 
-  const q = query.trim().toLowerCase();
   const tiles = useMemo(() => {
-    const all = category === "all" ? [...originals, ...feedTiles] : feedTiles;
-    if (!q) return all;
-    return all.filter(
-      (t) => t.title.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q),
-    );
-  }, [originals, feedTiles, q, category]);
+    if (searching) {
+      const own = originals.filter(
+        (t) => t.title.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q),
+      );
+      return [...own, ...feedTiles];
+    }
+    return category === "all" ? [...originals, ...feedTiles] : feedTiles;
+  }, [originals, feedTiles, q, category, searching]);
 
-  const canLoadMore =
-    !q && pages < (feedQueries.data?.lastPage ?? 1) && pages < 40 && !feedQueries.isFetching;
+  const isPending = searching ? search.isPending : feed.isPending;
+  const isError = searching ? search.isError : feed.isError;
+  const isFetchingMore = !searching && feed.isFetchingNextPage;
+  const canLoadMore = !searching && feed.hasNextPage && !feed.isFetchingNextPage;
+
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-4">
@@ -234,10 +258,7 @@ function Home() {
             <button
               key={c.value}
               type="button"
-              onClick={() => {
-                setCategory(c.value);
-                setPages(1);
-              }}
+              onClick={() => setCategory(c.value)}
               className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
                 category === c.value
                   ? "border-primary bg-primary text-primary-foreground"
@@ -255,7 +276,7 @@ function Home() {
           {tiles.map((t, i) => (
             <GameTile key={t.key} tile={t} index={i} />
           ))}
-          {feedQueries.isPending &&
+          {(isPending || isFetchingMore) &&
             Array.from({ length: 10 }).map((_, i) => (
               <div
                 key={`skeleton-${i}`}
@@ -264,13 +285,13 @@ function Home() {
             ))}
         </div>
 
-        {tiles.length === 0 && !feedQueries.isPending && (
+        {tiles.length === 0 && !isPending && (
           <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             No games match that search.
           </p>
         )}
 
-        {feedQueries.isError && (
+        {isError && (
           <p className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             The wider game library is unavailable right now — the DAP games above still work.
           </p>
@@ -280,14 +301,14 @@ function Home() {
           <div className="mt-6 flex justify-center">
             <button
               type="button"
-              onClick={() => setPages((p) => p + 1)}
+              onClick={() => void feed.fetchNextPage()}
               className="rounded-full border border-border px-6 py-2.5 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
             >
               Load more games
             </button>
           </div>
         )}
-        {feedQueries.isFetching && !feedQueries.isPending && (
+        {isFetchingMore && (
           <p className="mt-4 text-center text-xs text-muted-foreground">Loading more games…</p>
         )}
       </section>

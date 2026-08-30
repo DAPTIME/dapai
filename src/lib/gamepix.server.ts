@@ -88,6 +88,77 @@ export async function fetchFeedPage(opts: {
   return { games, page: Number(params.get("page")), lastPage: lastPageFrom(body.last_page_url) };
 }
 
+/**
+ * The feed has no search endpoint, so we build a searchable index by pulling
+ * the first few large pages once and keeping them in memory for a while.
+ */
+const INDEX_PAGES = 8;
+const INDEX_PAGE_SIZE = 96;
+const INDEX_TTL_MS = 30 * 60 * 1000;
+const SEARCH_LIMIT = 96;
+
+let indexCache: { at: number; games: FeedGame[] } | null = null;
+let indexInFlight: Promise<FeedGame[]> | null = null;
+
+async function fetchIndexPage(page: number): Promise<FeedGame[]> {
+  const params = new URLSearchParams({
+    sid: sid(),
+    pagination: String(INDEX_PAGE_SIZE),
+    page: String(page),
+    order: "quality",
+  });
+  const res = await fetch(`${FEED}?${params.toString()}`, {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) return [];
+  const body = (await res.json()) as { items?: RawItem[] };
+  return (body.items ?? []).map(normalize).filter((g): g is FeedGame => g !== null);
+}
+
+async function searchIndex(): Promise<FeedGame[]> {
+  if (indexCache && Date.now() - indexCache.at < INDEX_TTL_MS) return indexCache.games;
+  if (indexInFlight) return indexInFlight;
+  indexInFlight = (async () => {
+    const pages = await Promise.all(
+      Array.from({ length: INDEX_PAGES }, (_, i) => fetchIndexPage(i + 1)),
+    );
+    const seen = new Set<string>();
+    const games: FeedGame[] = [];
+    for (const g of pages.flat()) {
+      if (seen.has(g.slug)) continue;
+      seen.add(g.slug);
+      games.push(g);
+    }
+    indexCache = { at: Date.now(), games };
+    return games;
+  })();
+  try {
+    return await indexInFlight;
+  } finally {
+    indexInFlight = null;
+  }
+}
+
+/** Search the wider library by title / category, not just one loaded page. */
+export async function searchFeedGames(term: string): Promise<FeedGame[]> {
+  const q = term.trim().toLowerCase();
+  if (!q) return [];
+  const games = await searchIndex();
+  const scored = games
+    .map((g) => {
+      const title = g.title.toLowerCase();
+      let score = -1;
+      if (title.startsWith(q)) score = 0;
+      else if (title.includes(q)) score = 1;
+      else if (g.category.replace(/-/g, " ").includes(q)) score = 2;
+      else if (g.description.toLowerCase().includes(q)) score = 3;
+      return { g, score };
+    })
+    .filter((s) => s.score >= 0)
+    .sort((a, b) => a.score - b.score);
+  return scored.slice(0, SEARCH_LIMIT).map((s) => s.g);
+}
+
 /** Look a single game up by slug so the play page can render real details. */
 export async function fetchFeedGame(slug: string): Promise<FeedGame | null> {
   for (let page = 1; page <= 3; page++) {
