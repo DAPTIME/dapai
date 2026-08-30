@@ -258,10 +258,7 @@ function Home() {
             <button
               key={c.value}
               type="button"
-              onClick={() => {
-                setCategory(c.value);
-                setPages(1);
-              }}
+              onClick={() => setCategory(c.value)}
               className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
                 category === c.value
                   ? "border-primary bg-primary text-primary-foreground"
