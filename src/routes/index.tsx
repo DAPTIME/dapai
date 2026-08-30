@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Search } from "lucide-react";
 
 import { AdBanner } from "@/components/ads/ad-banner";
 import { GAME_CATALOG } from "@/lib/game-catalog";
 import { FEED_CATEGORIES } from "@/lib/feed-categories";
-import { listFeedGames } from "@/lib/gamepix.functions";
+import { listFeedGames, searchFeed } from "@/lib/gamepix.functions";
 import { useSiteConfig } from "@/lib/site-config";
 import { GAME_FLAGS } from "@/lib/feature-guard";
 import logo from "@/assets/logo.png.asset.json";
