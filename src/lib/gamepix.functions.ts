@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { fetchFeedGame, fetchFeedPage } from "@/lib/gamepix.server";
+import { fetchFeedGame, fetchFeedPage, searchFeedGames } from "@/lib/gamepix.server";
 
 export const listFeedGames = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
@@ -13,6 +13,10 @@ export const listFeedGames = createServerFn({ method: "GET" })
       .parse(data ?? {}),
   )
   .handler(async ({ data }) => fetchFeedPage({ page: data.page, category: data.category }));
+
+export const searchFeed = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => z.object({ term: z.string().max(60) }).parse(data))
+  .handler(async ({ data }) => ({ games: await searchFeedGames(data.term) }));
 
 export const getFeedGame = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
