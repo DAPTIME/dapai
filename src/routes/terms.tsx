@@ -104,16 +104,13 @@ function Terms() {
             4. Acceptable Use &amp; Fair Play
           </h2>
           <p className="mt-2">
-            The games, tracks, times, medals, ghosts, and leaderboards on DAP Games are offered for
-            entertainment only. They carry no monetary value, are not prizes, and confer no property
+            The games and scores on DAP Games are offered for entertainment only. They carry no monetary value, are not prizes, and confer no property
             right. No wagering, gambling, or paid competition is offered.
           </p>
           <p className="mt-2">You agree not to:</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
-              Cheat, script, automate inputs, or otherwise manipulate a recorded time or leaderboard
-              position, including by modifying the client, intercepting or forging requests, or
-              exploiting a defect.
+              Cheat, script, automate inputs, or otherwise manipulate a game or its scores, including by modifying the client, intercepting or forging requests, or exploiting a defect.
             </li>
             <li>Share an account, or use another player&rsquo;s account, to inflate results.</li>
             <li>Interfere with or disrupt the Services, or attempt unauthorised access to any account or system.</li>
@@ -121,12 +118,8 @@ function Terms() {
             <li>Upload or publish anything unlawful, harassing, hateful, sexually explicit, or otherwise objectionable.</li>
           </ul>
           <p className="mt-2">
-            We may remove any time, reset any leaderboard, and suspend or terminate any account we
-            reasonably believe has broken these rules, at our discretion and without refund or
-            liability. Times, personal bests, ghosts, and progress may be stored only in your browser
-            in places, may be lost if you clear browser data or switch devices, and may be reset or
-            recalculated at any time. No leaderboard is guaranteed to be accurate, current, or
-            preserved.
+            We may suspend or terminate any account we reasonably believe has broken these rules, at our discretion and without refund or
+            liability. Game progress is generally stored only in your browser and may be lost if you clear browser data or switch devices.
           </p>
         </div>
 
@@ -171,8 +164,7 @@ function Terms() {
             7. Third-Party Embedded Games
           </h2>
           <p className="mt-2">
-            Some games on DAP Games (for example, our PolyTrack integration) are third-party games
-            embedded through an iframe or similar technology rather than built by us. Those games run
+            Games on DAP Games are third-party games embedded through an iframe or similar technology rather than built by us. Those games run
             under their own code and, in some cases, their own separate terms and privacy practices.
           </p>
           <p className="mt-2">
@@ -193,7 +185,7 @@ function Terms() {
             A game marked &ldquo;under maintenance&rdquo; may be unavailable for an unspecified time.
           </p>
           <p className="mt-2">
-            We may add, change, or remove games, features, plans, or leaderboards at any time, and we
+            We may add, change, or remove games, features, or plans at any time, and we
             accept no liability for the unavailability of any game or feature.
           </p>
         </div>
