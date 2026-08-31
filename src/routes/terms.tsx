@@ -44,8 +44,7 @@ function Terms() {
             Welcome to DAP Games (&ldquo;DAP Games&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or
             &ldquo;our&rdquo;). These Terms of Service (&ldquo;Terms&rdquo;) are a legally binding
             agreement between you (&ldquo;User&rdquo;, &ldquo;you&rdquo;) and DAP Games governing your
-            access to and use of the DAP Games website, its browser games, the DAP Track editor and
-            leaderboards, and all related features (collectively, the &ldquo;Services&rdquo;).
+            access to and use of the DAP Games website, its browser games and all related features (collectively, the &ldquo;Services&rdquo;).
           </p>
           <p className="mt-2">
             By creating an account, or by accessing or using the Services in any way — including as
@@ -60,8 +59,7 @@ function Terms() {
         <div>
           <h2 className="text-lg font-semibold text-foreground">2. Accounts &amp; Account Security</h2>
           <p className="mt-2">
-            Some features — saving leaderboard times, publishing DAP Track levels, keeping settings
-            across devices — require an account. You agree to provide accurate information when you
+            Some features — keeping your settings across devices, going ad-free on a paid plan — require an account. You agree to provide accurate information when you
             register and to keep your credentials confidential. You are responsible for all activity
             that happens under your account, whether or not you authorised it.
           </p>
@@ -132,39 +130,6 @@ function Terms() {
           </p>
         </div>
 
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            5. User-Generated Content (DAP Track)
-          </h2>
-          <p className="mt-2">
-            DAP Track&rsquo;s editor lets you build and publish your own tracks (&ldquo;User
-            Content&rdquo;). You retain ownership of tracks you create. By publishing a track, you
-            grant us and every player a licence to host it, display it, and let other players load
-            and race it through the Services for as long as it stays published.
-          </p>
-          <p className="mt-2">
-            You are solely responsible for what you publish. You must not publish a track that is
-            unlawful, infringes someone else&rsquo;s rights, contains offensive names or content, or
-            is designed to break or exploit the game.
-          </p>
-          <p className="mt-2">
-            We have no obligation to review every published track before it appears, but we may
-            review, unpublish, edit, or delete any track, and suspend or terminate the account
-            responsible, at our discretion and without notice. If you believe a published track is
-            inappropriate or breaks these Terms, report it using the in-game report option or email{" "}
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary underline">
-              {SUPPORT_EMAIL}
-            </a>
-            . We will look into reports we receive but cannot guarantee a particular outcome or
-            timescale.
-          </p>
-          <p className="mt-2">
-            When you record a time, your display name (or, if you have not set one, the part of your
-            email before the &ldquo;@&rdquo;) may appear on a public leaderboard visible to other
-            players, including players who are not signed in. Set a display name in your account
-            settings if you do not want any part of your email shown.
-          </p>
-        </div>
 
         <div>
           <h2 className="text-lg font-semibold text-foreground">
