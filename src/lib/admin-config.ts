@@ -41,5 +41,5 @@ export const FEATURE_GROUPS = {
     "nav_terms",
   ],
   // Anything that can be put behind a plan while it is still being tested.
-  beta: [] as readonly FeatureKey[],
+  beta: [],
 } as const satisfies Record<string, readonly FeatureKey[]>;
