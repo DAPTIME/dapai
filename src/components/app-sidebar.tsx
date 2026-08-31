@@ -1,4 +1,4 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import { useSiteConfig } from "@/lib/site-config";
-import { useBeta } from "@/lib/use-beta";
 import type { FeatureKey } from "@/lib/site-config.functions";
 
 /** Shown to an admin beside an entry the console is hiding from everyone. */
@@ -43,7 +42,6 @@ function HiddenMark() {
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { isMobile, setOpenMobile } = useSidebar();
 
@@ -58,7 +56,6 @@ export function AppSidebar() {
   const isAdmin = adminQuery.data?.isAdmin === true;
 
   const siteConfig = useSiteConfig();
-  const beta = useBeta();
 
   /* A flag that is explicitly off hides the item. Anything the config
      doesn't mention stays visible, so a failed config read leaves the
@@ -70,9 +67,6 @@ export function AppSidebar() {
      An admin still sees the entry, dimmed and marked, because hiding
      Settings should not also remove the admin's own way back to it. */
   const showEntry = (...flags: FeatureKey[]) => !hiddenByAdmin(...flags) || isAdmin;
-
-  /* A beta the account cannot reach is not listed at all. */
-  const betaBlocks = (flag: FeatureKey) => beta(flag).lockedByBeta && !isAdmin;
 
   const closeIfMobile = () => { if (isMobile) setOpenMobile(false); };
 

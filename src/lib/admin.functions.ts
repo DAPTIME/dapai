@@ -496,29 +496,6 @@ export const adminSetFeatureFlag = createServerFn({ method: "POST" })
   });
 
 
-/** Every community DAP Track level, newest first, for moderation. */
-export const adminListPublicTracks = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context.userId, context.supabase);
-    const supabaseAdmin = getAdminClient();
-    const { data, error } = await supabaseAdmin
-      .from("custom_tracks")
-      .select("id, name, season, is_public, play_count, owner_id, created_at")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (error) throw dbError(error);
-    const ownerIds = Array.from(new Set((data ?? []).map((t) => t.owner_id)));
-    const { data: profiles } = await supabaseAdmin
-      .from("profiles")
-      .select("id, email")
-      .in("id", ownerIds.length ? ownerIds : ["00000000-0000-0000-0000-000000000000"]);
-    const emails = new Map((profiles ?? []).map((p) => [p.id, p.email]));
-    return (data ?? []).map((t) => ({
-      ...t,
-      owner_email: emails.get(t.owner_id) ?? null,
-    }));
-  });
 
 /** Show or hide a community track in the browser. */
 export const adminSetTrackPublished = createServerFn({ method: "POST" })
