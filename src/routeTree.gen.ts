@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as GamesRouteImport } from './routes/games'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -26,21 +25,9 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-import { Route as GamesIndexRouteImport } from './routes/games.index'
-import { Route as Games2048RouteImport } from './routes/games.2048'
-import { Route as GamesBreakoutRouteImport } from './routes/games.breakout'
-import { Route as GamesFlappyRouteImport } from './routes/games.flappy'
-import { Route as GamesRiverRouteImport } from './routes/games.river'
-import { Route as GamesSnakeRouteImport } from './routes/games.snake'
 import { Route as PlaySlugRouteImport } from './routes/play.$slug'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
-import { Route as GamesDaptrackIndexRouteImport } from './routes/games.daptrack.index'
-import { Route as GamesDaptrackBrowseRouteImport } from './routes/games.daptrack.browse'
-import { Route as GamesDaptrackEditorRouteImport } from './routes/games.daptrack.editor'
-import { Route as GamesPolytrackIndexRouteImport } from './routes/games.polytrack.index'
-import { Route as GamesPolytrackSplatRouteImport } from './routes/games.polytrack.$'
 import { Route as ApiPublicHooksCleanupOldChatsRouteImport } from './routes/api/public/hooks/cleanup-old-chats'
-import { Route as GamesDaptrackTrackIdRouteImport } from './routes/games.daptrack.track.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -60,11 +47,6 @@ const AdminRoute = AdminRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GamesRoute = GamesRouteImport.update({
-  id: '/games',
-  path: '/games',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HelpRoute = HelpRouteImport.update({
@@ -129,36 +111,6 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GamesIndexRoute = GamesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => GamesRoute,
-} as any)
-const Games2048Route = Games2048RouteImport.update({
-  id: '/2048',
-  path: '/2048',
-  getParentRoute: () => GamesRoute,
-} as any)
-const GamesBreakoutRoute = GamesBreakoutRouteImport.update({
-  id: '/breakout',
-  path: '/breakout',
-  getParentRoute: () => GamesRoute,
-} as any)
-const GamesFlappyRoute = GamesFlappyRouteImport.update({
-  id: '/flappy',
-  path: '/flappy',
-  getParentRoute: () => GamesRoute,
-} as any)
-const GamesRiverRoute = GamesRiverRouteImport.update({
-  id: '/river',
-  path: '/river',
-  getParentRoute: () => GamesRoute,
-} as any)
-const GamesSnakeRoute = GamesSnakeRouteImport.update({
-  id: '/snake',
-  path: '/snake',
-  getParentRoute: () => GamesRoute,
-} as any)
 const PlaySlugRoute = PlaySlugRouteImport.update({
   id: '/play/$slug',
   path: '/play/$slug',
@@ -170,49 +122,18 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
-const GamesDaptrackIndexRoute = GamesDaptrackIndexRouteImport.update({
-  id: '/daptrack/',
-  path: '/daptrack/',
-  getParentRoute: () => GamesRoute,
-} as any)
-const GamesDaptrackBrowseRoute = GamesDaptrackBrowseRouteImport.update({
-  id: '/daptrack/browse',
-  path: '/daptrack/browse',
-  getParentRoute: () => GamesRoute,
-} as any)
-const GamesDaptrackEditorRoute = GamesDaptrackEditorRouteImport.update({
-  id: '/daptrack/editor',
-  path: '/daptrack/editor',
-  getParentRoute: () => GamesRoute,
-} as any)
-const GamesPolytrackIndexRoute = GamesPolytrackIndexRouteImport.update({
-  id: '/polytrack/',
-  path: '/polytrack/',
-  getParentRoute: () => GamesRoute,
-} as any)
-const GamesPolytrackSplatRoute = GamesPolytrackSplatRouteImport.update({
-  id: '/polytrack/$',
-  path: '/polytrack/$',
-  getParentRoute: () => GamesRoute,
-} as any)
 const ApiPublicHooksCleanupOldChatsRoute =
   ApiPublicHooksCleanupOldChatsRouteImport.update({
     id: '/api/public/hooks/cleanup-old-chats',
     path: '/api/public/hooks/cleanup-old-chats',
     getParentRoute: () => rootRouteImport,
   } as any)
-const GamesDaptrackTrackIdRoute = GamesDaptrackTrackIdRouteImport.update({
-  id: '/daptrack/track/$id',
-  path: '/daptrack/track/$id',
-  getParentRoute: () => GamesRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/games': typeof GamesRouteWithChildren
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -225,21 +146,9 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/games/2048': typeof Games2048Route
-  '/games/breakout': typeof GamesBreakoutRoute
-  '/games/flappy': typeof GamesFlappyRoute
-  '/games/river': typeof GamesRiverRoute
-  '/games/snake': typeof GamesSnakeRoute
   '/play/$slug': typeof PlaySlugRoute
-  '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
-  '/games/daptrack/editor': typeof GamesDaptrackEditorRoute
-  '/games/polytrack/$': typeof GamesPolytrackSplatRoute
-  '/games/daptrack/': typeof GamesDaptrackIndexRoute
-  '/games/polytrack/': typeof GamesPolytrackIndexRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
-  '/games/daptrack/track/$id': typeof GamesDaptrackTrackIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -258,21 +167,9 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/games/2048': typeof Games2048Route
-  '/games/breakout': typeof GamesBreakoutRoute
-  '/games/flappy': typeof GamesFlappyRoute
-  '/games/river': typeof GamesRiverRoute
-  '/games/snake': typeof GamesSnakeRoute
   '/play/$slug': typeof PlaySlugRoute
-  '/games': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
-  '/games/daptrack/editor': typeof GamesDaptrackEditorRoute
-  '/games/polytrack/$': typeof GamesPolytrackSplatRoute
-  '/games/daptrack': typeof GamesDaptrackIndexRoute
-  '/games/polytrack': typeof GamesPolytrackIndexRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
-  '/games/daptrack/track/$id': typeof GamesDaptrackTrackIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -280,7 +177,6 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/games': typeof GamesRouteWithChildren
   '/help': typeof HelpRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -293,21 +189,9 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/games/2048': typeof Games2048Route
-  '/games/breakout': typeof GamesBreakoutRoute
-  '/games/flappy': typeof GamesFlappyRoute
-  '/games/river': typeof GamesRiverRoute
-  '/games/snake': typeof GamesSnakeRoute
   '/play/$slug': typeof PlaySlugRoute
-  '/games/': typeof GamesIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/games/daptrack/browse': typeof GamesDaptrackBrowseRoute
-  '/games/daptrack/editor': typeof GamesDaptrackEditorRoute
-  '/games/polytrack/$': typeof GamesPolytrackSplatRoute
-  '/games/daptrack/': typeof GamesDaptrackIndexRoute
-  '/games/polytrack/': typeof GamesPolytrackIndexRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
-  '/games/daptrack/track/$id': typeof GamesDaptrackTrackIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -316,7 +200,6 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/forgot-password'
-    | '/games'
     | '/help'
     | '/login'
     | '/mcp'
@@ -329,21 +212,9 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/auth/callback'
-    | '/games/2048'
-    | '/games/breakout'
-    | '/games/flappy'
-    | '/games/river'
-    | '/games/snake'
     | '/play/$slug'
-    | '/games/'
     | '/.mcp/invoke-tool/$tool'
-    | '/games/daptrack/browse'
-    | '/games/daptrack/editor'
-    | '/games/polytrack/$'
-    | '/games/daptrack/'
-    | '/games/polytrack/'
     | '/api/public/hooks/cleanup-old-chats'
-    | '/games/daptrack/track/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -362,28 +233,15 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/auth/callback'
-    | '/games/2048'
-    | '/games/breakout'
-    | '/games/flappy'
-    | '/games/river'
-    | '/games/snake'
     | '/play/$slug'
-    | '/games'
     | '/.mcp/invoke-tool/$tool'
-    | '/games/daptrack/browse'
-    | '/games/daptrack/editor'
-    | '/games/polytrack/$'
-    | '/games/daptrack'
-    | '/games/polytrack'
     | '/api/public/hooks/cleanup-old-chats'
-    | '/games/daptrack/track/$id'
   id:
     | '__root__'
     | '/'
     | '/account'
     | '/admin'
     | '/forgot-password'
-    | '/games'
     | '/help'
     | '/login'
     | '/mcp'
@@ -396,21 +254,9 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/auth/callback'
-    | '/games/2048'
-    | '/games/breakout'
-    | '/games/flappy'
-    | '/games/river'
-    | '/games/snake'
     | '/play/$slug'
-    | '/games/'
     | '/.mcp/invoke-tool/$tool'
-    | '/games/daptrack/browse'
-    | '/games/daptrack/editor'
-    | '/games/polytrack/$'
-    | '/games/daptrack/'
-    | '/games/polytrack/'
     | '/api/public/hooks/cleanup-old-chats'
-    | '/games/daptrack/track/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -418,7 +264,6 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  GamesRoute: typeof GamesRouteWithChildren
   HelpRoute: typeof HelpRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
@@ -464,13 +309,6 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/games': {
-      id: '/games'
-      path: '/games'
-      fullPath: '/games'
-      preLoaderRoute: typeof GamesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/help': {
@@ -557,48 +395,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/games/': {
-      id: '/games/'
-      path: '/'
-      fullPath: '/games/'
-      preLoaderRoute: typeof GamesIndexRouteImport
-      parentRoute: typeof GamesRoute
-    }
-    '/games/2048': {
-      id: '/games/2048'
-      path: '/2048'
-      fullPath: '/games/2048'
-      preLoaderRoute: typeof Games2048RouteImport
-      parentRoute: typeof GamesRoute
-    }
-    '/games/breakout': {
-      id: '/games/breakout'
-      path: '/breakout'
-      fullPath: '/games/breakout'
-      preLoaderRoute: typeof GamesBreakoutRouteImport
-      parentRoute: typeof GamesRoute
-    }
-    '/games/flappy': {
-      id: '/games/flappy'
-      path: '/flappy'
-      fullPath: '/games/flappy'
-      preLoaderRoute: typeof GamesFlappyRouteImport
-      parentRoute: typeof GamesRoute
-    }
-    '/games/river': {
-      id: '/games/river'
-      path: '/river'
-      fullPath: '/games/river'
-      preLoaderRoute: typeof GamesRiverRouteImport
-      parentRoute: typeof GamesRoute
-    }
-    '/games/snake': {
-      id: '/games/snake'
-      path: '/snake'
-      fullPath: '/games/snake'
-      preLoaderRoute: typeof GamesSnakeRouteImport
-      parentRoute: typeof GamesRoute
-    }
     '/play/$slug': {
       id: '/play/$slug'
       path: '/play/$slug'
@@ -613,41 +409,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/games/daptrack/': {
-      id: '/games/daptrack/'
-      path: '/daptrack'
-      fullPath: '/games/daptrack/'
-      preLoaderRoute: typeof GamesDaptrackIndexRouteImport
-      parentRoute: typeof GamesRoute
-    }
-    '/games/daptrack/browse': {
-      id: '/games/daptrack/browse'
-      path: '/daptrack/browse'
-      fullPath: '/games/daptrack/browse'
-      preLoaderRoute: typeof GamesDaptrackBrowseRouteImport
-      parentRoute: typeof GamesRoute
-    }
-    '/games/daptrack/editor': {
-      id: '/games/daptrack/editor'
-      path: '/daptrack/editor'
-      fullPath: '/games/daptrack/editor'
-      preLoaderRoute: typeof GamesDaptrackEditorRouteImport
-      parentRoute: typeof GamesRoute
-    }
-    '/games/polytrack/': {
-      id: '/games/polytrack/'
-      path: '/polytrack'
-      fullPath: '/games/polytrack/'
-      preLoaderRoute: typeof GamesPolytrackIndexRouteImport
-      parentRoute: typeof GamesRoute
-    }
-    '/games/polytrack/$': {
-      id: '/games/polytrack/$'
-      path: '/polytrack/$'
-      fullPath: '/games/polytrack/$'
-      preLoaderRoute: typeof GamesPolytrackSplatRouteImport
-      parentRoute: typeof GamesRoute
-    }
     '/api/public/hooks/cleanup-old-chats': {
       id: '/api/public/hooks/cleanup-old-chats'
       path: '/api/public/hooks/cleanup-old-chats'
@@ -655,54 +416,14 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksCleanupOldChatsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/games/daptrack/track/$id': {
-      id: '/games/daptrack/track/$id'
-      path: '/daptrack/track/$id'
-      fullPath: '/games/daptrack/track/$id'
-      preLoaderRoute: typeof GamesDaptrackTrackIdRouteImport
-      parentRoute: typeof GamesRoute
-    }
   }
 }
-
-interface GamesRouteChildren {
-  Games2048Route: typeof Games2048Route
-  GamesBreakoutRoute: typeof GamesBreakoutRoute
-  GamesFlappyRoute: typeof GamesFlappyRoute
-  GamesRiverRoute: typeof GamesRiverRoute
-  GamesSnakeRoute: typeof GamesSnakeRoute
-  GamesIndexRoute: typeof GamesIndexRoute
-  GamesDaptrackBrowseRoute: typeof GamesDaptrackBrowseRoute
-  GamesDaptrackEditorRoute: typeof GamesDaptrackEditorRoute
-  GamesPolytrackSplatRoute: typeof GamesPolytrackSplatRoute
-  GamesDaptrackIndexRoute: typeof GamesDaptrackIndexRoute
-  GamesPolytrackIndexRoute: typeof GamesPolytrackIndexRoute
-  GamesDaptrackTrackIdRoute: typeof GamesDaptrackTrackIdRoute
-}
-
-const GamesRouteChildren: GamesRouteChildren = {
-  Games2048Route: Games2048Route,
-  GamesBreakoutRoute: GamesBreakoutRoute,
-  GamesFlappyRoute: GamesFlappyRoute,
-  GamesRiverRoute: GamesRiverRoute,
-  GamesSnakeRoute: GamesSnakeRoute,
-  GamesIndexRoute: GamesIndexRoute,
-  GamesDaptrackBrowseRoute: GamesDaptrackBrowseRoute,
-  GamesDaptrackEditorRoute: GamesDaptrackEditorRoute,
-  GamesPolytrackSplatRoute: GamesPolytrackSplatRoute,
-  GamesDaptrackIndexRoute: GamesDaptrackIndexRoute,
-  GamesPolytrackIndexRoute: GamesPolytrackIndexRoute,
-  GamesDaptrackTrackIdRoute: GamesDaptrackTrackIdRoute,
-}
-
-const GamesRouteWithChildren = GamesRoute._addFileChildren(GamesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  GamesRoute: GamesRouteWithChildren,
   HelpRoute: HelpRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,

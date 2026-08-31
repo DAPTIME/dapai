@@ -5,15 +5,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { Search } from "lucide-react";
 
 import { AdBanner } from "@/components/ads/ad-banner";
-import { GAME_CATALOG } from "@/lib/game-catalog";
 import { FEED_CATEGORIES } from "@/lib/feed-categories";
 import { listFeedGames, searchFeed } from "@/lib/gamepix.functions";
-import { useSiteConfig } from "@/lib/site-config";
-import { GAME_FLAGS } from "@/lib/feature-guard";
 import logo from "@/assets/logo.png.asset.json";
 
 const HOME_DESCRIPTION =
-  "DAP Games — thousands of free games you can play instantly in your browser: arcade, puzzle, racing, .io and shooters, plus DAP Track, our own 3D time-trial racer with a track editor.";
+  "DAP Games — thousands of free games you can play instantly in your browser: arcade, puzzle, racing, .io and shooters, all in one place.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,7 +19,7 @@ export const Route = createFileRoute("/")({
       { name: "description", content: HOME_DESCRIPTION },
       {
         name: "keywords",
-        content: "free online games, browser games, io games, DAP Games, DAP Track, 2048, snake",
+        content: "free online games, browser games, io games, DAP Games, puzzle games, racing games",
       },
       { property: "og:title", content: "DAP Games — Play Thousands of Free Online Games" },
       { property: "og:description", content: HOME_DESCRIPTION },
@@ -139,7 +136,6 @@ function GameTile({ tile, index }: { tile: Tile; index: number }) {
 }
 
 function Home() {
-  const siteConfig = useSiteConfig();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
 
@@ -177,19 +173,6 @@ function Home() {
     enabled: searching,
   });
 
-  const originals: Tile[] = GAME_CATALOG.map((g) => {
-    const flag = GAME_FLAGS[g.route];
-    return {
-      key: `own-${g.slug}`,
-      to: g.route,
-      title: g.title,
-      subtitle: g.description,
-      emoji: g.emoji,
-      badge: "DAP",
-      off: flag ? siteConfig.flags[flag] === false : false,
-    };
-  }).sort((a, b) => Number(a.off) - Number(b.off));
-
   const feedGames = searching
     ? (search.data?.games ?? [])
     : (feed.data?.pages.flatMap((p) => p.games) ?? []);
@@ -202,15 +185,8 @@ function Home() {
     thumb: g.thumb,
   }));
 
-  const tiles = useMemo(() => {
-    if (searching) {
-      const own = originals.filter(
-        (t) => t.title.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q),
-      );
-      return [...own, ...feedTiles];
-    }
-    return category === "all" ? [...originals, ...feedTiles] : feedTiles;
-  }, [originals, feedTiles, q, category, searching]);
+  const tiles = useMemo(() => feedTiles, [feedTiles]);
+
 
   const isPending = searching ? search.isPending : feed.isPending;
   const isError = searching ? search.isError : feed.isError;

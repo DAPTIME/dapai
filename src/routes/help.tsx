@@ -4,27 +4,23 @@ import { LINKTREE_URL, SUPPORT_EMAIL } from "@/lib/plans";
 const FAQS = [
   {
     q: "What is DAP Games?",
-    a: "DAP Games is a free browser arcade — 2048, Snake, DAP Track, River Crosser, Flappy, Brick Breaker, and more, all playable instantly with no download.",
+    a: "DAP Games is a free browser game portal — thousands of arcade, puzzle, racing, .io and shooter games, all playable instantly with no download.",
   },
   {
     q: "How do I play a game?",
-    a: "Open the Games page from the sidebar and click any game tile. Most games use arrow keys or WASD; touch controls appear automatically on phones and tablets.",
+    a: "Click any game tile on the home page. Most games use arrow keys or WASD; touch controls appear automatically on phones and tablets.",
   },
   {
     q: "Do I need an account to play?",
-    a: "No — every game works as a guest. Creating a free account lets you save leaderboard times and track records across visits and devices.",
+    a: "No — every game works as a guest. Creating a free account lets you keep your settings and go ad-free on a paid plan.",
   },
   {
-    q: "How are leaderboard times and records saved?",
-    a: "When you're signed in, your best times and records sync to your account. As a guest, progress may only be stored in your browser and can be lost if you clear browser data or switch devices.",
+    q: "Is my game progress saved?",
+    a: "Game progress is saved by each game inside your browser, so it can be lost if you clear browser data or switch devices.",
   },
   {
-    q: "What is DAP Track?",
-    a: "DAP Track is our 3D time-trial racer with checkpoints, ghosts, medals, and a built-in track editor. You can build your own tracks and publish them for other players.",
-  },
-  {
-    q: "How do I report a bad or broken track?",
-    a: "Use the report option on the track's page, or email us at " + SUPPORT_EMAIL + " with a link to the track and a short description of the problem.",
+    q: "How do I report a broken game?",
+    a: "Email us at " + SUPPORT_EMAIL + " with the game's name and a short description of the problem.",
   },
   {
     q: "I forgot my password. How do I recover my account?",

@@ -1,11 +1,7 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Gamepad2,
-  Grid3x3,
-  Users2,
-  PenSquare,
   Settings,
   HelpCircle,
   Scale,
@@ -30,9 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth";
 import { useSiteConfig } from "@/lib/site-config";
-import { useBeta } from "@/lib/use-beta";
 import type { FeatureKey } from "@/lib/site-config.functions";
-import { topGames } from "@/lib/game-catalog";
 
 /** Shown to an admin beside an entry the console is hiding from everyone. */
 function HiddenMark() {
@@ -48,7 +42,6 @@ function HiddenMark() {
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { isMobile, setOpenMobile } = useSidebar();
 
@@ -63,7 +56,6 @@ export function AppSidebar() {
   const isAdmin = adminQuery.data?.isAdmin === true;
 
   const siteConfig = useSiteConfig();
-  const beta = useBeta();
 
   /* A flag that is explicitly off hides the item. Anything the config
      doesn't mention stays visible, so a failed config read leaves the
@@ -76,12 +68,8 @@ export function AppSidebar() {
      Settings should not also remove the admin's own way back to it. */
   const showEntry = (...flags: FeatureKey[]) => !hiddenByAdmin(...flags) || isAdmin;
 
-  /* A beta the account cannot reach is not listed at all. */
-  const betaBlocks = (flag: FeatureKey) => beta(flag).lockedByBeta && !isAdmin;
-
   const closeIfMobile = () => { if (isMobile) setOpenMobile(false); };
 
-  const topPicks = topGames(6);
 
   return (
     <Sidebar collapsible="icon">
@@ -99,89 +87,6 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {showEntry("games", "nav_games") && !betaBlocks("games") && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Top Games</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {topPicks.map((g, i) => (
-                  <SidebarMenuItem
-                    key={g.slug}
-                    className="animate-fade-in"
-                    style={{ animationDelay: `${i * 40}ms` }}
-                  >
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname === g.route || pathname.startsWith(`${g.route}/`)}
-                      className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm"
-                    >
-                      <Link to={g.route} onClick={closeIfMobile}>
-                        <span aria-hidden className="text-base leading-none">{g.emoji}</span>
-                        <span>{g.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {showEntry("games", "nav_games") && !betaBlocks("games") && (
-                <SidebarMenuItem className="animate-fade-in">
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === "/games"}
-                    className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
-                  >
-                    <Link
-                      to="/games"
-                      onClick={closeIfMobile}
-                      className={hiddenByAdmin("games", "nav_games") ? "opacity-60" : undefined}
-                    >
-                      <Grid3x3 />
-                      <span>All Games</span>
-                      {hiddenByAdmin("games", "nav_games") && <HiddenMark />}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              <SidebarMenuItem className="animate-fade-in">
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/games/daptrack/browse"}
-                  className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
-                >
-                  <Link to="/games/daptrack/browse" onClick={closeIfMobile}>
-                    <Users2 />
-                    <span>Community Tracks</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem className="animate-fade-in">
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/games/daptrack/editor"}
-                  className="group/item transition-all duration-200 hover:translate-x-0.5 data-[active=true]:shadow-sm [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110 hover:[&>svg]:rotate-6"
-                >
-                  <Link
-                    to="/games/daptrack/editor"
-                    onClick={() => {
-                      closeIfMobile();
-                      if (!user) navigate({ to: "/login" });
-                    }}
-                  >
-                    <PenSquare />
-                    <span>Track Editor</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="pb-4">

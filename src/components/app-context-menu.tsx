@@ -115,9 +115,9 @@ export function AppContextMenu({ children }: { children: React.ReactNode }) {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
-        <ContextMenuItem onSelect={() => navigate({ to: "/games" })} className="gap-2">
+        <ContextMenuItem onSelect={() => navigate({ to: "/" })} className="gap-2">
           <Gamepad2 className="h-4 w-4" />
-          Arcade
+          All games
         </ContextMenuItem>
         <ContextMenuItem onSelect={onSelectAll} className="gap-2">
           <TextSelect className="h-4 w-4" />

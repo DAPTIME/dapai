@@ -28,7 +28,6 @@ import { TIER_LABEL, TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { PLANS, LINKTREE_URL } from "@/lib/plans";
 
 /** Trim trailing zeros: 1.25 stays, 2.00 becomes 2. */
-const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2))));
 
 /**
  * A used/allowed line with a bar, or a plain count when there's no cap.
@@ -39,53 +38,6 @@ const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Number(n.to
  * bar looks is the part that actually matters. The limit is still enforced
  * exactly, and the refusal message says plainly when it's reached.
  */
-function Meter({ label, used, limit, note, hideNumbers = false }: {
-  label: string;
-  used: number;
-  limit: number | null;
-  note?: string;
-  hideNumbers?: boolean;
-}) {
-  const unlimited = limit === null || !Number.isFinite(limit);
-  const pct = unlimited ? 0 : Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
-  const full = !unlimited && used >= (limit as number);
-
-  const readout = hideNumbers
-    // Still say something on the right, or the row reads as unfinished —
-    // and someone on an unlimited plan should know that's why it's blank.
-    ? unlimited
-      ? "No limit"
-      : full
-        ? "None left"
-        : "Available"
-    : unlimited
-      ? `${fmt(used)} — no limit`
-      : `${fmt(used)} of ${limit}`;
-
-  return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2 text-sm">
-        <span className="font-medium">{label}</span>
-        <span className={full ? "text-destructive" : "text-muted-foreground"}>
-          {readout}
-        </span>
-      </div>
-      {!unlimited && (
-        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${pct}%`,
-              background: full ? "hsl(var(--destructive))" : "var(--gradient-brand)",
-            }}
-          />
-        </div>
-      )}
-      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
-    </div>
-  );
-}
-
 export function PlanAndUsage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -146,24 +98,6 @@ export function PlanAndUsage() {
               <Sparkles className="h-3.5 w-3.5" />
               Upgrade
             </Button>
-          )}
-        </div>
-
-        <div className="mt-5 space-y-4">
-          {usage.isLoading && (
-            <p className="text-sm text-muted-foreground">Loading your usage…</p>
-          )}
-          {usage.isError && (
-            <p className="text-sm text-destructive">Couldn't load your usage right now.</p>
-          )}
-          {/* Exclusive is uncapped: nothing is checked or deducted for it, so
-              showing meters would only invent limits that do not exist. */}
-          {usage.data && (
-            <Meter
-              label="Tracks created"
-              used={usage.data.tracks.used}
-              limit={Number.isFinite(usage.data.tracks.limit) ? usage.data.tracks.limit : null}
-            />
           )}
         </div>
 

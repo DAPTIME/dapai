@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { Cpu, Shield, Lock, KeyRound, Pencil, Eye, Trash2, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Globe, PanelLeft, FlaskConical, Flag } from "lucide-react";
+import { Cpu, Shield, Lock, KeyRound, Pencil, Eye, Trash2, Power, MoreHorizontal, Crown, Ban, Check, Globe, PanelLeft, FlaskConical } from "lucide-react";
 import { TIER_LABEL } from "@/lib/tier-gate";
 import {
   DropdownMenu,
@@ -44,9 +44,6 @@ import {
   getFeatureFlags,
   adminSetFeatureFlag,
   adminSetBetaTier,
-  adminListPublicTracks,
-  adminSetTrackPublished,
-  adminDeleteTrack,
 } from "@/lib/admin.functions";
 
 
@@ -56,9 +53,7 @@ import {
   type FeatureKey,
 } from "@/lib/admin-config";
 
-const FEATURE_DESCRIPTIONS: Partial<Record<FeatureKey, string>> = {
-  games: "Hide the whole arcade: the sidebar link, /games and every game.",
-};
+const FEATURE_DESCRIPTIONS: Partial<Record<FeatureKey, string>> = {};
 
 /** The console's sections, in the order they appear. */
 const SECTIONS = [
@@ -67,8 +62,6 @@ const SECTIONS = [
   { id: "pages", label: "Pages", icon: Eye },
   { id: "sidebar", label: "Sidebar", icon: PanelLeft },
   { id: "beta", label: "Beta", icon: FlaskConical },
-  { id: "arcade", label: "Arcade", icon: Gamepad2 },
-  { id: "tracks", label: "DAP Track", icon: Flag },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
 
@@ -222,9 +215,6 @@ function Admin() {
           <TabsContent value="site" className="mt-6 space-y-6">
             <SiteTab />
           </TabsContent>
-          <TabsContent value="tracks" className="mt-6">
-            <TrackReviewTab />
-          </TabsContent>
           <TabsContent value="pages" className="mt-6">
             <FeatureList
               title="Pages & features"
@@ -241,13 +231,6 @@ function Admin() {
           </TabsContent>
           <TabsContent value="beta" className="mt-6">
             <BetaList keys={FEATURE_GROUPS.beta} />
-          </TabsContent>
-          <TabsContent value="arcade" className="mt-6">
-            <FeatureList
-              title="Arcade games"
-              description="Turn an individual game off — it greys out in the arcade and anyone playing it is sent home."
-              keys={FEATURE_GROUPS.games}
-            />
           </TabsContent>
         </Tabs>
       )}
@@ -1127,104 +1110,3 @@ function FeatureList({
   );
 }
 
-
-/**
- * Community DAP Track levels people have published.
- *
- * Unpublishing hides a level from the browser but keeps it for its author;
- * deleting removes it outright, which is why it asks first.
- */
-function TrackReviewTab() {
-  const qc = useQueryClient();
-  const list = useServerFn(adminListPublicTracks);
-  const setPublished = useServerFn(adminSetTrackPublished);
-  const remove = useServerFn(adminDeleteTrack);
-  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
-
-  const tracks = useQuery({ queryKey: ["admin-tracks"], queryFn: () => list() });
-  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-tracks"] });
-
-  const publish = useMutation({
-    mutationFn: (v: { id: string; isPublic: boolean }) => setPublished({ data: v }),
-    onSuccess: (_r, v) => { refresh(); toast.success(v.isPublic ? "Published." : "Unpublished."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const del = useMutation({
-    mutationFn: (id: string) => remove({ data: { id } }),
-    onSuccess: () => { setConfirmDelete(null); refresh(); toast.success("Track deleted."); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  if (tracks.isLoading) return <p className="text-sm text-muted-foreground">Loading tracks…</p>;
-  if (tracks.isError) return <p className="text-sm text-destructive">Couldn't load tracks.</p>;
-
-  const rows = tracks.data ?? [];
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-6">
-      <h2 className="text-lg font-semibold">Community tracks ({rows.length})</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Every level someone has shared. Unpublish takes it out of the browser
-        and leaves it with its author; delete removes it for good.
-      </p>
-      {rows.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">Nothing shared yet.</p>
-      ) : (
-        <ul className="mt-5 divide-y divide-border">
-          {rows.map((t) => (
-            <li key={t.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex-1">
-                <div className="font-medium">{t.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {t.season} · {t.play_count} plays · {t.owner_email ?? t.owner_id}
-                  {!t.is_public && " · unpublished"}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={publish.isPending}
-                  onClick={() => publish.mutate({ id: t.id, isPublic: !t.is_public })}
-                >
-                  {t.is_public ? "Unpublish" : "Publish"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-destructive"
-                  onClick={() => setConfirmDelete({ id: t.id, name: t.name })}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <Dialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete "{confirmDelete?.name}"?</DialogTitle>
-            <DialogDescription>
-              The level and its times are removed for everyone, including its
-              author. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-            <Button
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={del.isPending}
-              onClick={() => confirmDelete && del.mutate(confirmDelete.id)}
-            >
-              {del.isPending ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
