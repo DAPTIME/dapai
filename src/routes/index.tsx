@@ -177,19 +177,6 @@ function Home() {
     enabled: searching,
   });
 
-  const originals: Tile[] = GAME_CATALOG.map((g) => {
-    const flag = GAME_FLAGS[g.route];
-    return {
-      key: `own-${g.slug}`,
-      to: g.route,
-      title: g.title,
-      subtitle: g.description,
-      emoji: g.emoji,
-      badge: "DAP",
-      off: flag ? siteConfig.flags[flag] === false : false,
-    };
-  }).sort((a, b) => Number(a.off) - Number(b.off));
-
   const feedGames = searching
     ? (search.data?.games ?? [])
     : (feed.data?.pages.flatMap((p) => p.games) ?? []);
@@ -202,15 +189,8 @@ function Home() {
     thumb: g.thumb,
   }));
 
-  const tiles = useMemo(() => {
-    if (searching) {
-      const own = originals.filter(
-        (t) => t.title.toLowerCase().includes(q) || t.subtitle.toLowerCase().includes(q),
-      );
-      return [...own, ...feedTiles];
-    }
-    return category === "all" ? [...originals, ...feedTiles] : feedTiles;
-  }, [originals, feedTiles, q, category, searching]);
+  const tiles = useMemo(() => feedTiles, [feedTiles]);
+
 
   const isPending = searching ? search.isPending : feed.isPending;
   const isError = searching ? search.isError : feed.isError;
