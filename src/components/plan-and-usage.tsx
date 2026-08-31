@@ -28,7 +28,6 @@ import { TIER_LABEL, TIER_RANK, type Tier } from "@/lib/tier-rank";
 import { PLANS, LINKTREE_URL } from "@/lib/plans";
 
 /** Trim trailing zeros: 1.25 stays, 2.00 becomes 2. */
-const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2))));
 
 /**
  * A used/allowed line with a bar, or a plain count when there's no cap.
@@ -100,9 +99,6 @@ export function PlanAndUsage() {
               Upgrade
             </Button>
           )}
-        </div>
-
-        <div className="mt-5 space-y-4">
         </div>
 
         {rank > TIER_RANK.free && (
