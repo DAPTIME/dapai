@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { Cpu, Shield, Lock, KeyRound, Pencil, Eye, Trash2, Power, MoreHorizontal, Crown, Ban, Check, Gamepad2, Globe, PanelLeft, FlaskConical, Flag } from "lucide-react";
+import { Cpu, Shield, Lock, KeyRound, Pencil, Eye, Trash2, Power, MoreHorizontal, Crown, Ban, Check, , Globe, PanelLeft, FlaskConical } from "lucide-react";
 import { TIER_LABEL } from "@/lib/tier-gate";
 import {
   DropdownMenu,
@@ -44,9 +44,6 @@ import {
   getFeatureFlags,
   adminSetFeatureFlag,
   adminSetBetaTier,
-  adminListPublicTracks,
-  adminSetTrackPublished,
-  adminDeleteTrack,
 } from "@/lib/admin.functions";
 
 
@@ -56,9 +53,7 @@ import {
   type FeatureKey,
 } from "@/lib/admin-config";
 
-const FEATURE_DESCRIPTIONS: Partial<Record<FeatureKey, string>> = {
-  games: "Hide the whole arcade: the sidebar link, /games and every game.",
-};
+const FEATURE_DESCRIPTIONS: Partial<Record<FeatureKey, string>> = {};
 
 /** The console's sections, in the order they appear. */
 const SECTIONS = [
@@ -67,8 +62,6 @@ const SECTIONS = [
   { id: "pages", label: "Pages", icon: Eye },
   { id: "sidebar", label: "Sidebar", icon: PanelLeft },
   { id: "beta", label: "Beta", icon: FlaskConical },
-  { id: "arcade", label: "Arcade", icon: Gamepad2 },
-  { id: "tracks", label: "DAP Track", icon: Flag },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
 
@@ -222,9 +215,6 @@ function Admin() {
           <TabsContent value="site" className="mt-6 space-y-6">
             <SiteTab />
           </TabsContent>
-          <TabsContent value="tracks" className="mt-6">
-            <TrackReviewTab />
-          </TabsContent>
           <TabsContent value="pages" className="mt-6">
             <FeatureList
               title="Pages & features"
@@ -241,13 +231,6 @@ function Admin() {
           </TabsContent>
           <TabsContent value="beta" className="mt-6">
             <BetaList keys={FEATURE_GROUPS.beta} />
-          </TabsContent>
-          <TabsContent value="arcade" className="mt-6">
-            <FeatureList
-              title="Arcade games"
-              description="Turn an individual game off — it greys out in the arcade and anyone playing it is sent home."
-              keys={FEATURE_GROUPS.games}
-            />
           </TabsContent>
         </Tabs>
       )}
