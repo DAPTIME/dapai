@@ -494,32 +494,3 @@ export const adminSetFeatureFlag = createServerFn({ method: "POST" })
     if (error) throw dbError(error);
     return { ok: true };
   });
-
-
-
-/** Show or hide a community track in the browser. */
-export const adminSetTrackPublished = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid(), isPublic: z.boolean() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId, context.supabase);
-    const supabaseAdmin = getAdminClient();
-    const { error } = await supabaseAdmin
-      .from("custom_tracks")
-      .update({ is_public: data.isPublic })
-      .eq("id", data.id);
-    if (error) throw dbError(error);
-    return { ok: true };
-  });
-
-/** Remove a community track outright. */
-export const adminDeleteTrack = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId, context.supabase);
-    const supabaseAdmin = getAdminClient();
-    const { error } = await supabaseAdmin.from("custom_tracks").delete().eq("id", data.id);
-    if (error) throw dbError(error);
-    return { ok: true };
-  });
