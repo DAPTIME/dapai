@@ -1,6 +1,5 @@
 /**
- * The single "go Pro" pitch dialog: ad-free browsing plus the DAP Track
- * perks. Self-contained — callers just flip `open`.
+ * The single "go Pro" pitch dialog: ad-free browsing.
  */
 import {
   Dialog,
@@ -34,7 +33,7 @@ export function ProDialog({
             <Sparkles className="h-4 w-4 text-primary" /> Go Pro
           </DialogTitle>
           <DialogDescription>
-            Remove ads across DAP Games and unlock more of the arcade.
+            Remove ads across DAP Games and play without interruptions.
           </DialogDescription>
         </DialogHeader>
         <ul className="space-y-2 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">

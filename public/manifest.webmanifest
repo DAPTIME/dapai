@@ -1,7 +1,7 @@
 {
   "name": "DAP Games",
   "short_name": "DAP Games",
-  "description": "DAP Games is a free browser arcade — 2048, Snake, DAP Track 3D time trials, River Crosser, Flappy, Brick Breaker and more, playable instantly with no download.",
+  "description": "DAP Games is a free browser game portal — thousands of arcade, puzzle, racing and .io games, playable instantly with no download.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -16,7 +16,6 @@
     { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Games", "short_name": "Games", "url": "/games", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "DAP Track", "short_name": "DAP Track", "url": "/games/daptrack", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Games", "short_name": "Games", "url": "/games", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }
