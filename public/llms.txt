@@ -1,25 +1,18 @@
 # DAP Games
 
-> DAP Games is a free browser arcade of small games — 2048, Snake, DAP Track,
-> River Crosser, Flappy, Brick Breaker, and an embedded PolyTrack — playable
-> instantly with no download.
+> DAP Games is a free browser game portal — thousands of arcade, puzzle,
+> racing, .io and shooter games, playable instantly with no download.
 
-DAP Games lets you play a library of casual and skill-based browser games,
-save your leaderboard times and personal bests to an account, and build and
-publish your own tracks in DAP Track, a 3D time-trial racer with an in-game
-editor. The site is free to play and supported by Google AdSense banner ads
-and a short (10-15 second) ad before each game. A Pro tier removes ads
-site-wide; there is no in-app checkout yet, so upgrading is arranged by
-emailing support or reaching out via Linktree.
+Every game runs in the browser through an embedded third-party player. The
+site is free to play and supported by Google AdSense banner ads and a short
+(10-15 second) ad before each game. A Pro tier removes ads site-wide; there
+is no in-app checkout yet, so upgrading is arranged by emailing support or
+reaching out via Linktree.
 
 ## Pages
 
-- [Home](/): Land on the DAP Games homepage and jump into any game.
-- [Games](/games): Browse every game in the arcade.
-- [DAP Track](/games/daptrack): 3D time-trial racer with checkpoints, ghosts, medals and a track editor.
-- [DAP Track — Browse tracks](/games/daptrack/browse): Community-published DAP Track levels.
-- [2048](/games/2048), [Snake](/games/snake), [Brick Breaker](/games/breakout), [Flappy](/games/flappy), [River Crosser](/games/river): Classic single-screen browser games.
-- [PolyTrack](/games/polytrack): Embedded third-party racing game.
+- [Home](/): Browse and search the full game library.
+- [Play a game](/play/{slug}): Individual game pages with the embedded player.
 - [Help](/help): Frequently asked questions.
 - [Terms](/terms): Terms of service, fair play, advertising and Pro.
 
@@ -29,5 +22,3 @@ emailing support or reaching out via Linktree.
   authentication pages, are private and excluded in `/robots.txt`. Do not
   index or summarise them.
 - The admin console at `/admin` is restricted to the site owner.
-- Leaderboard times and published tracks belong to the players who created
-  them.

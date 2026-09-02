@@ -260,7 +260,7 @@ function RouteTransition({ children }: { children: React.ReactNode }) {
  * Footer link, on every page except the game surfaces themselves, where a
  * footer would sit under the board or push the controls off screen.
  */
-const FOOTERLESS = ["/", "/games"];
+const FOOTERLESS = ["/"];
 
 function SiteFooter() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
