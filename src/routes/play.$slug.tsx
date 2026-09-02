@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -33,6 +33,8 @@ function PlayFeedGame() {
   const fetchGame = useServerFn(getFeedGame);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const [started, setStarted] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [slow, setSlow] = useState(false);
 
   const { data: game, isPending } = useQuery({
     queryKey: ["feed-game", slug],
@@ -40,12 +42,21 @@ function PlayFeedGame() {
     staleTime: 60 * 60 * 1000,
   });
 
+  // If the embed never signals load, offer a retry / new-tab escape hatch
+  // instead of leaving the player staring at a black rectangle.
+  useEffect(() => {
+    if (!started || loaded) return;
+    const id = setTimeout(() => setSlow(true), 12000);
+    return () => clearTimeout(id);
+  }, [started, loaded]);
+
   const goFullscreen = () => {
     const el = shellRef.current;
     if (!el) return;
     if (document.fullscreenElement) void document.exitFullscreen();
     else void el.requestFullscreen?.();
   };
+
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4">
@@ -72,17 +83,9 @@ function PlayFeedGame() {
       </h1>
 
       {!started ? (
-        <AdGate label={game?.title}>
+        <AdGate label={game?.title} onDone={() => setStarted(true)}>
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card/40 p-8">
-            <p className="text-sm text-muted-foreground">Your game is ready.</p>
-            <button
-              type="button"
-              onClick={() => setStarted(true)}
-              className="rounded-full px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-transform hover:scale-105"
-              style={{ background: "var(--gradient-brand)" }}
-            >
-              Play {game?.title ?? "now"}
-            </button>
+            <p className="text-sm text-muted-foreground">Starting {game?.title ?? "your game"}…</p>
           </div>
         </AdGate>
       ) : (
@@ -98,17 +101,45 @@ function PlayFeedGame() {
               </div>
             ) : (
               <iframe
+                key={game.url}
                 src={game.url}
                 title={game.title}
                 className="aspect-video w-full"
-                allow="autoplay; fullscreen; gamepad; clipboard-write"
+                allow="autoplay; fullscreen; gamepad; clipboard-write; cross-origin-isolated"
                 allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
+                onLoad={() => setLoaded(true)}
+                referrerPolicy="no-referrer-when-downgrade"
               />
             )}
           </div>
+
+          {slow && !loaded && game && (
+            <div className="absolute inset-x-0 bottom-[60px] flex flex-wrap items-center justify-center gap-3 bg-background/90 p-3 text-xs">
+              <span className="text-muted-foreground">Game taking too long?</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSlow(false);
+                  setStarted(false);
+                  setTimeout(() => setStarted(true), 50);
+                }}
+                className="rounded-full border border-border px-3 py-1 hover:border-primary hover:text-primary"
+              >
+                Reload game
+              </button>
+              <a
+                href={game.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-border px-3 py-1 hover:border-primary hover:text-primary"
+              >
+                Open in new tab
+              </a>
+            </div>
+          )}
         </div>
       )}
+
 
       {game?.description && (
         <p className="max-w-2xl text-sm text-muted-foreground">{game.description}</p>

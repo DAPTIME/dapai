@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ADSENSE_CLIENT, AD_SLOTS, adsConfigured } from "@/lib/ads";
+import { ADSENSE_CLIENT, AD_SLOTS, slotConfigured } from "@/lib/ads";
 import { useAdFree } from "@/lib/use-ad-free";
 
 declare global {
@@ -15,8 +15,8 @@ export function AdBanner({ placement }: { placement: "top" | "bottom" }) {
   const adFree = useAdFree();
   const insRef = useRef<HTMLModElement | null>(null);
   const pushed = useRef(false);
-  const configured = adsConfigured();
   const slot = placement === "top" ? AD_SLOTS.topBanner : AD_SLOTS.bottomBanner;
+  const configured = slotConfigured(slot);
 
   useEffect(() => {
     if (!configured || pushed.current || adFree) return;
