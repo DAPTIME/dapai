@@ -33,6 +33,8 @@ function PlayFeedGame() {
   const fetchGame = useServerFn(getFeedGame);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const [started, setStarted] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [slow, setSlow] = useState(false);
 
   const { data: game, isPending } = useQuery({
     queryKey: ["feed-game", slug],
@@ -40,12 +42,21 @@ function PlayFeedGame() {
     staleTime: 60 * 60 * 1000,
   });
 
+  // If the embed never signals load, offer a retry / new-tab escape hatch
+  // instead of leaving the player staring at a black rectangle.
+  useEffect(() => {
+    if (!started || loaded) return;
+    const id = setTimeout(() => setSlow(true), 12000);
+    return () => clearTimeout(id);
+  }, [started, loaded]);
+
   const goFullscreen = () => {
     const el = shellRef.current;
     if (!el) return;
     if (document.fullscreenElement) void document.exitFullscreen();
     else void el.requestFullscreen?.();
   };
+
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4">
