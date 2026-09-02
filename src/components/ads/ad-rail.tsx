@@ -1,4 +1,4 @@
-import { ADSENSE_CLIENT, AD_SLOTS, adsConfigured } from "@/lib/ads";
+import { ADSENSE_CLIENT, AD_SLOTS, slotConfigured } from "@/lib/ads";
 import { useAdFree } from "@/lib/use-ad-free";
 
 /**
@@ -16,7 +16,8 @@ export function AdRail({ className = "" }: { className?: string }) {
   const adFree = useAdFree();
   if (adFree) return null;
 
-  const configured = adsConfigured();
+  const topOn = slotConfigured(AD_SLOTS.inGameTop);
+  const bottomOn = slotConfigured(AD_SLOTS.inGameBottom);
 
   return (
     <div className={className}>
@@ -24,7 +25,7 @@ export function AdRail({ className = "" }: { className?: string }) {
         className="pointer-events-none fixed inset-x-0 top-0 z-50 flex h-[50px] items-center justify-center border-b border-border bg-background/95 backdrop-blur"
       >
         <div className="pointer-events-auto h-full w-full max-w-full overflow-hidden">
-          {configured ? (
+          {topOn ? (
             <ins
               className="adsbygoogle block h-full w-full"
               style={{ display: "block" }}
@@ -45,7 +46,7 @@ export function AdRail({ className = "" }: { className?: string }) {
         className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex h-[60px] items-center justify-center border-t border-border bg-background/95 backdrop-blur"
       >
         <div className="pointer-events-auto h-full w-full max-w-full overflow-hidden">
-          {configured ? (
+          {bottomOn ? (
             <ins
               className="adsbygoogle block h-full w-full"
               style={{ display: "block" }}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ADSENSE_CLIENT, AD_SLOTS, AD_GATE_MAX_SECONDS, AD_GATE_MIN_SECONDS, adsConfigured } from "@/lib/ads";
+import { ADSENSE_CLIENT, AD_SLOTS, AD_GATE_MAX_SECONDS, AD_GATE_MIN_SECONDS, slotConfigured } from "@/lib/ads";
 import { useAdFree } from "@/lib/use-ad-free";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export function AdGate({ children, label }: { children: React.ReactNode; label?:
     };
   }, [mounted, adFree, done]);
 
-  const configured = adsConfigured();
+  const configured = slotConfigured(AD_SLOTS.interstitial);
   const pushed = useRef(false);
   useEffect(() => {
     if (!mounted || adFree || done || !configured || pushed.current) return;
