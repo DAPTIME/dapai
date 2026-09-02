@@ -10,7 +10,16 @@ import { AdRail } from "@/components/ads/ad-rail";
  * "Skip" enables once AD_GATE_MAX_SECONDS - AD_GATE_MIN_SECONDS have
  * elapsed (i.e. AD_GATE_MIN_SECONDS watched), and it auto-continues at 0.
  */
-export function AdGate({ children, label }: { children: React.ReactNode; label?: string }) {
+export function AdGate({
+  children,
+  label,
+  onDone,
+}: {
+  children: React.ReactNode;
+  label?: string;
+  /** Fired once the gate has been satisfied, so callers can auto-start play. */
+  onDone?: () => void;
+}) {
   const adFree = useAdFree();
   const [mounted, setMounted] = useState(false);
   const [remaining, setRemaining] = useState(AD_GATE_MAX_SECONDS);
@@ -52,6 +61,16 @@ export function AdGate({ children, label }: { children: React.ReactNode; label?:
       // never let ad-loading errors block the game
     }
   }, [mounted, adFree, done, configured]);
+
+  // Auto-continue the moment the gate clears, without a second click.
+  const notified = useRef(false);
+  useEffect(() => {
+    if (!onDone || notified.current) return;
+    if (adFree || done) {
+      notified.current = true;
+      onDone();
+    }
+  }, [adFree, done, onDone]);
 
   if (!mounted || adFree || done) return <>{children}</>;
 
