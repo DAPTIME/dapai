@@ -67,7 +67,8 @@ const TILE_BG = [
 
 type Tile = {
   key: string;
-  to: string;
+  /** Feed slug — tiles always navigate to the /play/$slug route. */
+  slug: string;
   title: string;
   subtitle: string;
   emoji?: string;
@@ -129,7 +130,11 @@ function GameTile({ tile, index }: { tile: Tile; index: number }) {
   }
 
   return (
-    <Link to={tile.to} className={`${shell} hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl`}>
+    <Link
+      to="/play/$slug"
+      params={{ slug: tile.slug }}
+      className={`${shell} hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl`}
+    >
       {body}
     </Link>
   );
@@ -179,7 +184,7 @@ function Home() {
 
   const feedTiles: Tile[] = feedGames.map((g) => ({
     key: `feed-${g.slug}`,
-    to: `/play/${g.slug}`,
+    slug: g.slug,
     title: g.title,
     subtitle: g.category.replace(/-/g, " "),
     thumb: g.thumb,

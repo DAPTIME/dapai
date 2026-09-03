@@ -16,7 +16,7 @@ function val(name: string, fallback = ""): string {
   return (env[name] ?? fallback).trim();
 }
 
-export const ADSENSE_CLIENT = val("VITE_ADSENSE_CLIENT");
+export const ADSENSE_CLIENT = val("VITE_ADSENSE_CLIENT", "ca-pub-2164790706730330");
 
 export const AD_SLOTS = {
   topBanner: val("VITE_AD_SLOT_TOP"),
