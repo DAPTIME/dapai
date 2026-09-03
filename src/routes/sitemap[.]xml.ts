@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
+import { FEATURED_GAMES } from "@/lib/featured-games";
+
 // Set SITE_URL in the deployment environment when a custom domain is
 // pointed at the site. Every <loc> has to be on the domain being indexed —
 // a sitemap that advertises lovable.app URLs from another domain is ignored.
@@ -22,6 +24,11 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/", changefreq: "weekly", priority: "1.0" },
           { path: "/help", changefreq: "monthly", priority: "0.5" },
           { path: "/terms", changefreq: "yearly", priority: "0.3" },
+          ...FEATURED_GAMES.map((g) => ({
+            path: `/play/${g.slug}`,
+            changefreq: "weekly" as const,
+            priority: "0.8",
+          })),
         ];
 
         const urls = entries.map((e) =>
