@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Search } from "lucide-react";
 
 import { AdBanner } from "@/components/ads/ad-banner";
+import { FEATURED_GAMES } from "@/lib/featured-games";
 import { FEED_CATEGORIES } from "@/lib/feed-categories";
 import { listFeedGames, searchFeed } from "@/lib/gamepix.functions";
 import logo from "@/assets/logo.png.asset.json";
@@ -67,7 +68,8 @@ const TILE_BG = [
 
 type Tile = {
   key: string;
-  to: string;
+  /** Feed slug — tiles always navigate to the /play/$slug route. */
+  slug: string;
   title: string;
   subtitle: string;
   emoji?: string;
@@ -129,7 +131,11 @@ function GameTile({ tile, index }: { tile: Tile; index: number }) {
   }
 
   return (
-    <Link to={tile.to} className={`${shell} hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl`}>
+    <Link
+      to="/play/$slug"
+      params={{ slug: tile.slug }}
+      className={`${shell} hover:-translate-y-1 hover:border-primary/60 hover:shadow-xl`}
+    >
       {body}
     </Link>
   );
@@ -179,13 +185,26 @@ function Home() {
 
   const feedTiles: Tile[] = feedGames.map((g) => ({
     key: `feed-${g.slug}`,
-    to: `/play/${g.slug}`,
+    slug: g.slug,
     title: g.title,
     subtitle: g.category.replace(/-/g, " "),
     thumb: g.thumb,
   }));
 
-  const tiles = useMemo(() => feedTiles, [feedTiles]);
+  // Pinned picks lead the grid while browsing, and guarantee something is
+  // playable even if the live feed is down.
+  const tiles = useMemo(() => {
+    if (searching) {
+      const term = q;
+      const matches = FEATURED_GAMES.filter((g) => g.title.toLowerCase().includes(term));
+      const pinned = matches.map((g) => ({ key: `pin-${g.slug}`, ...g }));
+      const seen = new Set(pinned.map((t) => t.slug));
+      return [...pinned, ...feedTiles.filter((t) => !seen.has(t.slug))];
+    }
+    const pinned: Tile[] = FEATURED_GAMES.map((g) => ({ key: `pin-${g.slug}`, ...g }));
+    const seen = new Set(pinned.map((t) => t.slug));
+    return [...pinned, ...feedTiles.filter((t) => !seen.has(t.slug))];
+  }, [feedTiles, searching, q]);
 
 
   const isPending = searching ? search.isPending : feed.isPending;
@@ -263,14 +282,24 @@ function Home() {
 
         {tiles.length === 0 && !isPending && (
           <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-            No games match that search.
+            No games match that search. Clear the search box to browse the full library.
           </p>
         )}
 
         {isError && (
-          <p className="mt-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            The wider game library is unavailable right now — the DAP games above still work.
-          </p>
+          <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            <p>
+              We couldn&apos;t load the full game library just now. The featured games above are
+              still playable — try again for the rest.
+            </p>
+            <button
+              type="button"
+              onClick={() => void (searching ? search.refetch() : feed.refetch())}
+              className="rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              Try again
+            </button>
+          </div>
         )}
 
         {canLoadMore && (

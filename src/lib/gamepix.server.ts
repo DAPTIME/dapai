@@ -161,10 +161,15 @@ export async function searchFeedGames(term: string): Promise<FeedGame[]> {
 
 /** Look a single game up by slug so the play page can render real details. */
 export async function fetchFeedGame(slug: string): Promise<FeedGame | null> {
-  for (let page = 1; page <= 3; page++) {
-    const { games } = await fetchFeedPage({ page, category: null });
-    const hit = games.find((g) => g.slug === slug);
-    if (hit) return hit;
+  try {
+    for (let page = 1; page <= 3; page++) {
+      const { games } = await fetchFeedPage({ page, category: null });
+      const hit = games.find((g) => g.slug === slug);
+      if (hit) return hit;
+    }
+  } catch {
+    // Feed unreachable — fall through to the deterministic embed below so a
+    // pinned/featured game stays playable.
   }
   // Not in the top pages — the embed URL is deterministic, so still playable.
   return {

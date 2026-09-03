@@ -1,0 +1,7 @@
+# Roadmap
+
+- [x] Fix game tiles 404 (Link to /play/$slug with params)
+- [x] Wire AdSense publisher id + ads.txt (slot ids pending Google verification)
+- [x] Featured/top game pinned (real PolyTrack not embeddable — licensed 3D racer pinned instead)
+- [x] Update sitemap for featured games
+- [x] Fix misleading empty/error state copy on the home page
