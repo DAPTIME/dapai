@@ -21,6 +21,7 @@ export function AdGate({
   onDone?: () => void;
 }) {
   const adFree = useAdFree();
+  const configured = slotConfigured(AD_SLOTS.interstitial);
   const [mounted, setMounted] = useState(false);
   const [remaining, setRemaining] = useState(AD_GATE_MAX_SECONDS);
   const [done, setDone] = useState(false);
@@ -48,7 +49,6 @@ export function AdGate({
     };
   }, [mounted, adFree, done]);
 
-  const configured = slotConfigured(AD_SLOTS.interstitial);
   const pushed = useRef(false);
   useEffect(() => {
     if (!mounted || adFree || done || !configured || pushed.current) return;
@@ -66,13 +66,15 @@ export function AdGate({
   const notified = useRef(false);
   useEffect(() => {
     if (!onDone || notified.current) return;
-    if (adFree || done) {
+    if (adFree || done || !configured) {
       notified.current = true;
       onDone();
     }
-  }, [adFree, done, onDone]);
+  }, [adFree, configured, done, onDone]);
 
-  if (!mounted || adFree || done) return <>{children}</>;
+  // Never make somebody wait through a pretend ad. Until Google supplies a
+  // real interstitial slot, open the game immediately.
+  if (!mounted || adFree || done || !configured) return <>{children}</>;
 
   const watched = AD_GATE_MAX_SECONDS - remaining;
   const skippable = watched >= AD_GATE_MIN_SECONDS;
@@ -85,18 +87,14 @@ export function AdGate({
       </p>
 
       <div className="flex h-40 w-full items-center justify-center overflow-hidden rounded-lg border border-dashed border-border bg-muted/30">
-        {configured ? (
-          <ins
-            className="adsbygoogle block h-full w-full"
-            style={{ display: "block" }}
-            data-ad-client={ADSENSE_CLIENT}
-            data-ad-slot={AD_SLOTS.interstitial}
-            data-ad-format="auto"
-            data-full-width-responsive="true"
-          />
-        ) : (
-          <span className="text-xs text-muted-foreground">Advertisement</span>
-        )}
+        <ins
+          className="adsbygoogle block h-full w-full"
+          style={{ display: "block" }}
+          data-ad-client={ADSENSE_CLIENT}
+          data-ad-slot={AD_SLOTS.interstitial}
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        />
       </div>
 
       <Progress value={progress} className="w-full" />
