@@ -10,7 +10,7 @@ declare global {
 
 const HEIGHT_CLASS = "min-h-[90px]";
 
-/** A responsive top/bottom banner ad, or a matching placeholder while unconfigured. */
+/** A responsive top/bottom banner ad. Nothing is reserved until a real slot exists. */
 export function AdBanner({ placement }: { placement: "top" | "bottom" }) {
   const adFree = useAdFree();
   const insRef = useRef<HTMLModElement | null>(null);
@@ -30,15 +30,7 @@ export function AdBanner({ placement }: { placement: "top" | "bottom" }) {
 
   if (adFree) return null;
 
-  if (!configured) {
-    return (
-      <div
-        className={`flex w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-xs text-muted-foreground ${HEIGHT_CLASS}`}
-      >
-        Advertisement
-      </div>
-    );
-  }
+  if (!configured) return null;
 
   return (
     <div className={`w-full overflow-hidden ${HEIGHT_CLASS}`}>
