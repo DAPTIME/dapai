@@ -157,6 +157,10 @@ function GameTile({ tile, index, relay }: { tile: Tile; index: number; relay: bo
 function Home() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
+  // True when this network blocks the provider: pictures come through our own
+  // address instead.
+  const relay = useRelay();
+
 
   // Debounce so typing doesn't fire a search request per keystroke.
   const [debounced, setDebounced] = useState("");
