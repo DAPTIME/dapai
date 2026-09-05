@@ -232,11 +232,15 @@ export const resendConfirmationEmail = createServerFn({ method: "POST" })
       const plain = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
         auth: { persistSession: false, autoRefreshToken: false },
       });
+      const { resolveSiteUrl } = await import("./site-url.server");
       const { error } = await plain.auth.resend({
         type: "signup",
         email,
-        options: { emailRedirectTo: `${data.origin}/auth/callback` },
+        options: {
+          emailRedirectTo: `${resolveSiteUrl(data.origin)}/auth/callback`,
+        },
       });
+
       if (error) console.warn("[signup] fallback resend failed:", error.message);
       return { ok: true };
     }
