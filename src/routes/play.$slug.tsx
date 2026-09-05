@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Expand, ArrowLeft, RefreshCw } from "lucide-react";
+import { Expand, ArrowLeft, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { AdBanner } from "@/components/ads/ad-banner";
 import { AdGate } from "@/components/ads/ad-gate";
 import { AdRail } from "@/components/ads/ad-rail";
 import { Button } from "@/components/ui/button";
 import { getFeedGame } from "@/lib/gamepix.functions";
+import { relayed, setRelayMode, useRelay } from "@/lib/relay";
+
 
 export const Route = createFileRoute("/play/$slug")({
   head: ({ params }) => {
