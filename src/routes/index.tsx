@@ -8,6 +8,8 @@ import { AdBanner } from "@/components/ads/ad-banner";
 import { FEATURED_GAMES } from "@/lib/featured-games";
 import { FEED_CATEGORIES } from "@/lib/feed-categories";
 import { listFeedGames, searchFeed } from "@/lib/gamepix.functions";
+import { relayed, useRelay } from "@/lib/relay";
+
 import logo from "@/assets/logo.png.asset.json";
 
 const HOME_DESCRIPTION =
@@ -78,16 +80,27 @@ type Tile = {
   off?: boolean;
 };
 
-function GameTile({ tile, index }: { tile: Tile; index: number }) {
+function GameTile({ tile, index, relay }: { tile: Tile; index: number; relay: boolean }) {
   const media = tile.thumb ? (
     <img
-      src={tile.thumb}
+      src={relay ? relayed(tile.thumb) : tile.thumb}
       alt=""
       loading="lazy"
       decoding="async"
+      onError={(e) => {
+        // Per-image safety net: a network that filters the image host fails
+        // here even when the session probe said things were fine.
+        const img = e.currentTarget;
+        const direct = tile.thumb!;
+        if (!img.dataset["relayed"]) {
+          img.dataset["relayed"] = "1";
+          img.src = relayed(direct);
+        }
+      }}
       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
     />
   ) : (
+
     <div
       className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${
         TILE_BG[index % TILE_BG.length]
@@ -144,6 +157,10 @@ function GameTile({ tile, index }: { tile: Tile; index: number }) {
 function Home() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
+  // True when this network blocks the provider: pictures come through our own
+  // address instead.
+  const relay = useRelay();
+
 
   // Debounce so typing doesn't fire a search request per keystroke.
   const [debounced, setDebounced] = useState("");
@@ -269,7 +286,7 @@ function Home() {
       <section aria-label="Games">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
           {tiles.map((t, i) => (
-            <GameTile key={t.key} tile={t} index={i} />
+            <GameTile key={t.key} tile={t} index={i} relay={relay} />
           ))}
           {(isPending || isFetchingMore) &&
             Array.from({ length: 10 }).map((_, i) => (

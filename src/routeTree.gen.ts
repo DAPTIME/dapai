@@ -28,6 +28,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as PlaySlugRouteImport } from './routes/play.$slug'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPublicHooksCleanupOldChatsRouteImport } from './routes/api/public/hooks/cleanup-old-chats'
+import { Route as ApiPublicPxSplatRouteImport } from './routes/api/public/px/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -128,6 +129,11 @@ const ApiPublicHooksCleanupOldChatsRoute =
     path: '/api/public/hooks/cleanup-old-chats',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPxSplatRoute = ApiPublicPxSplatRouteImport.update({
+  id: '/api/public/px/$',
+  path: '/api/public/px/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/play/$slug': typeof PlaySlugRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
+  '/api/public/px/$': typeof ApiPublicPxSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/play/$slug': typeof PlaySlugRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
+  '/api/public/px/$': typeof ApiPublicPxSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/play/$slug': typeof PlaySlugRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
+  '/api/public/px/$': typeof ApiPublicPxSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/play/$slug'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cleanup-old-chats'
+    | '/api/public/px/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/play/$slug'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cleanup-old-chats'
+    | '/api/public/px/$'
   id:
     | '__root__'
     | '/'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/play/$slug'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cleanup-old-chats'
+    | '/api/public/px/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -279,6 +291,7 @@ export interface RootRouteChildren {
   PlaySlugRoute: typeof PlaySlugRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksCleanupOldChatsRoute: typeof ApiPublicHooksCleanupOldChatsRoute
+  ApiPublicPxSplatRoute: typeof ApiPublicPxSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -416,6 +429,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksCleanupOldChatsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/px/$': {
+      id: '/api/public/px/$'
+      path: '/api/public/px/$'
+      fullPath: '/api/public/px/$'
+      preLoaderRoute: typeof ApiPublicPxSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -440,6 +460,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlaySlugRoute: PlaySlugRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksCleanupOldChatsRoute: ApiPublicHooksCleanupOldChatsRoute,
+  ApiPublicPxSplatRoute: ApiPublicPxSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

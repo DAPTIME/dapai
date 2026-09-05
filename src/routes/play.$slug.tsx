@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Expand, ArrowLeft, RefreshCw } from "lucide-react";
+import { Expand, ArrowLeft, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { AdBanner } from "@/components/ads/ad-banner";
 import { AdGate } from "@/components/ads/ad-gate";
 import { AdRail } from "@/components/ads/ad-rail";
 import { Button } from "@/components/ui/button";
 import { getFeedGame } from "@/lib/gamepix.functions";
+import { relayed, setRelayMode, useRelay } from "@/lib/relay";
+
 
 export const Route = createFileRoute("/play/$slug")({
   head: ({ params }) => {
@@ -37,12 +39,21 @@ function PlayFeedGame() {
   const [loaded, setLoaded] = useState(false);
   const [slow, setSlow] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  /* Networks that filter the provider's domain leave the frame permanently
+     blank. autoRelay is the session-wide probe result; forceRelay is the
+     player's own "Unblock" button, for the case where the probe passed but
+     the game host itself is filtered. */
+  const autoRelay = useRelay();
+  const [forceRelay, setForceRelay] = useState(false);
+  const useProxy = autoRelay || forceRelay;
 
   const { data: game, isPending } = useQuery({
     queryKey: ["feed-game", slug],
     queryFn: () => fetchGame({ data: { slug } }),
     staleTime: 60 * 60 * 1000,
   });
+
+  const frameSrc = game ? (useProxy ? relayed(game.url) : game.url) : "";
 
   // If the embed never signals load, offer a retry / new-tab escape hatch
   // instead of leaving the player staring at a black rectangle.
@@ -64,6 +75,13 @@ function PlayFeedGame() {
     setSlow(false);
     setReloadKey((key) => key + 1);
   };
+
+  const enableUnblock = () => {
+    setRelayMode("on");
+    setForceRelay(true);
+    reloadGame();
+  };
+
 
 
   return (
@@ -110,8 +128,8 @@ function PlayFeedGame() {
               </div>
             ) : (
               <iframe
-                key={`${game.url}-${reloadKey}`}
-                src={game.url}
+                key={`${frameSrc}-${reloadKey}`}
+                src={frameSrc}
                 title={game.title}
                 className="aspect-video w-full"
                 allow="autoplay; fullscreen; gamepad; clipboard-write; cross-origin-isolated"
@@ -124,7 +142,16 @@ function PlayFeedGame() {
 
           {slow && !loaded && game && (
             <div className="absolute inset-x-0 bottom-[60px] flex flex-wrap items-center justify-center gap-3 bg-background/90 p-3 text-xs">
-              <span className="text-muted-foreground">Game taking too long?</span>
+              <span className="text-muted-foreground">
+                {useProxy
+                  ? "Game taking too long?"
+                  : "Game blocked or stuck on this network?"}
+              </span>
+              {!useProxy && (
+                <Button type="button" onClick={enableUnblock} size="sm">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Unblock mode
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={reloadGame}
@@ -134,7 +161,7 @@ function PlayFeedGame() {
                 <RefreshCw className="h-3.5 w-3.5" /> Reload game
               </Button>
               <a
-                href={game.url}
+                href={frameSrc}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full border border-border px-3 py-1 hover:border-primary hover:text-primary"
@@ -143,6 +170,7 @@ function PlayFeedGame() {
               </a>
             </div>
           )}
+
         </div>
       )}
 
