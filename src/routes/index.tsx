@@ -8,6 +8,8 @@ import { AdBanner } from "@/components/ads/ad-banner";
 import { FEATURED_GAMES } from "@/lib/featured-games";
 import { FEED_CATEGORIES } from "@/lib/feed-categories";
 import { listFeedGames, searchFeed } from "@/lib/gamepix.functions";
+import { relayed, useRelay } from "@/lib/relay";
+
 import logo from "@/assets/logo.png.asset.json";
 
 const HOME_DESCRIPTION =
