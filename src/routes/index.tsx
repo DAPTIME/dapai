@@ -282,7 +282,7 @@ function Home() {
       <section aria-label="Games">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
           {tiles.map((t, i) => (
-            <GameTile key={t.key} tile={t} index={i} />
+            <GameTile key={t.key} tile={t} index={i} relay={relay} />
           ))}
           {(isPending || isFetchingMore) &&
             Array.from({ length: 10 }).map((_, i) => (
