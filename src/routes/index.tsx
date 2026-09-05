@@ -78,16 +78,27 @@ type Tile = {
   off?: boolean;
 };
 
-function GameTile({ tile, index }: { tile: Tile; index: number }) {
+function GameTile({ tile, index, relay }: { tile: Tile; index: number; relay: boolean }) {
   const media = tile.thumb ? (
     <img
-      src={tile.thumb}
+      src={relay ? relayed(tile.thumb) : tile.thumb}
       alt=""
       loading="lazy"
       decoding="async"
+      onError={(e) => {
+        // Per-image safety net: a network that filters the image host fails
+        // here even when the session probe said things were fine.
+        const img = e.currentTarget;
+        const direct = tile.thumb!;
+        if (!img.dataset["relayed"]) {
+          img.dataset["relayed"] = "1";
+          img.src = relayed(direct);
+        }
+      }}
       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
     />
   ) : (
+
     <div
       className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${
         TILE_BG[index % TILE_BG.length]
