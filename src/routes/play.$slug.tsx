@@ -37,12 +37,21 @@ function PlayFeedGame() {
   const [loaded, setLoaded] = useState(false);
   const [slow, setSlow] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  /* Networks that filter the provider's domain leave the frame permanently
+     blank. autoRelay is the session-wide probe result; forceRelay is the
+     player's own "Unblock" button, for the case where the probe passed but
+     the game host itself is filtered. */
+  const autoRelay = useRelay();
+  const [forceRelay, setForceRelay] = useState(false);
+  const useProxy = autoRelay || forceRelay;
 
   const { data: game, isPending } = useQuery({
     queryKey: ["feed-game", slug],
     queryFn: () => fetchGame({ data: { slug } }),
     staleTime: 60 * 60 * 1000,
   });
+
+  const frameSrc = game ? (useProxy ? relayed(game.url) : game.url) : "";
 
   // If the embed never signals load, offer a retry / new-tab escape hatch
   // instead of leaving the player staring at a black rectangle.
@@ -64,6 +73,13 @@ function PlayFeedGame() {
     setSlow(false);
     setReloadKey((key) => key + 1);
   };
+
+  const enableUnblock = () => {
+    setRelayMode("on");
+    setForceRelay(true);
+    reloadGame();
+  };
+
 
 
   return (
