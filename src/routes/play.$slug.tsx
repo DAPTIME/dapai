@@ -126,8 +126,8 @@ function PlayFeedGame() {
               </div>
             ) : (
               <iframe
-                key={`${game.url}-${reloadKey}`}
-                src={game.url}
+                key={`${frameSrc}-${reloadKey}`}
+                src={frameSrc}
                 title={game.title}
                 className="aspect-video w-full"
                 allow="autoplay; fullscreen; gamepad; clipboard-write; cross-origin-isolated"
@@ -140,7 +140,16 @@ function PlayFeedGame() {
 
           {slow && !loaded && game && (
             <div className="absolute inset-x-0 bottom-[60px] flex flex-wrap items-center justify-center gap-3 bg-background/90 p-3 text-xs">
-              <span className="text-muted-foreground">Game taking too long?</span>
+              <span className="text-muted-foreground">
+                {useProxy
+                  ? "Game taking too long?"
+                  : "Game blocked or stuck on this network?"}
+              </span>
+              {!useProxy && (
+                <Button type="button" onClick={enableUnblock} size="sm">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Unblock mode
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={reloadGame}
@@ -150,13 +159,15 @@ function PlayFeedGame() {
                 <RefreshCw className="h-3.5 w-3.5" /> Reload game
               </Button>
               <a
-                href={game.url}
+                href={frameSrc}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full border border-border px-3 py-1 hover:border-primary hover:text-primary"
               >
                 Open in new tab
               </a>
+            </div>
+
             </div>
           )}
         </div>
