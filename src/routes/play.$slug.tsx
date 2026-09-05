@@ -169,9 +169,8 @@ function PlayFeedGame() {
                 Open in new tab
               </a>
             </div>
-
-            </div>
           )}
+
         </div>
       )}
 
