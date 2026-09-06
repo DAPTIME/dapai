@@ -26,6 +26,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as PlaySlugRouteImport } from './routes/play.$slug'
+import { Route as GameHintPxSplatRouteImport } from './routes/$gameHint.px.$'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPublicHooksCleanupOldChatsRouteImport } from './routes/api/public/hooks/cleanup-old-chats'
 import { Route as ApiPublicPxSplatRouteImport } from './routes/api/public/px/$'
@@ -117,6 +118,11 @@ const PlaySlugRoute = PlaySlugRouteImport.update({
   path: '/play/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GameHintPxSplatRoute = GameHintPxSplatRouteImport.update({
+  id: '/$gameHint/px/$',
+  path: '/$gameHint/px/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/play/$slug': typeof PlaySlugRoute
+  '/$gameHint/px/$': typeof GameHintPxSplatRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
   '/api/public/px/$': typeof ApiPublicPxSplatRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/play/$slug': typeof PlaySlugRoute
+  '/$gameHint/px/$': typeof GameHintPxSplatRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
   '/api/public/px/$': typeof ApiPublicPxSplatRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/play/$slug': typeof PlaySlugRoute
+  '/$gameHint/px/$': typeof GameHintPxSplatRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/hooks/cleanup-old-chats': typeof ApiPublicHooksCleanupOldChatsRoute
   '/api/public/px/$': typeof ApiPublicPxSplatRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/auth/callback'
     | '/play/$slug'
+    | '/$gameHint/px/$'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cleanup-old-chats'
     | '/api/public/px/$'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/auth/callback'
     | '/play/$slug'
+    | '/$gameHint/px/$'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cleanup-old-chats'
     | '/api/public/px/$'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/auth/callback'
     | '/play/$slug'
+    | '/$gameHint/px/$'
     | '/.mcp/invoke-tool/$tool'
     | '/api/public/hooks/cleanup-old-chats'
     | '/api/public/px/$'
@@ -289,6 +301,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   PlaySlugRoute: typeof PlaySlugRoute
+  GameHintPxSplatRoute: typeof GameHintPxSplatRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHooksCleanupOldChatsRoute: typeof ApiPublicHooksCleanupOldChatsRoute
   ApiPublicPxSplatRoute: typeof ApiPublicPxSplatRoute
@@ -415,6 +428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlaySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$gameHint/px/$': {
+      id: '/$gameHint/px/$'
+      path: '/$gameHint/px/$'
+      fullPath: '/$gameHint/px/$'
+      preLoaderRoute: typeof GameHintPxSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -458,6 +478,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   PlaySlugRoute: PlaySlugRoute,
+  GameHintPxSplatRoute: GameHintPxSplatRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHooksCleanupOldChatsRoute: ApiPublicHooksCleanupOldChatsRoute,
   ApiPublicPxSplatRoute: ApiPublicPxSplatRoute,

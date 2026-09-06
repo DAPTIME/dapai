@@ -16,17 +16,31 @@ const OVERRIDE_KEY = "dap-relay-mode";
 const PROBE_URL = "https://img.gamepix.com/favicon.ico";
 const PROBE_TIMEOUT_MS = 4000;
 
-/** Rewrite a provider URL so it is fetched through our own origin. */
-export function relayed(url: string): string {
-  if (!url || url.startsWith(PREFIX)) return url;
+function toRelay(url: string, prefix: string): string {
+  if (!url || url.startsWith(prefix)) return url;
   try {
     const u = new URL(url);
     const scheme = u.protocol.replace(":", "");
-    return `${PREFIX}/${scheme}/${u.host}${u.pathname}${u.search}`;
+    return `${prefix}/${scheme}/${u.host}${u.pathname}${u.search}`;
   } catch {
     return url;
   }
 }
+
+/** Rewrite a provider asset URL so it is fetched through our own origin. */
+export function relayed(url: string): string {
+  return toRelay(url, PREFIX);
+}
+
+/**
+ * Relay URL for a playable game frame. The provider's player reads the game
+ * name from the first path segment, so the slug leads the path here.
+ */
+export function relayedFrame(url: string, slug: string): string {
+  const clean = (slug || "game").replace(/[^a-zA-Z0-9._-]/g, "-");
+  return toRelay(url, `/${clean}/px`);
+}
+
 
 function readOverride(): "on" | "off" | null {
   try {

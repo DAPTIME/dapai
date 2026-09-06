@@ -9,7 +9,7 @@ import { AdGate } from "@/components/ads/ad-gate";
 import { AdRail } from "@/components/ads/ad-rail";
 import { Button } from "@/components/ui/button";
 import { getFeedGame } from "@/lib/gamepix.functions";
-import { relayed, setRelayMode, useRelay } from "@/lib/relay";
+import { relayedFrame, setRelayMode, useRelay } from "@/lib/relay";
 
 
 export const Route = createFileRoute("/play/$slug")({
@@ -53,7 +53,7 @@ function PlayFeedGame() {
     staleTime: 60 * 60 * 1000,
   });
 
-  const frameSrc = game ? (useProxy ? relayed(game.url) : game.url) : "";
+  const frameSrc = game ? (useProxy ? relayedFrame(game.url, slug) : game.url) : "";
 
   // If the embed never signals load, offer a retry / new-tab escape hatch
   // instead of leaving the player staring at a black rectangle.
