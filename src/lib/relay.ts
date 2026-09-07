@@ -9,11 +9,14 @@
 import { useEffect, useState } from "react";
 
 const PREFIX = "/api/public/px";
-const SESSION_KEY = "dap-relay-state";
+// Version these keys whenever relay detection changes so a bad result from an
+// older release cannot keep every game on the fallback path indefinitely.
+const SESSION_KEY = "dap-relay-state-v2";
 /** Manual override: "on" forces the relay, "off" forces direct. */
-const OVERRIDE_KEY = "dap-relay-mode";
-/** Tiny provider asset used purely as a reachability probe. */
-const PROBE_URL = "https://img.gamepix.com/favicon.ico";
+const OVERRIDE_KEY = "dap-relay-mode-v2";
+/** A real, stable provider image used purely as a reachability probe. */
+const PROBE_URL =
+  "https://img.gamepix.com/games/mr-racer-car-racing-game/icon/mr-racer-car-racing-game.png?w=32";
 const PROBE_TIMEOUT_MS = 4000;
 
 function toRelay(url: string, prefix: string): string {
