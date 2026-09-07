@@ -8,7 +8,10 @@ export function AdSenseScript() {
   useEffect(() => {
     if (typeof document === "undefined") return;
     if (!adsConfigured() || scriptInjected) return;
-    if (document.querySelector('script[data-adsense-loader="true"]')) {
+    if (
+      document.querySelector('script[data-adsense-loader="true"]') ||
+      document.querySelector('script[src*="adsbygoogle.js"]')
+    ) {
       scriptInjected = true;
       return;
     }

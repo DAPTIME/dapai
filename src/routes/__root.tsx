@@ -21,6 +21,7 @@ import { useTheme } from "@/lib/theme";
 import { pageFlagFor, useFeatureGuard } from "@/lib/feature-guard";
 import { ProDialog } from "@/components/pro-dialog";
 import { AdSenseScript } from "@/components/ads/adsense-script";
+import { ADSENSE_CLIENT } from "@/lib/ads";
 
 import { getMyProfile } from "@/lib/profile.functions";
 import { TIER_RANK, type Tier } from "@/lib/tier-rank";
