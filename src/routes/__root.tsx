@@ -57,6 +57,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
 
     scripts: [
+      // Served in the HTML source so Google's reviewer and crawler always see
+      // the ad code, not only browsers that run our client-side effects.
+      {
+        src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`,
+        async: true,
+        crossOrigin: "anonymous",
+      },
+
       {
         type: "application/ld+json",
         children: JSON.stringify({
