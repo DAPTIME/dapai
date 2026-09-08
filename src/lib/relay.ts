@@ -11,13 +11,8 @@ import { useEffect, useState } from "react";
 const PREFIX = "/api/public/px";
 // Version these keys whenever relay detection changes so a bad result from an
 // older release cannot keep every game on the fallback path indefinitely.
-const SESSION_KEY = "dap-relay-state-v2";
 /** Manual override: "on" forces the relay, "off" forces direct. */
 const OVERRIDE_KEY = "dap-relay-mode-v2";
-/** A real, stable provider image used purely as a reachability probe. */
-const PROBE_URL =
-  "https://img.gamepix.com/games/mr-racer-car-racing-game/icon/mr-racer-car-racing-game.png?w=32";
-const PROBE_TIMEOUT_MS = 4000;
 
 function toRelay(url: string, prefix: string): string {
   if (!url || url.startsWith(prefix)) return url;
@@ -59,73 +54,23 @@ export function setRelayMode(mode: "on" | "off" | null) {
   try {
     if (mode) localStorage.setItem(OVERRIDE_KEY, mode);
     else localStorage.removeItem(OVERRIDE_KEY);
-    sessionStorage.removeItem(SESSION_KEY);
   } catch {
     /* storage unavailable — the in-memory state below still applies */
   }
 }
 
-function probe(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    let settled = false;
-    const done = (blocked: boolean) => {
-      if (settled) return;
-      settled = true;
-      resolve(blocked);
-    };
-    const timer = setTimeout(() => done(true), PROBE_TIMEOUT_MS);
-    img.onload = () => {
-      clearTimeout(timer);
-      done(false);
-    };
-    img.onerror = () => {
-      clearTimeout(timer);
-      // A filtered request fails the same way a missing file does; treating
-      // both as "blocked" is safe because the relay serves identical content.
-      done(true);
-    };
-    img.referrerPolicy = "no-referrer";
-    img.src = `${PROBE_URL}?p=${Date.now()}`;
-  });
-}
-
 /**
- * True when provider URLs should go through the relay. Starts false (direct)
- * and flips to true if the probe fails, so nothing is delayed while checking.
+ * Provider URLs use the same-origin relay by default. A reachability probe is
+ * not reliable on filtered networks: image hosts, the player, and game builds
+ * can be blocked independently. A saved explicit "off" choice is the only
+ * reason to use provider URLs directly.
  */
 export function useRelay(): boolean {
-  const [on, setOn] = useState(false);
+  const [on, setOn] = useState(true);
 
   useEffect(() => {
     const override = readOverride();
-    if (override) {
-      setOn(override === "on");
-      return;
-    }
-    let cached: string | null = null;
-    try {
-      cached = sessionStorage.getItem(SESSION_KEY);
-    } catch {
-      cached = null;
-    }
-    if (cached === "on" || cached === "off") {
-      setOn(cached === "on");
-      return;
-    }
-    let alive = true;
-    void probe().then((blocked) => {
-      if (!alive) return;
-      try {
-        sessionStorage.setItem(SESSION_KEY, blocked ? "on" : "off");
-      } catch {
-        /* ignore */
-      }
-      setOn(blocked);
-    });
-    return () => {
-      alive = false;
-    };
+    setOn(override !== "off");
   }, []);
 
   return on;

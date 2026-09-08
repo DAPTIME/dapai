@@ -7,3 +7,4 @@
 - [x] Fix misleading empty/error state copy on the home page
 - [x] Remove fake ad countdown/placeholders until real AdSense slots exist
 - [x] Fix game reload loop and open games directly when no pre-roll can render
+- [x] Make same-origin game relay the default on filtered networks
