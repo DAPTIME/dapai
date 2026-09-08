@@ -36,7 +36,6 @@ function PlayFeedGame() {
   const fetchGame = useServerFn(getFeedGame);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const [started, setStarted] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [slow, setSlow] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   /* Networks that filter the provider's domain leave the frame permanently
@@ -72,7 +71,6 @@ function PlayFeedGame() {
   };
 
   const reloadGame = () => {
-    setLoaded(false);
     setSlow(false);
     setReloadKey((key) => key + 1);
   };
@@ -135,7 +133,6 @@ function PlayFeedGame() {
                 className="aspect-video w-full"
                 allow="autoplay; fullscreen; gamepad; clipboard-write; cross-origin-isolated"
                 allowFullScreen
-                onLoad={() => setLoaded(true)}
                 referrerPolicy="no-referrer-when-downgrade"
               />
             )}
