@@ -36,7 +36,6 @@ function PlayFeedGame() {
   const fetchGame = useServerFn(getFeedGame);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const [started, setStarted] = useState(false);
-  const [loaded, setLoaded] = useState(false);
   const [slow, setSlow] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   /* Networks that filter the provider's domain leave the frame permanently
@@ -55,13 +54,14 @@ function PlayFeedGame() {
 
   const frameSrc = game ? (useProxy ? relayedFrame(game.url, slug) : game.url) : "";
 
-  // If the embed never signals load, offer a retry / new-tab escape hatch
-  // instead of leaving the player staring at a black rectangle.
+  // The provider shell signals load before the actual game does. Keep a
+  // recovery control available after startup instead of treating that first
+  // blue shell as proof that the game itself loaded.
   useEffect(() => {
-    if (!started || loaded) return;
-    const id = setTimeout(() => setSlow(true), 12000);
+    if (!started) return;
+    const id = setTimeout(() => setSlow(true), 15000);
     return () => clearTimeout(id);
-  }, [started, loaded]);
+  }, [started, reloadKey]);
 
   const goFullscreen = () => {
     const el = shellRef.current;
@@ -71,7 +71,6 @@ function PlayFeedGame() {
   };
 
   const reloadGame = () => {
-    setLoaded(false);
     setSlow(false);
     setReloadKey((key) => key + 1);
   };
@@ -134,13 +133,12 @@ function PlayFeedGame() {
                 className="aspect-video w-full"
                 allow="autoplay; fullscreen; gamepad; clipboard-write; cross-origin-isolated"
                 allowFullScreen
-                onLoad={() => setLoaded(true)}
                 referrerPolicy="no-referrer-when-downgrade"
               />
             )}
           </div>
 
-          {slow && !loaded && game && (
+          {slow && game && (
             <div className="absolute inset-x-0 bottom-[60px] flex flex-wrap items-center justify-center gap-3 bg-background/90 p-3 text-xs">
               <span className="text-muted-foreground">
                 {useProxy
