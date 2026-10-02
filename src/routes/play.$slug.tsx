@@ -52,7 +52,10 @@ function PlayFeedGame() {
     staleTime: 60 * 60 * 1000,
   });
 
-  const frameSrc = game ? (useProxy ? relayedFrame(game.url, slug) : game.url) : "";
+  // Prefer the game's own files: no provider launcher, consent pop-up, or
+  // branding, and everything is served from our own address in relay mode.
+  const sourceUrl = game ? (game.buildUrl ?? game.url) : "";
+  const frameSrc = game ? (useProxy ? relayedFrame(sourceUrl, slug) : sourceUrl) : "";
 
   // The provider shell signals load before the actual game does. Keep a
   // recovery control available after startup instead of treating that first

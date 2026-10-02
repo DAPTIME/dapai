@@ -101,6 +101,8 @@ XMLHttpRequest.prototype.open=function(m,u){var a=[].slice.call(arguments);a[1]=
 var sa=Element.prototype.setAttribute;
 Element.prototype.setAttribute=function(n,v){if(/^(src|href|data-src|poster)$/i.test(n))v=fix(String(v));return sa.call(this,n,v)};
 if(window.Worker){var W=window.Worker;window.Worker=function(u,o){return new W(fix(String(u)),o)};window.Worker.prototype=W.prototype}
+if(navigator.sendBeacon){var sb=navigator.sendBeacon.bind(navigator);navigator.sendBeacon=function(u,d){return sb(fix(String(u)),d)}}
+try{if(navigator.serviceWorker)navigator.serviceWorker.register=function(){return Promise.reject(new Error("disabled"))}}catch(e){}
 })();</script>`;
 }
 
@@ -162,6 +164,16 @@ export async function handleRelay(
   } catch (e) {
     console.error("[relay] fetch failed:", target, e instanceof Error ? e.message : e);
     return new Response("Relay upstream unreachable", { status: 502 });
+  }
+
+  // Redirects are followed server-side; refuse to serve a body from a host
+  // outside the allow-list.
+  try {
+    if (upstream.url && !hostAllowed(new URL(upstream.url).host)) {
+      return new Response("Host not allowed", { status: 403 });
+    }
+  } catch {
+    /* unparsable final URL — keep the original target */
   }
 
   const contentType = upstream.headers.get("content-type") ?? "application/octet-stream";
