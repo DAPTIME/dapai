@@ -13,6 +13,8 @@ export type FeedGame = {
   thumb: string;
   /** Embeddable iframe URL. */
   url: string;
+  /** Direct URL of the game's own files, without the provider launcher. */
+  buildUrl?: string;
   width: number;
   height: number;
 };
@@ -159,20 +161,47 @@ export async function searchFeedGames(term: string): Promise<FeedGame[]> {
   return scored.slice(0, SEARCH_LIMIT).map((s) => s.g);
 }
 
+/**
+ * Resolve the game's own build files (the actual playable game), skipping
+ * the provider's branded launcher/consent screen. Returns null if the
+ * lookup fails, in which case the player falls back to the launcher.
+ */
+async function fetchBuildUrl(slug: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.gamepix.com/v3/games/ns/${encodeURIComponent(slug)}/player`,
+      { headers: { accept: "application/json" } },
+    );
+    if (!res.ok) return null;
+    const info = (await res.json()) as { gameId?: string; version?: string; status?: string };
+    if (!info.gameId || !info.version || (info.status && info.status !== "live")) return null;
+    if (!/^[A-Za-z0-9]+$/.test(info.gameId) || !/^[A-Za-z0-9_-]+$/.test(info.version)) return null;
+    const qs = new URLSearchParams({ sid: sid(), lang: "en", namespace: slug });
+    return `https://games.builds.gamepix.com/${info.gameId}/${info.version}/index.html?${qs}`;
+  } catch {
+    return null;
+  }
+}
+
 /** Look a single game up by slug so the play page can render real details. */
 export async function fetchFeedGame(slug: string): Promise<FeedGame | null> {
+  const buildUrlPromise = fetchBuildUrl(slug);
+  let found: FeedGame | null = null;
   try {
     for (let page = 1; page <= 3; page++) {
       const { games } = await fetchFeedPage({ page, category: null });
       const hit = games.find((g) => g.slug === slug);
-      if (hit) return hit;
+      if (hit) {
+        found = hit;
+        break;
+      }
     }
   } catch {
     // Feed unreachable — fall through to the deterministic embed below so a
     // pinned/featured game stays playable.
   }
   // Not in the top pages — the embed URL is deterministic, so still playable.
-  return {
+  const game: FeedGame = found ?? {
     id: slug,
     slug,
     title: slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
@@ -183,4 +212,6 @@ export async function fetchFeedGame(slug: string): Promise<FeedGame | null> {
     width: 800,
     height: 600,
   };
+  const buildUrl = await buildUrlPromise;
+  return buildUrl ? { ...game, buildUrl } : game;
 }
