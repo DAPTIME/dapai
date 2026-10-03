@@ -204,6 +204,23 @@ export async function handleRelay(
   }
 
   let text = rewriteText(await upstream.text(), prefix);
+  const hostRoot = relayPath(prefix, scheme, host);
+  // Root-relative paths ("/sdk/x.js") ignore <base href>, so point them at
+  // the upstream host's root through the relay.
+  const rootRel = (url: string) =>
+    url.startsWith("//") || url.startsWith(`${prefix}/`) ? url : `${hostRoot}${url}`;
+  if (kind === "html") {
+    text = text.replace(
+      /(\s(?:src|href|action|poster|data-src)\s*=\s*)(["'])(\/[^"']*)\2/gi,
+      (_m, attr: string, q: string, url: string) => `${attr}${q}${rootRel(url)}${q}`,
+    );
+  }
+  if (kind === "html" || contentType.toLowerCase().includes("text/css")) {
+    text = text.replace(
+      /url\(\s*(["']?)(\/[^"')]*)\1\s*\)/gi,
+      (_m, q: string, url: string) => `url(${q}${rootRel(url)}${q})`,
+    );
+  }
   if (kind === "html") {
     const base = `<base href="${relayPath(
       prefix,
