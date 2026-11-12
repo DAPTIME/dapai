@@ -16,7 +16,7 @@ import { checkPassword, PASSWORD_MIN_LENGTH } from "@/lib/password-policy";
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
     meta: [
-      { title: "Forgot password — DAP AI" },
+      { title: "Forgot password — DAP Games" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

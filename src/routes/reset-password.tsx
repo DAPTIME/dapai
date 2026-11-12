@@ -19,17 +19,17 @@ export const Route = createFileRoute("/reset-password")({
   validateSearch: searchSchema,
   head: () => ({
     meta: [
-      { title: "Reset your password · DAP AI" },
+      { title: "Reset your password · DAP Games" },
       {
         name: "description",
         content:
-          "Use your secure DAP AI link to set a new password and a new account recovery question.",
+          "Use your secure DAP Games link to set a new password and a new account recovery question.",
       },
-      { property: "og:title", content: "Reset your password · DAP AI" },
+      { property: "og:title", content: "Reset your password · DAP Games" },
       {
         property: "og:description",
         content:
-          "Set a new DAP AI password and recovery question with your secure reset link.",
+          "Set a new DAP Games password and recovery question with your secure reset link.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

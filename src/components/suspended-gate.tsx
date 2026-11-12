@@ -48,7 +48,7 @@ export function SuspendedGate() {
         </div>
 
         <p className="mt-4 text-sm text-muted-foreground">
-          This account can no longer sign in or use DAP AI. If you think this is
+          This account can no longer sign in or use DAP Games. If you think this is
           a mistake, reply to the address you signed up with and we'll take
           another look.
         </p>
