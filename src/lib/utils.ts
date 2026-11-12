@@ -10,7 +10,7 @@ export function isValidEmail(email: string) {
 }
 
 /**
- * The single source of truth for how DAP AI addresses a person.
+ * The single source of truth for how DAP Games addresses a person.
  *
  * Google hands us "Devansh Pancholia", GitHub hands us a username, and
  * email signup hands us whatever was typed — so every surface has to run

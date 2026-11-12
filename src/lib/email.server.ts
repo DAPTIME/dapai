@@ -5,7 +5,7 @@
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
 
 /** Resend's shared sandbox sender. Only ever reaches the account owner. */
-const SANDBOX_SENDER = "DAP AI <onboarding@resend.dev>";
+const SANDBOX_SENDER = "DAP Games <onboarding@resend.dev>";
 
 /** The Resend-verified sending domain (DKIM/SPF/MX live). */
 const VERIFIED_DOMAIN = "dapai.dpdns.org";
@@ -92,14 +92,14 @@ export async function sendEmail(opts: {
         console.error(
           `[email] Still sending as ${SANDBOX_SENDER}. Verifying a domain in Resend does not switch this over — ` +
             `set the RESEND_FROM environment variable to an address at the verified domain, ` +
-            `e.g. RESEND_FROM="DAP AI <noreply@yourdomain.com>".`
+            `e.g. RESEND_FROM="DAP Games <noreply@yourdomain.com>".`
         );
         throw new Error(
-          "DAP AI can't email that address yet — the site is still sending from Resend's shared test address, which only reaches the account owner."
+          "DAP Games can't email that address yet — the site is still sending from Resend's shared test address, which only reaches the account owner."
         );
       }
       throw new Error(
-        "DAP AI can't email that address yet — the sending domain hasn't finished verifying."
+        "DAP Games can't email that address yet — the sending domain hasn't finished verifying."
       );
     }
     throw new Error(
@@ -109,23 +109,23 @@ export async function sendEmail(opts: {
   return (await res.json()) as { id?: string };
 }
 
-/** Branded DAP AI confirmation email. */
+/** Branded DAP Games confirmation email. */
 export function confirmEmailHtml(opts: { name: string; link: string }) {
   const name = escapeHtml(opts.name || "there");
   return `<!doctype html>
 <html><body style="margin:0;padding:0;background:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
     <div style="text-align:center;margin-bottom:24px;">
-      <div style="display:inline-block;padding:10px 18px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#a855f7);color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.5px;">DAP AI</div>
+      <div style="display:inline-block;padding:10px 18px;border-radius:14px;background:#111827;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:.5px;">DAP Games</div>
     </div>
     <div style="background:#ffffff;border-radius:16px;padding:32px;box-shadow:0 1px 3px rgba(16,24,40,.08);">
-      <h1 style="margin:0 0 12px;font-size:22px;color:#101828;">Confirm your DAP AI account</h1>
+      <h1 style="margin:0 0 12px;font-size:22px;color:#101828;">Confirm your DAP Games account</h1>
       <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#475467;">
         Hi ${name}, thanks for signing up. Your account is on hold until you confirm this email address.
         Tap the button below and you're in.
       </p>
       <p style="text-align:center;margin:28px 0;">
-        <a href="${opts.link}" style="display:inline-block;padding:14px 26px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);color:#ffffff;font-weight:600;font-size:15px;text-decoration:none;">Confirm my account</a>
+        <a href="${opts.link}" style="display:inline-block;padding:14px 26px;border-radius:12px;background:#111827;color:#ffffff;font-weight:600;font-size:15px;text-decoration:none;">Confirm my account</a>
       </p>
       <p style="margin:0 0 8px;font-size:13px;color:#667085;">
         This link expires in 10 minutes. If it does, just sign up again and we'll send a fresh one.
@@ -135,7 +135,7 @@ export function confirmEmailHtml(opts: { name: string; link: string }) {
       </p>
     </div>
     <p style="text-align:center;margin:20px 0 0;font-size:12px;color:#98a2b3;">
-      You received this because someone signed up for DAP AI with this address.<br />
+      You received this because someone signed up for DAP Games with this address.<br />
       If that wasn't you, you can safely ignore it.
     </p>
   </div>
@@ -150,7 +150,7 @@ function escapeHtml(s: string) {
     .replace(/"/g, "&quot;");
 }
 
-/** Branded DAP AI "secure reset link" email (password + recovery question). */
+/** Branded DAP Games "secure reset link" email (password + recovery question). */
 export function resetLinkEmailHtml(opts: { name: string; link: string }) {
   const name = escapeHtml(opts.name || "there");
   return `<!doctype html>
@@ -158,12 +158,12 @@ export function resetLinkEmailHtml(opts: { name: string; link: string }) {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:32px 12px;">
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;padding:32px;">
-        <tr><td style="font-size:22px;font-weight:700;color:#111827;padding-bottom:8px;">Reset your DAP AI password</td></tr>
+        <tr><td style="font-size:22px;font-weight:700;color:#111827;padding-bottom:8px;">Reset your DAP Games password</td></tr>
         <tr><td style="font-size:15px;line-height:1.6;color:#374151;padding-bottom:20px;">
-          Hi ${name}, use the secure link below to set a new password and a new recovery question for your DAP AI account. Nobody else can use this link.
+          Hi ${name}, use the secure link below to set a new password and a new recovery question for your DAP Games account. Nobody else can use this link.
         </td></tr>
         <tr><td align="center" style="padding-bottom:20px;">
-          <a href="${opts.link}" style="display:inline-block;padding:14px 26px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);color:#ffffff;font-weight:600;font-size:15px;text-decoration:none;">Reset my password</a>
+          <a href="${opts.link}" style="display:inline-block;padding:14px 26px;border-radius:12px;background:#111827;color:#ffffff;font-weight:600;font-size:15px;text-decoration:none;">Reset my password</a>
         </td></tr>
         <tr><td style="font-size:13px;line-height:1.6;color:#6b7280;padding-bottom:12px;">
           This link expires in 10 minutes and can only be used once. If you didn't ask for it, you can safely ignore this email.

@@ -104,7 +104,7 @@ export async function generateSignupLink(opts: {
 
 
 /**
- * Deliver the branded DAP AI confirmation email ourselves, through Resend.
+ * Deliver the branded DAP Games confirmation email ourselves, through Resend.
  *
  * Supabase Auth is deliberately NOT used to send it: generating the link is
  * already one auth-email operation, so asking Auth to send a second one
@@ -122,9 +122,9 @@ export async function deliverConfirmation(opts: {
   try {
     await sendEmail({
       to: opts.email,
-      subject: "Confirm your DAP AI account",
+      subject: "Confirm your DAP Games account",
       html: confirmEmailHtml({ name: opts.name, link: opts.link }),
-      text: `Hi ${opts.name}, confirm your DAP AI account: ${opts.link}`,
+      text: `Hi ${opts.name}, confirm your DAP Games account: ${opts.link}`,
     });
   } catch (e) {
     console.error("[signup] confirmation email failed:", (e as Error).message);

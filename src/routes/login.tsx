@@ -12,16 +12,16 @@ import { SocialAuthButtons } from "@/components/social-auth-buttons";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Sign in — DAP AI" },
+      { title: "Sign in — DAP Games" },
       {
         name: "description",
-        content: "Sign in to your DAP AI account to continue your chats.",
+        content: "Sign in to your DAP Games account to keep playing.",
       },
-      { property: "og:title", content: "Sign in to DAP AI" },
+      { property: "og:title", content: "Sign in to DAP Games" },
       {
         property: "og:description",
         content:
-          "Log in to DAP AI to pick up your conversations, access saved chats, and use your DAPs.",
+          "Log in to DAP Games to pick up where you left off.",
       },
       { property: "og:url", content: "https://dapai.lovable.app/login" },
       { name: "robots", content: "noindex, nofollow" },
@@ -75,7 +75,7 @@ function LoginPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-md flex-col justify-center px-6 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight">Sign in to DAP AI</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Sign in to DAP Games</h1>
       <p className="mt-1 text-sm text-muted-foreground">Welcome back. Enter your details to continue.</p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4">

@@ -4,7 +4,7 @@ import { z } from "zod";
 export default defineTool({
   name: "echo",
   title: "Echo",
-  description: "Echo the input text back. Useful for verifying the DAP AI MCP connection.",
+  description: "Echo the input text back. Useful for verifying the DAP Games MCP connection.",
   inputSchema: { text: z.string().min(1).describe("Text to echo back.") },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: ({ text }) => ({ content: [{ type: "text", text }] }),
