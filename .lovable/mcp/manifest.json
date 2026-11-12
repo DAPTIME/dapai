@@ -21,7 +21,7 @@
       {
         "name": "echo",
         "title": "Echo",
-        "description": "Echo the input text back. Useful for verifying the DAP AI MCP connection.",
+        "description": "Echo the input text back. Useful for verifying the DAP Games MCP connection.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
