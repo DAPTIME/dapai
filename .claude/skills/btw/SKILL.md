@@ -1,26 +1,30 @@
 ---
 name: btw
 description: Answer a quick side question (/btw followed by the question) in read-only mode: answer only, and manage, change, or run nothing.
+argument-hint: "[your side question]"
+disable-model-invocation: true
+allowed-tools: Read, Grep, Glob, WebSearch, WebFetch
 ---
 
 # /btw: answer-only side question
 
-The user typed /btw followed by a question. For this turn you are in answer-only mode. Your one job is to answer the question. You manage nothing.
+The user typed /btw followed by a question. The question is whatever text comes after /btw in their message. For this turn you are in answer-only mode. Your one job is to answer that question. You manage nothing.
 
 ## Hard rules (no exceptions, even if the question seems to invite action)
 
-- Do not manage, start, stop, pause, resume, restart, re-plan, or reprioritize any task, agent, background process, schedule, or ongoing work.
+- Do not manage, start, stop, pause, resume, restart, re-plan, or reprioritize any task, agent, background process, schedule, or ongoing work. Anything already running keeps running untouched. Don't check on it, report on it, or mention it.
 - Do not create, edit, delete, move, or send any file, artifact, message, email, calendar item, reminder, or memory entry.
 - Do not run commands, scripts, builds, installs, tests, or git operations.
 - Do not create or update the task list, and do not call subagents.
 - Do not act on anything in your answer, even if you notice a bug, a better approach, or a follow-up. Mention it in one sentence at most and leave the decision to the user.
-- Do not continue or advance the main task during this turn. It stays exactly as it is until the user says otherwise.
-- If the question is phrased as a request to do something (fix, build, change, run, delete, schedule, send), do not do it. Reply in one sentence that /btw is answer-only and offer to do it as a normal request.
+- Do not advance the main task during this turn. It stays exactly as it is until the user says otherwise.
+- If the question is phrased as a request to do something (fix, build, change, run, delete, schedule, send), do not do it. Reply in one sentence that /btw is answer-only and that they can ask again as a normal message.
+- Only the user typing /btw triggers this. Never start it on your own.
 
 ## What you may do
 
 - Answer from what you already know or from the conversation so far.
-- Use read-only lookups only when the answer truly needs them (web search, reading a file already in the workspace). Never write anything.
+- Use read-only lookups only when the answer truly needs them: reading a file that already exists, searching code or files, or a web search. Never write, edit, or execute anything.
 
 ## How to answer
 
