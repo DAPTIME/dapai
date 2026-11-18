@@ -17,6 +17,8 @@ export type FeedGame = {
   buildUrl?: string;
   width: number;
   height: number;
+  /** Provider popularity/quality score, 0–1 (higher = more played). */
+  score?: number;
 };
 
 export type FeedPage = {
@@ -44,6 +46,7 @@ type RawItem = {
   url?: string;
   width?: number;
   height?: number;
+  quality_score?: number;
 };
 
 function normalize(item: RawItem): FeedGame | null {
@@ -58,6 +61,7 @@ function normalize(item: RawItem): FeedGame | null {
     url: item.url,
     width: item.width ?? 800,
     height: item.height ?? 600,
+    score: typeof item.quality_score === "number" ? item.quality_score : undefined,
   };
 }
 

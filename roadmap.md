@@ -9,3 +9,6 @@
 - [x] Fix game reload loop and open games directly when no pre-roll can render
 - [x] Make same-origin game relay the default on filtered networks
 - [x] Serve complete GamePix games through DAP Games without the provider shell or direct provider requests
+
+- [x] Home page: sort games by popularity, grouped sections
+- [x] Optimize site for Google AdSense

@@ -154,6 +154,19 @@ function GameTile({ tile, index, relay }: { tile: Tile; index: number; relay: bo
   );
 }
 
+function GameRow({ title, tiles, relay }: { title: string; tiles: Tile[]; relay: boolean }) {
+  return (
+    <section aria-label={title}>
+      <h2 className="mb-3 text-lg font-semibold tracking-tight">{title}</h2>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+        {tiles.map((t, i) => (
+          <GameTile key={t.key} tile={t} index={i} relay={relay} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Home() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -200,7 +213,12 @@ function Home() {
     ? (search.data?.games ?? [])
     : (feed.data?.pages.flatMap((p) => p.games) ?? []);
 
-  const feedTiles: Tile[] = feedGames.map((g) => ({
+  // Most-played first: the provider ranks by play-quality score; keep that
+  // order stable across every loaded page.
+  const ranked = searching
+    ? feedGames
+    : [...feedGames].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const feedTiles: Tile[] = ranked.map((g) => ({
     key: `feed-${g.slug}`,
     slug: g.slug,
     title: g.title,
@@ -218,10 +236,21 @@ function Home() {
       const seen = new Set(pinned.map((t) => t.slug));
       return [...pinned, ...feedTiles.filter((t) => !seen.has(t.slug))];
     }
-    const pinned: Tile[] = FEATURED_GAMES.map((g) => ({ key: `pin-${g.slug}`, ...g }));
-    const seen = new Set(pinned.map((t) => t.slug));
-    return [...pinned, ...feedTiles.filter((t) => !seen.has(t.slug))];
+    const seen = new Set(FEATURED_GAMES.map((t) => t.slug));
+    return feedTiles.filter((t) => !seen.has(t.slug));
   }, [feedTiles, searching, q]);
+
+  const browsingAll = !searching && category === "all";
+  const featuredTiles: Tile[] = FEATURED_GAMES.map((g) => ({ key: `pin-${g.slug}`, ...g }));
+  const popular = browsingAll
+    ? tiles.slice(0, 10).map((t, i) => ({ ...t, badge: `#${i + 1}` }))
+    : [];
+  const rest = browsingAll ? tiles.slice(10) : tiles;
+  const restLabel = searching
+    ? "Search results"
+    : browsingAll
+      ? "More popular games"
+      : `Most popular ${FEED_CATEGORIES.find((c) => c.value === category)?.label ?? ""} games`;
 
 
   const isPending = searching ? search.isPending : feed.isPending;
@@ -283,9 +312,17 @@ function Home() {
         </nav>
       </header>
 
+      {!searching && (
+        <GameRow title="Top picks" tiles={featuredTiles} relay={relay} />
+      )}
+      {popular.length > 0 && (
+        <GameRow title="Most played right now" tiles={popular} relay={relay} />
+      )}
+
       <section aria-label="Games">
+        <h2 className="mb-3 text-lg font-semibold tracking-tight">{restLabel}</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-          {tiles.map((t, i) => (
+          {rest.map((t, i) => (
             <GameTile key={t.key} tile={t} index={i} relay={relay} />
           ))}
           {(isPending || isFetchingMore) &&
@@ -297,7 +334,7 @@ function Home() {
             ))}
         </div>
 
-        {tiles.length === 0 && !isPending && (
+        {tiles.length === 0 && !isPending && searching && (
           <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             No games match that search. Clear the search box to browse the full library.
           </p>
