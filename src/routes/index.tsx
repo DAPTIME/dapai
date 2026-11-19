@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 
 import { AdBanner } from "@/components/ads/ad-banner";
 import { FEATURED_GAMES } from "@/lib/featured-games";
+import { DISCOVERY_SECTIONS, rankDiscoveryGames } from "@/lib/game-discovery";
 import { FEED_CATEGORIES } from "@/lib/feed-categories";
 import { listFeedGames, searchFeed } from "@/lib/gamepix.functions";
 import { relayed, useRelay } from "@/lib/relay";
@@ -91,7 +92,8 @@ function GameTile({ tile, index, relay }: { tile: Tile; index: number; relay: bo
         // Per-image safety net: a network that filters the image host fails
         // here even when the session probe said things were fine.
         const img = e.currentTarget;
-        const direct = tile.thumb!;
+        const direct = tile.thumb;
+        if (!direct) return;
         if (!img.dataset["relayed"]) {
           img.dataset["relayed"] = "1";
           img.src = relayed(direct);
@@ -213,11 +215,10 @@ function Home() {
     ? (search.data?.games ?? [])
     : (feed.data?.pages.flatMap((p) => p.games) ?? []);
 
-  // Most-played first: the provider ranks by play-quality score; keep that
-  // order stable across every loaded page.
+  // Editorial priorities, not invented player-count rankings.
   const ranked = searching
     ? feedGames
-    : [...feedGames].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    : rankDiscoveryGames(feedGames);
   const feedTiles: Tile[] = ranked.map((g) => ({
     key: `feed-${g.slug}`,
     slug: g.slug,
@@ -236,21 +237,26 @@ function Home() {
       const seen = new Set(pinned.map((t) => t.slug));
       return [...pinned, ...feedTiles.filter((t) => !seen.has(t.slug))];
     }
-    const seen = new Set(FEATURED_GAMES.map((t) => t.slug));
+    const seen = new Set(FEATURED_GAMES.filter((game) => category === "all" || game.category === category).map((t) => t.slug));
     return feedTiles.filter((t) => !seen.has(t.slug));
-  }, [feedTiles, searching, q]);
+  }, [feedTiles, searching, q, category]);
 
   const browsingAll = !searching && category === "all";
-  const featuredTiles: Tile[] = FEATURED_GAMES.map((g) => ({ key: `pin-${g.slug}`, ...g }));
-  const popular = browsingAll
-    ? tiles.slice(0, 10).map((t, i) => ({ ...t, badge: `#${i + 1}` }))
-    : [];
-  const rest = browsingAll ? tiles.slice(10) : tiles;
+  const featuredTiles: Tile[] = FEATURED_GAMES.filter((game) => category === "all" || game.category === category).map((g) => ({ key: `pin-${g.slug}`, ...g }));
+  const discoveryRows = browsingAll ? DISCOVERY_SECTIONS.map((section) => ({
+    title: section.title,
+    tiles: tiles.filter((tile) => {
+      const game = ranked.find((game) => game.slug === tile.slug);
+      return game && section.categories.includes(game.category);
+    }).slice(0, 5),
+  })) : [];
+  const groupedSlugs = new Set(discoveryRows.flatMap((row) => row.tiles.map((tile) => tile.slug)));
+  const rest = tiles.filter((tile) => !groupedSlugs.has(tile.slug));
   const restLabel = searching
     ? "Search results"
     : browsingAll
-      ? "More popular games"
-      : `Most popular ${FEED_CATEGORIES.find((c) => c.value === category)?.label ?? ""} games`;
+      ? "More games"
+      : `${FEED_CATEGORIES.find((c) => c.value === category)?.label ?? ""} games`;
 
 
   const isPending = searching ? search.isPending : feed.isPending;
@@ -312,12 +318,12 @@ function Home() {
         </nav>
       </header>
 
-      {!searching && (
+      {!searching && featuredTiles.length > 0 && (
         <GameRow title="Top picks" tiles={featuredTiles} relay={relay} />
       )}
-      {popular.length > 0 && (
-        <GameRow title="Most played right now" tiles={popular} relay={relay} />
-      )}
+      {discoveryRows.filter((row) => row.tiles.length > 0).map((row) => (
+        <GameRow key={row.title} title={row.title} tiles={row.tiles} relay={relay} />
+      ))}
 
       <section aria-label="Games">
         <h2 className="mb-3 text-lg font-semibold tracking-tight">{restLabel}</h2>
